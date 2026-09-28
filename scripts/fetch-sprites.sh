@@ -1,32 +1,85 @@
 #!/usr/bin/env bash
 # Baixa os sprites citados em "wiki" nos data/*/textures.json para assets/wiki/ (fora do git; uso pessoal).
-# Idempotente: só baixa o que falta. Sem rede, o jogo usa as texturas procedurais.
+# Idempotente: só baixa o que falta, então é só rodar de novo se algum falhar. Sem os sprites o jogo funciona
+# igual, com as texturas procedurais.
+# A wiki limita o ritmo (HTTP 429): baixa um arquivo por vez, com pausa, obedecendo o Retry-After; se ela insistir,
+# para com um aviso de quanto esperar (o que já baixou fica).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/assets/wiki"
 mkdir -p "$OUT"
-fail=0
-while read -r host file url_name; do
-	[ -s "$OUT/$file.png" ] && continue
-	# Arquivos renomeados na wiki (redirect) não existem em /images/: pergunta a URL real à API.
-	url="https://$host/images/$url_name.png"
-	curl -fsSLI -o /dev/null "$url" 2>/dev/null || url=$(curl -fsSL "https://$host/api.php?action=query&titles=File:$url_name.png&redirects=1&prop=imageinfo&iiprop=url&format=json&formatversion=2" \
-		| python3 -c 'import sys,json; print(json.load(sys.stdin)["query"]["pages"][0]["imageinfo"][0]["url"])' 2>/dev/null || echo "$url")
-	# A wiki responde 429 se baixar rápido demais: tenta de novo com espera.
-	if curl -fsSL --retry 6 --retry-delay 3 --retry-all-errors -o "$OUT/$file.png.tmp" "$url"; then
-		mv "$OUT/$file.png.tmp" "$OUT/$file.png"; sleep 0.4
-	else
-		rm -f "$OUT/$file.png.tmp"; echo "falhou: $file"; fail=1
-	fi
-done < <(python3 - "$ROOT" <<'PY'
-import json, sys, glob, os, urllib.parse
-hosts = {"base": "terraria.wiki.gg", "calamity": "calamitymod.wiki.gg"}
-for path in sorted(glob.glob(os.path.join(sys.argv[1], "data", "*", "textures.json"))):
-    host = hosts.get(os.path.basename(os.path.dirname(path)), "terraria.wiki.gg")
+python3 - "$ROOT" "$OUT" <<'PY'
+import glob, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+
+root, out = sys.argv[1:3]
+HOSTS = {"base": "terraria.wiki.gg", "calamity": "calamitymod.wiki.gg"}
+UA = "3draria-sprites/1.0 (uso pessoal)"
+PAUSE = 0.7     # segundos entre arquivos
+GIVE_UP = 3     # falhas seguidas (já depois de esperar) antes de parar
+
+
+def get(url):
+    """Bytes da URL, ou None se não existe (404). Em 429/5xx espera (Retry-After, senão 5, 10, 20... s) e tenta de novo."""
+    for attempt in range(6):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": UA}), timeout=60) as r:
+                return r.read()
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None
+            if e.code not in (429, 500, 502, 503, 504):
+                raise
+            wait = min(90, int(e.headers.get("Retry-After") or 5 * 2 ** attempt))
+        except (urllib.error.URLError, TimeoutError):
+            wait = 5
+        print(f"  esperando {wait}s (tentativa {attempt + 1}/6)", flush=True)
+        time.sleep(wait)
+    raise RuntimeError("a wiki não respondeu")
+
+
+def real_url(host, name):
+    """Arquivo renomeado na wiki (redirect) não existe em /images/: pergunta a URL real à API."""
+    q = urllib.parse.urlencode({"action": "query", "titles": f"File:{name}.png", "redirects": 1, "prop": "imageinfo",
+                                "iiprop": "url", "format": "json", "formatversion": 2})
+    data = get(f"https://{host}/api.php?{q}")
+    try:
+        return json.loads(data)["query"]["pages"][0]["imageinfo"][0]["url"]
+    except (TypeError, KeyError, IndexError, ValueError):
+        return None
+
+
+todo = {}
+for path in sorted(glob.glob(os.path.join(root, "data", "*", "textures.json"))):
+    host = HOSTS.get(os.path.basename(os.path.dirname(path)), "terraria.wiki.gg")
     for spec in json.load(open(path)).values():
-        if "wiki" in spec:
-            print(host, spec["wiki"], urllib.parse.quote(spec["wiki"]))
+        name = spec.get("wiki")
+        dest = os.path.join(out, str(name) + ".png")
+        if name and not (os.path.exists(dest) and os.path.getsize(dest) > 0):
+            todo[name] = host
+
+failed = []
+streak = 0
+for name, host in todo.items():
+    dest = os.path.join(out, name + ".png")
+    try:
+        data = get(f"https://{host}/images/{urllib.parse.quote(name)}.png")
+        if data is None:
+            url = real_url(host, name)
+            data = get(url) if url else None
+        if data is None:
+            raise RuntimeError("não existe na wiki")
+        with open(dest + ".tmp", "wb") as f:
+            f.write(data)
+        os.replace(dest + ".tmp", dest)
+        streak = 0
+    except Exception as e:
+        print(f"falhou: {name} ({e})", flush=True)
+        failed.append(name)
+        streak += 1
+        if streak >= GIVE_UP:
+            print("A wiki está limitando o ritmo. Espere uns 10 minutos e rode de novo: o que já baixou fica.")
+            break
+    time.sleep(PAUSE)
+print(f"sprites em {out} ({len(os.listdir(out))} arquivos)" + (f"; faltam {len(failed)}" if failed else ""))
+sys.exit(1 if failed else 0)
 PY
-)
-echo "sprites em $OUT ($(ls "$OUT" | wc -l) arquivos)"
-exit $fail

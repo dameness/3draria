@@ -15,7 +15,9 @@ WIKI = "https://terraria.wiki.gg/index.php"
 def cargo(table, fields, where):
     q = urllib.parse.urlencode({"title": "Special:CargoExport", "tables": table, "fields": fields,
                                 "where": where, "format": "json", "limit": "500"})
-    out = subprocess.run(["curl", "-sS", "--retry", "3", f"{WIKI}?{q}"], capture_output=True, text=True, check=True).stdout
+    # A wiki responde 429 se for rápido demais: --retry-all-errors espera (Retry-After) e tenta de novo.
+    out = subprocess.run(["curl", "-sS", "--retry", "6", "--retry-delay", "4", "--retry-all-errors", f"{WIKI}?{q}"],
+                         capture_output=True, text=True, check=True).stdout
     return json.loads(out)
 
 
