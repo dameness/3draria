@@ -68,7 +68,7 @@ static func load_player(player, path: String) -> bool:
 		return false
 	player.hp = data.hp
 	player.inv = Inventory.new()
-	for i in Inventory.SIZE:
+	for i in mini(Inventory.SIZE, data.inv.size()):   # saves antigos têm menos slots
 		var entry: Array = data.inv[i]
 		if Items.ids.has(entry[0]):  # item removido dos dados some do save
 			player.inv.item[i] = Items.ids[entry[0]]

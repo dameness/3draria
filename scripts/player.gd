@@ -2,8 +2,8 @@ extends Node3D
 # Jogador em 1ª pessoa com colisão AABB contra os voxels (VoxelBody).
 # WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce), V troca 1ª/3ª pessoa.
 # Segurar o botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira); direito coloca bloco.
-# 1-0 ou roda escolhem o slot; E abre inventário/criação; F5 salva (também salva ao fechar); F8 dá o kit de teste.
-# Esc abre o menu (Continuar / Salvar e sair).
+# 1-0 ou roda escolhem o slot; Tab (ou E) abre inventário/criação; F5 salva (também salva ao fechar); F8 dá o kit de teste.
+# Esc fecha o inventário; sem nada aberto, abre o menu (Continuar / Salvar e sair).
 
 const HALF := 0.3        # meia largura da caixa
 const TALL := 1.8
@@ -87,7 +87,7 @@ func set_menu(open: bool) -> void:
 
 func _unhandled_input(e: InputEvent) -> void:
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_E:
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode in [KEY_TAB, KEY_E] and not menu_open:
 		inventory_open = not inventory_open
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if inventory_open else Input.MOUSE_MODE_CAPTURED
 	elif inventory_open:

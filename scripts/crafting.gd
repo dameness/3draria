@@ -38,6 +38,20 @@ static func craft(r: Dictionary, inv: Inventory, stations: Dictionary) -> bool:
 	return true
 
 
+# Cria um exemplar na mão do cursor, como no Terraria (mão vazia ou com o mesmo item e espaço na pilha).
+static func craft_to_cursor(r: Dictionary, inv: Inventory, stations: Dictionary) -> bool:
+	if not can_craft(r, inv, stations):
+		return false
+	if inv.cursor_id != -1 and (inv.cursor_id != r.result or inv.cursor_count + r.count > Items.stack[r.result]):
+		return false
+	for id in r.needs:
+		inv.remove(id, r.needs[id])
+	inv.cursor_id = r.result
+	inv.cursor_count += r.count
+	inv.version += 1
+	return true
+
+
 # Blocos de estação num cubo em volta de pos. Retorna {bloco: true}.
 static func stations_near(world, pos: Vector3) -> Dictionary:
 	var found := {}

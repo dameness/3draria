@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_ui"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_ui", "test_cursor"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -494,6 +494,69 @@ func face_corners(arrays: Array, p: Vector3i, normal: Vector3) -> Array:
 	return []
 
 
+func test_cursor():
+	var inv := Inventory.new()
+	inv.add(Items.ids.dirt, 30)
+	inv.add(Items.ids.stone, 5)
+	inv.click(0)
+	check(inv.cursor_id == Items.ids.dirt and inv.cursor_count == 30 and inv.item[0] == -1, "clique esquerdo pega a pilha inteira")
+	inv.click(5)
+	check(inv.cursor_id == -1 and inv.item[5] == Items.ids.dirt and inv.count[5] == 30, "clique em slot vazio solta a pilha")
+	inv.right_click(5)
+	inv.right_click(5)
+	check(inv.cursor_count == 2 and inv.count[5] == 28, "clique direito pega 1 item de cada vez")
+	inv.click(5)
+	check(inv.cursor_id == -1 and inv.count[5] == 30, "soltar no mesmo item junta a pilha")
+	inv.click(1)
+	inv.click(5)
+	check(inv.item[5] == Items.ids.stone and inv.cursor_id == Items.ids.dirt and inv.cursor_count == 30, "item diferente: troca com a mão")
+	inv = Inventory.new()
+	inv.item[0] = Items.ids.dirt
+	inv.count[0] = 9990
+	inv.item[1] = Items.ids.dirt
+	inv.count[1] = 30
+	inv.click(1)
+	inv.click(0)
+	check(inv.count[0] == 9999 and inv.cursor_count == 21, "junta só até o limite da pilha, o resto fica na mão")
+	inv = Inventory.new()
+	inv.add(Items.ids.iron_helmet, 1)
+	inv.add(Items.ids.gold_helmet, 1)
+	inv.click(0)
+	inv.click_equip(1)
+	check(inv.equip[1] == -1 and inv.cursor_id == Items.ids.iron_helmet, "capacete não entra no slot do corpo")
+	inv.click_equip(0)
+	check(inv.equip[0] == Items.ids.iron_helmet and inv.cursor_id == -1, "peça certa na mão veste")
+	inv.click(1)
+	inv.click_equip(0)
+	check(inv.equip[0] == Items.ids.gold_helmet and inv.cursor_id == Items.ids.iron_helmet and inv.cursor_count == 1, "vestir por cima devolve a peça antiga à mão")
+	inv.click(5)
+	inv.click_equip(0)
+	check(inv.equip[0] == -1 and inv.cursor_id == Items.ids.gold_helmet, "clicar na peça vestida com a mão vazia tira a peça para a mão")
+	inv = Inventory.new()
+	inv.add(Items.ids.dirt, 5)
+	inv.add(Items.ids.stone, 7)
+	inv.click(0)
+	inv.click_trash()
+	check(inv.trash_id == Items.ids.dirt and inv.trash_count == 5 and inv.cursor_id == -1, "lixeira recebe o item da mão")
+	inv.click(1)
+	inv.click_trash()
+	check(inv.trash_id == Items.ids.stone and inv.trash_count == 7 and inv.total(Items.ids.dirt) == 0, "item novo na lixeira destrói o anterior")
+	inv.click_trash()
+	check(inv.cursor_id == Items.ids.stone and inv.trash_id == -1, "mão vazia recupera o que está na lixeira")
+	check(inv.release_cursor() == 0 and inv.total(Items.ids.stone) == 7 and inv.cursor_id == -1, "fechar devolve o item da mão ao inventário")
+	# Criar direto para a mão (só cabe se a mão está vazia ou já tem o mesmo item).
+	var by_result := {}
+	for r in Crafting.recipes:
+		by_result[Items.names[r.result]] = r
+	inv = Inventory.new()
+	inv.add(Items.ids.wood, 25)
+	check(Crafting.craft_to_cursor(by_result.workbench, inv, {}) and inv.cursor_id == Items.ids.workbench and inv.cursor_count == 1 and inv.total(Items.ids.wood) == 15, "criar pega o resultado na mão")
+	check(Crafting.craft_to_cursor(by_result.workbench, inv, {}) and inv.cursor_count == 2, "criar de novo soma na mão")
+	inv.cursor_id = Items.ids.dirt
+	check(not Crafting.craft_to_cursor(by_result.workbench, inv, {}) and inv.total(Items.ids.wood) == 5, "mão ocupada por outro item: não cria")
+	return true
+
+
 func test_ui():
 	var tip := Ui.item_tip(Items.ids.terra_blade)
 	check(tip.begins_with("[color=#ffff0a]Terra Blade[/color]") and tip.contains("85 de dano") and tip.contains("Velocidade"), "dica do item: nome na cor da raridade e estatísticas")
@@ -637,7 +700,7 @@ func test_items():
 	check(inv.add(Items.ids.copper_pickaxe, 2) == 0 and inv.count[2] == 1 and inv.count[3] == 1, "picareta não empilha")
 	inv.remove(Items.ids.dirt, 6000)
 	check(inv.total(Items.ids.dirt) == 9000, "remove tira a quantidade certa")
-	check(inv.add(Items.ids.stone, 9999 * 40) > 0, "inventário cheio devolve o que sobrou")
+	check(inv.add(Items.ids.stone, 9999 * Inventory.SIZE) > 0, "inventário cheio devolve o que sobrou")
 	return true
 
 
@@ -767,8 +830,23 @@ func integration():
 			var m: MeshInstance3D = world.meshes.get(edit_chunk)
 			check(m != null and m.get_instance_id() != edit_mesh_id and m.mesh.surface_get_array_len(0) != edit_faces, "mesh do chunk editado foi refeita")
 			var hud: CanvasLayer = main.get_node("HUD")
-			check(hud.hearts.size() == 5 and hud.panel.visible and hud.grid.get_child_count() == Inventory.SIZE, "HUD monta corações e a janela de inventário")
-			check(hud.craft_grid.get_child_count() == Crafting.recipes.size(), "janela de criação lista as %d receitas" % Crafting.recipes.size())
+			check(hud.hearts.size() == 5 and hud.slots.size() == Inventory.SIZE and hud.slots[Inventory.HOTBAR].visible and hud.craft_root.visible and hud.equip_root.visible, "HUD: corações, hotbar + 4 fileiras, criação e equipamento ao abrir")
+			hud.show_all = true
+			hud.shown_version = -1
+			hud._process(0.0)
+			check(hud.craft_list.get_child_count() == Crafting.recipes.size(), "criação com 'Todas' lista as %d receitas" % Crafting.recipes.size())
+			var click := InputEventMouseButton.new()
+			click.button_index = MOUSE_BUTTON_LEFT
+			click.pressed = true
+			var first: int = player.inv.item[0]
+			hud.slots[0].gui_input.emit(click)
+			hud._process(0.0)
+			check(player.inv.cursor_id == first and hud.cursor_view.visible and player.inv.item[0] == -1, "clicar no slot pega o item para o cursor (visível na tela)")
+			hud.slots[Inventory.HOTBAR + 1].gui_input.emit(click)
+			check(player.inv.item[Inventory.HOTBAR + 1] == first and player.inv.cursor_id == -1, "clicar em outro slot solta o item")
+			hud.slots[Inventory.HOTBAR + 1].gui_input.emit(click)
+			hud.slots[0].gui_input.emit(click)
+			check(player.inv.item[0] == first, "e volta ao lugar")
 			check(hud.life_label.text == "Vida: 100/100" and hud.get_node_or_null("Info") == null, "HUD novo mostra a vida")
 			player.inv.add(Items.ids.terra_blade, 1)
 			player.slot = player.inv.item.find(Items.ids.terra_blade)

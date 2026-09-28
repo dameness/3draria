@@ -1,36 +1,54 @@
 extends CanvasLayer
-# Interface no estilo do Terraria (visual em ui.gd): hotbar no canto, corações de vida, nome do item na cor da
-# raridade, janela de inventário/criação (E) com dicas ao passar o mouse, barra do chefe, avisos, tela de água/lava
-# e de dano, e o menu de pausa (Esc).
+# Interface no layout e com o comportamento do Terraria (spec em docs/UI.md; visual em ui.gd):
+# - hotbar = 1ª fileira do inventário, canto superior esquerdo; Tab abre as outras 4 fileiras logo abaixo, mais a lixeira;
+# - criação em coluna à esquerda, embaixo do inventário: só o que dá para criar agora (estações + ingredientes), roda do
+#   mouse rola, ingredientes do item sob o mouse em fileira ao lado, clicar cria para a mão (segurar repete);
+# - equipamento (defesa e armadura) e botão de menu à direita; vida (corações) no canto superior direito;
+# - clique esquerdo pega/solta/junta/troca (item preso ao cursor), direito pega 1 ou veste armadura; dica ao passar o mouse.
+# A lógica de itens fica em inventory.gd (com teste); aqui só desenho e entrada.
 
-const SLOT := 50
+const SLOT := 48
+const PITCH := 52
+const X0 := 20
+const Y0 := 20
 const HP_PER_HEART := 20
 const ARMOR_NAMES := ["cabeça", "corpo", "pernas"]   # na ordem de Inventory.ARMOR
+const REPEAT_FIRST := 0.4    # segurar para criar de novo: espera e depois intervalo
+const REPEAT_EVERY := 0.12
 
 @export var world: Node3D
 @export var player: Node3D
 @export var clock: Node
 var root: Control
-var hotbar: HBoxContainer
+var slots: Array[Slot] = []
+var trash_slot: Slot
 var hearts: Array[TextureRect] = []
 var life_label: Label
 var defense_label: Label
 var item_label: Label
 var note_label: Label
 var debug_label: Label
-var panel: PanelContainer
-var grid: GridContainer
-var craft_grid: GridContainer
+var craft_root: Control
+var craft_list: VBoxContainer
+var craft_info: HBoxContainer
+var station_label: Label
+var toggle_all: Button
+var equip_root: Control
 var equip_slots: Array[Slot] = []
+var cursor_view: Control
 var boss_bar: ProgressBar
 var pause: PanelContainer
 var tint: ColorRect
 var flash: ColorRect
 var stations := {}
+var show_all := false         # criação: false = só o que dá para criar agora (como o Terraria)
+var hovered := {}             # receita sob o mouse (seus ingredientes aparecem ao lado)
+var hold_recipe := {}         # receita sendo criada com o botão segurado
+var hold_timer := 0.0
 var shown_version := -1
-var was_open := false
 var shown_slot := -1
 var shown_held := -2
+var was_open := false
 var item_until := 0
 var sel_style := Ui.box(Ui.BLUE_HOVER, Ui.GOLD, 3)
 
@@ -56,9 +74,10 @@ func _ready() -> void:
 	add_child(root)
 	tint = _overlay()
 	flash = _overlay()
-	_build_hotbar()
+	_build_grid()
+	_build_craft()
+	_build_equipment()
 	_build_life()
-	_build_inventory()
 	_build_boss()
 	_build_pause()
 	var cross := _label("+", 22)
@@ -78,6 +97,24 @@ func _ready() -> void:
 	debug_label.offset_bottom = -8
 	debug_label.modulate = Color(1, 1, 1, 0.8)
 	root.add_child(debug_label)
+	cursor_view = Control.new()   # o item preso ao mouse, sempre por cima
+	cursor_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var ic := TextureRect.new()
+	ic.name = "Icon"
+	ic.custom_minimum_size = Vector2(36, 36)
+	ic.size = Vector2(36, 36)
+	ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cursor_view.add_child(ic)
+	var cn := _label("", 14, HORIZONTAL_ALIGNMENT_RIGHT)
+	cn.name = "Count"
+	cn.position = Vector2(2, 20)
+	cn.size = Vector2(36, 18)
+	cursor_view.add_child(cn)
+	cursor_view.visible = false
+	root.add_child(cursor_view)
 
 
 func _label(text: String, size: int, align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
@@ -98,8 +135,8 @@ func _overlay() -> ColorRect:
 	return c
 
 
-# Botão de slot: ícone do item e quantidade no canto. i = -1 para exibição (hotbar) ou botões próprios.
-func _slot(i: int) -> Slot:
+# Botão de slot: ícone do item e quantidade no canto (sem tratar o clique: quem cria liga o gui_input).
+func _slot() -> Slot:
 	var b := Slot.new()
 	b.custom_minimum_size = Vector2(SLOT, SLOT)
 	b.expand_icon = true
@@ -111,28 +148,128 @@ func _slot(i: int) -> Slot:
 	n.position = Vector2(SLOT - 34, SLOT - 21)
 	n.size = Vector2(30, 18)
 	b.add_child(n)
-	if i == -1:
-		b.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	else:
-		b.pressed.connect(_on_slot.bind(i))
 	return b
 
 
-func _build_hotbar() -> void:
-	hotbar = HBoxContainer.new()
-	hotbar.position = Vector2(14, 12)
-	hotbar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hotbar.add_theme_constant_override("separation", 4)
-	root.add_child(hotbar)
-	for i in Inventory.HOTBAR:
-		var s := _slot(-1)
-		var num := _label(str((i + 1) % 10), 12)
-		num.position = Vector2(5, 1)
-		s.add_child(num)
-		hotbar.add_child(s)
+func _grid(columns: int) -> GridContainer:
+	var g := GridContainer.new()
+	g.columns = columns
+	g.add_theme_constant_override("h_separation", PITCH - SLOT)
+	g.add_theme_constant_override("v_separation", PITCH - SLOT)
+	return g
+
+
+# Uma grade só de 5 x 10: a 1ª fileira é a hotbar, sempre visível; as outras 4 aparecem com o inventário aberto.
+func _build_grid() -> void:
+	var grid := _grid(Inventory.HOTBAR)
+	grid.position = Vector2(X0, Y0)
+	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(grid)
+	for i in Inventory.SIZE:
+		var s := _slot()
+		s.gui_input.connect(_on_slot_input.bind(i))
+		if i < Inventory.HOTBAR:
+			var num := _label(str((i + 1) % 10), 12)
+			num.position = Vector2(5, 1)
+			s.add_child(num)
+		slots.append(s)
+		grid.add_child(s)
+	trash_slot = _slot()   # a lixeira fica embaixo, no canto direito da grade
+	trash_slot.position = Vector2(X0 + 9 * PITCH, Y0 + 5 * PITCH + 4)
+	trash_slot.tooltip_text = "[color=#ff9a8a]Lixeira[/color]\nO item que cair aqui é destruído\nquando outro chegar."
+	trash_slot.gui_input.connect(func(e: InputEvent):
+		if _pressed(e, MOUSE_BUTTON_LEFT):
+			player.inv.click_trash())
+	root.add_child(trash_slot)
 	item_label = _label("", 18)
-	item_label.position = Vector2(16, 12 + SLOT + 8)
+	item_label.position = Vector2(X0 + 4, Y0 + PITCH + 6)
 	root.add_child(item_label)
+
+
+func _pressed(e: InputEvent, button: int) -> bool:
+	return e is InputEventMouseButton and e.pressed and e.button_index == button
+
+
+# Clique num slot do inventário: esquerdo pega/solta/junta/troca (Shift veste armadura), direito pega 1 ou veste.
+func _on_slot_input(e: InputEvent, i: int) -> void:
+	var inv: Inventory = player.inv
+	if _pressed(e, MOUSE_BUTTON_LEFT):
+		if not (e.shift_pressed and inv.cursor_id == -1 and inv.equip_from(i)):
+			inv.click(i)
+	elif _pressed(e, MOUSE_BUTTON_RIGHT):
+		if not (inv.cursor_id == -1 and inv.equip_from(i)):
+			inv.right_click(i)
+
+
+# Coluna de criação à esquerda, embaixo do inventário.
+func _build_craft() -> void:
+	craft_root = Control.new()
+	craft_root.position = Vector2(X0, Y0 + 5 * PITCH + 14)
+	craft_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(craft_root)
+	craft_root.add_child(_label("Criação", 18))
+	toggle_all = Button.new()
+	toggle_all.text = "Todas"
+	toggle_all.toggle_mode = true
+	toggle_all.focus_mode = Control.FOCUS_NONE
+	toggle_all.tooltip_text = "Mostrar também o que ainda não dá para criar"
+	toggle_all.position = Vector2(PITCH + 30, -2)
+	toggle_all.toggled.connect(func(on: bool):
+		show_all = on
+		shown_version = -1)
+	craft_root.add_child(toggle_all)
+	var scroll := ScrollContainer.new()
+	scroll.position = Vector2(0, 30)
+	scroll.custom_minimum_size = Vector2(PITCH + 6, 5 * PITCH)
+	scroll.size = Vector2(PITCH + 6, 5 * PITCH)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER   # a roda do mouse rola
+	craft_list = VBoxContainer.new()
+	craft_list.add_theme_constant_override("separation", PITCH - SLOT)
+	scroll.add_child(craft_list)
+	craft_root.add_child(scroll)
+	craft_info = HBoxContainer.new()   # ingredientes do item sob o mouse
+	craft_info.position = Vector2(PITCH + 14, 34)
+	craft_info.add_theme_constant_override("separation", PITCH - SLOT)
+	craft_info.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	craft_root.add_child(craft_info)
+	station_label = _label("", 14)
+	station_label.position = Vector2(PITCH + 14, 34 + PITCH + 2)
+	craft_root.add_child(station_label)
+
+
+# Equipamento à direita: defesa, 3 slots de armadura e o botão de menu (a "engrenagem" do Terraria).
+func _build_equipment() -> void:
+	equip_root = VBoxContainer.new()
+	equip_root.anchor_left = 1.0
+	equip_root.anchor_right = 1.0
+	equip_root.offset_left = -190
+	equip_root.offset_right = -14
+	equip_root.offset_top = 140
+	equip_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(equip_root)
+	defense_label = _label("", 18)
+	equip_root.add_child(defense_label)
+	for k in Inventory.ARMOR.size():
+		var line := HBoxContainer.new()
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var b := _slot()
+		b.gui_input.connect(func(e: InputEvent):
+			if _pressed(e, MOUSE_BUTTON_LEFT):
+				player.inv.click_equip(k)
+			elif _pressed(e, MOUSE_BUTTON_RIGHT):
+				player.inv.unequip(k))
+		equip_slots.append(b)
+		line.add_child(b)
+		line.add_child(_label(ARMOR_NAMES[k], 14))
+		equip_root.add_child(line)
+	var menu := Button.new()
+	menu.text = "Menu"
+	menu.focus_mode = Control.FOCUS_NONE
+	menu.pressed.connect(func():
+		player.inventory_open = false
+		player.set_menu(true))
+	equip_root.add_child(menu)
 
 
 func _build_life() -> void:
@@ -162,58 +299,6 @@ func _build_life() -> void:
 		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(h)
 		hearts.append(h)
-	defense_label = _label("", 16, HORIZONTAL_ALIGNMENT_RIGHT)
-	box.add_child(defense_label)
-
-
-func _build_inventory() -> void:
-	panel = PanelContainer.new()
-	panel.set_anchors_preset(Control.PRESET_CENTER)
-	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
-	root.add_child(panel)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 22)
-	panel.add_child(row)
-	var craft := VBoxContainer.new()
-	craft.add_child(_label("Criação", 18))
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(5 * (SLOT + 4) + 14, 300)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	craft_grid = _grid(5)
-	scroll.add_child(craft_grid)
-	craft.add_child(scroll)
-	craft.add_child(_label("Estações a %d blocos." % Crafting.STATION_RANGE, 13))
-	row.add_child(craft)
-	var inv := VBoxContainer.new()
-	inv.add_child(_label("Inventário", 18))
-	grid = _grid(Inventory.HOTBAR)
-	for i in Inventory.SIZE:
-		grid.add_child(_slot(i))
-	inv.add_child(grid)
-	inv.add_child(_label("Clique: veste armadura; senão troca com o slot da mão. E fecha.", 13))
-	row.add_child(inv)
-	var eq := VBoxContainer.new()
-	eq.add_child(_label("Armadura", 18))
-	for k in Inventory.ARMOR.size():
-		var line := HBoxContainer.new()
-		var b := _slot(-1)
-		b.mouse_filter = Control.MOUSE_FILTER_STOP
-		b.pressed.connect(func(): player.inv.unequip(k))
-		equip_slots.append(b)
-		line.add_child(b)
-		line.add_child(_label(ARMOR_NAMES[k], 14))
-		eq.add_child(line)
-	eq.add_child(_label("Clique para tirar.", 13))
-	row.add_child(eq)
-
-
-func _grid(columns: int) -> GridContainer:
-	var g := GridContainer.new()
-	g.columns = columns
-	g.add_theme_constant_override("h_separation", 4)
-	g.add_theme_constant_override("v_separation", 4)
-	return g
 
 
 func _build_boss() -> void:
@@ -258,10 +343,8 @@ func _save_and_quit() -> void:
 	get_tree().change_scene_to_file("res://menu.tscn")
 
 
-func _show_slot(b: Slot, i: int) -> void:
-	var id: int = player.inv.item[i]
-	_fill(b, id, player.inv.count[i])
-	b.add_theme_stylebox_override("normal", sel_style if i == player.slot and i < Inventory.HOTBAR else Ui.theme().get_stylebox("normal", "Button"))
+func _icon(id: int) -> Texture2D:
+	return player.entities.icon(id)
 
 
 func _fill(b: Slot, id: int, count: int) -> void:
@@ -270,55 +353,80 @@ func _fill(b: Slot, id: int, count: int) -> void:
 	b.tooltip_text = Ui.item_tip(id) if id != -1 else ""
 
 
-func _icon(id: int) -> Texture2D:
-	return player.entities.icon(id)
+func _show_slot(i: int) -> void:
+	_fill(slots[i], player.inv.item[i], player.inv.count[i])
+	slots[i].add_theme_stylebox_override("normal", sel_style if i == player.slot and i < Inventory.HOTBAR else Ui.theme().get_stylebox("normal", "Button"))
 
 
-func _on_slot(i: int) -> void:
-	if player.inv.equip_from(i):  # armadura: veste
+# Criação: os ingredientes da receita ficam em fileira ao lado da lista (vermelho = falta).
+func _hover(r: Dictionary) -> void:
+	hovered = r
+	_show_ingredients(r)
+
+
+func _show_ingredients(r: Dictionary) -> void:
+	for c in craft_info.get_children():
+		craft_info.remove_child(c)
+		c.queue_free()
+	if r.is_empty():
+		station_label.text = ""
 		return
-	if i < Inventory.HOTBAR:
-		player.slot = i
-	else:
-		player.inv.swap(i, player.slot)
-	shown_version = -1
-
-
-func _on_craft(r: Dictionary) -> void:
-	Crafting.craft(r, player.inv, stations)
-
-
-# Dica da receita: o item com as estatísticas, e o que falta (verde = tem, vermelho = falta).
-func _recipe_tip(r: Dictionary) -> String:
-	var lines := [Ui.item_tip(r.result), "[color=#ffe27a]Precisa de:[/color]"]
 	for id in r.needs:
-		var have: int = player.inv.total(id)
-		lines.append("[color=%s]%s  %d/%d[/color]" % [Ui.GOOD if have >= r.needs[id] else Ui.BAD, Items.label(id), have, r.needs[id]])
+		var b := _slot()
+		_fill(b, id, r.needs[id])
+		b.get_node("Count").text = str(r.needs[id])
+		b.get_node("Count").add_theme_color_override("font_color", Color.WHITE if player.inv.total(id) >= r.needs[id] else Color(1, 0.45, 0.45))
+		b.mouse_filter = Control.MOUSE_FILTER_PASS
+		craft_info.add_child(b)
 	if r.station != -1:
-		lines.append("[color=%s]estação: %s[/color]" % [Ui.GOOD if stations.has(r.station) else Ui.BAD, Blocks.ids.keys()[r.station].replace("_", " ")])
-	return "\n".join(lines)
+		station_label.text = "Precisa de: %s" % Blocks.ids.keys()[r.station].replace("_", " ")
+		station_label.add_theme_color_override("font_color", Color(Ui.GOOD) if stations.has(r.station) else Color(Ui.BAD))
+	else:
+		station_label.text = ""
+
+
+func _craft(r: Dictionary) -> void:
+	Crafting.craft_to_cursor(r, player.inv, stations)
 
 
 func _refresh_recipes() -> void:
-	for c in craft_grid.get_children():
-		craft_grid.remove_child(c)
+	for c in craft_list.get_children():
+		craft_list.remove_child(c)
 		c.queue_free()
-	# Como no Terraria, o que dá para criar agora vem primeiro.
-	var ordered := Crafting.recipes.filter(func(r): return Crafting.can_craft(r, player.inv, stations))
-	ordered += Crafting.recipes.filter(func(r): return not Crafting.can_craft(r, player.inv, stations))
-	for r in ordered:
-		var b := _slot(-1)
-		b.mouse_filter = Control.MOUSE_FILTER_STOP
+	var now := Crafting.recipes.filter(func(r): return Crafting.can_craft(r, player.inv, stations))
+	var list: Array = now + (Crafting.recipes.filter(func(r): return not Crafting.can_craft(r, player.inv, stations)) if show_all else [])
+	for r in list:
+		var b := _slot()
 		_fill(b, r.result, r.count)
-		b.tooltip_text = _recipe_tip(r)
 		b.modulate = Color.WHITE if Crafting.can_craft(r, player.inv, stations) else Color(1, 1, 1, 0.42)
-		b.pressed.connect(_on_craft.bind(r))
-		craft_grid.add_child(b)
+		b.mouse_entered.connect(_hover.bind(r))
+		b.gui_input.connect(func(e: InputEvent):
+			if _pressed(e, MOUSE_BUTTON_LEFT):
+				_craft(r)
+				hold_recipe = r
+				hold_timer = REPEAT_FIRST)
+		craft_list.add_child(b)
+	if not list.has(hovered):
+		_hover(list[0] if not list.is_empty() else {})
+	else:
+		_show_ingredients(hovered)
 
 
-func _process(_delta: float) -> void:
-	panel.visible = player.inventory_open
+func _process(delta: float) -> void:
+	var open: bool = player.inventory_open
 	pause.visible = player.menu_open
+	if open != was_open:
+		for i in slots.size():
+			slots[i].visible = i < Inventory.HOTBAR or open
+			slots[i].mouse_filter = Control.MOUSE_FILTER_STOP if open or i >= Inventory.HOTBAR else Control.MOUSE_FILTER_IGNORE
+		for n in [craft_root, equip_root, trash_slot]:
+			n.visible = open
+		if not open:  # fechou com item na mão: volta ao inventário; o que não couber cai no chão
+			var held_id: int = player.inv.cursor_id
+			var left: int = player.inv.release_cursor()
+			if left > 0:
+				player.entities.spawn_drop(held_id, left, player.position + Vector3.UP)
+		shown_version = -1
 	var hp: float = player.hp
 	for i in hearts.size():
 		var f := clampf((hp - i * HP_PER_HEART) / HP_PER_HEART, 0.0, 1.0)
@@ -333,6 +441,7 @@ func _process(_delta: float) -> void:
 		item_until = now + 2200
 		item_label.text = Items.label(id).capitalize() if id != -1 else ""
 		item_label.add_theme_color_override("font_color", Items.rarity_color(id) if id != -1 else Color.WHITE)
+	item_label.visible = not open
 	item_label.modulate.a = clampf((item_until - now) / 500.0, 0.0, 1.0)
 	var boss: Node3D = player.entities.boss
 	boss_bar.visible = boss != null
@@ -340,23 +449,35 @@ func _process(_delta: float) -> void:
 		boss_bar.max_value = boss.def.life
 		boss_bar.value = boss.hp
 		boss_bar.get_node("Name").text = "%s  %d/%d" % [boss.def.name.replace("_", " ").capitalize(), maxi(boss.hp, 0), boss.def.life]
-	var changed: bool = player.inv.version != shown_version
+	var inv: Inventory = player.inv
+	var changed: bool = inv.version != shown_version
 	if changed or player.slot != shown_slot or Engine.get_process_frames() % 30 == 0:
 		shown_slot = player.slot
-		for i in Inventory.HOTBAR:
-			_show_slot(hotbar.get_child(i), i)
-	if panel.visible:
-		var fresh := not was_open   # acabou de abrir: preenche tudo
-		var near := Crafting.stations_near(world, player.position) if fresh or changed or Engine.get_process_frames() % 30 == 0 else stations
-		if fresh or changed or near != stations:
+		for i in (Inventory.SIZE if open else Inventory.HOTBAR):
+			_show_slot(i)
+	if open:
+		var near := Crafting.stations_near(world, player.position) if changed or Engine.get_process_frames() % 30 == 0 else stations
+		if changed or near != stations:
 			stations = near
-			for i in Inventory.SIZE:
-				_show_slot(grid.get_child(i), i)
 			for k in Inventory.ARMOR.size():
-				_fill(equip_slots[k], player.inv.equip[k], 1)
+				_fill(equip_slots[k], inv.equip[k], 1)
+			_fill(trash_slot, inv.trash_id, inv.trash_count)
 			_refresh_recipes()
-	shown_version = player.inv.version
-	was_open = panel.visible
+		if not hold_recipe.is_empty():  # segurar o botão na receita cria de novo
+			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and hovered == hold_recipe:
+				hold_timer -= delta
+				if hold_timer <= 0.0:
+					_craft(hold_recipe)
+					hold_timer = REPEAT_EVERY
+			else:
+				hold_recipe = {}
+	shown_version = inv.version
+	was_open = open
+	cursor_view.visible = open and inv.cursor_id != -1
+	if cursor_view.visible:
+		cursor_view.position = get_viewport().get_mouse_position() + Vector2(6, 6)
+		cursor_view.get_node("Icon").texture = _icon(inv.cursor_id)
+		cursor_view.get_node("Count").text = str(inv.cursor_count) if inv.cursor_count > 1 else ""
 	var cam: Vector3 = player.cam.global_position
 	var block: int = world.get_block(floori(cam.x), floori(cam.y), floori(cam.z))
 	tint.color = Color(0.08, 0.28, 0.7, 0.4) if block == Blocks.ids.water else Color(1.0, 0.3, 0.05, 0.55) if block == Blocks.ids.lava else Color.TRANSPARENT

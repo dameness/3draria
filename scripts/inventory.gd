@@ -2,7 +2,7 @@ class_name Inventory
 extends RefCounted
 # Slots de itens. Os primeiros HOTBAR slots são a hotbar.
 
-const SIZE := 40
+const SIZE := 50      # como no Terraria: 5 fileiras de 10 (a primeira é a hotbar)
 const HOTBAR := 10
 const ARMOR := ["head", "body", "legs"]   # slots de equipamento
 
@@ -10,6 +10,10 @@ var item := PackedInt32Array()    # -1 = vazio
 var count := PackedInt32Array()
 var equip := PackedInt32Array([-1, -1, -1])   # armadura vestida, na ordem de ARMOR
 var version := 0                  # muda a cada alteração (a interface redesenha)
+var cursor_id := -1               # item preso ao mouse, como no Terraria (-1 = mão vazia)
+var cursor_count := 0
+var trash_id := -1                # lixeira: um slot; item novo destrói o que estava lá
+var trash_count := 0
 
 
 func _init() -> void:
@@ -90,6 +94,83 @@ func unequip(k: int) -> void:
 	if equip[k] != -1 and add(equip[k], 1) == 0:
 		equip[k] = -1
 	version += 1
+
+
+# Clique esquerdo no slot i: mão vazia pega a pilha inteira; com item na mão solta, junta (até o limite) ou troca.
+func click(i: int) -> void:
+	if cursor_id == -1:
+		cursor_id = item[i]
+		cursor_count = count[i]
+		item[i] = -1
+		count[i] = 0
+	elif item[i] == -1:
+		item[i] = cursor_id
+		count[i] = cursor_count
+		cursor_id = -1
+		cursor_count = 0
+	elif item[i] == cursor_id and Items.stack[cursor_id] > 1:
+		var moved := mini(Items.stack[cursor_id] - count[i], cursor_count)
+		count[i] += moved
+		cursor_count -= moved
+		if cursor_count == 0:
+			cursor_id = -1
+	else:
+		var t := item[i]
+		item[i] = cursor_id
+		cursor_id = t
+		t = count[i]
+		count[i] = cursor_count
+		cursor_count = t
+	version += 1
+
+
+# Clique direito no slot i: pega 1 item da pilha para a mão (o mesmo item vai somando).
+func right_click(i: int) -> void:
+	if item[i] == -1 or not (cursor_id == -1 or (cursor_id == item[i] and cursor_count < Items.stack[cursor_id])):
+		return
+	cursor_id = item[i]
+	cursor_count += 1
+	count[i] -= 1
+	if count[i] == 0:
+		item[i] = -1
+	version += 1
+
+
+# Clique no slot de armadura k: com a peça certa na mão veste (a antiga vai para a mão); mão vazia tira a peça.
+func click_equip(k: int) -> void:
+	if cursor_id != -1 and Items.defs[cursor_id].get("armor") != ARMOR[k]:
+		return   # não é peça deste slot
+	var old := equip[k]
+	equip[k] = cursor_id
+	cursor_id = old
+	cursor_count = 1 if old != -1 else 0
+	version += 1
+
+
+# Lixeira: com item na mão joga fora (o que estava lá some para sempre); mão vazia recupera o que está lá.
+func click_trash() -> void:
+	if cursor_id != -1:
+		trash_id = cursor_id
+		trash_count = cursor_count
+		cursor_id = -1
+		cursor_count = 0
+	else:
+		cursor_id = trash_id
+		cursor_count = trash_count
+		trash_id = -1
+		trash_count = 0
+	version += 1
+
+
+# Devolve o item da mão ao inventário (ao fechar a janela). Retorna quantos não couberam.
+func release_cursor() -> int:
+	var left := 0
+	if cursor_id != -1:
+		left = add(cursor_id, cursor_count)
+	cursor_id = -1
+	cursor_count = 0
+	version += 1
+	return left
 
 
 # Defesa das peças vestidas + bônus do conjunto completo (como no Terraria).
