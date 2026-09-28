@@ -29,6 +29,8 @@ const SHOTS := [
 	{"name": "caverna", "cave": true, "look": Vector2(0.3, -0.25), "item": "copper_pickaxe"},
 	{"name": "noite_tochas", "time": 1100.0, "torches": true, "look": Vector2(0, -0.3), "third": true},
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
+	{"name": "cerebro", "look": Vector2(0, 0.15), "boss": "brain_of_cthulhu", "item": "terra_blade"},
+	{"name": "cerebro_fase2", "look": Vector2(0, 0.15), "boss": "brain_of_cthulhu", "phase2": true},
 	{"name": "chefe_fase2", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "phase2": true, "third": true},
 	{"name": "lago", "find": "water", "at": Vector3(14, 5, 0), "look": Vector2(PI / 2, -0.3)},
 	{"name": "respingo", "find": "water", "find_y": 70, "at": Vector3(-5, 5.5, 0), "look": Vector2(-PI / 2, -0.35), "splash": true},
@@ -222,9 +224,19 @@ func _setup(s: Dictionary) -> void:
 	if s.has("boss"):
 		var b: Node3D = ent.spawn_boss(s.boss)
 		b.position = player.position + fwd * 12 + Vector3.UP * 5
-		b.set_physics_process(false)
+		var k := 0
+		for e in ent.enemies:
+			e.set_physics_process(false)
+			if e.def.name == "creeper":   # em volta do cérebro, como na órbita
+				e.position = b.position + Vector3.UP * 1.5 + Vector3(cos(k * 0.52), sin(k * 1.3) * 0.4, sin(k * 0.52)) * 6.0
+				k += 1
 		if s.get("phase2", false):
-			EnemyModel.set_phase(b.model, 2)
+			if b.def.ai == "brain":
+				for e in ent.enemies.filter(func(x): return x.def.name == "creeper"):
+					ent.remove_enemy(e)
+				b.think(0.0)
+			else:
+				EnemyModel.set_phase(b.model, 2)
 	player.third_person = s.get("third", false)
 	for n in s.get("armor", []):
 		player.inv.add(Items.ids[n], 1)

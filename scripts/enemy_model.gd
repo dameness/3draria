@@ -3,6 +3,7 @@ class_name EnemyModel
 #   eye      esfera com veias, íris, pupila e tentáculos (Olho de Cthulhu, olho demoníaco, servos);
 #            set_phase(2) troca a íris por uma boca com dentes.
 #   slime    gelatina translúcida com núcleo; achata/estica com a velocidade vertical.
+#   brain    cérebro rosado com dobras, olhos e tentáculos (Brain of Cthulhu).
 #   worm     segmento de verme (esfera com anéis; cabeça com mandíbula, rabo mais fino), centrado na origem; enemy.gd gira inteiro.
 #   humanoid corpo do jogador (player_model.gd) com as cores de "colors" e braços estendidos.
 #   (outro)  sprite da wiki extrudado com espessura; sem sprite, caixa colorida.
@@ -21,6 +22,8 @@ static func build(def: Dictionary) -> Node3D:
 			_slime(root, size, Color(def.color))
 		"worm":
 			_worm(root, size[0], def)
+		"brain":
+			_brain(root, size, Color(def.color))
 		"humanoid":
 			var body: Node3D = PlayerModel.new()
 			var c: Dictionary = def.get("colors", {})
@@ -121,6 +124,37 @@ static func _eye(root: Node3D, r: float, def: Dictionary) -> void:
 		var t := _part(pivot, CylinderMesh.new(), Vector3(r * 0.12, r * 1.2, r * 0.12), Color("#b0202a"), Vector3(cos(a) * r * 0.45, sin(a) * r * 0.45, r * 1.3))
 		t.rotation.x = PI / 2
 		t.name = "Tendril%d" % i
+
+
+# Cérebro: massa rosada de lóbulos com sulcos escuros e dois olhos na frente (-Z); os tentáculos pendem atrás.
+static func _brain(root: Node3D, size: Array, c: Color) -> void:
+	var r: float = size[0] / 2.0
+	var pivot := Node3D.new()
+	pivot.name = "Squash"
+	pivot.position.y = size[1] / 2.0
+	root.add_child(pivot)
+	var flesh := _mat(c)
+	flesh.rim_enabled = true
+	flesh.rim = 0.6
+	_part(pivot, SphereMesh.new(), Vector3(r * 2.0, r * 1.7, r * 2.0), c, Vector3.ZERO, flesh)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 266
+	for i in 12:   # lóbulos na superfície
+		var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.3, 1), rng.randf_range(-1, 1)).normalized()
+		_part(pivot, SphereMesh.new(), Vector3.ONE * r * rng.randf_range(0.7, 1.0), c.lightened(rng.randf_range(0.0, 0.15)), dir * r * 0.75 * Vector3(1, 0.85, 1), flesh)
+	var groove := _mat(c.darkened(0.55))
+	for k in 3:   # sulcos: anéis escuros em volta
+		var ring := CylinderMesh.new()
+		ring.radial_segments = 18
+		var m := _part(pivot, ring, Vector3(r * (1.95 - k * 0.3), r * 0.05, r * (1.95 - k * 0.3)), c.darkened(0.55), Vector3(0, r * (0.15 + k * 0.35), 0), groove)
+		m.rotation = Vector3(0.25 * (k - 1), k * 1.1, 0)
+	for side in [-1, 1]:
+		_part(pivot, SphereMesh.new(), Vector3.ONE * r * 0.42, Color("#f4ece4"), Vector3(side * r * 0.42, r * 0.1, -r * 0.82))
+		_part(pivot, SphereMesh.new(), Vector3.ONE * r * 0.2, Color("#b01820"), Vector3(side * r * 0.42, r * 0.1, -r * 1.02))
+	for i in 6:
+		var a := TAU * i / 6.0
+		var t := _part(pivot, CylinderMesh.new(), Vector3(r * 0.1, r * 1.1, r * 0.1), c.darkened(0.3), Vector3(cos(a) * r * 0.5, -r * 1.0, sin(a) * r * 0.5))
+		t.rotation = Vector3(sin(a) * 0.3, 0, -cos(a) * 0.3)
 
 
 # Segmento de verme: esfera na cor do def, dois anéis mais escuros (placas) e, na cabeça, boca com dentes; o rabo termina em ponta.

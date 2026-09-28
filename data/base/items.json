@@ -75,5 +75,9 @@
 	{"name": "hermes_boots", "icon": "hermes_boots", "stack": 1, "rarity": 1, "accessory": {"speed": 0.4}},
 	{"name": "shiny_red_balloon", "icon": "shiny_red_balloon", "stack": 1, "rarity": 1, "accessory": {"jump": 0.25}},
 	{"name": "band_of_regeneration", "icon": "band_of_regeneration", "stack": 1, "rarity": 1, "accessory": {"regen": 2}},
-	{"name": "shadow_scale", "icon": "shadow_scale", "rarity": 1}
+	{"name": "shadow_scale", "icon": "shadow_scale", "rarity": 1},
+	{"name": "tissue_sample", "icon": "tissue_sample", "rarity": 1},
+	{"name": "crimtane_bar", "icon": "crimtane_bar", "rarity": 1},
+	{"name": "blood_butcherer", "icon": "blood_butcherer", "damage": 22, "use_time": 0.417, "reach": 2.6, "knockback": 5, "stack": 1, "rarity": 1},
+	{"name": "tendon_bow", "icon": "tendon_bow", "damage": 19, "use_time": 0.5, "ammo": "arrow", "shoot_speed": 25.1, "knockback": 1, "stack": 1, "rarity": 1}
 ]

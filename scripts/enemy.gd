@@ -32,16 +32,25 @@ var phase := 1
 # verme (Eater of Worlds): cada segmento é um inimigo que segue o da frente; sem `follow` ele é a cabeça
 var follow: Node3D = null
 var heading := Vector3.ZERO
+var angle := 0.0    # creeper: fase da órbita em volta do cérebro (follow = o cérebro)
 
 
-func _ready() -> void:
+# Números do def (a entidade nasce com eles; _ready só monta o visual).
+func stats() -> void:
 	hp = def.life
 	damage = def.damage
 	defense = def.defense
 	half = def.size[0] / 2.0
 	tall = def.size[1]
+
+
+func _ready() -> void:
+	stats()
 	model = EnemyModel.build(def)
 	model.rotation.y = PI  # modelos olham para -Z; o nó gira para o jogador por +Z
+	angle = rng.randf() * TAU
+	if def.ai == "brain":   # fase 1: translúcido e imune
+		set_ghost(true)
 	if def.ai == "worm":
 		model.position.y = tall / 2.0   # o modelo é centrado na origem e gira inteiro (cima/baixo também)
 	add_child(model)
@@ -104,6 +113,10 @@ func think(delta: float) -> void:
 		"worm":
 			worm(delta, to)
 			return
+		"brain":
+			brain(delta, to)
+		"creeper":
+			creeper(delta, to)
 	if flat != Vector3.ZERO:
 		rotation.y = atan2(flat.x, flat.z)
 
@@ -149,6 +162,79 @@ func eye_of_cthulhu(delta: float, to: Vector3) -> void:
 			velocity *= 1.0 - delta * 0.8
 
 
+func set_ghost(on: bool) -> void:
+	if model == null:
+		return
+	for m in model.find_children("", "MeshInstance3D", true, false):
+		m.transparency = 0.5 if on else 0.0
+
+
+# Brain of Cthulhu. Fase 1: translúcido e imune, teleporta em volta do jogador enquanto os Creepers atacam; quando o último
+# Creeper morre vira sólido (fase 2): some, reaparece perto do jogador e investe.
+func brain(delta: float, to: Vector3) -> void:
+	var p: Node3D = entities.player
+	timer -= delta
+	if phase == 1 and entities.group_count(def.group) <= 1:
+		phase = 2
+		mode = "wait"
+		timer = 1.0
+		set_ghost(false)
+		Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 30)
+		p.say("o Brain of Cthulhu está furioso!")
+	if phase == 1:
+		velocity = velocity.lerp(to.normalized() * 2.5, delta * 1.5)
+		if timer <= 0:
+			timer = 4.0
+			_teleport(p, 12.0)
+		return
+	match mode:
+		"wait":   # paira devagar
+			velocity = velocity.lerp(to.normalized() * 3.0, delta * 2.0)
+			if timer <= 0:
+				_teleport(p, 9.0)
+				mode = "aim"
+				timer = 0.7
+		"aim":
+			velocity = Vector3.ZERO
+			if timer <= 0:
+				mode = "dash"
+				timer = 0.9
+				velocity = to.normalized() * 17.0
+		"dash":
+			velocity *= 1.0 - delta * 0.6
+			if timer <= 0:
+				mode = "wait"
+				timer = 1.6
+
+
+func _teleport(p: Node3D, dist: float) -> void:
+	Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 14)
+	var a := rng.randf() * TAU
+	position = p.position + Vector3(cos(a) * dist, rng.randf_range(1.0, 5.0), sin(a) * dist)
+	Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 14)
+
+
+# Creeper: gira em volta do cérebro e, de tempos em tempos, se joga no jogador; sem cérebro, persegue direto.
+func creeper(delta: float, to: Vector3) -> void:
+	timer -= delta
+	if not is_instance_valid(follow):
+		velocity = velocity.lerp(to.normalized() * def.speed, delta * 2.0)
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+	if mode == "dash":
+		velocity = to.normalized() * def.speed * 1.5
+		if timer <= 0:
+			mode = "orbit"
+			timer = rng.randf_range(2.0, 5.0)
+		return
+	mode = "orbit" if mode == "hover" else mode
+	var target: Vector3 = follow.position + Vector3.UP * follow.tall * 0.5 + Vector3(cos(t * 1.6 + angle), 0.4 * sin(t * 2.1 + angle), sin(t * 1.6 + angle)) * 5.5
+	velocity = velocity.lerp((target - position).limit_length(def.speed), delta * 4.0)
+	if timer <= 0:
+		mode = "dash"
+		timer = 0.9
+
+
 # Cabeça: vira devagar para o jogador e atravessa os blocos (por isso circula ao errar). Corpo: mantém a distância do da frente.
 func worm(delta: float, to: Vector3) -> void:
 	if follow == null:
@@ -184,6 +270,9 @@ func move(delta: float) -> void:
 
 # Dano como no Terraria (modo normal): dano − defesa/2, mínimo 1. Retorna o dano causado.
 func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
+	if def.ai == "brain" and phase == 1:   # imune enquanto houver Creepers
+		Fx.sparks(entities, position + Vector3.UP * tall * 0.5, Color(0.8, 0.8, 1.0), 4, dir)
+		return 0
 	var taken := maxi(1, dmg - ceili(defense / 2.0))
 	hp -= taken
 	flash = FLASH_TIME
@@ -205,9 +294,9 @@ func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 		if def.has("group") and entities.group_count(def.group) <= 1:   # o último segmento solta o prêmio do chefe
 			for d in entities.final_drops(def.group):
 				if rng.randf() < d.chance:
-					entities.spawn_drop(Items.ids[d.item], rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
+					entities.spawn_drop(entities.drop_id(d.item), rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
 		for d in def.drops:
 			if rng.randf() < d.chance:
-				entities.spawn_drop(Items.ids[d.item], rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
+				entities.spawn_drop(entities.drop_id(d.item), rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
 		entities.remove_enemy(self)
 	return taken

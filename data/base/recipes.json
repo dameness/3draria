@@ -68,5 +68,8 @@
 	{"result": "platinum_helmet", "needs": {"platinum_bar": 20}, "station": "anvil"},
 	{"result": "platinum_chainmail", "needs": {"platinum_bar": 30}, "station": "anvil"},
 	{"result": "platinum_greaves", "needs": {"platinum_bar": 25}, "station": "anvil"},
-	{"result": "chest", "needs": {"wood": 8, "iron_bar": 2}, "station": "workbench"}
+	{"result": "chest", "needs": {"wood": 8, "iron_bar": 2}, "station": "workbench"},
+	{"result": "crimtane_bar", "needs": {"crimtane_ore": 3}, "station": "furnace"},
+	{"result": "blood_butcherer", "needs": {"crimtane_bar": 10}, "station": "anvil"},
+	{"result": "tendon_bow", "needs": {"crimtane_bar": 8}, "station": "anvil"}
 ]

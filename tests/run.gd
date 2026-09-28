@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -692,6 +692,63 @@ func test_worm():
 	for i in 3:
 		ent.orb_broken(Blocks.ids.shadow_orb)
 	check(ent.boss != null and ent.boss.def.name == "eater_of_worlds" and p.world.orbs_broken == 3, "o 3º orbe quebrado acorda o Eater of Worlds")
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_brain():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var brain: Node3D = ent.spawn_boss("brain_of_cthulhu")
+	var creepers: Array = ent.enemies.filter(func(e): return e.def.name == "creeper")
+	check(creepers.size() == 12 and ent.boss == brain and ent.boss_max == 1250 + 12 * 100, "o cérebro nasce com 12 Creepers (barra soma tudo)")
+	check(brain.hurt(500, Vector3.RIGHT, 0) == 0 and brain.hp == 1250, "fase 1: imune enquanto houver Creepers")
+	var far := 0.0
+	for i in 60 * 4:
+		for e in ent.enemies:
+			e._physics_process(1.0 / 60)
+	for c in creepers:
+		far = maxf(far, c.position.distance_to(brain.position))
+	check(far < 14.0, "os Creepers orbitam o cérebro (%.1f)" % far)
+	check(creepers[0].hurt(1000, Vector3.RIGHT, 0) == 1000 - 5 and creepers.size() == 12, "Creeper: defesa 10")
+	var tissue := ent.get_children().filter(func(n): return n.get("item") == Items.ids.tissue_sample).size()
+	for c in creepers.slice(1):
+		c.hurt(1000, Vector3.RIGHT, 0)
+	brain.think(1.0 / 60)
+	check(brain.phase == 2 and brain.hurt(100, Vector3.RIGHT, 0) == 100 - 7, "sem Creepers: fase 2, vulnerável (defesa 14)")
+	var moved := 0.0
+	var last: Vector3 = brain.position
+	for i in 60 * 6:
+		brain._physics_process(1.0 / 60)
+		moved = maxf(moved, brain.position.distance_to(last))
+		last = brain.position
+	check(moved > 2.0 and brain.hp < 1250, "fase 2: teleporta e investe (%.1f de salto)" % moved)
+	brain.hurt(5000, Vector3.RIGHT, 0)
+	var ore := 0
+	var tis := 0
+	for n in ent.get_children():
+		if n.get("item") == Items.ids.crimtane_ore:
+			ore += n.count
+		if n.get("item") == Items.ids.tissue_sample:
+			tis += n.count
+	check(ent.boss == null and ore >= 40 and tis >= 10 + 2 * 1, "morto: crimtano e amostras de tecido (%d, %d)" % [ore, tis])
+	# orbe do Carmesim: coração quebrado 3 vezes chama o Brain
+	p.world.orbs_broken = 0
+	for i in 3:
+		ent.orb_broken(Blocks.ids.crimson_heart)
+	check(ent.boss != null and ent.boss.def.name == "brain_of_cthulhu", "o 3º Crimson Heart chama o Brain of Cthulhu")
+	var has_crimtane := 0
+	var has_demonite := 0
+	for sd in 12:
+		var gn := WorldGen.new(sd)
+		var names: Array = gn.ores.map(func(o): return Blocks.ids.keys()[o.block])
+		if gn.evil == "crimson":
+			has_crimtane += 1 if "crimtane_ore" in names and not "demonite_ore" in names else 0
+		else:
+			has_demonite += 1 if "demonite_ore" in names and not "crimtane_ore" in names else 0
+	check(has_crimtane > 0 and has_demonite > 0, "Carmesim só tem crimtano e Corrupção só tem demonita")
 	free_player(p)
 	w.free()
 	return true

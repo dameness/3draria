@@ -158,5 +158,9 @@
 	"crimson_heart_item": {"wiki": "Crimson_Heart", "pattern": "blob", "colors": ["#d03a3a", "#901818", "#ff9090"]},
 	"crimtane_ore": {"wiki": "Crimtane_Ore_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#8a4a48", "#783c3a", "#9a5a56"], "top_colors": ["#d05a5a", "#a02a2a"]},
 	"crimtane_ore_item": {"wiki": "Crimtane_Ore"},
-	"shadow_scale": {"wiki": "Shadow_Scale", "pattern": "blob", "colors": ["#6a4aa0", "#4a2a80", "#b090e0"]}
+	"shadow_scale": {"wiki": "Shadow_Scale", "pattern": "blob", "colors": ["#6a4aa0", "#4a2a80", "#b090e0"]},
+	"tissue_sample": {"wiki": "Tissue_Sample", "pattern": "blob", "colors": ["#c04a4a", "#8a2222", "#ff9a9a"]},
+	"crimtane_bar": {"wiki": "Crimtane_Bar", "pattern": "bar", "colors": ["#c04a4a", "#8a2222", "#ffffff"]},
+	"blood_butcherer": {"wiki": "Blood_Butcherer", "pattern": "sword", "colors": ["#b03030", "#802020"], "top_colors": ["#6e4b2a"]},
+	"tendon_bow": {"wiki": "Tendon_Bow", "pattern": "bow", "colors": ["#b03030", "#802020"], "top_colors": ["#e0e0e0"]}
 }

@@ -103,6 +103,8 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
+		if o.has("evil") and o.evil != evil:   # demonita só em mundos de Corrupção, crimtano só nos de Carmesim
+			continue
 		o.block = Blocks.ids[o.block]
 		o.in = o.get("in", ["stone", "dirt"]).map(func(n): return Blocks.ids[n])
 		if o.has("group"):

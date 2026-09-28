@@ -77,7 +77,7 @@ func spawn_enemy(d: Dictionary, pos: Vector3) -> Node3D:
 	var e: Node3D = Enemy.new()
 	e.def = d
 	e.entities = self
-	e.hp = d.life
+	e.stats()
 	e.position = pos
 	add_child(e)
 	enemies.append(e)
@@ -95,6 +95,9 @@ func spawn_boss(n: String) -> Node3D:
 		boss = spawn_worm(d, player.position + Vector3(cos(ang) * 22, 2, sin(ang) * 22))
 	else:
 		boss = spawn_enemy(d, player.position + Vector3(cos(ang) * 20, 15, sin(ang) * 20))
+		for i in int(d.get("creepers", 0)):   # servos que orbitam o chefe e o protegem
+			var c := spawn_enemy(def_named(d.minion), boss.position + Vector3(rng.randf_range(-3, 3), rng.randf_range(-1, 3), rng.randf_range(-3, 3)))
+			c.follow = boss
 	boss_max = boss_life()
 	return boss
 
@@ -110,6 +113,13 @@ func spawn_worm(d: Dictionary, pos: Vector3) -> Node3D:
 		e.follow = prev
 		prev = e
 	return head
+
+
+# Item de um drop: nos mundos de Carmesim o minério do mal é crimtano, onde o dado diz demonita (como o Terraria).
+func drop_id(item: String) -> int:
+	if item == "demonite_ore" and world.gen.evil == "crimson":
+		return Items.ids.crimtane_ore
+	return Items.ids[item]
 
 
 func group_of(e: Node3D) -> String:
