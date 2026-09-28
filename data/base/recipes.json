@@ -1,11 +1,16 @@
 [
 	{"result": "workbench", "needs": {"wood": 10}},
-	{"result": "furnace", "needs": {"stone": 20, "wood": 4}, "station": "workbench"},
+	{"result": "furnace", "needs": {"stone": 20, "wood": 4, "torch": 3}, "station": "workbench"},
 	{"result": "copper_bar", "needs": {"copper_ore": 3}, "station": "furnace"},
 	{"result": "iron_bar", "needs": {"iron_ore": 3}, "station": "furnace"},
 	{"result": "gold_bar", "needs": {"gold_ore": 4}, "station": "furnace"},
 	{"result": "anvil", "needs": {"iron_bar": 5}, "station": "workbench"},
 	{"result": "copper_pickaxe", "needs": {"copper_bar": 8, "wood": 4}, "station": "anvil"},
 	{"result": "iron_pickaxe", "needs": {"iron_bar": 10, "wood": 3}, "station": "anvil"},
-	{"result": "gold_pickaxe", "needs": {"gold_bar": 10, "wood": 4}, "station": "anvil"}
+	{"result": "gold_pickaxe", "needs": {"gold_bar": 10, "wood": 4}, "station": "anvil"},
+	{"result": "torch", "count": 3, "needs": {"gel": 1, "wood": 1}},
+	{"result": "wooden_sword", "needs": {"wood": 7}, "station": "workbench"},
+	{"result": "wooden_bow", "needs": {"wood": 10}, "station": "workbench"},
+	{"result": "wooden_arrow", "count": 25, "needs": {"wood": 1, "stone": 1}, "station": "workbench"},
+	{"result": "copper_shortsword", "needs": {"copper_bar": 5}, "station": "anvil"}
 ]

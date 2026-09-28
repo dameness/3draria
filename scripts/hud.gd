@@ -3,6 +3,7 @@ extends CanvasLayer
 
 @export var world: Node3D
 @export var player: Node3D
+@export var clock: Node
 @onready var info: Label = $Info
 @onready var bar: HBoxContainer = $Hotbar
 var panel: PanelContainer
@@ -61,10 +62,7 @@ func _show_slot(b: Button, i: int) -> void:
 
 
 func _icon(id: int) -> AtlasTexture:
-	var t := AtlasTexture.new()
-	t.atlas = world.material.albedo_texture
-	t.region = Rect2(Items.icon[id] * Atlas.TILE, 0, Atlas.TILE, Atlas.TILE)
-	return t
+	return player.entities.icon(id)
 
 
 func _on_slot(i: int) -> void:
@@ -114,6 +112,7 @@ func _process(_delta: float) -> void:
 	var p: Vector3 = player.position
 	var id: int = player.held()
 	var msg: String = player.message if Time.get_ticks_msec() < player.message_until else ""
-	info.text = "FPS %d | distância %d chunks (+/-) | %s | na mão: %s\npos %d %d %d\n%s" % [
+	info.text = "Vida %d/%d | %s %s\nFPS %d | distância %d chunks (+/-) | %s | na mão: %s\npos %d %d %d\n%s" % [
+		ceili(player.hp), player.MAX_HP, clock.clock(), "(noite)" if clock.is_night() else "",
 		Engine.get_frames_per_second(), world.render_distance, "voo (F)" if player.flying else "andando (F voa)",
 		Items.label(id) if id != -1 else "nada", p.x, p.y, p.z, msg]

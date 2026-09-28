@@ -1,8 +1,9 @@
 extends Node3D
-# Jogador em 1ª pessoa com colisão AABB contra os voxels (sem motor de física).
-# WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce),
-# mouse esquerdo quebra (precisa de picareta), direito coloca, 1-0 ou roda escolhem o slot,
-# E abre inventário/criação. Clique captura o mouse, Esc solta.
+# Jogador em 1ª pessoa com colisão AABB contra os voxels (VoxelBody).
+# WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce).
+# Segurar o botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira); direito coloca bloco.
+# 1-0 ou roda escolhem o slot; E abre inventário/criação; F5 salva (também salva ao fechar).
+# Clique captura o mouse, Esc solta.
 
 const HALF := 0.3        # meia largura da caixa
 const TALL := 1.8
@@ -11,12 +12,19 @@ const GRAVITY := 28.0
 const JUMP := 9.0        # sobe ~1,4 bloco
 const WALK := 4.5
 const REACH := 5.0
-const EPS := 0.001
+const MAX_HP := 100
+const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
+const REGEN_DELAY := 5.0
+const EPS := VoxelBody.EPS
 const LO := Vector3(-HALF, 0, -HALF)
 const HI := Vector3(HALF, TALL, HALF)
 
 @export var world: Node3D
+@export var entities: Node3D
+@export var clock: Node
+@export var load_save := true   # testes desligam para não pegar o save de quem joga
 var velocity := Vector3.ZERO
+var knock := Vector3.ZERO     # empurrão horizontal de golpes, some aos poucos
 var on_floor := false
 var flying := false
 var inv := Inventory.new()
@@ -24,6 +32,11 @@ var slot := 0                 # slot da hotbar na mão
 var inventory_open := false
 var message := ""             # aviso curto para o HUD
 var message_until := 0
+var hp := float(MAX_HP)
+var iframes := 0.0
+var since_hit := 99.0
+var cooldown := 0.0
+var spawn := Vector3.ZERO
 var pitch := 0.0
 var target := {}              # resultado do raycast da mira
 @onready var cam: Camera3D = $Camera
@@ -31,9 +44,13 @@ var highlight: MeshInstance3D
 
 
 func _ready() -> void:
-	inv.add(Items.ids.copper_pickaxe, 1)
 	var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2
-	position = Vector3(mid + 0.5, world.gen.surface_height(mid, mid) + 1, mid + 0.5)
+	position = Vector3(mid + 0.5, world.surface_y(mid, mid), mid + 0.5)
+	spawn = position
+	inv.add(Items.ids.copper_pickaxe, 1)
+	inv.add(Items.ids.copper_shortsword, 1)
+	if load_save and SaveGame.load_into(world, self, clock):
+		say("jogo carregado")
 	cam.position.y = EYE
 	highlight = MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -47,6 +64,11 @@ func _ready() -> void:
 	highlight.top_level = true
 	add_child(highlight)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and load_save:
+		SaveGame.save(world, self, clock)
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -64,8 +86,6 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseButton and e.pressed:
 		if not captured:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-		elif e.button_index == MOUSE_BUTTON_LEFT:
-			break_target()
 		elif e.button_index == MOUSE_BUTTON_RIGHT:
 			place_target()
 		elif e.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -79,6 +99,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
 		elif e.physical_keycode == KEY_F:
 			flying = not flying
+		elif e.physical_keycode == KEY_F5:
+			say("jogo salvo" if SaveGame.save(world, self, clock) == OK else "erro ao salvar")
 
 
 func _physics_process(delta: float) -> void:
@@ -87,6 +109,7 @@ func _physics_process(delta: float) -> void:
 	if flying:
 		wish.y = k.call(KEY_SPACE) - k.call(KEY_C)
 	step(delta, wish.normalized(), Input.is_physical_key_pressed(KEY_SPACE), Input.is_physical_key_pressed(KEY_SHIFT))
+	tick(delta)
 
 
 func _process(_delta: float) -> void:
@@ -94,6 +117,18 @@ func _process(_delta: float) -> void:
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
 		highlight.global_position = Vector3(target.pos) + Vector3.ONE * 0.5
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not inventory_open \
+			and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and cooldown <= 0:
+		use_item()
+
+
+# Timers de vida: invencibilidade, cooldown de uso e regeneração lenta.
+func tick(delta: float) -> void:
+	iframes -= delta
+	cooldown -= delta
+	since_hit += delta
+	if since_hit > REGEN_DELAY:
+		hp = minf(hp + delta, MAX_HP)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
 
 
 func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
@@ -102,44 +137,22 @@ func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
 		velocity = Vector3.ZERO
 		position += wish * speed * 3.0 * delta  # voo atravessa blocos
 		return
-	velocity.x = wish.x * speed
-	velocity.z = wish.z * speed
+	velocity.x = wish.x * speed + knock.x
+	velocity.z = wish.z * speed + knock.z
+	knock = knock.move_toward(Vector3.ZERO, 20.0 * delta)
 	velocity.y = maxf(velocity.y - GRAVITY * delta, -50.0)
 	if jump and on_floor:
 		velocity.y = JUMP
-	var motion := velocity * delta
-	on_floor = false
-	for a in [1, 0, 2]:
-		if _move_axis(a, motion[a]):
-			if a == 1:
-				on_floor = motion.y < 0
-				velocity.y = 0.0
-
-
-# Move num eixo; se a caixa entrar num bloco sólido, encosta nele. Retorna true se bateu.
-# ponytail: assume movimento < 1 bloco por passo (ok até 60 blocos/s a 60 Hz).
-func _move_axis(a: int, amount: float) -> bool:
-	if amount == 0.0:
-		return false
-	position[a] += amount
-	if not overlaps_solid(position):
-		return false
-	if amount > 0:
-		position[a] = floorf(position[a] + HI[a]) - HI[a] - EPS
-	else:
-		position[a] = floorf(position[a] + LO[a]) + 1 - LO[a] + EPS
-	return true
+	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta)
+	position = r[0]
+	var hit: Vector3i = r[1]
+	on_floor = hit.y < 0
+	if hit.y != 0:
+		velocity.y = 0.0
 
 
 func overlaps_solid(p: Vector3) -> bool:
-	var lo := Vector3i((p + LO).floor())
-	var hi := Vector3i((p + HI - Vector3.ONE * EPS).floor())
-	for y in range(lo.y, hi.y + 1):
-		for z in range(lo.z, hi.z + 1):
-			for x in range(lo.x, hi.x + 1):
-				if Blocks.solid[world.get_block(x, y, z)]:
-					return true
-	return false
+	return VoxelBody.overlaps(world, p, HALF, TALL)
 
 
 func held() -> int:
@@ -151,7 +164,62 @@ func say(text: String) -> void:
 	message_until = Time.get_ticks_msec() + 2000
 
 
-# Quebra o bloco na mira se a picareta na mão tiver poder; o drop vai direto para o inventário.
+# Dano como no Terraria (modo normal): dano − defesa/2. Sem armadura por enquanto.
+func hurt(damage: int, dir: Vector3) -> void:
+	if iframes > 0 or flying:
+		return
+	hp -= maxi(1, damage)
+	iframes = IFRAMES
+	since_hit = 0.0
+	knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
+	velocity.y = 5.0
+	if hp <= 0:
+		hp = MAX_HP
+		position = spawn
+		velocity = Vector3.ZERO
+		knock = Vector3.ZERO
+		say("você morreu")
+
+
+# Botão esquerdo: picareta minera, arma com munição atira, arma golpeia.
+func use_item() -> void:
+	var id := held()
+	if id == -1:
+		return
+	var d: Dictionary = Items.defs[id]
+	cooldown = d.get("use_time", 0.25)
+	var eye := cam.global_position
+	var forward := -cam.global_basis.z
+	if Items.pick_power[id] > 0:
+		break_target()
+	elif d.has("ammo"):
+		shoot(d, eye, forward)
+	elif d.get("damage", 0) > 0:
+		swing(d, eye, forward)
+
+
+# Acerta todos os inimigos à frente dentro do alcance.
+func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
+	var hits := 0
+	for e in entities.enemies.duplicate():
+		var to: Vector3 = e.position + Vector3.UP * e.tall / 2 - eye
+		if to.length() < d.reach + e.half and forward.dot(to.normalized()) > 0.5:
+			e.hurt(d.damage, forward, d.knockback)
+			hits += 1
+	return hits
+
+
+func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
+	var ammo: int = Items.ids[d.ammo]
+	if inv.total(ammo) == 0:
+		say("sem " + Items.label(ammo))
+		return
+	inv.remove(ammo, 1)
+	var dmg: int = d.damage + Items.defs[ammo].get("damage", 0)
+	entities.spawn_arrow(eye, forward, d.shoot_speed, dmg, d.knockback)
+
+
+# Quebra o bloco na mira se a picareta na mão tiver poder; o drop cai como item solto.
 func break_target() -> void:
 	if target.is_empty():
 		return
@@ -168,7 +236,7 @@ func break_target() -> void:
 		return
 	world.set_block(p.x, p.y, p.z, 0)
 	if Items.drop[b] != -1:
-		inv.add(Items.drop[b], 1)
+		entities.spawn_drop(Items.drop[b], 1, Vector3(p) + Vector3(0.5, 0.2, 0.5))
 
 
 func place_target() -> void:

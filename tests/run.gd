@@ -22,13 +22,14 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://main.tscn").instantiate()
-	root.add_child(main)
 	world = main.get_node("World")
 	player = main.get_node("Player")
+	player.load_save = false
+	root.add_child(main)
 	started = Time.get_ticks_msec()
 
 
@@ -88,6 +89,142 @@ func test_player():
 	return true
 
 
+# Jogador + entidades fora da árvore de cena, sobre floor_world.
+func make_player(w: Node3D) -> Node3D:
+	var p: Node3D = load("res://scripts/player.gd").new()
+	var ent: Node3D = load("res://scripts/entities.gd").new()
+	var clock: Node = load("res://scripts/day_night.gd").new()
+	p.world = w
+	p.entities = ent
+	p.clock = clock
+	ent.world = w
+	ent.player = p
+	ent.clock = clock
+	ent.load_defs()
+	p.position = Vector3(24.5, 11, 24.5)
+	p.spawn = p.position
+	return p
+
+
+func free_player(p: Node3D) -> void:
+	p.entities.free()
+	p.clock.free()
+	p.free()
+
+
+func enemy_def(n: String) -> Dictionary:
+	var ent: Node3D = load("res://scripts/entities.gd").new()
+	ent.load_defs()
+	var d: Dictionary = ent.defs.filter(func(x): return x.name == n)[0]
+	ent.free()
+	return d
+
+
+func run(node: Node, seconds: float) -> void:
+	for i in int(seconds * 60):
+		if not is_instance_valid(node) or node.is_queued_for_deletion():
+			return
+		node._physics_process(1.0 / 60)
+
+
+func test_day_night():
+	var c: Node = load("res://scripts/day_night.gd").new()
+	c.time = 0
+	check(c.clock() == "04:30" and is_equal_approx(c.light(), c.NIGHT_LIGHT), "amanhecer às 4:30, ainda escuro")
+	c.time = 600
+	check(not c.is_night() and c.light() == 1.0, "meio do dia claro")
+	c.time = c.DAY_SECONDS
+	check(c.is_night() and c.clock() == "19:30", "noite começa às 19:30")
+	check(c.CYCLE == 24 * 60, "ciclo de 24 min")
+	c.free()
+	return true
+
+
+func test_combat():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var z: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(26, 11, 24.5))
+	z._ready()
+	check(z.hurt(10, Vector3.RIGHT, 0) == 7, "defesa 6 reduz 10 de dano para 7")
+	var sword: Dictionary = Items.defs[Items.ids.wooden_sword]
+	var eye: Vector3 = p.position + Vector3.UP * p.EYE
+	check(p.swing(sword, eye, Vector3.RIGHT) == 1, "espada acerta o zumbi à frente")
+	check(p.swing(sword, eye, Vector3.LEFT) == 0, "espada não acerta atrás")
+	var hp: int = z.hp
+	p.inv.add(Items.ids.wooden_arrow, 2)
+	p.shoot(Items.defs[Items.ids.wooden_bow], eye, Vector3.RIGHT)
+	var arrow: Node = ent.get_children().back()
+	run(arrow, 1.0)
+	check(z.hp == hp - (4 + 5 - 3) and p.inv.total(Items.ids.wooden_arrow) == 1, "flecha gasta munição e fere com arco + flecha − defesa")
+	run(z, 1.0)
+	check(p.hp < p.MAX_HP, "zumbi anda até o jogador e causa dano ao encostar")
+	var after: float = p.hp
+	z._physics_process(1.0 / 60)
+	check(p.hp == after, "invencibilidade após levar dano")
+	ent.remove_enemy(z)
+	var s: Node3D = ent.spawn_enemy(enemy_def("green_slime"), Vector3(32.5, 11, 24.5))
+	s._ready()
+	var d0: float = s.position.distance_to(p.position)
+	run(s, 4.0)
+	check(s.position.distance_to(p.position) < d0 - 2, "slime pula na direção do jogador")
+	s.hurt(100, Vector3.RIGHT, 0)
+	check(not ent.enemies.has(s) and ent.get_children().any(func(n): return n.get("item") == Items.ids.gel), "slime morto some e dropa gel")
+	var e: Node3D = ent.spawn_enemy(enemy_def("demon_eye"), Vector3(24.5, 18, 34.5))
+	e._ready()
+	d0 = e.position.distance_to(p.position)
+	run(e, 2.0)
+	check(e.position.distance_to(p.position) < d0 - 3, "olho demoníaco voa até o jogador")
+	p.iframes = 0
+	p.hurt(1000, Vector3.RIGHT)
+	check(p.hp == p.MAX_HP and p.position == p.spawn, "morrer renasce no spawn com vida cheia")
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_drops():
+	var w := floor_world()
+	var p := make_player(w)
+	var d: Node3D = p.entities.spawn_drop(Items.ids.dirt, 3, p.position + Vector3(2, 0.5, 0))
+	d._ready()
+	check(Items.rarity_color(Items.ids.dirt) == Color.WHITE, "raridade 0 = feixe branco")
+	run(d, 2.0)
+	check(p.inv.total(Items.ids.dirt) == 3 and d.is_queued_for_deletion(), "item solto é puxado e coletado")
+	var far: Node3D = p.entities.spawn_drop(Items.ids.dirt, 1, p.position + Vector3(8, 3, 0))
+	far._ready()
+	run(far, 2.0)
+	check(not far.is_queued_for_deletion() and absf(far.position.y - 11) < 0.01, "item longe cai e fica no chão")
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_save():
+	var path := "user://test_save.dat"
+	var w := floor_world()
+	var p := make_player(w)
+	w.set_block(20, 11, 20, Blocks.ids.dirt)
+	p.inv.add(Items.ids.iron_pickaxe, 1)
+	p.inv.add(Items.ids.stone, 42)
+	p.hp = 37
+	p.position = Vector3(21.5, 11, 22.5)
+	p.clock.time = 123.0
+	check(SaveGame.save(w, p, p.clock, path) == OK, "salvar")
+	var w2 := floor_world()
+	var p2 := make_player(w2)
+	check(SaveGame.load_into(w2, p2, p2.clock, path), "carregar")
+	check(w2.get_block(20, 11, 20) == Blocks.ids.dirt and w2.world_seed == w.world_seed, "bloco editado volta")
+	check(p2.inv.total(Items.ids.stone) == 42 and p2.inv.total(Items.ids.iron_pickaxe) == 1, "inventário volta")
+	check(p2.hp == 37 and p2.position == p.position and p2.clock.time == 123.0, "vida, posição e hora voltam")
+	DirAccess.remove_absolute(path)
+	free_player(p)
+	free_player(p2)
+	w.free()
+	w2.free()
+	return true
+
+
 func test_items():
 	check(Items.places[Items.ids.stone] == Blocks.ids.stone, "bloco vira item que o coloca")
 	check(Items.drop[Blocks.ids.grass] == Items.ids.dirt, "grama dropa terra")
@@ -111,6 +248,9 @@ func test_crafting():
 	check(Crafting.craft(by_result.workbench, inv, {}), "bancada sem estação")
 	check(inv.total(Items.ids.wood) == 10 and inv.total(Items.ids.workbench) == 1, "criar consome ingredientes e dá o item")
 	inv.add(Items.ids.stone, 20)
+	inv.add(Items.ids.gel, 1)
+	check(Crafting.craft(by_result.torch, inv, {}) and inv.total(Items.ids.torch) == 3, "tocha: 1 gel + 1 madeira = 3")
+	inv.add(Items.ids.wood, 1)
 	check(not Crafting.craft(by_result.furnace, inv, {}), "fornalha exige bancada por perto")
 	var w := floor_world()
 	w.set_block(22, 11, 20, Blocks.ids.workbench)
@@ -130,8 +270,7 @@ func test_crafting():
 
 func test_mining():
 	var w := floor_world()
-	var p: Node3D = load("res://scripts/player.gd").new()
-	p.world = w
+	var p := make_player(w)
 	p.target = {"pos": Vector3i(20, 10, 20), "normal": Vector3i(0, 1, 0)}
 	w.set_block(20, 10, 20, Blocks.ids.gold_ore)
 	# Ouro não tem tier no Terraria; o teste dá poder 40 a ele só para exercitar o bloqueio.
@@ -145,14 +284,16 @@ func test_mining():
 	p.inv.add(Items.ids.iron_pickaxe, 1)
 	p.slot = 1
 	p.break_target()
-	check(w.get_block(20, 10, 20) == 0 and p.inv.total(Items.ids.gold_ore) == 1, "ferro minera ouro e o drop entra no inventário")
+	var drops: Array = p.entities.get_children().filter(func(n): return n.get("item") == Items.ids.gold_ore)
+	check(w.get_block(20, 10, 20) == 0 and drops.size() == 1, "ferro minera ouro e o drop cai no chão")
+	p.inv.add(Items.ids.gold_ore, 1)
 	p.slot = 2
 	p.target = {"pos": Vector3i(20, 10, 21), "normal": Vector3i(0, 1, 0)}
 	p.position = Vector3(25.5, 11, 25.5)
 	p.place_target()
 	check(w.get_block(20, 11, 21) == Blocks.ids.gold_ore and p.inv.total(Items.ids.gold_ore) == 0, "colocar usa o item da mão")
 	Blocks.power[Blocks.ids.gold_ore] = saved_power
-	p.free()
+	free_player(p)
 	w.free()
 	return true
 
@@ -211,9 +352,10 @@ func integration():
 			check(player.target.get("pos") == below, "mira olhando para baixo acerta o bloco sob os pés")
 			player.break_target()
 			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco com a picareta inicial")
-			check(player.inv.total(Items.ids.dirt) == 1, "o drop (terra) vai para o inventário")
 			player.inventory_open = true  # exercita a janela de inventário/criação
 			return false
+		if player.inv.total(Items.ids.dirt) == 0 and elapsed < 60000:
+			return false  # espera o drop de terra ser coletado
 		var m: MeshInstance3D = world.meshes[world.center]
 		check(m.get_instance_id() != edit_mesh_id and m.mesh.surface_get_array_len(0) != edit_faces, "mesh do chunk editado foi refeita")
 	return true

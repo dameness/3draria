@@ -19,12 +19,19 @@ Drops vão direto para o inventário (itens soltos no chão ficam para a F4). N�
 barras 3/3/4 minérios, picaretas 8/10/10 barras. Pendente: fornalha pede 3 tochas (tocha = gel + madeira, entra na F4 com slimes).
 Pronto quando: testes carregam items/recipes/ores de `data/base/`, validam referências cruzadas, verificam empilhamento no inventário, craft só perto da bancada certa e minério recusado abaixo do tier; no playtest, minerar → coletar → craftar picareta melhor → minerar minério antes bloqueado.
 
-## Depois (anotado)
-Mundo mais profundo e maior (ALTURA/SIZE_CHUNKS em world_gen.gd; conferir memória e tempo de geração), mais minérios e biomas.
+## Depois do protótipo (anotado, ordem a definir; sempre conferindo a wiki)
+- Mundo mais profundo e maior (ALTURA/SIZE_CHUNKS em world_gen.gd; conferir memória e tempo de geração).
+- Câmera em 1ª e 3ª pessoa com troca por tecla; modelo do jogador mostrando armadura, arma e acessórios equipados.
+- Iluminação por blocos (tochas, cavernas escuras).
+- Asas, ganchos, acessórios e slots de equipamento; reforja com modificadores (Goblin Tinkerer).
+- NPCs de vila (casas válidas, lojas, diálogos).
+- Biomas do Terraria (corrupção/carmesim, selva, neve, deserto, oceano, cogumelo, masmorra) com blocos, inimigos e drops próprios.
 
-## F4 Sobrevivência
+## F4 Sobrevivência ✅ (falta playtest)
 Vida, dia/noite, 2-3 inimigos básicos, combate corpo a corpo e à distância, salvar/carregar.
-Pronto quando: testes verificam dano/morte/respawn, ciclo dia/noite, que inimigos vêm de `enemies.json`, e que salvar→carregar reproduz mundo e inventário idênticos; no playtest, sobreviver a uma noite lutando com espada e arco, sair e voltar com tudo salvo.
+Itens soltos no chão (miniatura girando + feixe na cor da raridade), tochas/gel, fornalha com tochas.
+Pronto quando: testes verificam dano/defesa/morte/respawn, invencibilidade, IA de slime/zumbi/olho, espada e flecha, coleta de itens, ciclo dia/noite, e que salvar→carregar reproduz mundo e inventário; no playtest, sobreviver a uma noite lutando com espada e arco, sair e voltar com tudo salvo.
+Pendente (fora do protótipo): dano de queda, regeneração fiel, knockback resist, inimigos com modelo.
 
 ## F5 Primeiro chefe + progressão completa de minérios pré-hardmode
 Tiers da wiki: minérios comuns com qualquer picareta; meteorito 50; demonita/carmesim e obsidiana 55; pedra infernal 65.

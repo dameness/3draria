@@ -1,6 +1,7 @@
 class_name Atlas
 # Gera o atlas de texturas 16x16 (uma fileira de tiles) a partir de textures.json.
-# Padrões: noise, grass_side, stripes, rings, ore, planks, bricks (blocos); bar, pickaxe (ícones, fundo transparente).
+# Padrões: noise, grass_side, stripes, rings, ore, planks, bricks (blocos);
+# bar, pickaxe, sword, bow, arrow, blob, torch (ícones, fundo transparente).
 
 const TILE := 16
 
@@ -32,6 +33,42 @@ static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 			for t in range(-3, 4):
 				set_px.call(11 + t, 4 + t, cols[0])
 				set_px.call(11 + t, 3 + t, cols[1])
+		"sword":
+			for i in 9:
+				set_px.call(5 + i, 10 - i, cols[0])
+				set_px.call(6 + i, 10 - i, cols[1])
+			for i in 5:
+				set_px.call(2 + i, 8 + i, top[0])  # guarda
+			for i in 3:
+				set_px.call(2 + i, 13 - i, top[0])  # cabo
+		"bow":
+			for y in range(2, 14):
+				var dx := int(round(4.0 * sin(PI * (y - 2) / 11.0)))
+				set_px.call(4 + dx, y, cols[0])
+				set_px.call(5 + dx, y, cols[1])
+				set_px.call(4, y, top[0])  # corda
+		"arrow":
+			for i in 10:
+				set_px.call(3 + i, 12 - i, cols[0])
+			for p in [Vector2i(12, 2), Vector2i(13, 2), Vector2i(12, 3), Vector2i(11, 2), Vector2i(13, 4)]:
+				set_px.call(p.x, p.y, cols[1])
+			for p in [Vector2i(2, 12), Vector2i(3, 13), Vector2i(2, 13)]:
+				set_px.call(p.x, p.y, top[0])
+		"blob":
+			for y in TILE:
+				for x in TILE:
+					var r := Vector2(x - 7.5, (y - 8.5) * 1.2).length()
+					if r < 5.5:
+						set_px.call(x, y, cols[2] if x < 6 and y < 7 else cols[0] if r < 4.5 else cols[1])
+			if spec.has("top_colors"):
+				for p in [Vector2i(7, 8), Vector2i(8, 8), Vector2i(7, 9), Vector2i(8, 9)]:
+					set_px.call(p.x, p.y, top[0])  # pupila da lente
+		"torch":
+			for y in range(6, 15):
+				set_px.call(7, y, top[0])
+				set_px.call(8, y, top[0])
+			for p in [Vector2i(7, 3), Vector2i(8, 3), Vector2i(7, 4), Vector2i(8, 4), Vector2i(7, 5), Vector2i(8, 5), Vector2i(6, 4), Vector2i(9, 4), Vector2i(7, 2)]:
+				set_px.call(p.x, p.y, cols[0] if p.y < 4 else cols[1])
 		_:
 			for x in TILE:
 				var edge := 3 + rng.randi() % 3  # borda irregular do grass_side

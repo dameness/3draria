@@ -2,7 +2,14 @@
 	{"name": "copper_bar", "icon": "copper_bar"},
 	{"name": "iron_bar", "icon": "iron_bar"},
 	{"name": "gold_bar", "icon": "gold_bar"},
-	{"name": "copper_pickaxe", "icon": "copper_pickaxe", "pick_power": 35, "stack": 1},
-	{"name": "iron_pickaxe", "icon": "iron_pickaxe", "pick_power": 40, "stack": 1},
-	{"name": "gold_pickaxe", "icon": "gold_pickaxe", "pick_power": 55, "stack": 1}
+	{"name": "copper_pickaxe", "icon": "copper_pickaxe", "pick_power": 35, "use_time": 0.25, "stack": 1},
+	{"name": "iron_pickaxe", "icon": "iron_pickaxe", "pick_power": 40, "use_time": 0.22, "stack": 1},
+	{"name": "gold_pickaxe", "icon": "gold_pickaxe", "pick_power": 55, "use_time": 0.2, "stack": 1},
+	{"name": "gel", "icon": "gel"},
+	{"name": "lens", "icon": "lens"},
+	{"name": "torch", "icon": "torch"},
+	{"name": "wooden_sword", "icon": "wooden_sword", "damage": 7, "use_time": 0.33, "reach": 2.5, "knockback": 5, "stack": 1},
+	{"name": "copper_shortsword", "icon": "copper_shortsword", "damage": 5, "use_time": 0.22, "reach": 2.0, "knockback": 4, "stack": 1},
+	{"name": "wooden_bow", "icon": "wooden_bow", "damage": 4, "use_time": 0.5, "ammo": "wooden_arrow", "shoot_speed": 25, "knockback": 2, "stack": 1},
+	{"name": "wooden_arrow", "icon": "wooden_arrow", "damage": 5}
 ]

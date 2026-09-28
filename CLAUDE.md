@@ -56,8 +56,12 @@ scripts/             setup-godot.sh e um .gd por sistema:
   world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool
   items.gd           itens (blocos viram itens + items.json), drops, poder de picareta
   inventory.gd       slots, empilhar, remover   crafting.gd  receitas e estações por perto
-  player.gd          1ª pessoa, colisão AABB contra voxels (sem física), minerar por tier, colocar
-  hud.gd             mira, hotbar, avisos, fps, janela de inventário/criação (E)
+  voxel_body.gd      colisão AABB contra voxels (jogador, inimigos, itens)
+  player.gd          1ª pessoa, vida, usar item (minerar/golpear/atirar), colocar
+  entities.gd        inimigos, itens soltos e flechas; spawn por horário
+  enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly)
+  day_night.gd       ciclo 15+9 min   save_game.gd  user://save.dat (seed + chunks editados)
+  hud.gd             mira, hotbar, vida, hora, avisos, janela de inventário/criação (E)
 tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)
@@ -68,7 +72,8 @@ docs/ROADMAP.md      fases e critérios de pronto
 
 ## Onde fica cada tipo de dado
 Um arquivo JSON por tipo em `data/<pacote>/`: `blocks.json` (power = picareta mínima, drop), `textures.json` (paleta + padrão; também ícones),
-`items.json` (itens que não são bloco), `recipes.json` (needs, station), `ores.json` (faixa de y, veios); depois `enemies.json`.
+`items.json` (itens que não são bloco; damage, use_time, reach, ammo, rarity), `recipes.json` (needs, station, count),
+`ores.json` (faixa de y, veios), `enemies.json` (ai, life, damage, defense, spawn, drops), `rarities.json` (cor por raridade).
 Não reordene `blocks.json` nem `items.json`: o id é a posição (saves vão depender disso). Adicione no fim.
 O Calamity é outra pasta com os mesmos arquivos + poucos comportamentos novos em script.
 

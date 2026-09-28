@@ -21,5 +21,12 @@
 	"gold_bar": {"pattern": "bar", "colors": ["#f2cf3a", "#d4a81e", "#fff080"]},
 	"copper_pickaxe": {"pattern": "pickaxe", "colors": ["#d9824a", "#b8622e"], "top_colors": ["#6e4b2a"]},
 	"iron_pickaxe": {"pattern": "pickaxe", "colors": ["#c9c9d0", "#a0a0a8"], "top_colors": ["#6e4b2a"]},
-	"gold_pickaxe": {"pattern": "pickaxe", "colors": ["#f2cf3a", "#d4a81e"], "top_colors": ["#6e4b2a"]}
+	"gold_pickaxe": {"pattern": "pickaxe", "colors": ["#f2cf3a", "#d4a81e"], "top_colors": ["#6e4b2a"]},
+	"gel": {"pattern": "blob", "colors": ["#4fa3ff", "#2f7fe0", "#a8d4ff"]},
+	"lens": {"pattern": "blob", "colors": ["#e8e8f0", "#c0c0d0", "#ffffff"], "top_colors": ["#c02020"]},
+	"torch": {"pattern": "torch", "colors": ["#ffd24a", "#ff8a1a"], "top_colors": ["#6e4b2a"]},
+	"wooden_sword": {"pattern": "sword", "colors": ["#a0784a", "#8a653c"], "top_colors": ["#5c3e22"]},
+	"copper_shortsword": {"pattern": "sword", "colors": ["#d9824a", "#b8622e"], "top_colors": ["#6e4b2a"]},
+	"wooden_bow": {"pattern": "bow", "colors": ["#8a653c", "#6e4b2a"], "top_colors": ["#e0e0e0"]},
+	"wooden_arrow": {"pattern": "arrow", "colors": ["#a0784a", "#7d7d7d"], "top_colors": ["#e0e0e0"]}
 }

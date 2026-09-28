@@ -1,0 +1,5 @@
+[
+	{"name": "green_slime", "ai": "hop", "life": 14, "damage": 6, "defense": 0, "speed": 3, "size": [0.9, 0.7], "color": "#4ec24e", "spawn": "day", "drops": [{"item": "gel", "min": 1, "max": 2, "chance": 1.0}]},
+	{"name": "zombie", "ai": "walk", "life": 45, "damage": 14, "defense": 6, "speed": 2, "size": [0.6, 1.8], "color": "#5f8a5a", "spawn": "night", "drops": []},
+	{"name": "demon_eye", "ai": "fly", "life": 60, "damage": 18, "defense": 2, "speed": 5, "size": [0.7, 0.7], "color": "#e8e0e0", "spawn": "night", "drops": [{"item": "lens", "min": 1, "max": 1, "chance": 0.33}]}
+]

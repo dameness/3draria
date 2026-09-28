@@ -16,6 +16,7 @@ var meshes := {}   # Vector2i -> MeshInstance3D, ou null (sem faces / em constru
 var material := StandardMaterial3D.new()
 var pending: Array[Vector2i] = []
 var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
+var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
 var versions := {}  # Vector2i -> nº de edições; descarta mesh de job que ficou velho
 var jobs := {}     # id da task -> resultado preenchido pela thread
 var max_jobs := clampi(OS.get_processor_count() - 1, 1, 4)
@@ -54,11 +55,28 @@ func set_block(x: int, y: int, z: int, id: int) -> void:
 	var lx := posmod(x, C)
 	var lz := posmod(z, C)
 	chunks[c][lx + lz * C + y * C * C] = id
+	edited[c] = true
 	_rebuild(c)
 	if lx == 0: _rebuild(c + Vector2i(-1, 0))
 	if lx == C - 1: _rebuild(c + Vector2i(1, 0))
 	if lz == 0: _rebuild(c + Vector2i(0, -1))
 	if lz == C - 1: _rebuild(c + Vector2i(0, 1))
+
+
+# Troca a seed e descarta tudo o que foi gerado (usado ao carregar um save).
+func set_seed(s: int) -> void:
+	world_seed = s
+	gen = WorldGen.new(s)
+	chunks.clear()
+	edited.clear()
+
+
+# Primeiro y livre acima do bloco sólido mais alto da coluna.
+func surface_y(x: int, z: int) -> int:
+	for y in range(H - 1, -1, -1):
+		if Blocks.solid[get_block(x, y, z)]:
+			return y + 1
+	return 0
 
 
 func _rebuild(k: Vector2i) -> void:
