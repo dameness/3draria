@@ -38,7 +38,7 @@ static func load_pack(dir := "res://data/base") -> void:
 		assert(tile_index.has(it.icon), "ícone desconhecido: " + it.icon)
 		_add(it, tile_index.find(it.icon), -1)
 	for d in defs:
-		assert(not d.has("ammo") or ids.has(d.ammo), "munição desconhecida: " + str(d.get("ammo")))
+		assert(not d.has("ammo") or defs.any(func(x): return x.get("ammo_class") == d.ammo), "munição sem itens: " + str(d.get("ammo")))
 	for n in Blocks.drop_names:
 		assert(n == "" or ids.has(n), "drop desconhecido: " + n)
 		drop.append(ids.get(n, -1))

@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://main.tscn").instantiate()
@@ -275,6 +275,87 @@ func test_projectiles():
 	var terra: Node3D = ent.get_children().back()
 	run(terra, 1.0)
 	check(z1.hp < 1000 and z2.hp < 45, "Terra Beam atravessa e acerta os dois zumbis")
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_progression():
+	var pairs := {"t1": ["copper_ore", "tin_ore"], "t2": ["iron_ore", "lead_ore"], "t3": ["silver_ore", "tungsten_ore"], "t4": ["gold_ore", "platinum_ore"]}
+	var seen := {}
+	for sd in 12:
+		var names: Array = WorldGen.new(sd).ores.map(func(o): return Blocks.ids.keys()[o.block])
+		for g in pairs:
+			var chosen: Array = pairs[g].filter(func(n): return n in names)
+			check(chosen.size() == 1, "seed %d: um minério do par %s" % [sd, g])
+			for n in chosen:
+				seen[n] = true
+	check(seen.size() == 8, "as seeds alternam entre os dois minérios de cada par")
+	var gen := WorldGen.new(3)
+	var altar := false
+	for c in 16:
+		var d := gen.generate(c, 5)
+		var i := d.find(gen.ALTAR)
+		if i != -1:
+			var y := i / (C * C)
+			altar = altar or (y > WorldGen.UNDERWORLD_TOP and y <= WorldGen.CAVERN_TOP and d[i - C * C] == gen.STONE)
+	check(altar, "altar demoníaco no chão das cavernas")
+	var w := floor_world()
+	w.set_block(22, 11, 20, Blocks.ids.lead_anvil)
+	check(Crafting.stations_near(w, Vector3(20.5, 11, 20.5)).has(Blocks.ids.anvil), "bigorna de chumbo vale como bigorna")
+	w.free()
+	var mines := func(pick: String, block: String): return Items.pick_power[Items.ids[pick]] >= Blocks.power[Blocks.ids[block]]
+	check(not mines.call("silver_pickaxe", "demonite_ore") and mines.call("gold_pickaxe", "demonite_ore") and mines.call("platinum_pickaxe", "demonite_ore"), "demonita pede picareta de ouro/platina (55)")
+	check(not mines.call("platinum_pickaxe", "hellstone"), "pedra infernal (65) fica para depois")
+	return true
+
+
+func test_boss():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	p.inv.add(Items.ids.suspicious_looking_eye, 2)
+	p.slot = p.inv.item.find(Items.ids.suspicious_looking_eye)
+	p.clock.time = 300
+	p.use_item()
+	check(ent.boss == null and p.message.contains("noite"), "invocar de dia não funciona")
+	p.clock.time = p.clock.DAY_SECONDS + 60
+	p.use_item()
+	var boss: Node3D = ent.boss
+	check(boss != null and p.inv.total(Items.ids.suspicious_looking_eye) == 1, "à noite o olho invoca o chefe e é gasto")
+	p.use_item()
+	check(ent.boss == boss and p.inv.total(Items.ids.suspicious_looking_eye) == 1, "só um chefe por vez")
+	boss._ready()
+	var fastest := 0.0
+	for i in 60 * 8:
+		boss._physics_process(1.0 / 60)
+		fastest = maxf(fastest, boss.velocity.length())
+	var servants: int = ent.enemies.filter(func(e): return e.def.name == "servant_of_cthulhu").size()
+	check(servants >= 3 and fastest > 15, "fase 1: invoca servos (%d) e investe (%.0f blocos/s)" % [servants, fastest])
+	check(boss.hurt(100, Vector3.RIGHT, 10) == 100 - 6 and boss.velocity.length() < 30, "defesa 12 e imune a knockback")
+	boss.hp = 1300
+	boss.think(1.0 / 60)
+	check(boss.phase == 2 and boss.hurt(50, Vector3.RIGHT, 0) == 50 and boss.damage == 23, "fase 2 abaixo de 50%: defesa 0, dano 23")
+	boss.hurt(5000, Vector3.RIGHT, 0)
+	var drops: Array = ent.get_children().filter(func(n): return n.get("item") == Items.ids.demonite_ore)
+	check(ent.boss == null and drops.size() == 1 and drops[0].count >= 30 and drops[0].count <= 90, "morto: dropa 30–90 de demonita")
+	check(ent.get_children().any(func(n): return n.get("item") == Items.ids.unholy_arrow), "dropa Unholy Arrows")
+	p.use_item()
+	var b2: Node3D = ent.boss
+	b2._ready()
+	p.clock.time = 10  # amanheceu
+	for i in 60 * 5:
+		if ent.boss == null:
+			break
+		b2._physics_process(1.0 / 60)
+	check(ent.boss == null, "ao amanhecer o chefe vai embora")
+	# Arco usa qualquer flecha; Unholy Arrow atravessa vários inimigos.
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.unholy_arrow, 5)
+	var eye: Vector3 = p.position + Vector3.UP * p.EYE
+	p.shoot(Items.defs[Items.ids.wooden_bow], eye, Vector3.RIGHT)
+	var arrow: Node3D = ent.get_children().back()
+	check(arrow.def.name == "unholy_arrow" and p.inv.total(Items.ids.unholy_arrow) == 4, "arco atira Unholy Arrow")
 	free_player(p)
 	w.free()
 	return true

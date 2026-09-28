@@ -17,12 +17,13 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 - Prévia ampliada (faces + ícones): `.tools/godot --headless -s tests/atlas_preview.gd` → `textures/preview.png`.
 
 ## blocks.json
-`{name, tiles:{all|top|side|bottom}, icon?, solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
+`{name, tiles:{all|top|side|bottom}, icon?, station_as? (conta como outra estação), solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
 `icon`: textura do ícone do item-bloco (ex.: `dirt_item` → `Dirt_Block.png`).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral).
 
 ## items.json (itens que não são bloco)
 `{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?}`.
+`ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
 `sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
 flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glow, trail, particles} (cores).
 `use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).
@@ -32,11 +33,14 @@ Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` 
 `{result, count?=1, needs:{item: n}, station?: bloco}`; a estação precisa estar a até 4 blocos do jogador.
 
 ## ores.json
-`{block, min_y, max_y, veins (por chunk), size (blocos por veio)}`. Altura do mundo: 128 (submundo < 20, cavernas < 48).
+`{block, group?, in?=["stone","dirt"], min_y, max_y, veins (por chunk), size}`. Mesmo `group` = alternativos
+(cobre/estanho...): a seed escolhe um por mundo. Altura do mundo: 128 (submundo < 20, cavernas < 48).
 
 ## enemies.json
-`{name, ai: hop|walk|fly, life, damage, defense, speed, size:[largura, altura], color, spawn: day|night|any,
-drops:[{item, min, max, chance}]}`. IA nova = um `match` em `scripts/enemy.gd`.
+`{name, ai: hop|walk|fly|eye_of_cthulhu, life, damage, defense, speed, size:[largura, altura], color, sprite?,
+spawn: day|night|any|none, kb_resist?, boss?, minion?, phase2?:{below, damage, defense, sprite}, drops:[{item, min, max, chance}]}`.
+Escala: 1 tile do Terraria ≈ 0,6 bloco (jogador de 3 tiles = 1,8). IA nova = um `match` em `scripts/enemy.gd`.
+Chefes atravessam blocos e vão embora ao amanhecer; itens com `summon` os invocam (só à noite).
 
 ## projectiles.json
 `{name, sprite? (textura, billboard) | model_item? (ícone extrudado), size, gravity, life (s), pierce, glow?}`.

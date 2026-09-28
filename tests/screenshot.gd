@@ -9,6 +9,8 @@ const SHOTS := [
 	{"name": "alto", "up": 30.0, "look": Vector2(0.6, -0.6)},
 	{"name": "noite", "time": 1100.0, "look": Vector2(2.0, -0.1), "item": "enchanted_sword"},
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
+	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"]},
+	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
 ]
 
 var main: Node
@@ -58,6 +60,23 @@ func _setup(s: Dictionary) -> void:
 	player.inventory_open = s.get("inventory", false)
 	player.inv.add(Items.ids.wood, 25)
 	player.inv.add(Items.ids.stone, 40)
+	var ent: Node3D = main.get_node("Entities")
+	for e in ent.enemies.duplicate():
+		ent.remove_enemy(e)
+	ent.spawn_timer = 999.0  # sem spawns aleatórios no print
+	var fwd := Vector3(-sin(s.look.x), 0, -cos(s.look.x))
+	var side := fwd.cross(Vector3.UP)
+	var i := 0
+	for n in s.get("enemies", []):
+		var pos: Vector3 = player.position + fwd * 7 + side * (i - 1) * 2.5
+		pos.y = world.surface_y(int(pos.x), int(pos.z)) + (2.5 if n == "demon_eye" else 0.0)
+		var e: Node3D = ent.spawn_enemy(ent.def_named(n), pos)
+		e.set_physics_process(false)
+		i += 1
+	if s.has("boss"):
+		var b: Node3D = ent.spawn_boss(s.boss)
+		b.position = player.position + fwd * 12 + Vector3.UP * 5
+		b.set_physics_process(false)
 	if s.has("item"):
 		player.inv.add(Items.ids[s.item], 1)
 		player.slot = player.inv.item.find(Items.ids[s.item])

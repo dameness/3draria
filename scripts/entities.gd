@@ -17,6 +17,7 @@ const Projectile := preload("res://scripts/projectile.gd")
 var defs: Array = []
 var projectiles := {}   # nome -> entrada de projectiles.json
 var enemies: Array[Node3D] = []
+var boss: Node3D = null
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
 
@@ -48,7 +49,7 @@ func _physics_process(delta: float) -> void:
 		spawn_timer = 1.0
 		try_spawn()
 	for e in enemies.duplicate():
-		if e.position.distance_to(player.position) > DESPAWN:
+		if not e.def.get("boss") and e.position.distance_to(player.position) > DESPAWN:
 			remove_enemy(e)
 
 
@@ -80,7 +81,19 @@ func spawn_enemy(d: Dictionary, pos: Vector3) -> Node3D:
 	return e
 
 
+func def_named(n: String) -> Dictionary:
+	return defs.filter(func(d): return d.name == n)[0]
+
+
+func spawn_boss(n: String) -> Node3D:
+	var ang := rng.randf() * TAU
+	boss = spawn_enemy(def_named(n), player.position + Vector3(cos(ang) * 20, 15, sin(ang) * 20))
+	return boss
+
+
 func remove_enemy(e: Node3D) -> void:
+	if e == boss:
+		boss = null
 	enemies.erase(e)
 	e.queue_free()
 

@@ -193,11 +193,15 @@ func use_item() -> void:
 		return
 	var d: Dictionary = Items.defs[id]
 	cooldown = d.get("use_time", 0.25)
-	var eye := cam.global_position
-	var forward := -cam.global_basis.z
+	if d.has("summon"):
+		summon(d)
+		return
 	if Items.pick_power[id] > 0:
 		break_target()
-	elif d.has("ammo"):
+		return
+	var eye := cam.global_position
+	var forward := -cam.global_basis.z
+	if d.has("ammo"):
 		shoot(d, eye, forward)
 	elif d.get("damage", 0) > 0:
 		swing(d, eye, forward)
@@ -216,10 +220,30 @@ func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 	return hits
 
 
+# Invocador de chefe (ex.: Suspicious Looking Eye): só à noite e com um chefe por vez.
+func summon(d: Dictionary) -> void:
+	if not clock.is_night():
+		say("nada acontece... (só à noite)")
+	elif entities.boss:
+		say("já há um chefe")
+	else:
+		var b: Node3D = entities.spawn_boss(d.summon)
+		inv.take_one(slot)
+		say("%s despertou!" % b.def.name.replace("_", " "))
+
+
+# Primeira munição da classe pedida pela arma (ex.: qualquer flecha para arcos), na ordem do inventário.
+func find_ammo(ammo_class: String) -> int:
+	for i in Inventory.SIZE:
+		if inv.item[i] != -1 and Items.defs[inv.item[i]].get("ammo_class") == ammo_class:
+			return inv.item[i]
+	return -1
+
+
 func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
-	var ammo: int = Items.ids[d.ammo]
-	if inv.total(ammo) == 0:
-		say("sem " + Items.label(ammo))
+	var ammo := find_ammo(d.ammo)
+	if ammo == -1:
+		say("sem munição (%s)" % d.ammo)
 		return
 	inv.remove(ammo, 1)
 	var dmg: int = d.damage + Items.defs[ammo].get("damage", 0)

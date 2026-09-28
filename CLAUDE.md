@@ -37,6 +37,7 @@ Godot 4.7.2-stable (fixado em scripts/setup-godot.sh), GDScript, renderer Compat
 ```sh
 scripts/setup-godot.sh                        # baixa o Godot em .tools/godot (idempotente; roda sozinho no SessionStart remoto)
 scripts/fetch-sprites.sh                      # baixa os sprites da wiki em assets/wiki/ (idempotente; opcional)
+scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki (tabelas Cargo) para montar data/
 .tools/godot --headless --import              # após pull ou novo class_name: atualiza o cache de classes
 .tools/godot -e                               # abre o editor (local)
 .tools/godot                                  # roda o jogo (local)

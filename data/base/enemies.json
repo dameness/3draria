@@ -1,5 +1,7 @@
 [
-	{"name": "green_slime", "ai": "hop", "life": 14, "damage": 6, "defense": 0, "speed": 3, "size": [0.9, 0.7], "color": "#4ec24e", "spawn": "day", "drops": [{"item": "gel", "min": 1, "max": 2, "chance": 1.0}]},
-	{"name": "zombie", "ai": "walk", "life": 45, "damage": 14, "defense": 6, "speed": 2, "size": [0.6, 1.8], "color": "#5f8a5a", "spawn": "night", "drops": []},
-	{"name": "demon_eye", "ai": "fly", "life": 60, "damage": 18, "defense": 2, "speed": 5, "size": [0.7, 0.7], "color": "#e8e0e0", "spawn": "night", "drops": [{"item": "lens", "min": 1, "max": 1, "chance": 0.33}]}
+	{"name": "green_slime", "ai": "hop", "life": 14, "damage": 6, "defense": 0, "speed": 3, "size": [0.9, 0.7], "color": "#4ec24e", "spawn": "day", "drops": [{"item": "gel", "min": 1, "max": 2, "chance": 1.0}], "sprite": "green_slime"},
+	{"name": "zombie", "ai": "walk", "life": 45, "damage": 14, "defense": 6, "speed": 2, "size": [0.6, 1.8], "color": "#5f8a5a", "spawn": "night", "drops": [], "sprite": "zombie"},
+	{"name": "demon_eye", "ai": "fly", "life": 60, "damage": 18, "defense": 2, "speed": 5, "size": [0.7, 0.7], "color": "#e8e0e0", "spawn": "night", "drops": [{"item": "lens", "min": 1, "max": 1, "chance": 0.33}], "sprite": "demon_eye"},
+	{"name": "servant_of_cthulhu", "ai": "fly", "life": 8, "damage": 12, "defense": 0, "speed": 6, "size": [0.6, 0.45], "color": "#e8d8d8", "sprite": "servant_of_cthulhu", "spawn": "none", "drops": []},
+	{"name": "eye_of_cthulhu", "ai": "eye_of_cthulhu", "boss": true, "life": 2800, "damage": 15, "defense": 12, "kb_resist": 1.0, "speed": 7, "size": [4.0, 5.7], "color": "#f0e0e0", "sprite": "eye_of_cthulhu_1", "spawn": "none", "minion": "servant_of_cthulhu", "phase2": {"below": 0.5, "damage": 23, "defense": 0, "sprite": "eye_of_cthulhu_2"}, "drops": [{"item": "demonite_ore", "min": 30, "max": 90, "chance": 1.0}, {"item": "unholy_arrow", "min": 20, "max": 50, "chance": 1.0}]}
 ]

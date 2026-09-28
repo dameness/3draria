@@ -10,6 +10,7 @@ var panel: PanelContainer
 var grid: GridContainer
 var recipe_list: VBoxContainer
 var shown_version := -1
+var boss_bar: ProgressBar
 var stations := {}
 
 
@@ -39,6 +40,27 @@ func _ready() -> void:
 	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	add_child(panel)
+	boss_bar = ProgressBar.new()
+	boss_bar.custom_minimum_size = Vector2(420, 26)
+	boss_bar.anchor_left = 0.5
+	boss_bar.anchor_right = 0.5
+	boss_bar.offset_top = 12
+	boss_bar.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	boss_bar.show_percentage = false
+	boss_bar.add_theme_stylebox_override("fill", _flat(Color("#c02a2a")))
+	boss_bar.add_theme_stylebox_override("background", _flat(Color(0, 0, 0, 0.6)))
+	var name_label := Label.new()
+	name_label.name = "Name"
+	name_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	boss_bar.add_child(name_label)
+	add_child(boss_bar)
+
+
+static func _flat(c: Color) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = c
+	return sb
 
 
 # Botão de slot: ícone do item e quantidade. i = -1 para a hotbar (só exibição).
@@ -105,6 +127,12 @@ func _refresh_recipes() -> void:
 
 func _process(_delta: float) -> void:
 	panel.visible = player.inventory_open
+	var boss: Node3D = player.entities.boss
+	boss_bar.visible = boss != null
+	if boss:
+		boss_bar.max_value = boss.def.life
+		boss_bar.value = boss.hp
+		boss_bar.get_node("Name").text = "%s  %d/%d" % [boss.def.name.replace("_", " "), maxi(boss.hp, 0), boss.def.life]
 	var changed: bool = player.inv.version != shown_version
 	if changed or Engine.get_process_frames() % 30 == 0:
 		for i in Inventory.HOTBAR:

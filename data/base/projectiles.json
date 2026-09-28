@@ -1,5 +1,6 @@
 [
 	{"name": "wooden_arrow", "model_item": "wooden_arrow", "size": 0.6, "gravity": 10, "life": 5, "pierce": 1},
 	{"name": "enchanted_beam", "sprite": "enchanted_sword_beam", "size": 0.8, "gravity": 0, "life": 1.5, "pierce": 1, "glow": "#8fd3ff"},
-	{"name": "terra_beam", "sprite": "terra_beam", "size": 1.6, "gravity": 0, "life": 1.2, "pierce": 3, "glow": "#7dff5a"}
+	{"name": "terra_beam", "sprite": "terra_beam", "size": 1.6, "gravity": 0, "life": 1.2, "pierce": 3, "glow": "#7dff5a"},
+	{"name": "unholy_arrow", "model_item": "unholy_arrow", "size": 0.6, "gravity": 10, "life": 5, "pierce": 5, "glow": "#a070ff"}
 ]

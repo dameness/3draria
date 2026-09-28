@@ -21,6 +21,7 @@ var ASH: int
 var BEDROCK: int
 var WOOD: int
 var LEAVES: int
+var ALTAR: int
 var seed: int
 var ores: Array = []   # de ores.json, com "block" já convertido em id
 
@@ -42,6 +43,7 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	BEDROCK = Blocks.ids.bedrock
 	WOOD = Blocks.ids.wood
 	LEAVES = Blocks.ids.leaves
+	ALTAR = Blocks.ids.demon_altar
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
@@ -91,7 +93,22 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	rng.seed = hash([seed, cx, cz])
 	_ores(d, rng)
 	_trees(d, rng)
+	_altar(d, rng)
 	return d
+
+
+# Altar demoníaco raro no chão de uma caverna (camada de cavernas).
+func _altar(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
+	if rng.randf() > 0.15:
+		return
+	for attempt in 8:  # procura uma coluna que corte uma caverna
+		var x := rng.randi_range(1, CHUNK - 2)
+		var z := rng.randi_range(1, CHUNK - 2)
+		for y in range(CAVERN_TOP, UNDERWORLD_TOP + 1, -1):
+			var i := x + z * CHUNK + y * CHUNK * CHUNK
+			if d[i] == AIR and d[i + CHUNK * CHUNK] == AIR and d[i - CHUNK * CHUNK] == STONE:
+				d[i] = ALTAR
+				return
 
 
 # Veios por passeio aleatório; só trocam os blocos de "in" (padrão: pedra e terra) e ficam dentro do chunk.

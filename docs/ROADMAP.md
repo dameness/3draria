@@ -38,8 +38,12 @@ V1 ícones/blocos exatos da wiki (baixados, fora do git) com fallback procedural
 V3 efeitos e projéteis por dados. Pronto quando: testes verificam fallback sem rede, extrusão (faces só nas bordas)
 e que `effects`/`shoot` vêm do JSON; no playtest, Terra Blade com o ícone do jogo, brilho verde e o feixe.
 
-## F5 Primeiro chefe + progressão completa de minérios pré-hardmode
-Tiers da wiki: minérios comuns com qualquer picareta; meteorito 50; demonita/carmesim e obsidiana 55; pedra infernal 65.
+## F5 Primeiro chefe + progressão completa de minérios pré-hardmode ✅ (falta playtest)
+Feito: 8 metais em pares por mundo (picareta, espada, arco de cada), demonita (55) com Light's Bane e Demon Bow,
+pedra infernal (65) no submundo, altares demoníacos, Olho de Cthulhu (2 fases, servos, investidas, barra de vida,
+dropa demonita e Unholy Arrows), sprites dos inimigos da wiki. Números via scripts/wiki.py.
+Falta para a pré-hardmode completa: Eater of Worlds/Brain (escamas → Nightmare Pickaxe → pedra infernal),
+meteorito, carmesim, obsidiana, armaduras/defesa do jogador.
 Pronto quando: testes verificam a cadeia de tiers de minério pré-hardmode sem buracos e o invocador/drops do chefe por dados; no playtest, do cobre ao último tier pré-hardmode e o chefe derrotado.
 
 ## F6 Hardmode

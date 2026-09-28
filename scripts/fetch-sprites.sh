@@ -8,7 +8,11 @@ mkdir -p "$OUT"
 fail=0
 while read -r host file url_name; do
 	[ -s "$OUT/$file.png" ] && continue
-	if curl -fsSL -o "$OUT/$file.png.tmp" "https://$host/images/$url_name.png"; then
+	# Arquivos renomeados na wiki (redirect) não existem em /images/: pergunta a URL real à API.
+	url="https://$host/images/$url_name.png"
+	curl -fsSLI -o /dev/null "$url" 2>/dev/null || url=$(curl -fsSL "https://$host/api.php?action=query&titles=File:$url_name.png&redirects=1&prop=imageinfo&iiprop=url&format=json&formatversion=2" \
+		| python3 -c 'import sys,json; print(json.load(sys.stdin)["query"]["pages"][0]["imageinfo"][0]["url"])' 2>/dev/null || echo "$url")
+	if curl -fsSL -o "$OUT/$file.png.tmp" "$url"; then
 		mv "$OUT/$file.png.tmp" "$OUT/$file.png"
 	else
 		rm -f "$OUT/$file.png.tmp"; echo "falhou: $file"; fail=1
