@@ -15,6 +15,8 @@ var chunks := {}   # Vector2i -> PackedByteArray
 var meshes := {}   # Vector2i -> MeshInstance3D, ou null (sem faces / em construção)
 var material := StandardMaterial3D.new()
 var pending: Array[Vector2i] = []
+var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
+var versions := {}  # Vector2i -> nº de edições; descarta mesh de job que ficou velho
 var jobs := {}     # id da task -> resultado preenchido pela thread
 var max_jobs := clampi(OS.get_processor_count() - 1, 1, 4)
 var center := Vector2i(-999, -999)
@@ -40,6 +42,54 @@ func get_block(x: int, y: int, z: int) -> int:
 	return chunks[c][posmod(x, C) + posmod(z, C) * C + y * C * C]
 
 
+func set_block(x: int, y: int, z: int, id: int) -> void:
+	if y < 0 or y >= H:
+		return
+	get_block(x, y, z)  # garante que o chunk existe
+	var c := Vector2i(floori(x / float(C)), floori(z / float(C)))
+	if not in_world(c):
+		return
+	var lx := posmod(x, C)
+	var lz := posmod(z, C)
+	chunks[c][lx + lz * C + y * C * C] = id
+	_rebuild(c)
+	if lx == 0: _rebuild(c + Vector2i(-1, 0))
+	if lx == C - 1: _rebuild(c + Vector2i(1, 0))
+	if lz == 0: _rebuild(c + Vector2i(0, -1))
+	if lz == C - 1: _rebuild(c + Vector2i(0, 1))
+
+
+func _rebuild(k: Vector2i) -> void:
+	versions[k] = versions.get(k, 0) + 1
+	if meshes.has(k) and not k in urgent:
+		urgent.append(k)
+
+
+# Percorre voxels ao longo do raio (Amanatides & Woo).
+# Retorna {"pos": bloco sólido atingido, "normal": face atingida} ou {} se não acertar.
+func raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
+	var p := Vector3i(from.floor())
+	var step := Vector3i(dir.sign())
+	var t_delta := Vector3.INF
+	var t_max := Vector3.INF
+	for a in 3:
+		if dir[a] != 0:
+			t_delta[a] = absf(1.0 / dir[a])
+			t_max[a] = (p[a] + 1 - from[a] if dir[a] > 0 else from[a] - p[a]) * t_delta[a]
+	var normal := Vector3i.ZERO
+	var t := 0.0
+	while t <= max_dist:
+		if Blocks.solid[get_block(p.x, p.y, p.z)]:
+			return {"pos": p, "normal": normal}
+		var a := t_max.min_axis_index()
+		t = t_max[a]
+		p[a] += step[a]
+		t_max[a] += t_delta[a]
+		normal = Vector3i.ZERO
+		normal[a] = -step[a]
+	return {}
+
+
 func in_world(c: Vector2i) -> bool:
 	return c.x >= 0 and c.y >= 0 and c.x < WorldGen.SIZE_CHUNKS and c.y < WorldGen.SIZE_CHUNKS
 
@@ -50,7 +100,7 @@ func set_render_distance(rd: int) -> void:
 
 
 func is_idle() -> bool:
-	return pending.is_empty() and jobs.is_empty()
+	return pending.is_empty() and urgent.is_empty() and jobs.is_empty()
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -73,10 +123,14 @@ func _process(_delta: float) -> void:
 			WorkerThreadPool.wait_for_task_completion(id)
 			_apply(jobs[id])
 			jobs.erase(id)
-	while jobs.size() < max_jobs and not pending.is_empty():
-		var k: Vector2i = pending.pop_back()
-		meshes[k] = null
-		var r := {"k": k, "chunks": {}}
+	while jobs.size() < max_jobs and not (urgent.is_empty() and pending.is_empty()):
+		var k: Vector2i
+		if urgent.is_empty():
+			k = pending.pop_back()
+			meshes[k] = null
+		else:
+			k = urgent.pop_front()
+		var r := {"k": k, "chunks": {}, "version": versions.get(k, 0)}
 		for o in [Vector2i.ZERO] + NB:
 			if chunks.has(k + o):
 				r.chunks[k + o] = chunks[k + o]
@@ -119,8 +173,13 @@ func _apply(r: Dictionary) -> void:
 		if not chunks.has(c):
 			chunks[c] = r.chunks[c]
 	var k: Vector2i = r.k
-	if not meshes.has(k) or meshes[k] != null or r.arrays.is_empty():
-		return  # saiu do alcance, já tem mesh, ou não tem faces
+	if not meshes.has(k) or r.version != versions.get(k, 0):
+		return  # saiu do alcance, ou foi editado depois e outro job vai trazer a mesh certa
+	if meshes[k]:
+		meshes[k].queue_free()
+		meshes[k] = null
+	if r.arrays.is_empty():
+		return
 	var mesh := ArrayMesh.new()
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r.arrays)
 	var mi := MeshInstance3D.new()

@@ -9,9 +9,9 @@ Pronto quando: `scripts/setup-godot.sh` é idempotente; `.tools/godot --headless
 Chunks 16x16 com altura fixa, blocos em PackedByteArray, mesh só de faces visíveis, atlas de texturas gerado por script, geração por ruído em camadas (superfície, subterrâneo, cavernas, submundo), mundo finito pequeno.
 Pronto quando: testes verificam que um chunk sólido cercado só gera as faces do topo, winding correto, geração determinística por seed com as 4 camadas, atlas PNG gerado, e que a cena principal monta todos os chunks no alcance; no playtest local, câmera livre mostra o mundo a ≥ 60 fps com a distância de renderização padrão (6).
 
-## F2 Jogador
+## F2 Jogador ✅ (falta playtest)
 Controle em 1ª pessoa, colisão, quebrar/colocar bloco, hotbar.
-Pronto quando: testes verificam que o raycast de voxel acerta o bloco certo e que quebrar/colocar altera o chunk e refaz só a mesh afetada; no playtest, dá pra andar, pular sem atravessar blocos, quebrar, colocar e trocar o bloco pela hotbar.
+Pronto quando: testes verificam que o raycast de voxel acerta o bloco e a face certos, colisão (cair e parar no chão, pulo de ~1,4 bloco, parede bloqueia), e que quebrar pela mira altera o chunk e refaz a mesh (e a do vizinho na borda); no playtest, dá pra andar, pular sem atravessar blocos, quebrar, colocar e trocar o bloco pela hotbar.
 
 ## F3 Itens
 Drops, inventário, bancadas e receitas por dados, poder de mineração por tier bloqueando minérios.

@@ -5,6 +5,7 @@ const FACES := 6  # +X, -X, +Y, -Y, +Z, -Z
 
 static var ids := {}                       # nome -> id
 static var solid := PackedByteArray()      # id -> 1 se sólido
+static var breakable := PackedByteArray()  # id -> 1 se o jogador pode quebrar
 static var tiles := PackedInt32Array()     # id * FACES + face -> índice no atlas
 static var textures := {}                  # nome -> spec, na ordem do atlas
 
@@ -16,10 +17,12 @@ static func load_pack(dir := "res://data/base") -> void:
 		tile_index[t] = tile_index.size()
 	ids.clear()
 	solid.clear()
+	breakable.clear()
 	tiles.clear()
 	for b in _read(dir + "/blocks.json"):
 		ids[b.name] = ids.size()
 		solid.append(1 if b.get("solid", true) else 0)
+		breakable.append(1 if b.get("breakable", true) else 0)
 		var t: Dictionary = b.get("tiles", {})
 		var side: String = t.get("side", t.get("all", ""))
 		for n in [side, side, t.get("top", side), t.get("bottom", side), side, side]:

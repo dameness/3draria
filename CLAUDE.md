@@ -46,8 +46,9 @@ scripts/             setup-godot.sh e um .gd por sistema:
   atlas.gd           gera o atlas 16x16 procedural
   world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128)
   chunk_mesher.gd    faces visíveis → arrays de mesh (thread-safe)
-  world.gd           chunks, distância de renderização, jobs no WorkerThreadPool
-  fly_camera.gd      câmera livre (até a F2)   hud.gd  texto de fps/depuração
+  world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool
+  player.gd          1ª pessoa, colisão AABB contra voxels (sem física), quebrar/colocar, hotbar
+  hud.gd             mira, hotbar, texto de fps/depuração
 tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)

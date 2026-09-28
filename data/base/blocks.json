@@ -4,5 +4,5 @@
 	{"name": "dirt", "tiles": {"all": "dirt"}},
 	{"name": "stone", "tiles": {"all": "stone"}},
 	{"name": "ash", "tiles": {"all": "ash"}},
-	{"name": "bedrock", "tiles": {"all": "bedrock"}}
+	{"name": "bedrock", "breakable": false, "tiles": {"all": "bedrock"}}
 ]

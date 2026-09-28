@@ -20,21 +20,95 @@ func _init() -> void:
 	m.free()
 	Blocks.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://main.tscn").instantiate()
 	root.add_child(main)
 	world = main.get_node("World")
+	player = main.get_node("Player")
 	started = Time.get_ticks_msec()
+
+
+# Mundo de teste: 3x3 chunks com chão de pedra até y = 10 (topo em y = 11).
+func floor_world() -> Node3D:
+	var w: Node3D = load("res://scripts/world.gd").new()
+	w.gen = WorldGen.new(1)
+	for z in 3:
+		for x in 3:
+			var d := chunk(0)
+			for i in C * C * 11:
+				d[i] = Blocks.ids.stone
+			w.chunks[Vector2i(x, z)] = d
+	return w
+
+
+func test_raycast():
+	var w := floor_world()
+	var hit: Dictionary = w.raycast(Vector3(20.5, 15.5, 20.5), Vector3.DOWN, 10)
+	check(hit.get("pos") == Vector3i(20, 10, 20) and hit.get("normal") == Vector3i(0, 1, 0), "raio para baixo acerta o topo do chão")
+	check(w.raycast(Vector3(20.5, 15.5, 20.5), Vector3.DOWN, 3).is_empty(), "raio curto não alcança")
+	w.set_block(24, 12, 20, Blocks.ids.dirt)
+	hit = w.raycast(Vector3(20.5, 12.5, 20.5), Vector3(1, 0.1, 0).normalized(), 10)
+	check(hit.get("pos") == Vector3i(24, 12, 20) and hit.get("normal") == Vector3i(-1, 0, 0), "raio lateral acerta a face -X")
+	check(w.get_block(24, 12, 20) == Blocks.ids.dirt, "set_block grava no chunk")
+	w.set_block(16, 12, 20, Blocks.ids.dirt)
+	check(w.versions.get(Vector2i(1, 1)) == 2 and w.versions.get(Vector2i(0, 1)) == 1, "editar a borda remonta o vizinho")
+	w.free()
+	return true
+
+
+func test_player():
+	var w := floor_world()
+	var p: Node3D = load("res://scripts/player.gd").new()
+	p.world = w
+	p.position = Vector3(24.5, 15, 24.5)
+	for i in 90:
+		p.step(1.0 / 60, Vector3.ZERO, false)
+	check(p.on_floor and absf(p.position.y - 11) < 0.01, "cai e para em cima do chão (y=%.3f)" % p.position.y)
+	p.step(1.0 / 60, Vector3.ZERO, true)
+	var peak := 0.0
+	for i in 60:
+		p.step(1.0 / 60, Vector3.ZERO, false)
+		peak = maxf(peak, p.position.y - 11)
+	check(peak > 1.1 and peak < 1.6 and p.on_floor, "pulo sobe ~1,4 bloco e volta ao chão (%.2f)" % peak)
+	for y in [11, 12]:
+		w.set_block(27, y, 24, Blocks.ids.dirt)
+	for i in 60:
+		p.step(1.0 / 60, Vector3(1, 0, 0), false)
+	check(absf(p.position.x - (27 - 0.3)) < 0.01, "parede de 2 blocos para o jogador (x=%.3f)" % p.position.x)
+	check(not p.overlaps_solid(p.position), "jogador nunca fica dentro de bloco")
+	p.flying = true
+	p.step(1.0, Vector3(1, 0, 0), false)
+	check(p.position.x > 28, "voo atravessa blocos")
+	p.free()
+	w.free()
+	return true
 
 
 var main: Node
 var world: Node3D
+var player: Node3D
 var started := 0
+var edited := false
+var edit_mesh_id := 0
+var edit_faces := 0
 
 
 func _process(_delta: float) -> bool:
+	var done = integration()
+	if done == null:
+		check(false, "integração terminou sem erro de script")
+	elif not done:
+		return false
+	main.free()
+	print("OK" if failures == 0 else "%d falha(s)" % failures)
+	quit(1 if failures else 0)
+	return true
+
+
+# Retorna false enquanto espera, true quando terminou (null se der erro de script).
+func integration():
 	var elapsed := Time.get_ticks_msec() - started
 	if world == null:
 		check(false, "cena principal não carregou")
@@ -52,11 +126,23 @@ func _process(_delta: float) -> bool:
 		check(world.meshes.size() == expected, "mundo: %d de %d chunks montados" % [world.meshes.size(), expected])
 		var with_mesh: int = world.meshes.values().filter(func(m): return m != null).size()
 		check(with_mesh == expected, "todo chunk no alcance tem faces visíveis")
-		var cam: Camera3D = main.get_node("Camera")
-		check(world.get_block(int(cam.position.x), int(cam.position.y), int(cam.position.z)) == 0, "câmera começa no ar")
-		print("mundo: %d chunks em %d ms com %d threads" % [expected, elapsed, world.max_jobs])
-	print("OK" if failures == 0 else "%d falha(s)" % failures)
-	quit(1 if failures else 0)
+		if not edited:
+			edited = true
+			print("mundo: %d chunks em %d ms com %d threads" % [expected, elapsed, world.max_jobs])
+			check(player.on_floor, "jogador nasce e fica no chão")
+			# Quebra o bloco sob o jogador pela mira e espera a mesh ser refeita.
+			var k: Vector2i = world.center
+			edit_mesh_id = world.meshes[k].get_instance_id()
+			edit_faces = world.meshes[k].mesh.surface_get_array_len(0)
+			player.cam.rotation.x = -PI / 2
+			player._process(0)
+			var below := Vector3i(player.position.floor()) - Vector3i(0, 1, 0)
+			check(player.target.get("pos") == below, "mira olhando para baixo acerta o bloco sob os pés")
+			player.break_target()
+			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco")
+			return false
+		var m: MeshInstance3D = world.meshes[world.center]
+		check(m.get_instance_id() != edit_mesh_id and m.mesh.surface_get_array_len(0) != edit_faces, "mesh do chunk editado foi refeita")
 	return true
 
 
