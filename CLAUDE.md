@@ -56,7 +56,7 @@ scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki (tabe
 .tools/godot --headless --quit                # smoke test: projeto abre sem erros
 .tools/godot --headless -s tests/run.gd       # testes; código de saída != 0 em falha
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd   # prints reais (OpenGL por CPU) em textures/shot_*.png
-xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar
+xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar (prints textures/menu_*.png)
 ```
 Sessão remota: **sempre confira mudanças visuais com tests/screenshot.gd** e olhe as imagens (FPS ali é de CPU, não vale).
 Testes: cada `test_*` retorna `true` no fim (erro de script aborta a função → retorna null → falha).
@@ -85,7 +85,8 @@ scripts/             setup-godot.sh e um .gd por sistema:
   enemy_model.gd     modelos 3D dos inimigos (eye/slime/humanoid; senão sprite extrudado)
   day_night.gd       ciclo 15+9 min
   save_game.gd       user://players/*.plr e user://worlds/*.wld (seed, hora, spawn, chunks editados)
-  menu.gd            menu inicial: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair
+  menu.gd            menu inicial com o mundo real ao fundo (câmera girando, dia passando) e o personagem escolhido de pé
+                     no gramado: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair
   ui.gd              tema e peças da interface do Terraria (fonte com contorno, painéis azuis, coração, dicas por raridade)
   hud.gd             GUI no layout do Terraria (docs/UI.md): hotbar/inventário, criação, equipamento, vida, cursor, pausa
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  item na mão (1ª pessoa) + animação

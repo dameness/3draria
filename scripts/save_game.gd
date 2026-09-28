@@ -44,10 +44,14 @@ static func create_world(name: String, seed: int) -> String:
 
 
 # Aparência (cores) do personagem, tirada do nome: cada personagem tem a sua sem guardar nada no save.
-static func look(path: String) -> Dictionary:
-	var h := str(_read(path).get("name", "")).hash()
+static func look_for(name: String) -> Dictionary:
+	var h := name.hash()
 	return {"skin": Color(SKINS[h % SKINS.size()]), "hair": Color(HAIRS[(h >> 3) % HAIRS.size()]),
 		"shirt": Color(SHIRTS[(h >> 6) % SHIRTS.size()]), "pants": Color(PANTS[(h >> 9) % PANTS.size()])}
+
+
+static func look(path: String) -> Dictionary:
+	return look_for(str(_read(path).get("name", "")))
 
 
 static func delete(path: String) -> void:

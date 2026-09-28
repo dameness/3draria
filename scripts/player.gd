@@ -71,6 +71,8 @@ func _ready() -> void:
 		inv.add(Items.ids.copper_pickaxe, 1)  # itens iniciais de personagem novo
 		inv.add(Items.ids.copper_shortsword, 1)
 	cam.position.y = EYE
+	if SaveGame.player_path != "":   # a aparência (cores) do personagem escolhido no menu
+		get_node("Model").restyle(SaveGame.look(SaveGame.player_path))
 	highlight = MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3.ONE * 1.01

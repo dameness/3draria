@@ -51,6 +51,11 @@ func _process(_delta: float) -> bool:
 		return false
 	frames = 0
 	var scene := current_scene
+	if step == 0 and not (scene.world.is_idle() and scene.faded):   # espera o mundo do fundo montar e o preto sumir
+		frames = 3
+		return false
+	if step in [1, 3] and scene.fade.color.a > 0.05:
+		return false
 	match step:
 		0:
 			shot("1_titulo")

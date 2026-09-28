@@ -65,6 +65,10 @@ static func menu_button(text: String, size := 30) -> Button:
 	b.add_theme_constant_override("outline_size", 6)
 	for s in ["normal", "hover", "pressed", "disabled", "focus"]:
 		b.add_theme_stylebox_override(s, StyleBoxEmpty.new())
+	b.resized.connect(func(): b.pivot_offset = b.size / 2.0)
+	var grow := func(to: float): if not b.disabled: b.create_tween().tween_property(b, "scale", Vector2.ONE * to, 0.1)
+	b.mouse_entered.connect(grow.bind(1.14))   # cresce sob o mouse, como no Terraria
+	b.mouse_exited.connect(grow.bind(1.0))
 	return b
 
 

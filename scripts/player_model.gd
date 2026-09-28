@@ -30,12 +30,27 @@ static var _outline: StandardMaterial3D
 
 
 func _ready() -> void:
-	if SaveGame.player_path != "" and get_parent() == player:   # o jogador da partida usa a aparência do personagem escolhido
-		var look := SaveGame.look(SaveGame.player_path)
-		skin = look.skin
-		hair = look.hair
-		shirt = look.shirt
-		pants = look.pants
+	_build()
+
+
+# Troca as cores (aparência do personagem) e refaz o corpo.
+func restyle(look: Dictionary) -> void:
+	skin = look.skin
+	hair = look.hair
+	shirt = look.shirt
+	pants = look.pants
+	for c in get_children():
+		c.free()
+	parts.clear()
+	shells.clear()
+	eyes.clear()
+	hair_nodes.clear()
+	worn = PackedInt32Array([-2, -2, -2])   # o próximo quadro veste a armadura de novo
+	held_id = -2
+	_build()
+
+
+func _build() -> void:
 	var upper := _pivot(self, "upper", Vector3(0, 0.72, 0))   # tronco, cabeça e braços: inclinam juntos a partir da cintura
 	for side in [-1, 1]:
 		var leg := _pivot(self, "leg_l" if side < 0 else "leg_r", Vector3(side * 0.105, 0.75, 0))
