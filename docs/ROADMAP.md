@@ -15,7 +15,8 @@ Pronto quando: testes verificam que o raycast de voxel acerta o bloco e a face c
 
 ## F3 Itens ✅ (falta playtest)
 Drops, inventário, bancadas e receitas por dados, poder de mineração por tier bloqueando minérios.
-Drops vão direto para o inventário (itens soltos no chão ficam para a F4).
+Drops vão direto para o inventário (itens soltos no chão ficam para a F4). Números conferidos na wiki: picaretas 35/40/55,
+barras 3/3/4 minérios, picaretas 8/10/10 barras. Pendente: fornalha pede 3 tochas (tocha = gel + madeira, entra na F4 com slimes).
 Pronto quando: testes carregam items/recipes/ores de `data/base/`, validam referências cruzadas, verificam empilhamento no inventário, craft só perto da bancada certa e minério recusado abaixo do tier; no playtest, minerar → coletar → craftar picareta melhor → minerar minério antes bloqueado.
 
 ## Depois (anotado)
@@ -26,6 +27,7 @@ Vida, dia/noite, 2-3 inimigos básicos, combate corpo a corpo e à distância, s
 Pronto quando: testes verificam dano/morte/respawn, ciclo dia/noite, que inimigos vêm de `enemies.json`, e que salvar→carregar reproduz mundo e inventário idênticos; no playtest, sobreviver a uma noite lutando com espada e arco, sair e voltar com tudo salvo.
 
 ## F5 Primeiro chefe + progressão completa de minérios pré-hardmode
+Tiers da wiki: minérios comuns com qualquer picareta; meteorito 50; demonita/carmesim e obsidiana 55; pedra infernal 65.
 Pronto quando: testes verificam a cadeia de tiers de minério pré-hardmode sem buracos e o invocador/drops do chefe por dados; no playtest, do cobre ao último tier pré-hardmode e o chefe derrotado.
 
 ## F6 Hardmode

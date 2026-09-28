@@ -92,13 +92,13 @@ func test_items():
 	check(Items.places[Items.ids.stone] == Blocks.ids.stone, "bloco vira item que o coloca")
 	check(Items.drop[Blocks.ids.grass] == Items.ids.dirt, "grama dropa terra")
 	check(Items.drop[Blocks.ids.leaves] == -1 and Items.drop[Blocks.ids.bedrock] == -1, "folha e bedrock não dropam")
-	check(Items.pick_power[Items.ids.iron_pickaxe] > Items.pick_power[Items.ids.copper_pickaxe], "picareta de ferro é mais forte")
+	check([Items.pick_power[Items.ids.copper_pickaxe], Items.pick_power[Items.ids.iron_pickaxe], Items.pick_power[Items.ids.gold_pickaxe]] == [35, 40, 55], "poder das picaretas como no Terraria (35/40/55)")
 	var inv := Inventory.new()
-	check(inv.add(Items.ids.dirt, 1500) == 0 and inv.item[0] == Items.ids.dirt and inv.count[0] == 999 and inv.count[1] == 501, "empilha até o limite")
+	check(inv.add(Items.ids.dirt, 15000) == 0 and inv.item[0] == Items.ids.dirt and inv.count[0] == 9999 and inv.count[1] == 5001, "empilha até o limite")
 	check(inv.add(Items.ids.copper_pickaxe, 2) == 0 and inv.count[2] == 1 and inv.count[3] == 1, "picareta não empilha")
-	inv.remove(Items.ids.dirt, 600)
-	check(inv.total(Items.ids.dirt) == 900, "remove tira a quantidade certa")
-	check(inv.add(Items.ids.stone, 999 * 40) > 0, "inventário cheio devolve o que sobrou")
+	inv.remove(Items.ids.dirt, 6000)
+	check(inv.total(Items.ids.dirt) == 9000, "remove tira a quantidade certa")
+	check(inv.add(Items.ids.stone, 9999 * 40) > 0, "inventário cheio devolve o que sobrou")
 	return true
 
 
@@ -122,7 +122,7 @@ func test_crafting():
 	inv.add(Items.ids.iron_ore, 51)
 	inv.add(Items.ids.wood, 3)
 	var all := {Blocks.ids.workbench: true, Blocks.ids.furnace: true, Blocks.ids.anvil: true}
-	for i in 17:
+	for i in 15:
 		Crafting.craft(by_result.iron_bar, inv, all)
 	check(Crafting.craft(by_result.anvil, inv, all) and Crafting.craft(by_result.iron_pickaxe, inv, all), "minério → barra → bigorna → picareta de ferro")
 	return true
@@ -134,6 +134,9 @@ func test_mining():
 	p.world = w
 	p.target = {"pos": Vector3i(20, 10, 20), "normal": Vector3i(0, 1, 0)}
 	w.set_block(20, 10, 20, Blocks.ids.gold_ore)
+	# Ouro não tem tier no Terraria; o teste dá poder 40 a ele só para exercitar o bloqueio.
+	var saved_power := Blocks.power[Blocks.ids.gold_ore]
+	Blocks.power[Blocks.ids.gold_ore] = 40
 	p.break_target()
 	check(w.get_block(20, 10, 20) == Blocks.ids.gold_ore, "sem picareta não minera")
 	p.inv.add(Items.ids.copper_pickaxe, 1)
@@ -148,6 +151,7 @@ func test_mining():
 	p.position = Vector3(25.5, 11, 25.5)
 	p.place_target()
 	check(w.get_block(20, 11, 21) == Blocks.ids.gold_ore and p.inv.total(Items.ids.gold_ore) == 0, "colocar usa o item da mão")
+	Blocks.power[Blocks.ids.gold_ore] = saved_power
 	p.free()
 	w.free()
 	return true

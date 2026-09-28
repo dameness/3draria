@@ -5,7 +5,7 @@
 	{"result": "iron_bar", "needs": {"iron_ore": 3}, "station": "furnace"},
 	{"result": "gold_bar", "needs": {"gold_ore": 4}, "station": "furnace"},
 	{"result": "anvil", "needs": {"iron_bar": 5}, "station": "workbench"},
-	{"result": "copper_pickaxe", "needs": {"copper_bar": 12, "wood": 4}, "station": "anvil"},
-	{"result": "iron_pickaxe", "needs": {"iron_bar": 12, "wood": 3}, "station": "anvil"},
-	{"result": "gold_pickaxe", "needs": {"gold_bar": 12, "wood": 3}, "station": "anvil"}
+	{"result": "copper_pickaxe", "needs": {"copper_bar": 8, "wood": 4}, "station": "anvil"},
+	{"result": "iron_pickaxe", "needs": {"iron_bar": 10, "wood": 3}, "station": "anvil"},
+	{"result": "gold_pickaxe", "needs": {"gold_bar": 10, "wood": 4}, "station": "anvil"}
 ]

@@ -22,11 +22,11 @@ static func load_pack(dir := "res://data/base") -> void:
 	for block in Blocks.ids:
 		var b: int = Blocks.ids[block]
 		if Blocks.solid[b] and Blocks.breakable[b]:
-			_add(block, Blocks.tiles[b * Blocks.FACES], b, 0, 999)
+			_add(block, Blocks.tiles[b * Blocks.FACES], b, 0, 9999)
 	var tile_index := Blocks.textures.keys()
 	for it in Blocks.read(dir + "/items.json"):
 		assert(tile_index.has(it.icon), "ícone desconhecido: " + it.icon)
-		_add(it.name, tile_index.find(it.icon), -1, it.get("pick_power", 0), it.get("stack", 999))
+		_add(it.name, tile_index.find(it.icon), -1, it.get("pick_power", 0), it.get("stack", 9999))
 	for n in Blocks.drop_names:
 		assert(n == "" or ids.has(n), "drop desconhecido: " + n)
 		drop.append(ids.get(n, -1))

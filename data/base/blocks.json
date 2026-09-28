@@ -7,9 +7,9 @@
 	{"name": "bedrock", "breakable": false, "tiles": {"all": "bedrock"}},
 	{"name": "wood", "tiles": {"top": "wood_top", "side": "wood_side"}},
 	{"name": "leaves", "drop": "", "tiles": {"all": "leaves"}},
-	{"name": "copper_ore", "power": 0, "tiles": {"all": "copper_ore"}},
-	{"name": "iron_ore", "power": 35, "tiles": {"all": "iron_ore"}},
-	{"name": "gold_ore", "power": 40, "tiles": {"all": "gold_ore"}},
+	{"name": "copper_ore", "tiles": {"all": "copper_ore"}},
+	{"name": "iron_ore", "tiles": {"all": "iron_ore"}},
+	{"name": "gold_ore", "tiles": {"all": "gold_ore"}},
 	{"name": "workbench", "tiles": {"top": "workbench_top", "side": "planks"}},
 	{"name": "furnace", "tiles": {"top": "furnace", "side": "furnace_front", "bottom": "furnace"}},
 	{"name": "anvil", "tiles": {"all": "anvil"}}
