@@ -8,6 +8,25 @@ const TILE := 16
 static var wiki_dir := "res://assets/wiki/"   # sprites baixados por scripts/fetch-sprites.sh
 
 
+static var texture_cache := {}
+
+
+# Textura para interface/sprites: imagem da wiki inteira (sem crop), senão o tile `fallback` do atlas.
+static func texture(name: String, fallback: int, atlas: Texture2D) -> Texture2D:
+	if not texture_cache.has(name + str(fallback)):
+		var spec: Dictionary = Blocks.textures.get(name, {})
+		var wiki := wiki_image(spec)
+		var t: Texture2D
+		if wiki and not spec.has("crop"):
+			t = ImageTexture.create_from_image(wiki)
+		else:
+			t = AtlasTexture.new()
+			t.atlas = atlas
+			t.region = Rect2(fallback * TILE, 0, TILE, TILE)
+		texture_cache[name + str(fallback)] = t
+	return texture_cache[name + str(fallback)]
+
+
 # Sprite da wiki para a textura, ou null se não foi baixado (aí vale o procedural).
 static func wiki_image(spec: Dictionary) -> Image:
 	if not spec.has("wiki"):

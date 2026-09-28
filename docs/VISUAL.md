@@ -40,7 +40,8 @@ Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e part�
 - V1 ✅: fetch-sprites + ícones e blocos exatos + fallback (tests/atlas_preview.gd → textures/preview.png).
 - V2 ✅: item extrudado na mão (scripts/item_model.gd + held_item.gd) com swing/thrust/shoot/hold.
   Ver sem GPU: `.tools/godot --headless -s tests/model_preview.gd -- item1 item2` → textures/item_models.png.
-- V3: `effects` + `projectiles.json` (primeiro caso real: Enchanted Sword/Terra Beam, depois arco e flechas).
+- V3 ✅: `effects` (glow/trail/particles) + `projectiles.json`; Enchanted Sword e Terra Blade disparam feixes;
+  flechas voam como o ícone extrudado. F8 no jogo dá um kit de teste.
 - V4: 3ª pessoa + modelo do jogador + armaduras (já listado no roadmap pós-protótipo).
 
 ## Limites conhecidos

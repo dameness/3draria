@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://main.tscn").instantiate()
@@ -245,14 +245,38 @@ func test_wiki_sprites():
 	Atlas.wiki_dir = dir
 	var tile: int = Blocks.textures.keys().find("dirt")
 	check(Atlas.build(Blocks.textures).get_pixel(tile * 16 + 5, 5) == Color.MAGENTA, "com sprite: face = tile central do bloco colocado")
-	Items.icon_cache.clear()
+	Atlas.texture_cache.clear()
 	var tex := Items.icon_texture(Items.ids.copper_pickaxe, null)
 	check(tex.get_width() == 32, "ícone da wiki em tamanho original")
 	check(Items.icon_texture(Items.ids.gel, null) is AtlasTexture, "sem sprite do item: ícone do atlas")
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir + f)
 	Atlas.wiki_dir = saved
-	Items.icon_cache.clear()
+	Atlas.texture_cache.clear()
+	return true
+
+
+func test_projectiles():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var eye: Vector3 = p.position + Vector3.UP * p.EYE
+	var z1: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(32.5, 11, 24.5))
+	z1._ready()
+	check(p.swing(Items.defs[Items.ids.enchanted_sword], eye, Vector3.RIGHT) == 0, "zumbi longe está fora do alcance da lâmina")
+	var beam: Node3D = ent.get_children().back()
+	check(beam.def.name == "enchanted_beam", "Enchanted Sword dispara o feixe dos dados")
+	run(beam, 1.0)
+	check(z1.hp == 45 - (23 - 3), "feixe acerta longe com o dano da espada − defesa")
+	z1.hp = 1000
+	var z2: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(36.5, 11, 24.5))
+	z2._ready()
+	p.swing(Items.defs[Items.ids.terra_blade], eye, Vector3.RIGHT)
+	var terra: Node3D = ent.get_children().back()
+	run(terra, 1.0)
+	check(z1.hp < 1000 and z2.hp < 45, "Terra Beam atravessa e acerta os dois zumbis")
+	free_player(p)
+	w.free()
 	return true
 
 
@@ -282,7 +306,7 @@ func test_item_model():
 	check(H.style(Items.ids.copper_pickaxe) == "swing" and H.style(Items.ids.dirt) == "hold", "estilo: picareta golpeia, bloco só segura")
 	check(H.pose("swing", 0) != H.pose("swing", 0.5) and H.pose("swing", 1).origin == H.REST, "golpe anima e volta à mão")
 	check(H.pose("hold", 0.3) == Transform3D(Basis(), H.REST), "segurar não anima")
-	Items.icon_cache.clear()
+	Atlas.texture_cache.clear()
 	return true
 
 
@@ -363,7 +387,8 @@ var main: Node
 var world: Node3D
 var player: Node3D
 var started := 0
-var edited := false
+var phase := 0
+var edit_chunk := Vector2i.ZERO
 var edit_mesh_id := 0
 var edit_faces := 0
 
@@ -381,29 +406,32 @@ func _process(_delta: float) -> bool:
 
 
 # Retorna false enquanto espera, true quando terminou (null se der erro de script).
+# Fases: 0 carrega o mundo e quebra o bloco sob o jogador; 1 espera a mesh nova e o drop; 2 efeitos na mão.
 func integration():
 	var elapsed := Time.get_ticks_msec() - started
 	if world == null:
 		check(false, "cena principal não carregou")
-	elif world.center.x < 0 or not world.is_idle():
-		if elapsed < 60000:
-			return false
-		check(false, "mundo não terminou de carregar em 60 s")
-	else:
-		var r: int = world.render_distance
-		var expected := 0
-		for z in range(world.center.y - r, world.center.y + r + 1):
-			for x in range(world.center.x - r, world.center.x + r + 1):
-				var k := Vector2i(x, z)
-				expected += int(world.in_world(k) and (k - world.center).length_squared() <= r * r)
-		check(world.meshes.size() == expected, "mundo: %d de %d chunks montados" % [world.meshes.size(), expected])
-		var with_mesh: int = world.meshes.values().filter(func(m): return m != null).size()
-		check(with_mesh == expected, "todo chunk no alcance tem faces visíveis")
-		if not edited:
-			edited = true
+		return true
+	if elapsed > 60000:
+		check(false, "integração parou na fase %d (60 s)" % phase)
+		return true
+	if world.center.x < 0 or not world.is_idle():
+		return false
+	var hand: Node3D = player.get_node("Camera/Hand")
+	match phase:
+		0:
+			var r: int = world.render_distance
+			var expected := 0
+			for z in range(world.center.y - r, world.center.y + r + 1):
+				for x in range(world.center.x - r, world.center.x + r + 1):
+					var k := Vector2i(x, z)
+					expected += int(world.in_world(k) and (k - world.center).length_squared() <= r * r)
+			check(world.meshes.size() == expected, "mundo: %d de %d chunks montados" % [world.meshes.size(), expected])
+			var with_mesh: int = world.meshes.values().filter(func(m): return m != null).size()
+			check(with_mesh == expected, "todo chunk no alcance tem faces visíveis")
 			print("mundo: %d chunks em %d ms com %d threads" % [expected, elapsed, world.max_jobs])
 			check(player.on_floor, "jogador nasce e fica no chão")
-			# Quebra o bloco sob o jogador pela mira e espera a mesh ser refeita.
+			check(hand.mesh.visible and hand.mesh.mesh != null, "picareta aparece em 3D na mão")
 			var k: Vector2i = world.center
 			edit_mesh_id = world.meshes[k].get_instance_id()
 			edit_faces = world.meshes[k].mesh.surface_get_array_len(0)
@@ -414,14 +442,24 @@ func integration():
 			player.break_target()
 			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco com a picareta inicial")
 			player.inventory_open = true  # exercita a janela de inventário/criação
-			var hand: Node3D = player.get_node("Camera/Hand")
-			check(hand.mesh.visible and hand.mesh.mesh != null, "picareta aparece em 3D na mão")
-			return false
-		if player.inv.total(Items.ids.dirt) == 0 and elapsed < 60000:
-			return false  # espera o drop de terra ser coletado
-		var m: MeshInstance3D = world.meshes[world.center]
-		check(m.get_instance_id() != edit_mesh_id and m.mesh.surface_get_array_len(0) != edit_faces, "mesh do chunk editado foi refeita")
-	return true
+			edit_chunk = k
+			phase = 1
+		1:
+			if player.inv.total(Items.ids.dirt) == 0:
+				return false  # espera o drop de terra ser coletado
+			var m: MeshInstance3D = world.meshes.get(edit_chunk)
+			check(m != null and m.get_instance_id() != edit_mesh_id and m.mesh.surface_get_array_len(0) != edit_faces, "mesh do chunk editado foi refeita")
+			player.inv.add(Items.ids.terra_blade, 1)
+			player.slot = player.inv.item.find(Items.ids.terra_blade)
+			phase = 2
+		2:
+			player.cooldown = 0.3
+			hand._process(0)
+			hand._process(0)
+			check(hand.glow != null and hand.sparks != null and hand.trail_points.size() >= 2, "Terra Blade na mão com brilho, faíscas e rastro (%s %s %d)" % [hand.glow, hand.sparks, hand.trail_points.size()])
+			player.cooldown = 0
+			return true
+	return false
 
 
 func test_blocks():

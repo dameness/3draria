@@ -38,5 +38,9 @@
 	"gold_ore_item": {"wiki": "Gold_Ore"},
 	"workbench_item": {"wiki": "Work_Bench"},
 	"furnace_item": {"wiki": "Furnace"},
-	"anvil_item": {"wiki": "Iron_Anvil"}
+	"anvil_item": {"wiki": "Iron_Anvil"},
+	"enchanted_sword": {"wiki": "Enchanted_Sword", "pattern": "sword", "colors": ["#8fd3ff", "#5aa8e0"], "top_colors": ["#3a3a8a"]},
+	"terra_blade": {"wiki": "Terra_Blade", "pattern": "sword", "colors": ["#7dff5a", "#3fbf2a"], "top_colors": ["#2a6a1a"]},
+	"enchanted_sword_beam": {"wiki": "Enchanted_Sword_Beam", "pattern": "blob", "colors": ["#8fd3ff", "#5aa8e0", "#ffffff"]},
+	"terra_beam": {"wiki": "Terra_Beam", "pattern": "blob", "colors": ["#7dff5a", "#3fbf2a", "#e0ffd0"]}
 }

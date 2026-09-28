@@ -2,7 +2,7 @@ extends Node3D
 # Jogador em 1ª pessoa com colisão AABB contra os voxels (VoxelBody).
 # WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce).
 # Segurar o botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira); direito coloca bloco.
-# 1-0 ou roda escolhem o slot; E abre inventário/criação; F5 salva (também salva ao fechar).
+# 1-0 ou roda escolhem o slot; E abre inventário/criação; F5 salva (também salva ao fechar); F8 dá o kit de teste.
 # Clique captura o mouse, Esc solta.
 
 const HALF := 0.3        # meia largura da caixa
@@ -16,6 +16,7 @@ const MAX_HP := 100
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
 const REGEN_DELAY := 5.0
 const EPS := VoxelBody.EPS
+const TEST_KIT := {"terra_blade": 1, "enchanted_sword": 1, "wooden_bow": 1, "wooden_arrow": 200, "iron_pickaxe": 1}  # F8, para playtest
 const LO := Vector3(-HALF, 0, -HALF)
 const HI := Vector3(HALF, TALL, HALF)
 
@@ -99,6 +100,10 @@ func _unhandled_input(e: InputEvent) -> void:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
 		elif e.physical_keycode == KEY_F:
 			flying = not flying
+		elif e.physical_keycode == KEY_F8:
+			for n in TEST_KIT:
+				inv.add(Items.ids[n], TEST_KIT[n])
+			say("kit de teste")
 		elif e.physical_keycode == KEY_F5:
 			say("jogo salvo" if SaveGame.save(world, self, clock) == OK else "erro ao salvar")
 
@@ -206,6 +211,8 @@ func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 		if to.length() < d.reach + e.half and forward.dot(to.normalized()) > 0.5:
 			e.hurt(d.damage, forward, d.knockback)
 			hits += 1
+	if d.has("shoot"):  # espadas como a Terra Blade disparam um feixe a cada golpe
+		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, d.damage, d.knockback)
 	return hits
 
 
@@ -216,7 +223,7 @@ func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
 		return
 	inv.remove(ammo, 1)
 	var dmg: int = d.damage + Items.defs[ammo].get("damage", 0)
-	entities.spawn_arrow(eye, forward, d.shoot_speed, dmg, d.knockback)
+	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, d.shoot_speed, dmg, d.knockback)
 
 
 # Quebra o bloco na mira se a picareta na mão tiver poder; o drop cai como item solto.

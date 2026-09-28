@@ -15,6 +15,7 @@ const Projectile := preload("res://scripts/projectile.gd")
 @export var player: Node3D
 @export var clock: Node
 var defs: Array = []
+var projectiles := {}   # nome -> entrada de projectiles.json
 var enemies: Array[Node3D] = []
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
@@ -29,6 +30,12 @@ func load_defs(dir := "res://data/base") -> void:
 	for d in defs:
 		for dr in d.drops:
 			assert(Items.ids.has(dr.item), "drop desconhecido: " + dr.item)
+	projectiles.clear()
+	for p in Blocks.read(dir + "/projectiles.json"):
+		projectiles[p.name] = p
+	for it in Items.defs:
+		for k in ["shoot", "projectile"]:
+			assert(not it.has(k) or projectiles.has(it[k]), "projétil desconhecido: " + str(it.get(k)))
 
 
 func icon(item: int) -> Texture2D:
@@ -88,11 +95,13 @@ func spawn_drop(item: int, count: int, pos: Vector3) -> Node3D:
 	return d
 
 
-func spawn_arrow(from: Vector3, dir: Vector3, speed: float, damage: int, knockback: float) -> void:
+func spawn_projectile(name: String, from: Vector3, dir: Vector3, speed: float, damage: int, knockback: float) -> Node3D:
 	var a: Node3D = Projectile.new()
-	a.velocity = dir * speed
+	a.def = projectiles[name]
+	a.velocity = dir.normalized() * speed
 	a.damage = damage
 	a.knockback = knockback
 	a.entities = self
 	a.position = from
 	add_child(a)
+	return a

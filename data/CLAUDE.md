@@ -22,6 +22,8 @@ Todo bloco sólido e quebrável vira item automaticamente (ícone = textura late
 
 ## items.json (itens que não são bloco)
 `{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?}`.
+`sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
+flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glow, trail, particles} (cores).
 `use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).
 Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` golpeia.
 
@@ -34,6 +36,10 @@ Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` 
 ## enemies.json
 `{name, ai: hop|walk|fly, life, damage, defense, speed, size:[largura, altura], color, spawn: day|night|any,
 drops:[{item, min, max, chance}]}`. IA nova = um `match` em `scripts/enemy.gd`.
+
+## projectiles.json
+`{name, sprite? (textura, billboard) | model_item? (ícone extrudado), size, gravity, life (s), pierce, glow?}`.
+Dano/velocidade vêm da arma (feixe = dano da espada; flecha = arco + flecha).
 
 ## rarities.json
 `raridade: cor` (valores do código do Terraria, −1 a 11). Pinta o feixe do item solto.

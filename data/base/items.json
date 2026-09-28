@@ -11,5 +11,7 @@
 	{"name": "wooden_sword", "icon": "wooden_sword", "damage": 7, "use_time": 0.33, "reach": 2.5, "knockback": 5, "stack": 1},
 	{"name": "copper_shortsword", "icon": "copper_shortsword", "damage": 5, "use_time": 0.22, "reach": 2.0, "knockback": 4, "stack": 1, "use_style": "thrust"},
 	{"name": "wooden_bow", "icon": "wooden_bow", "damage": 4, "use_time": 0.5, "ammo": "wooden_arrow", "shoot_speed": 25, "knockback": 2, "stack": 1},
-	{"name": "wooden_arrow", "icon": "wooden_arrow", "damage": 5}
+	{"name": "wooden_arrow", "icon": "wooden_arrow", "damage": 5, "projectile": "wooden_arrow", "sprite_angle": -90},
+	{"name": "enchanted_sword", "icon": "enchanted_sword", "damage": 23, "use_time": 0.35, "reach": 2.8, "knockback": 4.25, "stack": 1, "rarity": 2, "shoot": "enchanted_beam", "shoot_speed": 35, "effects": {"glow": "#8fd3ff", "trail": "#8fd3ff"}},
+	{"name": "terra_blade", "icon": "terra_blade", "damage": 85, "use_time": 0.3, "reach": 3.2, "knockback": 6.5, "stack": 1, "rarity": 8, "shoot": "terra_beam", "shoot_speed": 45, "effects": {"glow": "#7dff5a", "trail": "#7dff5a", "particles": "#b6ff8a"}}
 ]
