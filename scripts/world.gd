@@ -1,7 +1,7 @@
 extends Node3D
 # Guarda os chunks do mundo finito e mantém malhas só dentro da distância de renderização.
-# Geração e mesh rodam no WorkerThreadPool; cada job lê só a sua cópia dos chunks
-# e a thread principal grava o resultado em `chunks`.
+# Geração (um job por chunk, uma vez só) e mesh (um job por chunk, com os vizinhos já prontos) rodam no
+# WorkerThreadPool; cada job lê só a sua cópia dos chunks e a thread principal grava o resultado em `chunks`.
 
 const C := WorldGen.CHUNK
 const H := WorldGen.HEIGHT
@@ -14,12 +14,16 @@ var gen: WorldGen
 var chunks := {}   # Vector2i -> PackedByteArray
 var meshes := {}   # Vector2i -> MeshInstance3D, ou null (sem faces / em construção)
 var material := ShaderMaterial.new()   # shaders/chunk.gdshader: atlas × luz do céu/tochas
+var water_material := ShaderMaterial.new()   # shaders/water.gdshader: superfície translúcida da água
 var atlas_texture: ImageTexture
-var pending: Array[Vector2i] = []
+var pending: Array[Vector2i] = []   # chunks no alcance que ainda esperam a mesh (o mais perto no fim)
+var meshable: Array[Vector2i] = []     # desses, os que já têm dados (e os dos vizinhos) e podem virar mesh
+var need_gen: Array[Vector2i] = []  # chunks a gerar para os pending (o mais perto no fim)
 var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
 var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
 var versions := {}  # Vector2i -> nº de edições; descarta mesh de job que ficou velho
 var jobs := {}     # id da task -> resultado preenchido pela thread
+var generating := {}   # Vector2i -> true: chunk que um job está gerando agora
 var max_jobs := clampi(OS.get_processor_count() - 1, 1, 4)
 var center := Vector2i(-999, -999)
 
@@ -31,7 +35,17 @@ func _ready() -> void:
 	gen = WorldGen.new(world_seed)
 	atlas_texture = ImageTexture.create_from_image(Atlas.build(Blocks.textures))
 	material.shader = preload("res://shaders/chunk.gdshader")
-	material.set_shader_parameter("atlas", atlas_texture)
+	water_material.shader = preload("res://shaders/water.gdshader")
+	for m in [material, water_material]:
+		m.set_shader_parameter("atlas", atlas_texture)
+
+
+# Luz do dia (day_night.gd): claridade do céu, cor dela e direção de onde vem (sol ou lua).
+func set_light(daylight: float, tint: Vector3, dir: Vector3) -> void:
+	for m in [material, water_material]:
+		m.set_shader_parameter("daylight", daylight)
+		m.set_shader_parameter("sky_tint", tint)
+	material.set_shader_parameter("light_dir", dir)
 
 
 func get_block(x: int, y: int, z: int) -> int:
@@ -55,6 +69,8 @@ func set_block(x: int, y: int, z: int, id: int) -> void:
 	var lx := posmod(x, C)
 	var lz := posmod(z, C)
 	chunks[c][lx + lz * C + y * C * C] = id
+	if y + 1 < H and Blocks.shape[chunks[c][lx + lz * C + (y + 1) * C * C]] == "plant" and not Blocks.solid[id]:
+		chunks[c][lx + lz * C + (y + 1) * C * C] = 0  # planta sem chão some
 	edited[c] = true
 	_rebuild(c)
 	if lx == 0: _rebuild(c + Vector2i(-1, 0))
@@ -71,10 +87,11 @@ func set_seed(s: int) -> void:
 	edited.clear()
 
 
-# Primeiro y livre acima do bloco sólido mais alto da coluna.
-func surface_y(x: int, z: int) -> int:
+# Primeiro y livre acima do bloco sólido mais alto da coluna (ground: sem contar tronco e folhas).
+func surface_y(x: int, z: int, ground := false) -> int:
 	for y in range(H - 1, -1, -1):
-		if Blocks.solid[get_block(x, y, z)]:
+		var b := get_block(x, y, z)
+		if Blocks.solid[b] and not (ground and Blocks.clear[b]):
 			return y + 1
 	return 0
 
@@ -86,7 +103,7 @@ func _rebuild(k: Vector2i) -> void:
 
 
 # Percorre voxels ao longo do raio (Amanatides & Woo).
-# Retorna {"pos": bloco sólido atingido, "normal": face atingida} ou {} se não acertar.
+# Retorna {"pos": bloco atingido, "normal": face atingida} ou {} se não acertar.
 func raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
 	var p := Vector3i(from.floor())
 	var step := Vector3i(dir.sign())
@@ -99,7 +116,8 @@ func raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
 	var normal := Vector3i.ZERO
 	var t := 0.0
 	while t <= max_dist:
-		if get_block(p.x, p.y, p.z) != 0:  # mira pega também blocos não sólidos (tochas)
+		var b := get_block(p.x, p.y, p.z)
+		if b != 0 and not Blocks.soft[b]:  # a mira pega também blocos não sólidos (tochas), mas atravessa plantas e líquidos
 			return {"pos": p, "normal": normal}
 		var a := t_max.min_axis_index()
 		t = t_max[a]
@@ -143,18 +161,45 @@ func _process(_delta: float) -> void:
 			WorkerThreadPool.wait_for_task_completion(id)
 			_apply(jobs[id])
 			jobs.erase(id)
-	while jobs.size() < max_jobs and not (urgent.is_empty() and pending.is_empty()):
-		var k: Vector2i
-		if urgent.is_empty():
-			k = pending.pop_back()
-			meshes[k] = null
-		else:
-			k = urgent.pop_front()
-		var r := {"k": k, "chunks": {}, "version": versions.get(k, 0)}
-		for o in [Vector2i.ZERO] + NB:
-			if chunks.has(k + o):
-				r.chunks[k + o] = chunks[k + o]
+	while jobs.size() < max_jobs:
+		var r := _next_job()
+		if r.is_empty():
+			break
 		jobs[WorkerThreadPool.add_task(_job.bind(r))] = r
+
+
+# Próximo trabalho: refazer a mesh de um chunk editado, montar a de um chunk pronto (dados dele e dos vizinhos),
+# ou gerar o chunk mais perto que falta. {} se não há nada a fazer agora.
+func _next_job() -> Dictionary:
+	if not urgent.is_empty():
+		return _mesh_job(urgent.pop_front())
+	while not meshable.is_empty():
+		var k: Vector2i = meshable.pop_front()
+		if pending.has(k):
+			pending.erase(k)
+			meshes[k] = null
+			return _mesh_job(k)
+	while not need_gen.is_empty():
+		var c: Vector2i = need_gen.pop_back()
+		if not chunks.has(c) and not generating.has(c):
+			generating[c] = true
+			return {"gen": c}
+	return {}
+
+
+func _has_data(k: Vector2i) -> bool:
+	for o in [Vector2i.ZERO] + NB:
+		if in_world(k + o) and not chunks.has(k + o):
+			return false
+	return true
+
+
+func _mesh_job(k: Vector2i) -> Dictionary:
+	var r := {"k": k, "chunks": {}, "version": versions.get(k, 0)}
+	for o in [Vector2i.ZERO] + NB:
+		if chunks.has(k + o):
+			r.chunks[k + o] = chunks[k + o]
+	return r
 
 
 func _recenter(c: Vector2i, cam: Camera3D) -> void:
@@ -172,6 +217,18 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 			if in_world(k) and not meshes.has(k) and (k - c).length_squared() <= r * r:
 				pending.append(k)
 	pending.sort_custom(func(a, b): return (a - c).length_squared() > (b - c).length_squared())
+	meshable.clear()
+	need_gen.clear()
+	var seen := {}
+	for n in range(pending.size() - 1, -1, -1):   # do mais perto para o mais longe
+		if _has_data(pending[n]):
+			meshable.append(pending[n])
+		for o in [Vector2i.ZERO] + NB:
+			var g: Vector2i = pending[n] + o
+			if in_world(g) and not chunks.has(g) and not seen.has(g):
+				seen[g] = true
+				need_gen.append(g)
+	need_gen.reverse()
 	cam.far = (r + 2) * C
 	var env := get_world_3d().environment
 	if env:
@@ -179,32 +236,41 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 		env.fog_depth_begin = r * C * 0.6
 
 
-# Roda em thread: gera o que faltar do chunk e vizinhos, e monta os arrays da mesh.
+# Roda em thread: gera um chunk ("gen") ou monta os arrays da mesh de um chunk (opaca + água).
 func _job(r: Dictionary) -> void:
+	if r.has("gen"):
+		r.data = gen.generate(r.gen.x, r.gen.y)
+		return
 	var k: Vector2i = r.k
-	for o in [Vector2i.ZERO] + NB:
-		if in_world(k + o) and not r.chunks.has(k + o):
-			r.chunks[k + o] = gen.generate(k.x + o.x, k.y + o.y)
-	r.arrays = ChunkMesher.build(r.chunks[k], NB.map(func(o): return r.chunks.get(k + o, PackedByteArray())), Blocks.textures.size())
+	r.water = []
+	r.arrays = ChunkMesher.build(r.chunks[k], NB.map(func(o): return r.chunks.get(k + o, PackedByteArray())), Blocks.textures.size(), r.water)
 
 
 func _apply(r: Dictionary) -> void:
-	for c in r.chunks:
-		if not chunks.has(c):
-			chunks[c] = r.chunks[c]
+	if r.has("gen"):
+		generating.erase(r.gen)
+		if not chunks.has(r.gen):  # a thread principal pode ter gerado o mesmo chunk antes (get_block)
+			chunks[r.gen] = r.data
+		for o in [Vector2i.ZERO] + NB:   # este chunk pode ter completado os dados de um vizinho
+			var k: Vector2i = r.gen + o
+			if pending.has(k) and not meshable.has(k) and _has_data(k):
+				meshable.append(k)
+		return
 	var k: Vector2i = r.k
 	if not meshes.has(k) or r.version != versions.get(k, 0):
 		return  # saiu do alcance, ou foi editado depois e outro job vai trazer a mesh certa
 	if meshes[k]:
 		meshes[k].queue_free()
 		meshes[k] = null
-	if r.arrays.is_empty():
+	if r.arrays.is_empty() and r.water.is_empty():
 		return
 	var mesh := ArrayMesh.new()
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r.arrays)
+	for s in [[r.arrays, material], [r.water, water_material]]:  # superfície 0 = opaca, 1 = água
+		if not s[0].is_empty():
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, s[0])
+			mesh.surface_set_material(mesh.get_surface_count() - 1, s[1])
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
-	mi.material_override = material
 	mi.position = Vector3(k.x * C, 0, k.y * C)
 	add_child(mi)
 	meshes[k] = mi

@@ -1,7 +1,8 @@
 class_name Atlas
 # Gera o atlas de texturas 16x16 (uma fileira de tiles) a partir de textures.json.
 # Padrões: noise, grass_side, stripes, rings, ore, planks, bricks (blocos);
-# bar, pickaxe, sword, bow, arrow, blob, torch (ícones, fundo transparente).
+# bar, pickaxe, sword, bow, arrow, blob, torch (ícones, fundo transparente);
+# tuft, flower, mushroom (plantas do mundo, fundo transparente); liquid (ondas suaves, paleta do escuro ao claro).
 
 const TILE := 16
 
@@ -117,6 +118,38 @@ static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 				set_px.call(8, y, top[0])
 			for p in [Vector2i(7, 3), Vector2i(8, 3), Vector2i(7, 4), Vector2i(8, 4), Vector2i(7, 5), Vector2i(8, 5), Vector2i(6, 4), Vector2i(9, 4), Vector2i(7, 2)]:
 				set_px.call(p.x, p.y, cols[0] if p.y < 4 else cols[1])
+		"liquid":
+			# ondas suaves que emendam de um bloco no outro (senos de período 16)
+			for y in TILE:
+				for x in TILE:
+					var v := sin(TAU * (x * 2.0 + 3.0 * sin(TAU * y / 16.0)) / 16.0) + sin(TAU * (y * 2.0 + 3.0 * sin(TAU * x / 16.0)) / 16.0)
+					set_px.call(x, y, cols[clampi(int((v + 2.0) / 4.0 * cols.size()), 0, cols.size() - 1)])
+		"tuft":
+			# folhas de capim: colunas de alturas diferentes, mais escuras na base e claras na ponta, que envergam
+			for b in [[2, 6], [4, 9], [6, 7], [8, 11], [10, 8], [12, 10], [13, 5]]:
+				var dx: int = 1 if b[0] % 4 == 0 else -1
+				for k in b[1]:
+					var x: int = b[0] + (dx if k > b[1] * 0.6 else 0)
+					set_px.call(x, 15 - k, cols[2] if k < 3 else cols[0] if k < b[1] - 2 else cols[1])
+		"flower":
+			for y in range(7, 16):
+				set_px.call(7, y, top[0])  # haste
+			for p in [Vector2i(6, 11), Vector2i(5, 10), Vector2i(8, 12), Vector2i(9, 11), Vector2i(8, 10)]:
+				set_px.call(p.x, p.y, top[0])  # folhas
+			for p in [Vector2i(7, 2), Vector2i(6, 3), Vector2i(7, 3), Vector2i(8, 3), Vector2i(5, 4), Vector2i(6, 4), Vector2i(8, 4), Vector2i(9, 4),
+					Vector2i(6, 5), Vector2i(7, 5), Vector2i(8, 5), Vector2i(7, 6)]:
+				set_px.call(p.x, p.y, cols[0])  # pétalas
+			set_px.call(7, 4, cols[1])  # miolo
+		"mushroom":
+			for y in range(11, 16):
+				for x in [7, 8]:
+					set_px.call(x, y, top[0])  # caule
+			for y in range(8, 12):
+				var half: int = [2, 3, 4, 4][y - 8]
+				for x in range(8 - half, 8 + half):
+					set_px.call(x, y, cols[0] if y < 11 else cols[0].darkened(0.25))
+			for p in [Vector2i(6, 9), Vector2i(9, 9), Vector2i(8, 10)]:
+				set_px.call(p.x, p.y, cols[1])  # manchas
 		_:
 			for x in TILE:
 				var edge := 3 + rng.randi() % 3  # borda irregular do grass_side

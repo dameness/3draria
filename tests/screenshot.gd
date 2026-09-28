@@ -18,6 +18,9 @@ const SHOTS := [
 	{"name": "noite_tochas", "time": 1100.0, "torches": true, "look": Vector2(0, -0.3), "third": true},
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
 	{"name": "chefe_fase2", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "phase2": true, "third": true},
+	{"name": "lago", "find": "water", "at": Vector3(14, 5, 0), "look": Vector2(PI / 2, -0.3)},
+	{"name": "agua", "find": "water", "find_y": 66, "at": Vector3(0, 2.3, 0), "look": Vector2(PI / 2, 0.1), "flying": true},
+	{"name": "submundo", "find": "lava", "find_y": 4, "at": Vector3(6, 6, 0), "look": Vector2(PI / 2, -0.25), "flying": true},
 	{"name": "ceu_manha", "time": 25.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.12},
 	{"name": "ceu_por_do_sol", "time": 850.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.08},
 	{"name": "ceu_lua", "time": 1000.0, "look": Vector2.ZERO, "aim": "moon", "tilt": -0.1},
@@ -63,8 +66,19 @@ func _process(_delta: float) -> bool:
 
 
 func _setup(s: Dictionary) -> void:
-	player.flying = s.has("up") or s.has("cave")
+	player.flying = s.has("up") or s.has("cave") or s.get("flying", false)
 	player.position = player.spawn + Vector3.UP * s.get("up", 0.0)
+	if s.has("find"):  # junto do bloco pedido (água, lava) mais perto do meio do mundo
+		var best := Vector3i.ZERO
+		var bd := 1 << 40
+		for z in range(40, 216, 2):
+			for x in range(40, 216, 2):
+				var d := (x - 128) * (x - 128) + (z - 128) * (z - 128)
+				if d < bd and world.get_block(x, s.get("find_y", WorldGen.WATER_LEVEL), z) == Blocks.ids[s.find]:
+					bd = d
+					best = Vector3i(x, s.get("find_y", WorldGen.WATER_LEVEL), z)
+		player.position = Vector3(best) + Vector3(0.5, 0, 0.5) + s.at
+		print("  ", s.name, " em ", player.position)
 	var sp := Vector3i(player.spawn.floor())
 	if s.get("cave", false):  # sala escavada 12 blocos abaixo, com tochas no chão
 		for x in range(-5, 6):

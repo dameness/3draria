@@ -9,6 +9,8 @@ uniform vec3 sun_dir = vec3(0.0, 1.0, 0.0);
 uniform vec3 moon_dir = vec3(0.0, -1.0, 0.0);
 uniform float day : hint_range(0.0, 1.0) = 1.0;   // 0 = noite, 1 = dia
 uniform float cloud_time = 0.0;
+uniform vec3 fog_color : source_color = vec3(0.71, 0.84, 0.95);   // névoa do momento (escura em caverna, vermelha no submundo)
+uniform float cave = 0.0;   // 0 ao ar livre, 1 debaixo da terra: o céu some na cor da névoa
 uniform sampler2D noise : repeat_enable, filter_linear;   // ruído contínuo (seamless), 0..1
 
 const vec3 SUN_COLOR = vec3(1.0, 0.93, 0.7);
@@ -93,5 +95,5 @@ void sky() {
 			col = m;
 		}
 	}
-	COLOR = col;
+	COLOR = mix(col, fog_color, cave);
 }

@@ -11,16 +11,24 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 - Sem o arquivo (ou sem `wiki`), `scripts/atlas.gd` pinta `pattern` num tile 16x16 com RNG semeado pelo nome.
   Entrada só com `wiki` (ícone) não tem fallback próprio: o item-bloco usa a face lateral.
 - Blocos (opacos): `noise` (pixels sorteados da paleta), `grass_side` (topo com top_colors), `stripes`, `rings`,
-  `ore` (base + manchas de top_colors), `planks`, `bricks` (top_colors = argamassa).
+  `ore` (base + manchas de top_colors), `planks`, `bricks` (top_colors = argamassa), `liquid` (ondas suaves que
+  emendam; paleta do escuro ao claro: água e lava).
 - Ícones (fundo transparente): `bar`, `pickaxe`, `sword`, `bow`, `arrow`, `blob` (+ pupila se top_colors), `torch`.
+- Plantas do mundo (fundo transparente, desenhadas em cruz): `tuft` (capim), `flower` (colors = pétala, miolo;
+  top_colors = haste), `mushroom`.
 - Padrão novo = um `match` em atlas.gd. Paleta curta (2-4 cores) mantém o estilo.
 - Prévia ampliada (faces + ícones): `.tools/godot --headless -s tests/atlas_preview.gd` → `textures/preview.png`.
 
 ## blocks.json
 `{name, tiles:{all|top|side|bottom}, icon?, station_as? (conta como outra estação), solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
 `icon`: textura do ícone do item-bloco (ex.: `dirt_item` → `Dirt_Block.png`).
-`shape`: forma não cúbica e não sólida (hoje só "torch"); `light`: raio de luz em blocos (tocha = 10).
-Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral).
+`shape`: forma não cúbica e não sólida: `"torch"`, `"plant"` (dois quadros em cruz que balançam ao vento; a mira
+atravessa e colocar bloco substitui; some se o chão sumir), `"liquid"` (água/lava: estático, nada flui; a mira
+atravessa; água = superfície translúcida à parte, `"glow": true` = brilha sozinho, como a lava).
+`light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
+`clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
+Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral). Plantas e líquidos são
+`breakable: false`: não viram item.
 
 ## items.json (itens que não são bloco)
 `{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?}`.

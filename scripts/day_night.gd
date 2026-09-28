@@ -12,11 +12,15 @@ const HORIZON := [Color("#111830"), Color("#b3d5f0")]
 const DUSK := Color("#ff8a4a")
 const TINT := [Vector3(0.85, 1.05, 1.5), Vector3.ONE]   # cor da luz do céu nos blocos: luar azulado, dia branco
 const DUSK_TINT := Vector3(1.0, 0.74, 0.58)
+const CAVE_FOG := Color("#07080d")   # névoa em caverna
+const HELL_FOG := Color("#3c0e06")   # névoa no submundo
 
 @export var world: Node3D
 @export var sun: DirectionalLight3D   # ilumina só os modelos (jogador, itens); os blocos são sem sombreamento
 var time := 60.0   # segundos desde o amanhecer
 var sky := ShaderMaterial.new()
+var depth := 0.0        # quanto a câmera está abaixo do chão da coluna (renovado 4 vezes por segundo)
+var depth_timer := 0.0
 
 
 func is_night() -> bool:
@@ -67,8 +71,8 @@ func _process(delta: float) -> void:
 	var day := smoothstep(-0.1, 0.3, sd.y)   # claridade do céu; os blocos seguem light()
 	var dusk := (1.0 - smoothstep(0.0, 0.4, absf(sd.y))) * smoothstep(-0.25, -0.02, sd.y)
 	var horizon: Color = HORIZON[0].lerp(HORIZON[1], day).lerp(DUSK, dusk * 0.35)
-	world.material.set_shader_parameter("daylight", l)
-	world.material.set_shader_parameter("sky_tint", TINT[0].lerp(TINT[1], day).lerp(DUSK_TINT, dusk * 0.6))
+	var lit := sd if sd.y > 0 else -sd   # a luz vem do sol; sem sol, da lua
+	world.set_light(l, TINT[0].lerp(TINT[1], day).lerp(DUSK_TINT, dusk * 0.6), lit)
 	sky.set_shader_parameter("zenith", ZENITH[0].lerp(ZENITH[1], day))
 	sky.set_shader_parameter("horizon", horizon)
 	sky.set_shader_parameter("sun_dir", sd)
@@ -76,11 +80,25 @@ func _process(delta: float) -> void:
 	sky.set_shader_parameter("day", day)
 	sky.set_shader_parameter("cloud_time", time)
 	if sun:
-		sun.basis = Basis.looking_at(-sd if sd.y > 0 else sd)   # a luz vem do sol; sem sol, da lua
+		sun.basis = Basis.looking_at(-lit)
 		sun.light_energy = l
 		sun.light_color = Color.WHITE.lerp(DUSK, dusk * 0.5) if sd.y > 0 else Color("#9fb4ff")
 	var env := world.get_world_3d().environment
+	var cam := get_viewport().get_camera_3d()
+	var cave := 0.0
+	var fog := horizon
+	if cam:
+		depth_timer -= delta
+		if depth_timer <= 0.0:
+			depth_timer = 0.25
+			depth = maxf(0.0, world.surface_y(floori(cam.global_position.x), floori(cam.global_position.z), true) - cam.global_position.y)
+		cave = smoothstep(4.0, 14.0, depth)   # fundo: a névoa escurece e o céu some
+		var hell := smoothstep(30.0, 18.0, cam.global_position.y)
+		fog = horizon.lerp(CAVE_FOG, cave).lerp(HELL_FOG, hell)
+		cave = maxf(cave, hell)
+	sky.set_shader_parameter("fog_color", fog)
+	sky.set_shader_parameter("cave", cave)
 	if env:
-		env.fog_light_color = horizon
+		env.fog_light_color = fog
 		env.ambient_light_energy = lerpf(0.3, 0.6, day)
 		env.ambient_light_color = Color("#5a6aa8").lerp(Color("#c0c8dc"), day)

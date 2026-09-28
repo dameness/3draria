@@ -1,6 +1,8 @@
 class_name WorldGen
 extends RefCounted
-# Gera os blocos de um chunk por ruído em camadas: superfície, subterrâneo, cavernas, submundo.
+# Gera os blocos de um chunk por ruído em camadas: superfície (colinas, serras, lagos, praias, árvores, plantas),
+# subterrâneo, cavernas (com poças de água e lava) e submundo (mar de lava).
+# Mudar qualquer regra daqui muda o mundo de uma seed: mundos salvos antes ficam com emendas (crie outro).
 
 const CHUNK := 16
 const HEIGHT := 128
@@ -8,11 +10,24 @@ const SIZE_CHUNKS := 16        # mundo finito: 16x16 chunks = 256x256 blocos
 const UNDERWORLD_TOP := 20     # abaixo disto: submundo
 const CAVERN_TOP := 48         # abaixo disto: camada de cavernas (pedra)
 const SURFACE := 76            # altura média da superfície
+const WATER_LEVEL := 70        # colunas da superfície abaixo disto viram lago, cheio até aqui
+const LAVA_LEVEL := 5          # submundo: o que está aberto até esta altura é lava
+const LAVA_CAVE := 24          # cavernas: o que está aberto abaixo disto é lava
+const ROCK_LINE := 100         # acima disto a superfície é pedra pelada
+const MARGIN := 5              # alturas calculadas além do chunk: inclinação e árvores dos chunks vizinhos
+const TREE_CELL := 5           # no máximo uma árvore por célula 5x5 (posição sorteada dentro dela)
+const CENTER := Vector2(SIZE_CHUNKS * CHUNK / 2.0, SIZE_CHUNKS * CHUNK / 2.0)   # nascimento: planície
+enum {TOP_GRASS, TOP_STONE, TOP_SAND}   # o que cobre a superfície de uma coluna
+const DIRS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 
 var height_noise := FastNoiseLite.new()
 var rock_noise := FastNoiseLite.new()
 var cave_noise := FastNoiseLite.new()
 var hell_noise := FastNoiseLite.new()
+var ridge_noise := FastNoiseLite.new()
+var mount_noise := FastNoiseLite.new()
+var pool_noise := FastNoiseLite.new()
+var forest_noise := FastNoiseLite.new()
 var AIR := 0
 var GRASS: int
 var DIRT: int
@@ -22,13 +37,19 @@ var BEDROCK: int
 var WOOD: int
 var LEAVES: int
 var ALTAR: int
+var SAND: int
+var WATER: int
+var LAVA: int
+var TUFT: int
+var FLOWERS: Array
+var MUSHROOM: int
 var seed: int
 var ores: Array = []   # de ores.json, com "block" já convertido em id
 
 
 func _init(world_seed: int, dir := "res://data/base") -> void:
 	seed = world_seed
-	for n in [height_noise, rock_noise, cave_noise, hell_noise]:
+	for n in [height_noise, rock_noise, cave_noise, hell_noise, ridge_noise, mount_noise, pool_noise, forest_noise]:
 		n.seed = world_seed
 		world_seed += 1
 	height_noise.frequency = 0.008
@@ -36,6 +57,12 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	rock_noise.frequency = 0.06
 	cave_noise.frequency = 0.035
 	hell_noise.frequency = 0.05
+	ridge_noise.frequency = 0.012
+	ridge_noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+	mount_noise.frequency = 0.005
+	mount_noise.fractal_octaves = 2
+	pool_noise.frequency = 0.03
+	forest_noise.frequency = 0.018
 	GRASS = Blocks.ids.grass
 	DIRT = Blocks.ids.dirt
 	STONE = Blocks.ids.stone
@@ -44,6 +71,12 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	WOOD = Blocks.ids.wood
 	LEAVES = Blocks.ids.leaves
 	ALTAR = Blocks.ids.demon_altar
+	SAND = Blocks.ids.sand
+	WATER = Blocks.ids.water
+	LAVA = Blocks.ids.lava
+	TUFT = Blocks.ids.grass_tuft
+	FLOWERS = [Blocks.ids.flower_yellow, Blocks.ids.flower_red, Blocks.ids.flower_pink]
+	MUSHROOM = Blocks.ids.mushroom
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
@@ -57,42 +90,84 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 		ores.append(groups[g][hash([seed, g]) % groups[g].size()])
 
 
+# Colinas largas + serras (cristas de ruído onde a máscara de montanha é alta) + terraços de 5 blocos, como as
+# saliências de rocha do Terraria; o meio do mundo é uma planície para o nascimento.
 func surface_height(wx: int, wz: int) -> int:
-	return SURFACE + int(height_noise.get_noise_2d(wx, wz) * 14.0)
+	var hills := height_noise.get_noise_2d(wx, wz)
+	var ridge := 1.0 - absf(ridge_noise.get_noise_2d(wx, wz))
+	var mount := clampf(mount_noise.get_noise_2d(wx, wz) * 2.5 - 0.3, 0.0, 1.0)
+	var h := SURFACE + hills * 16.0 + mount * ridge * ridge * 40.0
+	var q := h / 5.0
+	h = lerpf(h, (floorf(q) + smoothstep(0.55, 1.0, q - floorf(q))) * 5.0, 0.38)
+	var flat := 1.0 - smoothstep(16.0, 46.0, Vector2(wx, wz).distance_to(CENTER))
+	h = lerpf(h, SURFACE + 2.0 + hills * 2.0, flat)
+	return clampi(int(h), 24, HEIGHT - 20)
 
 
-# ponytail: ~dezenas de ms por chunk em GDScript na thread principal; se travar, mover para WorkerThreadPool.
+# O que cobre a coluna i (índice na grade de alturas hs, largura W): pedra em penhascos e picos, areia perto
+# d'água (praia e fundo de lago), senão grama.
+func _top(hs: PackedInt32Array, i: int, W: int) -> int:
+	var h := hs[i]
+	var steep := maxi(maxi(absi(h - hs[i - 1]), absi(h - hs[i + 1])), maxi(absi(h - hs[i - W]), absi(h - hs[i + W])))
+	if steep >= 6 or h >= ROCK_LINE:
+		return TOP_STONE
+	return TOP_SAND if h <= WATER_LEVEL + 1 else TOP_GRASS
+
+
+# ponytail: ~dezenas de ms por chunk em GDScript; roda no WorkerThreadPool (world.gd), não trava a tela.
 func generate(cx: int, cz: int) -> PackedByteArray:
 	var d := PackedByteArray()
 	d.resize(CHUNK * CHUNK * HEIGHT)
+	var W := CHUNK + 2 * MARGIN
+	var hs := PackedInt32Array()
+	hs.resize(W * W)
+	for z in W:
+		for x in W:
+			hs[x + z * W] = surface_height(cx * CHUNK + x - MARGIN, cz * CHUNK + z - MARGIN)
 	for z in CHUNK:
 		for x in CHUNK:
 			var wx := cx * CHUNK + x
 			var wz := cz * CHUNK + z
-			var h := surface_height(wx, wz)
+			var hi := (x + MARGIN) + (z + MARGIN) * W
+			var h := hs[hi]
+			var top := _top(hs, hi, W)
 			var hell := hell_noise.get_noise_2d(wx, wz)
 			var floor_h := 5 + int(hell * 4.0)
 			var ceil_h := UNDERWORLD_TOP - 4 + int(hell * 3.0)
+			var topsoil := 3 + int((rock_noise.get_noise_2d(wx, wz) + 1.0) * 1.5)   # terra sob a superfície: 3 a 6 blocos
+			var pool := pool_noise.get_noise_2d(wx, wz)
+			var wet := (30 + int(pool * 16)) if pool > 0.2 else 0   # caverna alagada até esta altura (0 = seca)
 			var i := x + z * CHUNK
 			for y in h + 1:
 				var b := STONE
+				var depth := h - y
 				if y == 0:
 					b = BEDROCK
 				elif y < UNDERWORLD_TOP:
-					b = ASH if y < floor_h or y > ceil_h else AIR
-				elif y < h - 4 and cave_noise.get_noise_3d(wx, y, wz) > (0.35 if y < CAVERN_TOP else 0.5):
-					b = AIR
-				elif y == h:
-					b = GRASS
+					b = ASH if y < floor_h or y > ceil_h else (LAVA if y <= LAVA_LEVEL else AIR)
+				elif depth > 4 and cave_noise.get_noise_3d(wx, y, wz) > (0.35 if y < CAVERN_TOP else 0.5):
+					b = LAVA if y <= LAVA_CAVE else (WATER if y <= wet else AIR)
+				elif depth == 0:
+					b = [GRASS, STONE, SAND][top]
+				elif top == TOP_STONE:
+					b = STONE
+				elif top == TOP_SAND and depth <= 3:
+					b = SAND
+				elif depth <= topsoil:
+					b = DIRT
 				elif y >= CAVERN_TOP:
 					b = STONE if rock_noise.get_noise_3d(wx, y, wz) > 0.35 else DIRT
 				elif rock_noise.get_noise_3d(wx, y, wz) > 0.55:
 					b = DIRT
 				d[i + y * CHUNK * CHUNK] = b
+			for y in range(h + 1, WATER_LEVEL + 1):   # lago
+				d[i + y * CHUNK * CHUNK] = WATER
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([seed, cx, cz])
 	_ores(d, rng)
-	_trees(d, rng)
+	_trees(d, hs, W, cx, cz)
+	_plants(d, hs, W, rng)
+	rng.seed = hash([seed, cx, cz, "altar"])
 	_altar(d, rng)
 	return d
 
@@ -124,24 +199,85 @@ func _ores(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
 				p = p.clamp(Vector3i(0, o.min_y, 0), Vector3i(CHUNK - 1, o.max_y, CHUNK - 1))
 
 
-# Árvores longe da borda do chunk, para as folhas não cruzarem para o vizinho.
-func _trees(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
-	for z in range(2, CHUNK - 2):
-		for x in range(2, CHUNK - 2):
-			if rng.randf() > 0.015:
+# Capim, flores e cogumelos sobre a grama (só onde o ar está livre).
+func _plants(d: PackedByteArray, hs: PackedInt32Array, W: int, rng: RandomNumberGenerator) -> void:
+	for z in CHUNK:
+		for x in CHUNK:
+			var y := hs[(x + MARGIN) + (z + MARGIN) * W]
+			var i := x + z * CHUNK + y * CHUNK * CHUNK
+			var r := rng.randf()
+			if d[i] != GRASS or d[i + CHUNK * CHUNK] != AIR or r > 0.34:
 				continue
-			var y := HEIGHT - 8
-			while y > 0 and d[x + z * CHUNK + y * CHUNK * CHUNK] == AIR:
-				y -= 1
-			if d[x + z * CHUNK + y * CHUNK * CHUNK] != GRASS:
+			d[i + CHUNK * CHUNK] = TUFT if r < 0.27 else MUSHROOM if r < 0.275 else FLOWERS[rng.randi() % FLOWERS.size()]
+
+
+# Árvores estilo Terraria: tronco alto e fino, raízes na base, galhos com tufos e a copa fofa no topo.
+# Cada célula de uma grade TREE_CELL tem no máximo uma árvore, com tudo sorteado só por (seed, célula): os chunks
+# vizinhos calculam a mesma árvore e cada um escreve a sua parte, então nada é cortado na borda.
+func _trees(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	var reach := MARGIN - 1
+	for gz in range(floori((oz - reach) / float(TREE_CELL)), floori((oz + CHUNK + reach) / float(TREE_CELL)) + 1):
+		for gx in range(floori((ox - reach) / float(TREE_CELL)), floori((ox + CHUNK + reach) / float(TREE_CELL)) + 1):
+			var h := absi(hash([seed, gx, gz]))
+			var wx := gx * TREE_CELL + (h >> 8) % TREE_CELL
+			var wz := gz * TREE_CELL + (h >> 16) % TREE_CELL
+			var ix := wx - ox + MARGIN
+			var iz := wz - oz + MARGIN
+			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0:
 				continue
-			var top := y + rng.randi_range(4, 6)
-			for ly in range(top - 2, top + 2):
-				var r := 2 if ly < top else 1
-				for lz in range(-r, r + 1):
-					for lx in range(-r, r + 1):
-						var i := x + lx + (z + lz) * CHUNK + ly * CHUNK * CHUNK
-						if absi(lx) + absi(lz) < r * 2 and d[i] == AIR:
-							d[i] = LEAVES
-			for ty in range(y + 1, top + 1):
-				d[x + z * CHUNK + ty * CHUNK * CHUNK] = WOOD
+			var forest := clampf(0.3 + forest_noise.get_noise_2d(wx, wz) * 1.0, 0.0, 0.75)   # matas e clareiras
+			var by := hs[ix + iz * W]
+			if (h & 0xff) / 255.0 > forest or by > HEIGHT - 24 or _top(hs, ix + iz * W, W) != TOP_GRASS:
+				continue
+			_tree(d, hs, W, cx, cz, wx, wz, ix, iz, h)
+
+
+func _tree(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int, wx: int, wz: int, ix: int, iz: int, h: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = h
+	var by := hs[ix + iz * W]
+	var th := rng.randi_range(8, 13)
+	var rx := rng.randf_range(2.7, 3.5)
+	var ry := rng.randf_range(2.0, 2.7)
+	for k in range(1, th + 1):
+		_put(d, cx, cz, wx, by + k, wz, WOOD, true)
+	for dir in DIRS4:   # raízes
+		if rng.randf() < 0.5 and hs[ix + dir.x + (iz + dir.y) * W] == by:
+			_put(d, cx, cz, wx + dir.x, by + 1, wz + dir.y, WOOD, true)
+	for n in rng.randi_range(0, 2):   # galhos com um tufo de folhas na ponta
+		var dir := DIRS4[rng.randi() % 4]
+		var y := by + rng.randi_range(th / 2, th - 2)
+		var len := rng.randi_range(1, 2)
+		for k in range(1, len + 1):
+			_put(d, cx, cz, wx + dir.x * k, y, wz + dir.y * k, WOOD, true)
+		_blob(d, cx, cz, Vector3(wx + dir.x * (len + 1), y + 1, wz + dir.y * (len + 1)), 1.7, 1.3, h + n)
+	_blob(d, cx, cz, Vector3(wx, by + th + 1, wz), rx, ry, h)
+	_put(d, cx, cz, wx, by + th + 1, wz, WOOD, true)   # o tronco entra na copa
+
+
+# Elipsoide de folhas (raios rx horizontal, ry vertical) com a borda esburacada por ruído.
+func _blob(d: PackedByteArray, cx: int, cz: int, c: Vector3, rx: float, ry: float, salt: int) -> void:
+	var r := int(ceil(rx))
+	for dy in range(-int(ceil(ry)), int(ceil(ry)) + 1):
+		for dz in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var q := (dx * dx + dz * dz) / (rx * rx) + dy * dy / (ry * ry)
+				if q <= 1.0 and (q < 0.55 or _hash01(salt, dx, dy, dz) > 0.25):
+					_put(d, cx, cz, int(c.x) + dx, int(c.y) + dy, int(c.z) + dz, LEAVES)
+
+
+static func _hash01(a: int, b: int, c: int, e: int) -> float:
+	return float(((a * 73856093) ^ (b * 19349663) ^ (c * 83492791) ^ (e * 2654435761)) & 0xffff) / 65535.0
+
+
+# Escreve um bloco se cair dentro deste chunk e a célula estiver livre (over: também troca folhas).
+func _put(d: PackedByteArray, cx: int, cz: int, x: int, y: int, z: int, id: int, over := false) -> void:
+	var lx := x - cx * CHUNK
+	var lz := z - cz * CHUNK
+	if lx < 0 or lx >= CHUNK or lz < 0 or lz >= CHUNK or y < 0 or y >= HEIGHT:
+		return
+	var i := lx + lz * CHUNK + y * CHUNK * CHUNK
+	if d[i] == AIR or (over and d[i] == LEAVES):
+		d[i] = id

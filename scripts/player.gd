@@ -12,6 +12,9 @@ const GRAVITY := 28.0
 const JUMP := 9.0        # sobe ~1,4 bloco
 const WALK := 4.5
 const REACH := 5.0
+const SWIM_UP := 4.5       # Espaço na água: sobe a esta velocidade
+const SWIM_SINK := 3.0     # sem Espaço: afunda devagar
+const LAVA_DAMAGE := 50    # por golpe (há invencibilidade entre um e outro), sem tirar a armadura
 const MAX_HP := 100
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
 const REGEN_DELAY := 5.0
@@ -174,18 +177,30 @@ func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
 		velocity = Vector3.ZERO
 		position += wish * speed * 3.0 * delta  # voo atravessa blocos
 		return
-	velocity.x = wish.x * speed + knock.x
-	velocity.z = wish.z * speed + knock.z
+	var liquid := liquid_at()
+	velocity.x = wish.x * speed * (0.55 if liquid else 1.0) + knock.x
+	velocity.z = wish.z * speed * (0.55 if liquid else 1.0) + knock.z
 	knock = knock.move_toward(Vector3.ZERO, 20.0 * delta)
-	velocity.y = maxf(velocity.y - GRAVITY * delta, -50.0)
-	if jump and on_floor:
-		velocity.y = JUMP
+	if liquid:  # nadando: afunda devagar e Espaço sobe; a lava também queima
+		velocity.y = move_toward(velocity.y, SWIM_UP if jump else -SWIM_SINK, 30.0 * delta)
+		if liquid == Blocks.ids.lava:
+			hurt(LAVA_DAMAGE, Vector3.ZERO)
+	else:
+		velocity.y = maxf(velocity.y - GRAVITY * delta, -50.0)
+		if jump and on_floor:
+			velocity.y = JUMP
 	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta)
 	position = r[0]
 	var hit: Vector3i = r[1]
 	on_floor = hit.y < 0
 	if hit.y != 0:
 		velocity.y = 0.0
+
+
+# Líquido (id do bloco) no meio do corpo, ou 0.
+func liquid_at() -> int:
+	var b: int = world.get_block(floori(position.x), floori(position.y + 0.6), floori(position.z))
+	return b if Blocks.liquid[b] else 0
 
 
 func overlaps_solid(p: Vector3) -> bool:
@@ -310,6 +325,7 @@ func place_target() -> void:
 	var lo := Vector3i((position + LO).floor())
 	var hi := Vector3i((position + HI - Vector3.ONE * EPS).floor())
 	var inside := p.x >= lo.x and p.x <= hi.x and p.y >= lo.y and p.y <= hi.y and p.z >= lo.z and p.z <= hi.z
-	if not inside and world.get_block(p.x, p.y, p.z) == 0:
+	var there: int = world.get_block(p.x, p.y, p.z)
+	if not inside and (there == 0 or Blocks.soft[there]):  # ar, planta ou líquido: o bloco novo substitui
 		world.set_block(p.x, p.y, p.z, Items.places[held()])
 		inv.take_one(slot)

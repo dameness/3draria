@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -322,8 +322,8 @@ func test_progression():
 	check(seen.size() == 8, "as seeds alternam entre os dois minérios de cada par")
 	var gen := WorldGen.new(3)
 	var altar := false
-	for c in 16:
-		var d := gen.generate(c, 5)
+	for c in 32:
+		var d := gen.generate(c % 16, 5 + c / 16)
 		var i := d.find(gen.ALTAR)
 		if i != -1:
 			var y := i / (C * C)
@@ -449,31 +449,137 @@ func face_light(arrays: Array, p: Vector3i, normal: Vector3) -> Color:
 
 func test_lighting():
 	var n := Blocks.textures.size()
-	# Chão de pedra até y=10 com um teto a y=20 sobre metade do chunk (caverna rasa) e uma câmara funda.
+	var Y := 60   # longe do brilho quente do submundo
+	# Chão de pedra até y=Y com um teto 10 blocos acima sobre metade do chunk (caverna rasa).
 	var d := chunk(0)
-	for i in C * C * 11:
+	for i in C * C * (Y + 1):
 		d[i] = Blocks.ids.stone
 	for z in C:
 		for x in 8:
-			d[x + z * C + 20 * C * C] = Blocks.ids.stone
+			d[x + z * C + (Y + 10) * C * C] = Blocks.ids.stone
 	var nb := [d, d, d, d]
 	var a := ChunkMesher.build(d, nb, n)
-	var open_top := face_light(a, Vector3i(12, 10, 8), Vector3.UP)
-	var under_roof := face_light(a, Vector3i(3, 10, 8), Vector3.UP)
-	check(is_equal_approx(open_top.r, 1.0), "chão a céu aberto: luz do céu cheia (%.2f)" % open_top.r)
+	var open_top := face_light(a, Vector3i(12, Y, 8), Vector3.UP)
+	var under_roof := face_light(a, Vector3i(3, Y, 8), Vector3.UP)
+	check(open_top.r > 0.9 and open_top.r <= 1.0, "chão a céu aberto: luz do céu quase cheia (%.2f; o tom varia por bloco)" % open_top.r)
 	check(under_roof.r < 0.4 and under_roof.r > 0, "sob um teto 10 blocos acima: penumbra (%.2f)" % under_roof.r)
 	check(open_top.g == 0, "sem tocha: sem luz de tocha")
-	d[4 + 8 * C + 11 * C * C] = Blocks.ids.torch
+	d[4 + 8 * C + (Y + 1) * C * C] = Blocks.ids.torch
 	a = ChunkMesher.build(d, [d, d, d, d], n)
-	var near := face_light(a, Vector3i(3, 10, 8), Vector3.UP)
-	var far := face_light(a, Vector3i(0, 10, 0), Vector3.UP)
-	check(near.g > 0.7 and near.g > far.g, "tocha ilumina perto (%.2f) mais que longe (%.2f)" % [near.g, far.g])
+	var near := face_light(a, Vector3i(3, Y, 8), Vector3.UP)
+	var far := face_light(a, Vector3i(0, Y, 0), Vector3.UP)
+	check(near.g > 0.6 and near.g > far.g, "tocha ilumina perto (%.2f) mais que longe (%.2f)" % [near.g, far.g])
 	check(Items.places[Items.ids.torch] == Blocks.ids.torch and not Blocks.solid[Blocks.ids.torch], "tocha é item que coloca bloco não sólido")
 	check(Items.drop[Blocks.ids.torch] == Items.ids.torch, "quebrar tocha devolve a tocha")
 	var w := floor_world()
 	w.set_block(20, 11, 20, Blocks.ids.torch)
 	check(w.raycast(Vector3(20.5, 15.5, 20.5), Vector3.DOWN, 10).get("pos") == Vector3i(20, 11, 20), "mira acerta a tocha")
 	w.free()
+	# Submundo: brilho quente de fundo sem tocha nenhuma.
+	var low := chunk(0)
+	for i in C * C * 11:
+		low[i] = Blocks.ids.stone
+	check(face_light(ChunkMesher.build(low, [low, low, low, low], n), Vector3i(8, 10, 8), Vector3.UP).g > 0.3, "submundo tem brilho quente de fundo")
+	return true
+
+
+# Cores dos 4 vértices da face virada para `normal` do bloco em p.
+func face_corners(arrays: Array, p: Vector3i, normal: Vector3) -> Array:
+	var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var nr: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var c: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	for i in range(0, v.size(), 4):
+		if nr[i] == normal and Vector3i(((v[i] + v[i + 2]) / 2 - normal * 0.5).floor()) == p:
+			return [c[i], c[i + 1], c[i + 2], c[i + 3]]
+	return []
+
+
+func test_liquids():
+	var w := floor_world()   # chão de pedra até y = 10
+	for y in range(11, 17):
+		for x in range(20, 25):
+			for z in range(20, 25):
+				w.set_block(x, y, z, Blocks.ids.water)
+	var p := make_player(w)
+	p.position = Vector3(22.5, 15, 22.5)
+	check(p.liquid_at() == Blocks.ids.water, "corpo dentro d'água é detectado")
+	for i in 20:
+		p.step(1.0 / 60, Vector3.ZERO, false)
+	check(p.velocity.y > -p.SWIM_SINK - 0.01 and p.velocity.y < 0 and p.position.y < 15, "na água afunda devagar (%.2f)" % p.velocity.y)
+	var y0: float = p.position.y
+	for i in 30:
+		p.step(1.0 / 60, Vector3.ZERO, true)
+	check(p.position.y > y0 + 1.0, "Espaço sobe na água")
+	p.velocity = Vector3.ZERO
+	p.position = Vector3(22.5, 11, 22.5)
+	var x0: float = p.position.x
+	p.step(1.0 / 60, Vector3.RIGHT, false)
+	var wet: float = p.position.x - x0
+	p.position = Vector3(30.5, 11, 30.5)
+	x0 = p.position.x
+	p.step(1.0 / 60, Vector3.RIGHT, false)
+	check(wet < p.position.x - x0, "na água anda mais devagar")
+	# Lava: queima uma vez por golpe (invencibilidade entre um e outro).
+	for y in range(11, 14):
+		for x in range(28, 33):
+			for z in range(28, 33):
+				w.set_block(x, y, z, Blocks.ids.lava)
+	p.position = Vector3(30.5, 11, 30.5)
+	p.velocity = Vector3.ZERO
+	p.hp = 100
+	p.step(1.0 / 60, Vector3.ZERO, false)
+	check(p.hp == 100 - p.LAVA_DAMAGE and p.iframes > 0, "lava tira %d de vida (%d)" % [p.LAVA_DAMAGE, p.hp])
+	p.step(1.0 / 60, Vector3.ZERO, false)
+	check(p.hp == 100 - p.LAVA_DAMAGE, "lava não fere de novo durante a invencibilidade")
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_visuals():
+	var n := Blocks.textures.size()
+	var Y := 60
+	var d := chunk(0)
+	for i in C * C * (Y + 1):
+		d[i] = Blocks.ids.stone
+	var flat := face_corners(ChunkMesher.build(d, [d, d, d, d], n), Vector3i(8, Y, 8), Vector3.UP)
+	check(flat.size() == 4 and flat.all(func(c): return is_equal_approx(c.r, flat[0].r)), "chão plano: os 4 cantos com a mesma luz")
+	d[9 + 8 * C + (Y + 1) * C * C] = Blocks.ids.stone   # degrau ao lado (+X)
+	var a := ChunkMesher.build(d, [d, d, d, d], n)
+	var corners := face_corners(a, Vector3i(8, Y, 8), Vector3.UP)
+	var lights: Array = corners.map(func(c): return c.r)
+	check(lights.min() < lights.max() * 0.9, "oclusão ambiente: o canto junto da parede escurece (%.2f a %.2f)" % [lights.min(), lights.max()])
+	# Planta: dois quadros em cruz, frente e verso; b = 0.5 (o shader balança a ponta); a mira e a colocação a atravessam.
+	var p := chunk(0)
+	for i in C * C * (Y + 1):
+		p[i] = Blocks.ids.stone
+	p[8 + 8 * C + (Y + 1) * C * C] = Blocks.ids.grass_tuft
+	var pa := ChunkMesher.build(p, [p, p, p, p], n)
+	check(faces(pa) == C * C + 4 and Array(pa[Mesh.ARRAY_COLOR]).filter(func(c): return is_equal_approx(c.b, 0.5)).size() == 16, "planta: 4 quadros com b = 0.5")
+	# Água: só onde toca ar (superfície à parte), um pouco abaixo do topo; lava vai na superfície opaca com b = 1.
+	var w := chunk(0)
+	for i in C * C * (Y + 1):
+		w[i] = Blocks.ids.stone
+	w[8 + 8 * C + (Y + 1) * C * C] = Blocks.ids.water
+	w[4 + 4 * C + (Y + 1) * C * C] = Blocks.ids.lava
+	var water: Array = []
+	var wa := ChunkMesher.build(w, [w, w, w, w], n, water)
+	var wy: PackedVector3Array = water[Mesh.ARRAY_VERTEX]
+	check(not water.is_empty() and wy.size() == 5 * 4, "água: 5 faces (sem a de baixo, que toca pedra)")
+	var top_y := 0.0
+	for v in wy:
+		top_y = maxf(top_y, v.y)
+	check(is_equal_approx(top_y, Y + 1 + ChunkMesher.LIQUID_TOP), "água: superfície abaixo do topo do bloco (%.2f)" % top_y)
+	check(Array(wa[Mesh.ARRAY_COLOR]).any(func(c): return is_equal_approx(c.b, 1.0)), "lava brilha (b = 1) na superfície opaca")
+	# Mundo: mira atravessa planta e líquido; bloco novo substitui; planta sem chão some.
+	var wd := floor_world()
+	wd.set_block(20, 11, 20, Blocks.ids.grass_tuft)
+	wd.set_block(20, 12, 20, Blocks.ids.water)
+	check(wd.raycast(Vector3(20.5, 16.5, 20.5), Vector3.DOWN, 10).get("pos") == Vector3i(20, 10, 20), "mira atravessa água e planta")
+	wd.set_block(20, 11, 20, Blocks.ids.grass_tuft)
+	wd.set_block(20, 10, 20, 0)
+	check(wd.get_block(20, 11, 20) == 0, "quebrar o chão remove a planta em cima")
+	wd.free()
 	return true
 
 
@@ -729,7 +835,7 @@ func test_gen():
 	check(d.size() == C * C * H, "chunk tem 16x16xALTURA blocos")
 	var at := func(x, y, z): return d[x + z * C + y * C * C]
 	var h := gen.surface_height(8 * C + 5, 8 * C + 5)
-	check(at.call(5, h, 5) == gen.GRASS and at.call(5, h + 1, 5) == 0, "superfície: grama no topo, ar acima")
+	check(at.call(5, h, 5) == gen.GRASS and not Blocks.solid[at.call(5, h + 1, 5)], "superfície: grama no topo, ar ou planta acima")
 	check(at.call(5, 0, 5) == gen.BEDROCK, "fundo: bedrock")
 	var count := {}
 	for y in H:

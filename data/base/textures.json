@@ -1,5 +1,5 @@
 {
-	"grass_top": {"pattern": "noise", "colors": ["#1a9c48", "#178c40", "#1fae50", "#148038"]},
+	"grass_top": {"pattern": "noise", "colors": ["#2ab84c", "#24a444", "#33c955", "#1e9640", "#3fd35f"]},
 	"grass_side": {"wiki": "Grass_(placed)", "crop": [16, 2], "pattern": "grass_side", "colors": ["#7a5230", "#6b4728", "#86603a", "#5e3d22"], "top_colors": ["#4a8f2c", "#3f7d25", "#56a034"], "recolor": {"#03200b": "#148038"}},
 	"dirt": {"wiki": "Dirt_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#7a5230", "#6b4728", "#86603a", "#5e3d22"]},
 	"stone": {"wiki": "Stone_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#7d7d7d", "#707070", "#8a8a8a", "#636363"]},
@@ -7,7 +7,7 @@
 	"bedrock": {"pattern": "noise", "colors": ["#2a2a2e", "#1e1e22", "#38383d"]},
 	"wood_side": {"pattern": "stripes", "colors": ["#6e4b2a", "#5c3e22", "#7d5733"]},
 	"wood_top": {"pattern": "rings", "colors": ["#a0784a", "#8a653c"]},
-	"leaves": {"wiki": "Leaf_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#2f7a24", "#276a1e", "#3a8f2d", "#1f5518"]},
+	"leaves": {"wiki": "Leaf_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#2f7a24", "#276a1e", "#3a8f2d", "#1f5518"], "recolor": {"#193b1f": "#0d7a30", "#004b19": "#0a6a28"}},
 	"copper_ore": {"wiki": "Copper_Ore_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#7d7d7d", "#707070", "#8a8a8a"], "top_colors": ["#d9824a", "#b8622e"]},
 	"iron_ore": {"wiki": "Iron_Ore_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#7d7d7d", "#707070", "#8a8a8a"], "top_colors": ["#c9b8a8", "#a8958a"]},
 	"gold_ore": {"wiki": "Gold_Ore_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#7d7d7d", "#707070", "#8a8a8a"], "top_colors": ["#f2cf3a", "#d4a81e"]},
@@ -123,5 +123,14 @@
 	"platinum_chainmail": {"wiki": "Platinum_Chainmail"},
 	"platinum_greaves": {"wiki": "Platinum_Greaves"},
 	"torch_stick": {"pattern": "stripes", "colors": ["#7a5230", "#5e3d22", "#86603a"]},
-	"torch_flame": {"pattern": "noise", "colors": ["#ffd24a", "#ffb02a", "#fff0a0", "#ff8a1a"]}
+	"torch_flame": {"pattern": "noise", "colors": ["#ffd24a", "#ffb02a", "#fff0a0", "#ff8a1a"]},
+	"sand": {"wiki": "Sand_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#d8c070", "#cdb35e", "#e2cb80", "#bfa54f"]},
+	"sand_item": {"wiki": "Sand_Block"},
+	"tuft": {"pattern": "tuft", "colors": ["#2fa040", "#4cc858", "#1f7a30"]},
+	"flower_yellow": {"pattern": "flower", "colors": ["#ffd83a", "#e8901a"], "top_colors": ["#2fa040"]},
+	"flower_red": {"pattern": "flower", "colors": ["#e8383a", "#ffd0a0"], "top_colors": ["#2fa040"]},
+	"flower_pink": {"pattern": "flower", "colors": ["#ff8ad0", "#fff0a0"], "top_colors": ["#2fa040"]},
+	"mushroom": {"pattern": "mushroom", "colors": ["#b8804c", "#e8d8b0"], "top_colors": ["#d8c8a0"]},
+	"water": {"pattern": "liquid", "colors": ["#2f66c0", "#3a78d8", "#4a8ae8", "#6aa2f0"]},
+	"lava": {"pattern": "liquid", "colors": ["#c02a06", "#f0500c", "#ff8a1a", "#ffd050"]}
 }
