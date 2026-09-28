@@ -1,0 +1,8 @@
+{
+	"grass_top": {"pattern": "noise", "colors": ["#4a8f2c", "#3f7d25", "#56a034", "#356b1f"]},
+	"grass_side": {"pattern": "grass_side", "colors": ["#7a5230", "#6b4728", "#86603a", "#5e3d22"], "top_colors": ["#4a8f2c", "#3f7d25", "#56a034"]},
+	"dirt": {"pattern": "noise", "colors": ["#7a5230", "#6b4728", "#86603a", "#5e3d22"]},
+	"stone": {"pattern": "noise", "colors": ["#7d7d7d", "#707070", "#8a8a8a", "#636363"]},
+	"ash": {"pattern": "noise", "colors": ["#4a4543", "#3e3a38", "#57514e", "#332f2e"]},
+	"bedrock": {"pattern": "noise", "colors": ["#2a2a2e", "#1e1e22", "#38383d"]}
+}

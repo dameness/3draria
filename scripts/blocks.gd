@@ -1,0 +1,33 @@
+class_name Blocks
+# Tabela de blocos lida de data/<pacote>/. O id é a posição em blocks.json (0 = ar).
+
+const FACES := 6  # +X, -X, +Y, -Y, +Z, -Z
+
+static var ids := {}                       # nome -> id
+static var solid := PackedByteArray()      # id -> 1 se sólido
+static var tiles := PackedInt32Array()     # id * FACES + face -> índice no atlas
+static var textures := {}                  # nome -> spec, na ordem do atlas
+
+
+static func load_pack(dir := "res://data/base") -> void:
+	textures = _read(dir + "/textures.json")
+	var tile_index := {}
+	for t in textures:
+		tile_index[t] = tile_index.size()
+	ids.clear()
+	solid.clear()
+	tiles.clear()
+	for b in _read(dir + "/blocks.json"):
+		ids[b.name] = ids.size()
+		solid.append(1 if b.get("solid", true) else 0)
+		var t: Dictionary = b.get("tiles", {})
+		var side: String = t.get("side", t.get("all", ""))
+		for n in [side, side, t.get("top", side), t.get("bottom", side), side, side]:
+			assert(n == "" or tile_index.has(n), "textura desconhecida: " + n)
+			tiles.append(tile_index.get(n, 0))
+
+
+static func _read(path: String) -> Variant:
+	var data = JSON.parse_string(FileAccess.get_file_as_string(path))
+	assert(data != null, "JSON inválido: " + path)
+	return data

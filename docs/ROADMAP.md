@@ -2,12 +2,12 @@
 
 Toda fase termina com `.tools/godot --headless -s tests/run.gd` passando e uma instrução de playtest para o dono.
 
-## F0 Estrutura
+## F0 Estrutura ✅
 Pronto quando: `scripts/setup-godot.sh` é idempotente; `.tools/godot --headless --quit` sai com 0 e sem erros; `tests/run.gd` sai com 0 e com != 0 quando um check falha; o editor abre o projeto localmente.
 
-## F1 Mundo
+## F1 Mundo ✅ (falta playtest)
 Chunks 16x16 com altura fixa, blocos em PackedByteArray, mesh só de faces visíveis, atlas de texturas gerado por script, geração por ruído em camadas (superfície, subterrâneo, cavernas, submundo), mundo finito pequeno.
-Pronto quando: testes verificam índice de bloco↔posição, que um chunk sólido cercado gera 0 faces internas, que a geração é determinística por seed e tem as 4 camadas nas alturas esperadas, e que o atlas PNG é gerado; no playtest local, câmera livre mostra o mundo a ≥ 60 fps com a distância de renderização padrão.
+Pronto quando: testes verificam que um chunk sólido cercado só gera as faces do topo, winding correto, geração determinística por seed com as 4 camadas, atlas PNG gerado, e que a cena principal monta todos os chunks no alcance; no playtest local, câmera livre mostra o mundo a ≥ 60 fps com a distância de renderização padrão (6).
 
 ## F2 Jogador
 Controle em 1ª pessoa, colisão, quebrar/colocar bloco, hotbar.

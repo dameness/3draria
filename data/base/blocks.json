@@ -1,0 +1,8 @@
+[
+	{"name": "air", "solid": false},
+	{"name": "grass", "tiles": {"top": "grass_top", "side": "grass_side", "bottom": "dirt"}},
+	{"name": "dirt", "tiles": {"all": "dirt"}},
+	{"name": "stone", "tiles": {"all": "stone"}},
+	{"name": "ash", "tiles": {"all": "ash"}},
+	{"name": "bedrock", "tiles": {"all": "bedrock"}}
+]

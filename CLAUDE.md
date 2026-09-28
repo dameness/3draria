@@ -34,22 +34,31 @@ scripts/setup-godot.sh                        # baixa o Godot em .tools/godot (i
 .tools/godot --headless --quit                # smoke test: projeto abre sem erros
 .tools/godot --headless -s tests/run.gd       # testes; código de saída != 0 em falha
 ```
+Testes: cada `test_*` retorna `true` no fim (erro de script aborta a função → retorna null → falha).
+Não use `Logger` em GDScript para capturar erros: trava o Godot 4.7.2 em erro de script.
 
 ## Estrutura
 ```
 project.godot        config (renderer Compatibility)
 main.tscn            cena inicial
-scripts/             scripts de shell (setup) e, a partir da F1, um .gd por sistema
-tests/run.gd         testes headless (asserts simples, sem framework)
-data/base/           conteúdo do jogo base (a partir da F1)
+scripts/             setup-godot.sh e um .gd por sistema:
+  blocks.gd          carrega blocks.json/textures.json (id = posição na lista, 0 = ar)
+  atlas.gd           gera o atlas 16x16 procedural
+  world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128)
+  chunk_mesher.gd    faces visíveis → arrays de mesh (thread-safe)
+  world.gd           chunks, distância de renderização, jobs no WorkerThreadPool
+  fly_camera.gd      câmera livre (até a F2)   hud.gd  texto de fps/depuração
+tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal
+data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)
-textures/            PNGs gerados por script (não editar à mão)
+textures/            atlas.png gerado pelos testes, só para inspeção (ignorado pelo git)
 docs/ROADMAP.md      fases e critérios de pronto
 .tools/              binário do Godot (ignorado pelo git)
 ```
 
 ## Onde fica cada tipo de dado
-Um arquivo JSON por tipo em `data/<pacote>/`: `blocks.json`, `items.json`, `recipes.json`, `ores.json`, `enemies.json`.
+Um arquivo JSON por tipo em `data/<pacote>/`: `blocks.json`, `textures.json` (paleta + padrão), e depois `items.json`, `recipes.json`, `ores.json`, `enemies.json`.
+Não reordene `blocks.json`: o id do bloco é a posição (saves vão depender disso). Adicione no fim.
 O Calamity é outra pasta com os mesmos arquivos + poucos comportamentos novos em script.
 
 ## Roadmap (detalhes em docs/ROADMAP.md)
