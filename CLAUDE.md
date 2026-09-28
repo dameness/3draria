@@ -13,6 +13,17 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
 - Respostas curtas; não repita código que não mudou.
 - **Todo passo termina com teste headless passando + instrução objetiva de playtest para o dono.**
 
+## Diretrizes do dono (playtest da v6; valem para todo passo novo)
+- **Terraria em 3D, nunca Minecraft**: personagem, armaduras, inimigos, itens, blocos e GUI. Se parecer Minecraft, refaça.
+- **GUI = a do Terraria, nos mesmos lugares e com a mesma interatividade** (spec em docs/UI.md): hotbar/inventário no canto
+  superior esquerdo, criação à esquerda, equipamento à direita, vida no canto superior direito, item preso ao cursor,
+  botão direito, lixeira, dicas com a cor da raridade. Tab abre o inventário. Jogabilidade também como a do Terraria.
+- **Animação sempre**: câmera/mão, poses, inimigos, partículas e interface. Jogo parado é defeito.
+- Desempenho está bom no PC do dono (Ubuntu modesto): manter e pedir o FPS de volta.
+- **Ao fim de todo passo, diga como rebuildar**: `git pull && scripts/update.sh && .tools/godot` (update.sh = Godot + sprites +
+  cache de classes; sem ele script novo dá "Identifier ... not declared"), e se **precisa de mundo novo** (mudou a geração).
+- O dono lê o chat no app: respostas curtas em português, com o guia de teste no fim.
+
 ## Ponytail (skills em .claude/skills/, licença MIT em PONYTAIL-LICENSE)
 - Antes de codar, pare no primeiro degrau que resolve: precisa existir? já existe no repo? stdlib/engine faz? dá pra ser uma linha? só então o mínimo.
 - Entenda o problema primeiro: leia a tarefa e o fluxo real de ponta a ponta.
@@ -36,7 +47,8 @@ Godot 4.7.2-stable (fixado em scripts/setup-godot.sh), GDScript, renderer Compat
 ## Comandos
 ```sh
 scripts/setup-godot.sh                        # baixa o Godot em .tools/godot (idempotente; roda sozinho no SessionStart remoto)
-scripts/fetch-sprites.sh                      # baixa os sprites da wiki em assets/wiki/ (idempotente; opcional)
+scripts/update.sh                             # após cada git pull: Godot + sprites + cache de classes (depois: .tools/godot)
+scripts/fetch-sprites.sh                      # baixa os sprites da wiki em assets/wiki/ (idempotente, respeita o 429; opcional)
 scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki (tabelas Cargo) para montar data/
 .tools/godot --headless --import              # após pull ou novo class_name: atualiza o cache de classes
 .tools/godot -e                               # abre o editor (local)
