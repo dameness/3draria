@@ -55,7 +55,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   chunk_mesher.gd    faces visíveis → arrays de mesh (thread-safe)
   world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool
   items.gd           itens (blocos viram itens + items.json), drops, poder de picareta
-  inventory.gd       slots, empilhar, remover   crafting.gd  receitas e estações por perto
+  inventory.gd  crafting.gd   slots/empilhar; receitas e estações por perto
   voxel_body.gd      colisão AABB contra voxels (jogador, inimigos, itens)
   player.gd          1ª pessoa, vida, usar item (minerar/golpear/atirar), colocar
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
@@ -66,8 +66,7 @@ tests/run.gd         testes headless (asserts simples, sem framework) + integra�
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)
 textures/            atlas.png gerado pelos testes, só para inspeção (ignorado pelo git)
-docs/ROADMAP.md      fases e critérios de pronto
-.tools/              binário do Godot (ignorado pelo git)
+docs/ROADMAP.md      fases e critérios de pronto     .tools/  binário do Godot (ignorado pelo git)
 ```
 
 ## Onde fica cada tipo de dado
