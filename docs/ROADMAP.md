@@ -26,6 +26,18 @@ Pronto quando: testes carregam items/recipes/ores de `data/base/`, validam refer
 - NPCs de vila (casas válidas, lojas, diálogos).
 - Biomas do Terraria (corrupção/carmesim, selva, neve, deserto, oceano, cogumelo, masmorra) com blocos, inimigos e drops próprios.
 
+## Planos futuros (pedidos do dono; ordem a definir)
+- Seed escolhida na criação do mundo; multijogador; build/compatibilidade com Windows.
+- Mundo maior e mais profundo (ALTURA/SIZE_CHUNKS; conferir memória e tempo de geração).
+- Asas, ganchos, acessórios (slots na GUI) e reforja.
+- NPCs de vila (casas, lojas, diálogos) e todos os biomas do Terraria (selva, neve, deserto, oceano, cogumelo...).
+- Hardmode (F6) e, por fim, o Calamity (F7) em data/calamity/.
+- Jogabilidade como a do Terraria: mineração com tempo e rachaduras por dureza, queda com dano, minimapa, buffs, moedas
+  e slots de munição, baús, favoritar/ordenar (docs/UI.md).
+
+## Revisão gráfica e GUI (V6–V9) — V6 ✅ V7 ✅ V8 ✅ (falta playtest); V8b menu com fundo 3D e V9 partículas/arco do golpe: pendentes
+Detalhes e motivos em docs/VISUAL.md; contexto para continuar em docs/HANDOFF.md.
+
 ## F4 Sobrevivência ✅ (falta playtest)
 Vida, dia/noite, 2-3 inimigos básicos, combate corpo a corpo e à distância, salvar/carregar.
 Itens soltos no chão (miniatura girando + feixe na cor da raridade), tochas/gel, fornalha com tochas.

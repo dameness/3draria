@@ -47,6 +47,32 @@ Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e part�
 - V5 ✅: inimigos em 3D por `model` (scripts/enemy_model.gd): eye (veias, íris, tentáculos; fase 2 = boca com
   dentes), slime (gelatina translúcida que estica), humanoid (corpo da V4); sem modelo, sprite extrudado.
 
+## Revisão gráfica V6–V9 (o que mudou e por quê)
+Motivo: o jogo parecia Minecraft (gramado uniforme, árvores em bolha, céu chapado, HUD padrão do Godot). Prints
+de antes/depois em `docs/img/antes_depois_*.png` (esquerda = antes). Meta mantida: 60 fps em GPU integrada (renderer
+Compatibility, sem sombras em tempo real, uma malha por chunk com 2 superfícies).
+- **V6 céu** (`shaders/sky.gdshader`, `day_night.gd`): gradiente, brilho de pôr do sol, sol, lua com crateras, estrelas,
+  2 camadas de nuvens e 3 de montanhas ao horizonte; a névoa usa a cor do horizonte (sem emenda) e escurece em
+  caverna / fica vermelha no submundo. Sol e lua giram e a direção da luz muda o tom das faces dos blocos.
+- **V7 mundo**: relevo com serras e terraços, planície no nascimento, lagos com praia, árvores do Terraria (tronco alto,
+  raízes, galhos com tufos, copa no topo; grade sorteada, iguais entre chunks), capim/flores/cogumelos que balançam,
+  água (superfície translúcida com ondas) e lava (brilha), oclusão ambiente por vértice, variação de tom por bloco,
+  copa que sombreia de leve. Mesher reescrito (37 → 17 ms/chunk) e chunks gerados uma vez só.
+- **V8 interface** (`ui.gd`, `hud.gd`, docs/UI.md): tema Terraria, corações, hotbar + inventário 5x10 no canto superior
+  esquerdo, criação em coluna, equipamento à direita, item preso ao cursor, lixeira, dicas com a cor da raridade,
+  números de dano flutuantes, tela azul na água / vermelha na lava, flash de dano, pausa de verdade.
+- **Personagem e armaduras** (`player_model.gd`): boneco arredondado com contorno e sombreado toon (o traço do sprite),
+  cabeça grande, olhos, cabelo espetado; armaduras por peça na paleta do ícone; respira, pisca, anda, pula, nada, golpeia.
+- **Combate e movimento**: golpe acerta no impacto da animação (arco na altura do corpo ou cone 3D), câmera balança
+  ao andar e treme nos golpes, tochas tremulam.
+- **Pendente** (docs/HANDOFF.md): menu com o mundo ao fundo, partículas, arco do golpe, braço em 1ª pessoa, rachaduras
+  ao minerar, inimigos mais legíveis (o slime some no gramado).
+
+## Desempenho: o que aprendemos
+- Neste Godot, chamadas de função GDScript disputam uma trava entre threads (arrays, operadores e métodos nativos
+  não): código que roda em thread (`world_gen.gd`, `chunk_mesher.gd`) não chama função no laço quente.
+- `WorkerThreadPool.add_task` sem prioridade alta usa só ~30% das threads.
+
 ## Limites conhecidos
 - Blocos do Terraria têm bordas que mudam com os vizinhos (tile framing); em voxel usamos só o tile central.
 - Sprites grandes (> 64 px) e animados precisam de recorte de frame no JSON (`frame: [x, y, w, h]`).

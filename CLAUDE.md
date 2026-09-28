@@ -71,7 +71,8 @@ scripts/             setup-godot.sh e um .gd por sistema:
   atlas.gd           gera o atlas 16x16 procedural
   world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128)
   chunk_mesher.gd    faces visíveis → arrays de mesh com luz (céu pela altura da coluna + tochas); thread-safe
-                     shaders/chunk.gdshader: atlas × luz; o dia/noite muda só a luz do céu
+                     shaders/chunk.gdshader: atlas × luz (+ direção do sol, balanço das plantas, lava, tocha); o dia/noite muda só a luz do céu
+                     shaders/water.gdshader: água translúcida com ondas   shaders/sky.gdshader: céu, sol, lua, estrelas, nuvens, montanhas
   world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool
   items.gd           itens (blocos viram itens + items.json), drops, poder de picareta
   inventory.gd       slots, empilhar, remover
@@ -84,9 +85,12 @@ scripts/             setup-godot.sh e um .gd por sistema:
   day_night.gd       ciclo 15+9 min
   save_game.gd       user://players/*.plr e user://worlds/*.wld (seed, hora, spawn, chunks editados)
   menu.gd            menu inicial: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair
-  hud.gd             mira, hotbar, vida, hora, avisos, janela de inventário/criação (E)
+  ui.gd              tema e peças da interface do Terraria (fonte com contorno, painéis azuis, coração, dicas por raridade)
+  hud.gd             GUI no layout do Terraria (docs/UI.md): hotbar/inventário, criação, equipamento, vida, cursor, pausa
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  item na mão (1ª pessoa) + animação
-  player_model.gd    corpo em blocos (3ª pessoa, tecla V): andar, golpe, arma na mão, armadura vestida
+  player_model.gd    boneco chibi arredondado com contorno (3ª pessoa, tecla V): poses, arma na mão, armadura por peça
+scripts/update.sh    após cada git pull: Godot + sprites + cache de classes
+tests/character_preview.gd  prévia dos personagens/armaduras (xvfb) → textures/personagens.png
 tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)
