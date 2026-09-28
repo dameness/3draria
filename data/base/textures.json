@@ -133,5 +133,15 @@
 	"flower_pink": {"pattern": "flower", "colors": ["#ff8ad0", "#fff0a0"], "top_colors": ["#2fa040"]},
 	"mushroom": {"pattern": "mushroom", "colors": ["#b8804c", "#e8d8b0"], "top_colors": ["#d8c8a0"]},
 	"water": {"pattern": "liquid", "colors": ["#2f66c0", "#3a78d8", "#4a8ae8", "#6aa2f0"]},
-	"lava": {"pattern": "liquid", "colors": ["#c02a06", "#f0500c", "#ff8a1a", "#ffd050"]}
+	"lava": {"pattern": "liquid", "colors": ["#c02a06", "#f0500c", "#ff8a1a", "#ffd050"]},
+	"copper_coin": {"wiki": "Copper_Coin", "pattern": "blob", "colors": ["#c0703a", "#8a4a20", "#f0a868"]},
+	"silver_coin": {"wiki": "Silver_Coin", "pattern": "blob", "colors": ["#c8ccd8", "#8a90a0", "#ffffff"]},
+	"gold_coin": {"wiki": "Gold_Coin", "pattern": "blob", "colors": ["#f0c030", "#b08810", "#fff090"]},
+	"platinum_coin": {"wiki": "Platinum_Coin", "pattern": "blob", "colors": ["#a8e8e0", "#60a8a8", "#f0ffff"]},
+	"hermes_boots": {"wiki": "Hermes_Boots", "pattern": "blob", "colors": ["#a0522d", "#5a2e14", "#e8b060"]},
+	"shiny_red_balloon": {"wiki": "Shiny_Red_Balloon", "pattern": "blob", "colors": ["#e03030", "#901818", "#ff9090"]},
+	"band_of_regeneration": {"wiki": "Band_of_Regeneration", "pattern": "blob", "colors": ["#c8a030", "#806010", "#ff5050"]},
+	"chest_top": {"pattern": "planks", "colors": ["#8a653c", "#6e4e2c", "#a0784a"]},
+	"chest_side": {"pattern": "bricks", "colors": ["#a0784a", "#8a653c", "#b3895a"], "top_colors": ["#d8b040"]},
+	"chest": {"wiki": "Chest", "pattern": "blob", "colors": ["#a0784a", "#6e4e2c", "#d8b040"]}
 }

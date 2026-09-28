@@ -44,5 +44,6 @@
 	{"name": "lava_4", "solid": false, "shape": "liquid", "liquid": "lava", "level": 4, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
 	{"name": "lava_5", "solid": false, "shape": "liquid", "liquid": "lava", "level": 5, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
 	{"name": "lava_6", "solid": false, "shape": "liquid", "liquid": "lava", "level": 6, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
-	{"name": "lava_7", "solid": false, "shape": "liquid", "liquid": "lava", "level": 7, "breakable": false, "glow": true, "tiles": {"all": "lava"}}
+	{"name": "lava_7", "solid": false, "shape": "liquid", "liquid": "lava", "level": 7, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
+	{"name": "chest", "mine": 4, "icon": "chest", "tiles": {"top": "chest_top", "side": "chest_side", "bottom": "chest_top"}}
 ]

@@ -21,6 +21,7 @@ var pending: Array[Vector2i] = []   # chunks no alcance que ainda esperam a mesh
 var meshable: Array[Vector2i] = []     # desses, os que já têm dados (e os dos vizinhos) e podem virar mesh
 var need_gen: Array[Vector2i] = []  # chunks a gerar para os pending (o mais perto no fim)
 var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
+var chests := {}    # Vector3i -> {item: PackedInt32Array, count: PackedInt32Array}; só os baús já abertos (os outros ainda não têm conteúdo)
 var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
 var versions := {}  # Vector2i -> nº de edições; descarta mesh de job que ficou velho
 var jobs := {}     # id da task -> resultado preenchido pela thread
@@ -99,12 +100,37 @@ func liquid_at(p: Vector3) -> int:
 	return 0
 
 
+# Conteúdo do baú em p; na primeira vez sorteia o tesouro (determinístico pela seed e posição): acessório, flechas, tochas, minério.
+func chest_at(p: Vector3i) -> Dictionary:
+	if not chests.has(p):
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash([world_seed, p.x, p.y, p.z])
+		var c := {"item": PackedInt32Array(), "count": PackedInt32Array()}
+		c.item.resize(40)
+		c.item.fill(-1)
+		c.count.resize(40)
+		var loot: Array = [["hermes_boots", 1, 1, 0.12], ["shiny_red_balloon", 1, 1, 0.12], ["band_of_regeneration", 1, 1, 0.12],
+			["wooden_arrow", 25, 60, 0.5], ["torch", 8, 20, 0.6], ["iron_bar", 3, 8, 0.4], ["gold_bar", 2, 5, 0.25], ["copper_bar", 4, 10, 0.4]]
+		var k := 0
+		for l in loot:
+			if rng.randf() < l[3]:
+				c.item[k] = Items.ids[l[0]]
+				c.count[k] = rng.randi_range(l[1], l[2])
+				k += 1
+		if k == 0:   # baú nunca vem vazio
+			c.item[0] = Items.ids.torch
+			c.count[0] = 10
+		chests[p] = c
+	return chests[p]
+
+
 # Troca a seed e descarta tudo o que foi gerado (usado ao carregar um save).
 func set_seed(s: int) -> void:
 	world_seed = s
 	gen = WorldGen.new(s)
 	chunks.clear()
 	edited.clear()
+	chests.clear()
 	liquid = Liquid.new()
 
 

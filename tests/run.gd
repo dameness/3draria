@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -238,6 +238,12 @@ func test_save():
 	p.inv.add(Items.ids.iron_helmet, 1)
 	p.inv.equip_from(p.inv.item.find(Items.ids.iron_helmet))
 	p.spawn = Vector3(21.5, 11, 22.5)
+	p.inv.add(Items.ids.gold_coin, 3)
+	p.inv.ammo[1] = Items.ids.wooden_arrow
+	p.inv.ammo_count[1] = 77
+	p.inv.acc[2] = Items.ids.hermes_boots
+	p.inv.fav[0] = 1
+	w.chest_at(Vector3i(5, 6, 7)).item[0] = Items.ids.gold_bar
 	p.clock.time = 123.0
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
 	var w2: Node3D = load("res://scripts/world.gd").new()
@@ -248,6 +254,9 @@ func test_save():
 	check(p2.inv.total(Items.ids.stone) == 42 and p2.inv.total(Items.ids.iron_pickaxe) == 1 and p2.hp == 37, "inventário e vida voltam")
 	check(p2.inv.equip[0] == Items.ids.iron_helmet, "armadura vestida volta")
 	check(p2.spawn == p.spawn and p2.clock.time == 123.0, "spawn e hora do mundo voltam")
+	check(p2.inv.coin[2] == 3 and p2.inv.ammo[1] == Items.ids.wooden_arrow and p2.inv.ammo_count[1] == 77 and p2.inv.acc[2] == Items.ids.hermes_boots \
+		and p2.inv.fav[0] == 1, "moedas, munição, acessórios e favoritos voltam")
+	check(w2.chests.has(Vector3i(5, 6, 7)) and w2.chests[Vector3i(5, 6, 7)].item[0] == Items.ids.gold_bar, "conteúdo do baú volta")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
 	check(SaveGame.list(SaveGame.players_dir).is_empty(), "apagar personagem")
@@ -562,6 +571,53 @@ func test_cursor():
 	check(Crafting.craft_to_cursor(by_result.workbench, inv, {}) and inv.cursor_count == 2, "criar de novo soma na mão")
 	inv.cursor_id = Items.ids.dirt
 	check(not Crafting.craft_to_cursor(by_result.workbench, inv, {}) and inv.total(Items.ids.wood) == 5, "mão ocupada por outro item: não cria")
+	return true
+
+
+func test_gui_extras():
+	var inv := Inventory.new()
+	inv.add(Items.ids.copper_coin, 250)
+	check(inv.coin[0] == 50 and inv.coin[1] == 2 and inv.total(Items.ids.copper_coin) == 0 and inv.coin_value() == 250, "moedas vão para os slots e sobem de tipo a cada 100")
+	inv.add(Items.ids.wooden_arrow, 10)
+	inv.ammo[0] = Items.ids.unholy_arrow
+	inv.ammo_count[0] = 1
+	check(inv.take_ammo("arrow") == Items.ids.unholy_arrow and inv.ammo[0] == -1, "slot de munição é usado antes do inventário")
+	check(inv.take_ammo("arrow") == Items.ids.wooden_arrow and inv.total(Items.ids.wooden_arrow) == 9 and inv.take_ammo("bala") == -1, "depois a munição do inventário")
+	inv.cursor_id = Items.ids.dirt
+	inv.cursor_count = 5
+	inv.click_ammo(2)
+	check(inv.ammo[2] == -1 and inv.cursor_id == Items.ids.dirt, "slot de munição recusa o que não é munição")
+	inv.click_acc(0)
+	check(inv.acc[0] == -1, "slot de acessório recusa o que não é acessório")
+	inv = Inventory.new()
+	inv.item[0] = Items.ids.hermes_boots
+	inv.count[0] = 1
+	inv.click(0)
+	inv.click_acc(1)
+	check(inv.acc[1] == Items.ids.hermes_boots and is_equal_approx(inv.acc_sum("speed"), 0.4), "acessório vestido soma o bônus")
+	for e in [[12, Items.ids.stone], [14, Items.ids.dirt], [20, Items.ids.stone]]:
+		inv.item[e[0]] = e[1]
+		inv.count[e[0]] = 5
+	inv.item[10] = Items.ids.wood
+	inv.count[10] = 1
+	inv.fav[10] = 1
+	inv.sort_items()
+	check(inv.item[10] == Items.ids.wood and inv.fav[10] == 1, "ordenar não mexe no favorito")
+	check(inv.item[11] == Items.ids.dirt and inv.item[12] == Items.ids.stone and inv.item[13] == Items.ids.stone, "ordenar agrupa por nome, fora da hotbar")
+	var chest := {"item": PackedInt32Array([-1, -1, -1]), "count": PackedInt32Array([0, 0, 0])}
+	var from := PackedInt32Array([Items.ids.stone, Items.ids.stone])
+	var cnt := PackedInt32Array([9990, 30])
+	check(Inventory.move_stack(from, cnt, 0, chest.item, chest.count) and chest.count[0] == 9990 and from[0] == -1, "Shift+clique move a pilha ao baú")
+	Inventory.move_stack(from, cnt, 1, chest.item, chest.count)
+	check(chest.count[0] == 9999 and chest.count[1] == 21, "…junta no que já tem e o resto vai para um slot vazio")
+	var w := floor_world()
+	w.world_seed = 5
+	var a: Dictionary = w.chest_at(Vector3i(3, 4, 5))
+	check(a.item.count(-1) < 40 and a.item[0] != -1, "baú novo traz tesouro")
+	var w3: Node3D = load("res://scripts/world.gd").new()
+	check(w3.chest_at(Vector3i(3, 4, 5)).item[0] != -1, "baú sem seed também sorteia (nunca vazio)")
+	w3.free()
+	w.free()
 	return true
 
 

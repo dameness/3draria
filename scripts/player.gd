@@ -25,7 +25,7 @@ const TPP_DISTANCE := 4.0      # câmera em 3ª pessoa: distância atrás da cab
 const TPP_SHOULDER := 0.6      # e deslocada para a direita, para a mira não ficar sobre a cabeça
 const TPP_MARGIN := 0.4        # a câmera para antes do bloco que está no caminho (a lente vê ~0,1 além do ponto)
 const EPS := VoxelBody.EPS
-const TEST_KIT := {"terra_blade": 1, "enchanted_sword": 1, "wooden_bow": 1, "wooden_arrow": 200, "iron_pickaxe": 1}  # F8, para playtest
+const TEST_KIT := {"hermes_boots": 1, "shiny_red_balloon": 1, "band_of_regeneration": 1, "terra_blade": 1, "enchanted_sword": 1, "wooden_bow": 1, "wooden_arrow": 200, "iron_pickaxe": 1}  # F8, para playtest
 const LO := Vector3(-HALF, 0, -HALF)
 const HI := Vector3(HALF, TALL, HALF)
 
@@ -237,11 +237,11 @@ func tick(delta: float) -> void:
 		mine_pos = Vector3i(-1, -1, -1)
 	since_hit += delta
 	if since_hit > REGEN_DELAY:
-		hp = minf(hp + delta, MAX_HP)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
+		hp = minf(hp + delta * (1.0 + inv.acc_sum("regen")), MAX_HP)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
 
 
 func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
-	var speed := WALK * (1.4 if sprint else 1.0)
+	var speed := WALK * (1.4 if sprint else 1.0) * (1.0 + inv.acc_sum("speed"))
 	if flying:
 		velocity = Vector3.ZERO
 		position += wish * speed * 3.0 * delta  # voo atravessa blocos
@@ -256,11 +256,11 @@ func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
 	if swimming:  # nadando: afunda devagar e Espaço sobe; junto de uma margem, perto da superfície, Espaço dá um pulo inteiro
 		velocity.y = move_toward(velocity.y, SWIM_UP if jump else -SWIM_SINK, 30.0 * delta)
 		if jump and depth < HOP_DEPTH and (hit_wall or on_floor):
-			velocity.y = JUMP
+			velocity.y = JUMP * (1.0 + inv.acc_sum("jump"))
 	else:
 		velocity.y = maxf(velocity.y - GRAVITY * delta, -50.0)
 		if jump and on_floor:
-			velocity.y = JUMP
+			velocity.y = JUMP * (1.0 + inv.acc_sum("jump"))
 	if depth > 0.0 and kind == Blocks.ids.lava:
 		hurt(LAVA_DAMAGE, Vector3.ZERO)
 	fall_speed = minf(velocity.y, fall_speed)
@@ -416,20 +416,11 @@ func summon(d: Dictionary) -> void:
 		say("%s despertou!" % b.def.name.replace("_", " "))
 
 
-# Primeira munição da classe pedida pela arma (ex.: qualquer flecha para arcos), na ordem do inventário.
-func find_ammo(ammo_class: String) -> int:
-	for i in Inventory.SIZE:
-		if inv.item[i] != -1 and Items.defs[inv.item[i]].get("ammo_class") == ammo_class:
-			return inv.item[i]
-	return -1
-
-
 func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
-	var ammo := find_ammo(d.ammo)
+	var ammo := inv.take_ammo(d.ammo)
 	if ammo == -1:
 		say("sem munição (%s)" % d.ammo)
 		return
-	inv.remove(ammo, 1)
 	var dmg: int = d.damage + Items.defs[ammo].get("damage", 0)
 	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, d.shoot_speed, dmg, d.knockback)
 
@@ -447,6 +438,9 @@ func break_target() -> void:
 		return
 	if power == 0:
 		say("segure uma picareta")
+		return
+	if b == Blocks.ids.chest and Array(world.chest_at(p).item).any(func(id): return id != -1):
+		say("esvazie o baú primeiro")
 		return
 	if power < Blocks.power[b]:
 		say("%s precisa de picareta com poder %d (a sua: %d)" % [Blocks.ids.keys()[b].replace("_", " "), Blocks.power[b], power])
@@ -472,6 +466,7 @@ func break_target() -> void:
 		shake = maxf(shake, 0.15)
 		return
 	world.set_block(p.x, p.y, p.z, 0)
+	world.chests.erase(p)
 	mine_damage = 0.0
 	mine_pos = Vector3i(-1, -1, -1)
 	if Items.drop[b] != -1:
@@ -483,6 +478,11 @@ func break_target() -> void:
 
 
 func place_target() -> void:
+	if not target.is_empty() and world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
+		inventory_open = true   # botão direito num baú abre o inventário com o painel do baú
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		get_parent().get_node("HUD").open_chest(world.chest_at(target.pos))
+		return
 	if target.is_empty() or held() == -1 or Items.places[held()] == -1:
 		return
 	var p: Vector3i = target.pos + target.normal

@@ -37,6 +37,7 @@ var BEDROCK: int
 var WOOD: int
 var LEAVES: int
 var ALTAR: int
+var CHEST: int
 var SAND: int
 var WATER: int
 var LAVA: int
@@ -71,6 +72,7 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	WOOD = Blocks.ids.wood
 	LEAVES = Blocks.ids.leaves
 	ALTAR = Blocks.ids.demon_altar
+	CHEST = Blocks.ids.chest
 	SAND = Blocks.ids.sand
 	WATER = Blocks.ids.water
 	LAVA = Blocks.ids.lava
@@ -169,6 +171,8 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_plants(d, hs, W, rng)
 	rng.seed = hash([seed, cx, cz, "altar"])
 	_altar(d, rng)
+	rng.seed = hash([seed, cx, cz, "chest"])
+	_chest(d, rng)
 	return d
 
 
@@ -183,6 +187,20 @@ func _altar(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
 			var i := x + z * CHUNK + y * CHUNK * CHUNK
 			if d[i] == AIR and d[i + CHUNK * CHUNK] == AIR and d[i - CHUNK * CHUNK] == STONE:
 				d[i] = ALTAR
+				return
+
+
+# Baú de tesouro no chão de uma caverna (o conteúdo sai de World.chest_at na primeira vez que abre).
+func _chest(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
+	if rng.randf() > 0.3:
+		return
+	for attempt in 8:
+		var x := rng.randi_range(1, CHUNK - 2)
+		var z := rng.randi_range(1, CHUNK - 2)
+		for y in range(CAVERN_TOP, UNDERWORLD_TOP + 1, -1):
+			var i := x + z * CHUNK + y * CHUNK * CHUNK
+			if d[i] == AIR and d[i + CHUNK * CHUNK] == AIR and d[i - CHUNK * CHUNK] == STONE:
+				d[i] = CHEST
 				return
 
 

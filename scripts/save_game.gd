@@ -73,7 +73,10 @@ static func save_player(player, path: String) -> Error:
 		var id: int = player.inv.item[i]
 		inv.append([Items.names[id] if id != -1 else "", player.inv.count[i]])
 	var equip := Array(player.inv.equip).map(func(id): return Items.names[id] if id != -1 else "")
-	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "inv": inv, "equip": equip})
+	var name := func(id): return Items.names[id] if id != -1 else ""
+	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "inv": inv, "equip": equip,
+		"acc": Array(player.inv.acc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
+		"coin": Array(player.inv.coin), "fav": Array(player.inv.fav)})
 
 
 # Retorna false para personagem novo (o jogo dá os itens iniciais).
@@ -91,6 +94,19 @@ static func load_player(player, path: String) -> bool:
 	var equip: Array = data.get("equip", [])
 	for k in equip.size():
 		player.inv.equip[k] = Items.ids.get(equip[k], -1)
+	var acc: Array = data.get("acc", [])
+	for k in mini(acc.size(), Inventory.ACC):
+		player.inv.acc[k] = Items.ids.get(acc[k], -1)
+	var ammo: Array = data.get("ammo", [])
+	for k in mini(ammo.size(), Inventory.AMMO):
+		player.inv.ammo[k] = Items.ids.get(ammo[k], -1)
+		player.inv.ammo_count[k] = data.ammo_count[k] if player.inv.ammo[k] != -1 else 0
+	var coin: Array = data.get("coin", [0, 0, 0, 0])
+	for k in 4:
+		player.inv.coin[k] = coin[k]
+	var fav: Array = data.get("fav", [])
+	for k in mini(fav.size(), Inventory.SIZE):
+		player.inv.fav[k] = fav[k]
 	return true
 
 
@@ -99,7 +115,14 @@ static func save_world(world, player, clock, path: String) -> Error:
 	for k in world.edited:
 		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
 	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed,
-		"time": clock.time, "spawn": player.spawn, "chunks": chunks})
+		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests)})
+
+
+static func _chests_out(chests: Dictionary) -> Dictionary:
+	var out := {}
+	for p in chests:
+		out[p] = {"item": Array(chests[p].item).map(func(id): return Items.names[id] if id != -1 else ""), "count": Array(chests[p].count)}
+	return out
 
 
 static func load_world(world, player, clock, path: String) -> bool:
@@ -112,6 +135,12 @@ static func load_world(world, player, clock, path: String) -> bool:
 		world.chunks[k] = data.chunks[k].decompress(size, FileAccess.COMPRESSION_ZSTD)
 		world.edited[k] = true
 	clock.time = data.time
+	for p in data.get("chests", {}):
+		var c: Dictionary = data.chests[p]
+		var box := {"item": PackedInt32Array(), "count": PackedInt32Array(c.count)}
+		for n in c.item:
+			box.item.append(Items.ids.get(n, -1))
+		world.chests[p] = box
 	if data.has("spawn"):
 		player.spawn = data.spawn
 	return true

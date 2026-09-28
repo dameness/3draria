@@ -115,6 +115,15 @@ static func item_tip(id: int) -> String:
 		lines.append(_knockback(d.get("knockback", 0.0)))
 	elif d.has("ammo_class"):
 		lines.append("%d de dano (munição)" % d.get("damage", 0))
+	if d.has("accessory"):
+		var a: Dictionary = d.accessory
+		if a.has("speed"): lines.append("+%d%% de velocidade" % roundi(a.speed * 100))
+		if a.has("jump"): lines.append("+%d%% de altura do pulo" % roundi(a.jump * 100))
+		if a.has("regen"): lines.append("Regeneração de vida mais rápida")
+		if a.has("defense"): lines.append("+%d de defesa" % a.defense)
+		lines.append("Acessório")
+	if Inventory.coin_kind(id) != -1:
+		lines.append("Moeda")
 	if Items.pick_power[id] > 0:
 		lines.append("%d%% de poder de picareta" % Items.pick_power[id])
 	if d.has("summon"):

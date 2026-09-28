@@ -67,5 +67,6 @@
 	{"result": "gold_greaves", "needs": {"gold_bar": 25}, "station": "anvil"},
 	{"result": "platinum_helmet", "needs": {"platinum_bar": 20}, "station": "anvil"},
 	{"result": "platinum_chainmail", "needs": {"platinum_bar": 30}, "station": "anvil"},
-	{"result": "platinum_greaves", "needs": {"platinum_bar": 25}, "station": "anvil"}
+	{"result": "platinum_greaves", "needs": {"platinum_bar": 25}, "station": "anvil"},
+	{"result": "chest", "needs": {"wood": 8, "iron_bar": 2}, "station": "workbench"}
 ]

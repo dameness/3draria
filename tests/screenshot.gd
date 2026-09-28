@@ -10,6 +10,8 @@ const SHOTS := [
 	{"name": "alto", "up": 30.0, "look": Vector2(0.6, -0.6)},
 	{"name": "noite", "time": 1100.0, "look": Vector2(2.0, -0.1), "item": "enchanted_sword"},
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
+	{"name": "inventario_cheio", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "hp": 22},
+	{"name": "bau", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "chest": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
@@ -160,6 +162,22 @@ func _setup(s: Dictionary) -> void:
 		player.pitch = asin(sd.y) + s.get("tilt", 0.0)
 		player.cam.rotation.x = player.pitch
 	player.inventory_open = s.get("inventory", false)
+	if s.get("gear", false):   # moedas, munição, acessórios e um favorito, para a GUI do inventário
+		player.inv.add(Items.ids.copper_coin, 37)
+		player.inv.add(Items.ids.gold_coin, 4)
+		player.inv.add(Items.ids.platinum_coin, 1)
+		player.inv.ammo[0] = Items.ids.wooden_arrow
+		player.inv.ammo_count[0] = 120
+		player.inv.acc[0] = Items.ids.hermes_boots
+		player.inv.acc[1] = Items.ids.band_of_regeneration
+		player.inv.add(Items.ids.iron_pickaxe, 1)
+		player.inv.add(Items.ids.torch, 40)
+		player.inv.add(Items.ids.gold_bar, 12)
+		player.inv.fav[3] = 1
+	player.hp = s.get("hp", 100)
+	if s.get("chest", false):
+		var c: Dictionary = world.chest_at(Vector3i(1, 2, 3))
+		main.get_node("HUD").open_chest(c)
 	player.inv.add(Items.ids.wood, 25)
 	player.inv.add(Items.ids.stone, 40)
 	var ent: Node3D = main.get_node("Entities")
