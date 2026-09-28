@@ -12,5 +12,14 @@
 	{"name": "gold_ore", "tiles": {"all": "gold_ore"}, "icon": "gold_ore_item"},
 	{"name": "workbench", "tiles": {"top": "workbench_top", "side": "planks"}, "icon": "workbench_item"},
 	{"name": "furnace", "tiles": {"top": "furnace", "side": "furnace_front", "bottom": "furnace"}, "icon": "furnace_item"},
-	{"name": "anvil", "tiles": {"all": "anvil"}, "icon": "anvil_item"}
+	{"name": "anvil", "tiles": {"all": "anvil"}, "icon": "anvil_item"},
+	{"name": "tin_ore", "icon": "tin_ore_item", "tiles": {"all": "tin_ore"}},
+	{"name": "lead_ore", "icon": "lead_ore_item", "tiles": {"all": "lead_ore"}},
+	{"name": "silver_ore", "icon": "silver_ore_item", "tiles": {"all": "silver_ore"}},
+	{"name": "tungsten_ore", "icon": "tungsten_ore_item", "tiles": {"all": "tungsten_ore"}},
+	{"name": "platinum_ore", "icon": "platinum_ore_item", "tiles": {"all": "platinum_ore"}},
+	{"name": "demonite_ore", "power": 55, "icon": "demonite_ore_item", "tiles": {"all": "demonite_ore"}},
+	{"name": "hellstone", "power": 65, "icon": "hellstone_item", "tiles": {"all": "hellstone"}},
+	{"name": "demon_altar", "breakable": false, "tiles": {"all": "demon_altar"}},
+	{"name": "lead_anvil", "station_as": "anvil", "icon": "lead_anvil_item", "tiles": {"all": "lead_anvil"}}
 ]

@@ -4,8 +4,8 @@ extends Node3D
 # Efeitos do item ("effects" em items.json): glow (halo aditivo com a silhueta), trail (rastro do golpe),
 # particles (faíscas saindo da ponta durante o uso).
 
-const REST := Vector3(0.3, -0.34, -0.5)   # posição da mão em relação à câmera
-const LENGTH := 0.55                       # tamanho do maior lado do item, em blocos
+const REST := Vector3(0.34, -0.36, -0.62)  # posição da mão em relação à câmera
+const LENGTH := 0.42                       # tamanho do maior lado do item, em blocos
 
 @export var player: Node3D
 const TRAIL_TIME := 0.12   # segundos de rastro visível
@@ -81,14 +81,14 @@ func _update_trail(using: bool) -> void:
 	if using and trail_color.a > 0:
 		var box: AABB = mesh.mesh.get_aabb()
 		var to_cam := transform * mesh.transform
-		trail_points.append([to_cam * box.end, to_cam * (box.position + box.size * 0.45), now])
+		trail_points.append([to_cam * box.end, to_cam * (box.position + box.size * 0.75), now])
 	trail_points = trail_points.filter(func(p): return now - p[2] < TRAIL_TIME)
 	trail_mesh.clear_surfaces()
 	if trail_points.size() < 2:
 		return
 	trail_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
 	for p in trail_points:
-		trail_mesh.surface_set_color(Color(trail_color, 0.6 * (1.0 - (now - p[2]) / TRAIL_TIME)))
+		trail_mesh.surface_set_color(Color(trail_color, 0.35 * (1.0 - (now - p[2]) / TRAIL_TIME)))
 		trail_mesh.surface_add_vertex(p[0])
 		trail_mesh.surface_add_vertex(p[1])
 	trail_mesh.surface_end()
@@ -123,7 +123,10 @@ func _show(id: int) -> void:
 	if fx.has("glow"):
 		glow = MeshInstance3D.new()
 		glow.mesh = m[0]
-		glow.material_override = _additive(Color(Color(fx.glow), 0.35))
+		var gm := _additive(Color(Color(fx.glow), 0.45))
+		gm.albedo_texture = m[1].albedo_texture  # usa a transparência do sprite: o halo segue a silhueta
+		gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		glow.material_override = gm
 		var c := aabb.get_center()
 		glow.transform = Transform3D(Basis().scaled(Vector3.ONE * 1.15), c - c * 1.15)
 		mesh.add_child(glow)

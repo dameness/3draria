@@ -42,10 +42,17 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	BEDROCK = Blocks.ids.bedrock
 	WOOD = Blocks.ids.wood
 	LEAVES = Blocks.ids.leaves
+	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
+	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
-		o = o.duplicate()
 		o.block = Blocks.ids[o.block]
-		ores.append(o)
+		o.in = o.get("in", ["stone", "dirt"]).map(func(n): return Blocks.ids[n])
+		if o.has("group"):
+			groups.get_or_add(o.group, []).append(o)
+		else:
+			ores.append(o)
+	for g in groups:
+		ores.append(groups[g][hash([seed, g]) % groups[g].size()])
 
 
 func surface_height(wx: int, wz: int) -> int:
@@ -87,14 +94,14 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	return d
 
 
-# Veios por passeio aleatório; só trocam terra e pedra e ficam dentro do chunk.
+# Veios por passeio aleatório; só trocam os blocos de "in" (padrão: pedra e terra) e ficam dentro do chunk.
 func _ores(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
 	for o in ores:
 		for v in int(o.veins):
 			var p := Vector3i(rng.randi() % CHUNK, rng.randi_range(o.min_y, o.max_y), rng.randi() % CHUNK)
 			for s in int(o.size):
 				var i := p.x + p.z * CHUNK + p.y * CHUNK * CHUNK
-				if d[i] == STONE or d[i] == DIRT:
+				if d[i] in o.in:
 					d[i] = o.block
 				p[rng.randi() % 3] += 1 if rng.randf() < 0.5 else -1
 				p = p.clamp(Vector3i(0, o.min_y, 0), Vector3i(CHUNK - 1, o.max_y, CHUNK - 1))

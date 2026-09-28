@@ -1,5 +1,12 @@
 [
-	{"block": "copper_ore", "min_y": 50, "max_y": 88, "veins": 5, "size": 7},
-	{"block": "iron_ore", "min_y": 30, "max_y": 70, "veins": 4, "size": 6},
-	{"block": "gold_ore", "min_y": 20, "max_y": 48, "veins": 3, "size": 5}
+	{"block": "copper_ore", "group": "t1", "min_y": 50, "max_y": 88, "veins": 5, "size": 7},
+	{"block": "tin_ore", "group": "t1", "min_y": 50, "max_y": 88, "veins": 5, "size": 7},
+	{"block": "iron_ore", "group": "t2", "min_y": 30, "max_y": 70, "veins": 4, "size": 6},
+	{"block": "lead_ore", "group": "t2", "min_y": 30, "max_y": 70, "veins": 4, "size": 6},
+	{"block": "silver_ore", "group": "t3", "min_y": 24, "max_y": 60, "veins": 3, "size": 6},
+	{"block": "tungsten_ore", "group": "t3", "min_y": 24, "max_y": 60, "veins": 3, "size": 6},
+	{"block": "gold_ore", "group": "t4", "min_y": 20, "max_y": 48, "veins": 3, "size": 5},
+	{"block": "platinum_ore", "group": "t4", "min_y": 20, "max_y": 48, "veins": 3, "size": 5},
+	{"block": "demonite_ore", "min_y": 20, "max_y": 32, "veins": 1, "size": 4},
+	{"block": "hellstone", "in": ["ash"], "min_y": 1, "max_y": 14, "veins": 4, "size": 8}
 ]

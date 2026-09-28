@@ -25,9 +25,14 @@ func _ready() -> void:
 	var box := VBoxContainer.new()
 	var title := Label.new()
 	title.text = "Inventário — clique num slot para trocar com o da mão. Criação (estações a %d blocos):" % Crafting.STATION_RANGE
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, 240)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.add_child(recipe_list)
+	recipe_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	box.add_child(grid)
 	box.add_child(title)
-	box.add_child(recipe_list)
+	box.add_child(scroll)
 	panel.add_child(box)
 	for a in ["anchor_left", "anchor_top", "anchor_right", "anchor_bottom"]:
 		panel.set(a, 0.5)
@@ -80,7 +85,10 @@ func _on_craft(r: Dictionary) -> void:
 func _refresh_recipes() -> void:
 	for c in recipe_list.get_children():
 		c.queue_free()
-	for r in Crafting.recipes:
+	# Como no Terraria, o que dá para criar agora vem primeiro.
+	var ordered := Crafting.recipes.filter(func(r): return Crafting.can_craft(r, player.inv, stations))
+	ordered += Crafting.recipes.filter(func(r): return not Crafting.can_craft(r, player.inv, stations))
+	for r in ordered:
 		var b := Button.new()
 		var needs := ", ".join(r.needs.keys().map(func(id): return "%d %s" % [r.needs[id], Items.label(id)]))
 		var at := "" if r.station == -1 else "  [%s]" % Blocks.ids.keys()[r.station]

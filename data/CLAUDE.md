@@ -7,6 +7,7 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 `nome: {wiki?, crop?, pattern?, colors?, top_colors?}`.
 - `wiki`: arquivo da wiki (sem .png) baixado por `scripts/fetch-sprites.sh` em `assets/wiki/` (fora do git).
   Com `crop: [x, y]` recorta 16x16 para face de bloco; sem crop é ícone de item em tamanho original.
+  `recolor: {"#de": "#para"}` troca cores do recorte (ex.: contorno preto da grama).
 - Sem o arquivo (ou sem `wiki`), `scripts/atlas.gd` pinta `pattern` num tile 16x16 com RNG semeado pelo nome.
   Entrada só com `wiki` (ícone) não tem fallback próprio: o item-bloco usa a face lateral.
 - Blocos (opacos): `noise` (pixels sorteados da paleta), `grass_side` (topo com top_colors), `stripes`, `rings`,

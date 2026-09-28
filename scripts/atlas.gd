@@ -53,6 +53,11 @@ static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 	var wiki := wiki_image(spec)
 	if wiki and spec.has("crop"):
 		img.blit_rect(wiki, Rect2i(spec.crop[0], spec.crop[1], TILE, TILE), Vector2i(ox, 0))
+		for from in spec.get("recolor", {}):  # troca cores do sprite (ex.: contorno escuro que fica feio no 3D)
+			for y in TILE:
+				for x in TILE:
+					if img.get_pixel(ox + x, y).is_equal_approx(Color(from)):
+						img.set_pixel(ox + x, y, Color(spec.recolor[from]))
 		return
 	if not spec.has("pattern"):
 		return  # entrada só de ícone da wiki; não ocupa pixels no atlas
