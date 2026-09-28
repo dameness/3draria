@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -203,6 +203,9 @@ func test_save():
 	var saved_dirs := [SaveGame.players_dir, SaveGame.worlds_dir]
 	SaveGame.players_dir = "user://test_players/"
 	SaveGame.worlds_dir = "user://test_worlds/"
+	for d in [SaveGame.players_dir, SaveGame.worlds_dir]:  # sobras de uma execução interrompida
+		for f in DirAccess.get_files_at(d):
+			DirAccess.remove_absolute(d + f)
 	var pp := SaveGame.create_player("Ana")
 	var wp := SaveGame.create_world("Mundo 1", 777)
 	check(pp != "" and wp != "", "criar personagem e mundo")
@@ -421,6 +424,48 @@ func test_enemy_models():
 	var big: Array = ItemModel.for_item(Items.ids.copper_pickaxe, icon, 0.9)
 	check(small[0] != big[0] and big[0].get_aabb().size.x > small[0].get_aabb().size.x, "modelo do item cacheado por tamanho")
 	ent.free()
+	return true
+
+
+# Cor (luz) da face virada para `normal` do bloco em p, num build do mesher.
+func face_light(arrays: Array, p: Vector3i, normal: Vector3) -> Color:
+	var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var n: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var c: PackedColorArray = arrays[Mesh.ARRAY_COLOR]
+	for i in range(0, v.size(), 4):
+		var center := (v[i] + v[i + 2]) / 2
+		if n[i] == normal and Vector3i((center - normal * 0.5).floor()) == p:
+			return c[i]
+	return Color(-1, -1, -1)
+
+
+func test_lighting():
+	var n := Blocks.textures.size()
+	# Chão de pedra até y=10 com um teto a y=20 sobre metade do chunk (caverna rasa) e uma câmara funda.
+	var d := chunk(0)
+	for i in C * C * 11:
+		d[i] = Blocks.ids.stone
+	for z in C:
+		for x in 8:
+			d[x + z * C + 20 * C * C] = Blocks.ids.stone
+	var nb := [d, d, d, d]
+	var a := ChunkMesher.build(d, nb, n)
+	var open_top := face_light(a, Vector3i(12, 10, 8), Vector3.UP)
+	var under_roof := face_light(a, Vector3i(3, 10, 8), Vector3.UP)
+	check(is_equal_approx(open_top.r, 1.0), "chão a céu aberto: luz do céu cheia (%.2f)" % open_top.r)
+	check(under_roof.r < 0.4 and under_roof.r > 0, "sob um teto 10 blocos acima: penumbra (%.2f)" % under_roof.r)
+	check(open_top.g == 0, "sem tocha: sem luz de tocha")
+	d[4 + 8 * C + 11 * C * C] = Blocks.ids.torch
+	a = ChunkMesher.build(d, [d, d, d, d], n)
+	var near := face_light(a, Vector3i(3, 10, 8), Vector3.UP)
+	var far := face_light(a, Vector3i(0, 10, 0), Vector3.UP)
+	check(near.g > 0.7 and near.g > far.g, "tocha ilumina perto (%.2f) mais que longe (%.2f)" % [near.g, far.g])
+	check(Items.places[Items.ids.torch] == Blocks.ids.torch and not Blocks.solid[Blocks.ids.torch], "tocha é item que coloca bloco não sólido")
+	check(Items.drop[Blocks.ids.torch] == Items.ids.torch, "quebrar tocha devolve a tocha")
+	var w := floor_world()
+	w.set_block(20, 11, 20, Blocks.ids.torch)
+	check(w.raycast(Vector3(20.5, 15.5, 20.5), Vector3.DOWN, 10).get("pos") == Vector3i(20, 11, 20), "mira acerta a tocha")
+	w.free()
 	return true
 
 

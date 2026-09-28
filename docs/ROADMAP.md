@@ -22,7 +22,6 @@ Pronto quando: testes carregam items/recipes/ores de `data/base/`, validam refer
 ## Depois do protótipo (anotado, ordem a definir; sempre conferindo a wiki)
 - Mundo mais profundo e maior (ALTURA/SIZE_CHUNKS em world_gen.gd; conferir memória e tempo de geração).
 - Câmera em 1ª e 3ª pessoa com troca por tecla; modelo do jogador mostrando armadura, arma e acessórios equipados.
-- Iluminação por blocos (tochas, cavernas escuras).
 - Asas, ganchos, acessórios e slots de equipamento; reforja com modificadores (Goblin Tinkerer).
 - NPCs de vila (casas válidas, lojas, diálogos).
 - Biomas do Terraria (corrupção/carmesim, selva, neve, deserto, oceano, cogumelo, masmorra) com blocos, inimigos e drops próprios.
@@ -37,6 +36,10 @@ Pendente (fora do protótipo): dano de queda, regeneração fiel, knockback resi
 V1 ícones/blocos exatos da wiki (baixados, fora do git) com fallback procedural; V2 item 3D extrudado na mão;
 V3 efeitos e projéteis por dados. Pronto quando: testes verificam fallback sem rede, extrusão (faces só nas bordas)
 e que `effects`/`shoot` vêm do JSON; no playtest, Terra Blade com o ícone do jogo, brilho verde e o feixe.
+
+## Iluminação ✅
+Luz do céu pela profundidade abaixo do topo da coluna (cavernas escuras, sombra de árvore) e tochas colocáveis
+com raio 10; dia/noite escurece só o céu. Limite: luz de tocha atravessa paredes (sem oclusão) — BFS se precisar.
 
 ## Menu e saves ✅
 Menu como no Terraria (Um jogador → personagem → mundo), saves separados de personagem e de mundo,

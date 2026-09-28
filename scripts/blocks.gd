@@ -7,6 +7,8 @@ static var ids := {}                       # nome -> id
 static var solid := PackedByteArray()      # id -> 1 se sólido
 static var breakable := PackedByteArray()  # id -> 1 se o jogador pode quebrar
 static var power := PackedInt32Array()     # id -> poder de picareta mínimo
+static var shape: Array[String] = []       # id -> "" (cubo) ou forma especial não sólida ("torch")
+static var light := PackedInt32Array()     # id -> raio de luz em blocos (0 = não ilumina)
 static var station_as := PackedInt32Array() # id -> bloco de estação que ele equivale (bigorna de chumbo = bigorna)
 static var icons: Array[String] = []       # id -> textura do ícone do item-bloco ("" = face lateral)
 static var drop_names: Array[String] = []  # id -> item que dropa ("" = nada); Items resolve
@@ -23,6 +25,8 @@ static func load_pack(dir := "res://data/base") -> void:
 	solid.clear()
 	breakable.clear()
 	power.clear()
+	shape.clear()
+	light.clear()
 	drop_names.clear()
 	icons.clear()
 	station_as.clear()
@@ -33,8 +37,10 @@ static func load_pack(dir := "res://data/base") -> void:
 		solid.append(1 if b.get("solid", true) else 0)
 		breakable.append(1 if b.get("breakable", true) else 0)
 		power.append(b.get("power", 0))
+		shape.append(b.get("shape", ""))
+		light.append(b.get("light", 0))
 		icons.append(b.get("icon", ""))
-		drop_names.append(b.get("drop", b.name if solid[-1] and breakable[-1] else ""))
+		drop_names.append(b.get("drop", b.name if breakable[-1] and (solid[-1] or shape[-1] != "") else ""))
 		var t: Dictionary = b.get("tiles", {})
 		var side: String = t.get("side", t.get("all", ""))
 		for n in [side, side, t.get("top", side), t.get("bottom", side), side, side]:

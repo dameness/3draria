@@ -1,13 +1,13 @@
 extends Node
 # Ciclo de dia e noite: 15 min de dia e 9 de noite, como no Terraria.
-# Escurece o material dos blocos (que é sem sombreamento) e muda a cor do céu e da névoa.
+# Escurece a luz do céu dos blocos (shader) e o sol dos modelos, e muda a cor do céu e da névoa.
 
 const DAY_SECONDS := 15 * 60.0
 const NIGHT_SECONDS := 9 * 60.0
 const CYCLE := DAY_SECONDS + NIGHT_SECONDS
 const SKY_DAY := Color(0.53, 0.75, 0.95)
 const SKY_NIGHT := Color(0.03, 0.04, 0.1)
-const NIGHT_LIGHT := 0.3
+const NIGHT_LIGHT := 0.2
 
 @export var world: Node3D
 @export var sun: DirectionalLight3D   # ilumina só os modelos (jogador, itens); os blocos são sem sombreamento
@@ -32,7 +32,7 @@ func clock() -> String:
 func _process(delta: float) -> void:
 	time = fmod(time + delta, CYCLE)
 	var l := light()
-	world.material.albedo_color = Color(l, l, l)
+	world.material.set_shader_parameter("daylight", l)
 	if sun:
 		sun.light_energy = l
 	var env := world.get_world_3d().environment

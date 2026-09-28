@@ -19,6 +19,7 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 ## blocks.json
 `{name, tiles:{all|top|side|bottom}, icon?, station_as? (conta como outra estação), solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
 `icon`: textura do ícone do item-bloco (ex.: `dirt_item` → `Dirt_Block.png`).
+`shape`: forma não cúbica e não sólida (hoje só "torch"); `light`: raio de luz em blocos (tocha = 10).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral).
 
 ## items.json (itens que não são bloco)

@@ -33,7 +33,7 @@ static func load_pack(dir := "res://data/base") -> void:
 		rarity_colors[int(r)] = Color(rc[r])
 	for block in Blocks.ids:
 		var b: int = Blocks.ids[block]
-		if Blocks.solid[b] and Blocks.breakable[b]:
+		if Blocks.breakable[b] and (Blocks.solid[b] or Blocks.shape[b] != ""):
 			_add({"name": block, "icon": Blocks.icons[b]}, Blocks.tiles[b * Blocks.FACES], b)
 	var tile_index := Blocks.textures.keys()
 	for it in Blocks.read(dir + "/items.json"):

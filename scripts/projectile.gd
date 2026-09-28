@@ -13,7 +13,7 @@ var hit: Array[Node3D] = []
 
 
 func _ready() -> void:
-	var atlas: Texture2D = entities.world.material.albedo_texture
+	var atlas: Texture2D = entities.world.atlas_texture
 	if def.has("model_item"):
 		var id: int = Items.ids[def.model_item]
 		var m := ItemModel.for_item(id, Items.icon_texture(id, atlas), def.size)

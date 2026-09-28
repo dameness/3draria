@@ -13,7 +13,8 @@ const NB: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Ve
 var gen: WorldGen
 var chunks := {}   # Vector2i -> PackedByteArray
 var meshes := {}   # Vector2i -> MeshInstance3D, ou null (sem faces / em construção)
-var material := StandardMaterial3D.new()
+var material := ShaderMaterial.new()   # shaders/chunk.gdshader: atlas × luz do céu/tochas
+var atlas_texture: ImageTexture
 var pending: Array[Vector2i] = []
 var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
 var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
@@ -28,10 +29,9 @@ func _ready() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	gen = WorldGen.new(world_seed)
-	material.albedo_texture = ImageTexture.create_from_image(Atlas.build(Blocks.textures))
-	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	material.vertex_color_use_as_albedo = true
+	atlas_texture = ImageTexture.create_from_image(Atlas.build(Blocks.textures))
+	material.shader = preload("res://shaders/chunk.gdshader")
+	material.set_shader_parameter("atlas", atlas_texture)
 
 
 func get_block(x: int, y: int, z: int) -> int:
@@ -99,7 +99,7 @@ func raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
 	var normal := Vector3i.ZERO
 	var t := 0.0
 	while t <= max_dist:
-		if Blocks.solid[get_block(p.x, p.y, p.z)]:
+		if get_block(p.x, p.y, p.z) != 0:  # mira pega também blocos não sólidos (tochas)
 			return {"pos": p, "normal": normal}
 		var a := t_max.min_axis_index()
 		t = t_max[a]

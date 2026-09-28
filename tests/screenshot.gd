@@ -13,6 +13,8 @@ const SHOTS := [
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime"], "item": "wooden_sword"},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
+	{"name": "caverna", "cave": true, "look": Vector2(0.3, -0.25), "item": "copper_pickaxe"},
+	{"name": "noite_tochas", "time": 1100.0, "torches": true, "look": Vector2(0, -0.3), "third": true},
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
 	{"name": "chefe_fase2", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "phase2": true, "third": true},
 ]
@@ -54,8 +56,21 @@ func _process(_delta: float) -> bool:
 
 
 func _setup(s: Dictionary) -> void:
-	player.flying = s.has("up")
+	player.flying = s.has("up") or s.has("cave")
 	player.position = player.spawn + Vector3.UP * s.get("up", 0.0)
+	var sp := Vector3i(player.spawn.floor())
+	if s.get("cave", false):  # sala escavada 12 blocos abaixo, com tochas no chão
+		for x in range(-5, 6):
+			for z in range(-7, 5):
+				for y in range(0, 5):
+					world.set_block(sp.x + x, sp.y - 14 + y, sp.z + z, 0)
+		for t in [Vector3i(-4, 0, -6), Vector3i(4, 0, -6), Vector3i(0, 0, -2)]:
+			world.set_block(sp.x + t.x, sp.y - 14, sp.z + t.z, Blocks.ids.torch)
+		player.position = Vector3(sp.x + 0.5, sp.y - 14, sp.z + 3.5)
+	if s.get("torches", false):
+		for t in [Vector3i(-2, 0, -4), Vector3i(3, 0, -5), Vector3i(0, 0, -9)]:
+			var y: int = world.surface_y(sp.x + t.x, sp.z + t.z)
+			world.set_block(sp.x + t.x, y, sp.z + t.z, Blocks.ids.torch)
 	player.rotation.y = s.look.x
 	player.pitch = s.look.y
 	player.cam.rotation.x = s.look.y

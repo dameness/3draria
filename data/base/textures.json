@@ -121,5 +121,7 @@
 	"gold_greaves": {"wiki": "Gold_Greaves"},
 	"platinum_helmet": {"wiki": "Platinum_Helmet"},
 	"platinum_chainmail": {"wiki": "Platinum_Chainmail"},
-	"platinum_greaves": {"wiki": "Platinum_Greaves"}
+	"platinum_greaves": {"wiki": "Platinum_Greaves"},
+	"torch_stick": {"pattern": "stripes", "colors": ["#7a5230", "#5e3d22", "#86603a"]},
+	"torch_flame": {"pattern": "noise", "colors": ["#ffd24a", "#ffb02a", "#fff0a0", "#ff8a1a"]}
 }

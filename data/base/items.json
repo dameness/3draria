@@ -7,7 +7,6 @@
 	{"name": "gold_pickaxe", "icon": "gold_pickaxe", "pick_power": 55, "use_time": 0.333, "stack": 1, "damage": 6, "reach": 2.2, "knockback": 2},
 	{"name": "gel", "icon": "gel"},
 	{"name": "lens", "icon": "lens"},
-	{"name": "torch", "icon": "torch"},
 	{"name": "wooden_sword", "icon": "wooden_sword", "damage": 7, "use_time": 0.33, "reach": 2.5, "knockback": 5, "stack": 1},
 	{"name": "copper_shortsword", "icon": "copper_shortsword", "damage": 5, "use_time": 0.22, "reach": 2.0, "knockback": 4, "stack": 1, "use_style": "thrust"},
 	{"name": "wooden_bow", "icon": "wooden_bow", "damage": 4, "use_time": 0.5, "ammo": "arrow", "shoot_speed": 22.9, "knockback": 2, "stack": 1},

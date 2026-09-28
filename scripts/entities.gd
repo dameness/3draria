@@ -40,7 +40,7 @@ func load_defs(dir := "res://data/base") -> void:
 
 
 func icon(item: int) -> Texture2D:
-	return Items.icon_texture(item, world.material.albedo_texture)
+	return Items.icon_texture(item, world.atlas_texture)
 
 
 func _physics_process(delta: float) -> void:

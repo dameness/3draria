@@ -21,5 +21,6 @@
 	{"name": "demonite_ore", "power": 55, "icon": "demonite_ore_item", "tiles": {"all": "demonite_ore"}},
 	{"name": "hellstone", "power": 65, "icon": "hellstone_item", "tiles": {"all": "hellstone"}},
 	{"name": "demon_altar", "breakable": false, "tiles": {"all": "demon_altar"}},
-	{"name": "lead_anvil", "station_as": "anvil", "icon": "lead_anvil_item", "tiles": {"all": "lead_anvil"}}
+	{"name": "lead_anvil", "station_as": "anvil", "icon": "lead_anvil_item", "tiles": {"all": "lead_anvil"}},
+	{"name": "torch", "solid": false, "shape": "torch", "light": 10, "icon": "torch", "tiles": {"side": "torch_stick", "top": "torch_flame"}}
 ]
