@@ -24,8 +24,7 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
 - Lógica não trivial deixa UM check executável (assert em tests/run.gd). One-liners triviais não precisam.
 
 ## Referência de conteúdo
-- Terraria: https://terraria.wiki.gg (ex.: /wiki/Pickaxe_power, /wiki/Ores, /wiki/Recipes)
-- Calamity: https://calamitymod.wiki.gg
+- Terraria: https://terraria.wiki.gg (ex.: /wiki/Pickaxe_power, /wiki/Ores) · Calamity: https://calamitymod.wiki.gg
 Consulte antes de criar itens, receitas, minérios, inimigos e chefes; adapte os números, não copie texto.
 Leia pela API com curl (WebFetch é bloqueado; curl passa): `curl -sS "https://terraria.wiki.gg/api.php?action=parse&page=Iron_Bar&prop=text&format=json&formatversion=2"`.
 
