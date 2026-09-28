@@ -1,35 +1,75 @@
 extends Node3D
-# O item da mão em 3D (visão em 1ª pessoa), com animação pelo estilo de uso:
+# O item da mão em 3D (visão em 1ª pessoa) e o braço do personagem que o segura, animados pelo estilo de uso:
 # swing (golpe em arco), thrust (estocada), shoot (recuo), hold (parado). Filho da câmera.
-# Efeitos do item ("effects" em items.json): glow (halo aditivo com a silhueta), trail (rastro do golpe),
-# particles (faíscas saindo da ponta durante o uso).
+# A mão tem inércia (fica para trás ao girar a câmera), balança ao andar e dá um empurrão ao colocar bloco.
+# Efeitos do item ("effects" em items.json): glow (halo aditivo com a silhueta), trail (arco do golpe), particles (faíscas).
+# Toda arma de golpe deixa um arco pálido (Trail), na cor de effects.trail se o item tiver.
 
 const REST := Vector3(0.34, -0.36, -0.62)  # posição da mão em relação à câmera
 const LENGTH := 0.42                       # tamanho do maior lado do item, em blocos
+const SHOULDER := Vector3(0.55, -1.0, 0.4)    # o ombro (no espaço da câmera) fica fora da tela: o braço vem do canto de baixo à direita
+const PLACE_TIME := 0.18                   # duração do empurrão ao colocar bloco (player.gd place_anim)
 
 @export var player: Node3D
-const TRAIL_TIME := 0.12   # segundos de rastro visível
 
 var mesh: MeshInstance3D
 var shown := -2
 var glow: MeshInstance3D
 var sparks: CPUParticles3D
-var trail: MeshInstance3D
-var trail_mesh: ImmediateMesh
-var trail_color := Color.TRANSPARENT
-var trail_points: Array = []   # [ponta, meio, tempo] no espaço da câmera
+var trail: Trail
+var trail_on := false          # o item atual deixa arco
+var arm: Node3D
+var skin_mat: StandardMaterial3D
+var sleeve_mat: StandardMaterial3D
+var sway := Vector2.ZERO       # deslocamento da mão pela rotação da câmera (yaw, pitch)
+var last_yaw := 0.0
+var last_pitch := 0.0
 
 
 func _ready() -> void:
 	mesh = MeshInstance3D.new()
 	add_child(mesh)
-	trail = MeshInstance3D.new()
-	trail_mesh = ImmediateMesh.new()
-	trail.mesh = trail_mesh
-	trail.material_override = _additive(Color.WHITE)
-	trail.material_override.vertex_color_use_as_albedo = true
-	get_parent().add_child.call_deferred(trail)
+	trail = Trail.new()
+	add_child(trail)
+	_build_arm()
 	position = REST
+
+
+# Braço em 1ª pessoa: punho na mão (o cabo do item fica nele) e antebraço + manga esticados até o ombro, que fica fixo na câmera:
+# a cada quadro o braço gira para o ombro, então a mão balança no golpe sem soltar do corpo.
+func _build_arm() -> void:
+	arm = Node3D.new()
+	arm.top_level = true
+	add_child(arm)
+	skin_mat = _lit(Color("#f0b890"))
+	sleeve_mat = _lit(Color("#c0503c"))
+	for part in [[0.043, 0.34, 0.15, skin_mat], [0.06, 1.6, 1.07, sleeve_mat]]:   # raio, comprimento, centro ao longo do braço
+		var c := CapsuleMesh.new()
+		c.radius = part[0]
+		c.height = part[1]
+		c.radial_segments = 12
+		c.rings = 4
+		var mi := MeshInstance3D.new()
+		mi.mesh = c
+		mi.material_override = part[3]
+		mi.position = Vector3(0, part[2], 0)
+		arm.add_child(mi)
+	var fist := SphereMesh.new()
+	fist.radius = 0.062
+	fist.height = 0.124
+	fist.radial_segments = 12
+	fist.rings = 6
+	var f := MeshInstance3D.new()
+	f.mesh = fist
+	f.material_override = skin_mat
+	arm.add_child(f)
+
+
+static func _lit(c: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = c
+	m.roughness = 0.85
+	return m
 
 
 # Estilo de uso: campo "use_style" do item, senão deduzido (munição → shoot, arma/ferramenta → swing).
@@ -57,44 +97,53 @@ static func pose(st: String, t: float) -> Transform3D:
 	return tr
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_sync_arm()
 	var id: int = player.held()
 	if id != shown:
 		shown = id
 		mesh.visible = id != -1
 		if id != -1:
 			_show(id)
+	var st := style(id) if id != -1 else "hold"
+	var dur: float = Items.defs[id].get("use_time", 0.25) if id != -1 else 0.25
+	var t: float = 1.0 - player.cooldown / dur if player.cooldown > 0 else 1.0
+	var tr := pose(st, clampf(t, 0, 1))
+	# inércia ao girar a câmera, balanço ao andar e o empurrão de colocar bloco
+	var yaw: float = player.rotation.y
+	var vel := Vector2(wrapf(yaw - last_yaw, -PI, PI), player.pitch - last_pitch) / maxf(delta, 0.001)
+	last_yaw = yaw
+	last_pitch = player.pitch
+	sway = sway.lerp((vel * 0.012).limit_length(0.22), 1.0 - exp(-10.0 * delta))
+	tr.origin += Vector3(sway.x, -sway.y, 0) * 0.9
+	tr.basis = Basis(Vector3.UP, sway.x * 0.6) * Basis(Vector3.RIGHT, -sway.y * 0.6) * tr.basis
+	var walk: float = clampf(Vector2(player.velocity.x, player.velocity.z).length() / player.WALK, 0.0, 1.4) if player.on_floor and not player.flying else 0.0
+	tr.origin += Vector3(cos(player.bob * 0.5) * 0.012, -absf(sin(player.bob)) * 0.02, 0) * walk
+	if player.place_anim > 0.0:
+		tr.origin += Vector3(0, 0.03, -0.14) * sin(PI * (1.0 - player.place_anim / PLACE_TIME))
+	transform = tr
+	var cam: Node3D = get_parent()
+	var to_shoulder: Vector3 = (cam.global_transform * SHOULDER - global_position).normalized()
+	arm.global_transform = Transform3D(Basis(Quaternion(Vector3.UP, to_shoulder)), global_position)
 	if id == -1:
 		return
-	var st := style(id)
-	var dur: float = Items.defs[id].get("use_time", 0.25)
-	var t: float = 1.0 - player.cooldown / dur if player.cooldown > 0 else 1.0
-	transform = pose(st, clampf(t, 0, 1))
 	var using: bool = player.cooldown > 0
 	if sparks:
 		sparks.emitting = using
-	_update_trail(using)
-
-
-func _update_trail(using: bool) -> void:
-	var now := Time.get_ticks_msec() / 1000.0
-	if using and trail_color.a > 0:
+	if using and trail_on:
 		var box: AABB = mesh.mesh.get_aabb()
-		var to_cam := transform * mesh.transform
-		trail_points.append([to_cam * box.end, to_cam * (box.position + box.size * 0.75), now])
-	trail_points = trail_points.filter(func(p): return now - p[2] < TRAIL_TIME)
-	trail_mesh.clear_surfaces()
-	if trail_points.size() < 2:
-		return
-	trail_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
-	for p in trail_points:
-		trail_mesh.surface_set_color(Color(trail_color, 0.35 * (1.0 - (now - p[2]) / TRAIL_TIME)))
-		trail_mesh.surface_add_vertex(p[0])
-		trail_mesh.surface_add_vertex(p[1])
-	trail_mesh.surface_end()
+		trail.push(mesh.global_transform * box.end, mesh.global_transform * (box.position + box.size * 0.6))
 
 
-static func _additive(c: Color) -> StandardMaterial3D:
+# Cores do braço: as do personagem (pele e camiseta do PlayerModel).
+func _sync_arm() -> void:
+	var model: Node = player.get_node_or_null("Model")
+	if model and model.skin != skin_mat.albedo_color:
+		skin_mat.albedo_color = model.skin
+		sleeve_mat.albedo_color = model.shirt
+
+
+func _additive(c: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -119,7 +168,8 @@ func _show(id: int) -> void:
 	glow = null
 	sparks = null
 	var fx: Dictionary = Items.defs[id].get("effects", {})
-	trail_color = Color(fx.trail) if fx.has("trail") else Color.TRANSPARENT
+	trail_on = fx.has("trail") or (st in ["swing", "thrust"] and Items.defs[id].get("damage", 0) > 0 and Items.pick_power[id] == 0)
+	trail.color = Color(fx.trail) if fx.has("trail") else Color(0.92, 0.96, 1.0)
 	if fx.has("glow"):
 		glow = MeshInstance3D.new()
 		glow.mesh = m[0]

@@ -65,8 +65,12 @@ Compatibility, sem sombras em tempo real, uma malha por chunk com 2 superfícies
   cabeça grande, olhos, cabelo espetado; armaduras por peça na paleta do ícone; respira, pisca, anda, pula, nada, golpeia.
 - **Combate e movimento**: golpe acerta no impacto da animação (arco na altura do corpo ou cone 3D), câmera balança
   ao andar e treme nos golpes, tochas tremulam.
-- **Pendente** (docs/HANDOFF.md): menu com o mundo ao fundo, partículas, arco do golpe, braço em 1ª pessoa, rachaduras
-  ao minerar, inimigos mais legíveis (o slime some no gramado).
+- **V9 partículas e golpe** (`fx.gd`, `block_crack.gd`, `trail.gd`, `held_item.gd`): poeira na cor do bloco a cada golpe da picareta e
+  lascas + faíscas ao quebrar; rachaduras em 4 estágios (mineração por dano acumulado, como o Terraria); gotas e faíscas ao ferir
+  inimigo, nuvem ao morrer; respingo e bolhas na água, poeira nos passos e no pouso; arco (fita) do golpe em 1ª e 3ª pessoa;
+  braço em 1ª pessoa preso ao ombro, com inércia ao girar, balanço ao andar e empurrão ao colocar bloco; slime com contorno,
+  miolo, olhos e sombra; inimigo fica vermelho ao levar golpe.
+- **Pendente** (docs/HANDOFF.md): ver a lista lá.
 
 ## Desempenho: o que aprendemos
 - Neste Godot, chamadas de função GDScript disputam uma trava entre threads (arrays, operadores e métodos nativos

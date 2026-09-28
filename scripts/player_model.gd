@@ -20,6 +20,8 @@ var parts := {}      # nome -> pivô (Node3D) na articulação
 var shells := {}     # slot de armadura -> [MeshInstance3D]
 var held: MeshInstance3D
 var held_id := -2
+var trail: Trail            # arco do golpe da arma na mão
+var trail_on := false
 var worn := PackedInt32Array([-2, -2, -2])
 var phase := 0.0
 var blink := 0.0
@@ -85,6 +87,8 @@ func _build() -> void:
 		_part(arm, _sphere(), skin, Vector3(0, -0.55, 0), Vector3(0.17, 0.17, 0.17))   # mão
 	held = MeshInstance3D.new()
 	parts.arm_r.add_child(held)
+	trail = Trail.new()
+	add_child(trail)
 
 
 # Cabelo espetado como o do Terraria: calota na cabeça, tufos para cima e para trás e uma franja.
@@ -238,6 +242,9 @@ func _process(delta: float) -> void:
 	else:
 		parts.arm_r.rotation.x = lerpf(parts.arm_r.rotation.x, rest, minf(1.0, delta * 14.0))
 		parts.upper.rotation.y = lerpf(parts.upper.rotation.y, 0.0, minf(1.0, delta * 12.0))
+	if player.cooldown > 0 and id != -1 and trail_on and held.mesh:
+		var box: AABB = held.mesh.get_aabb()
+		trail.push(held.global_transform * box.end, held.global_transform * (box.position + box.size * 0.6))
 	if id != held_id:
 		held_id = id
 		_show_held(id)
@@ -256,6 +263,9 @@ func _show_held(id: int) -> void:
 	var m := ItemModel.for_item(id, player.entities.icon(id), 0.9 if st != "hold" else 0.5)
 	held.mesh = m[0]
 	held.material_override = m[1]
+	var fx: Dictionary = Items.defs[id].get("effects", {})
+	trail_on = fx.has("trail") or (st in ["swing", "thrust"] and Items.defs[id].get("damage", 0) > 0 and Items.pick_power[id] == 0)
+	trail.color = Color(fx.trail) if fx.has("trail") else Color(0.92, 0.96, 1.0)
 	var blade := st in ["swing", "thrust"]
 	var phi: float = {"swing": 0.8, "thrust": 0.0}.get(st, PI / 2)
 	var b := Vector3(0, -cos(phi), -sin(phi))

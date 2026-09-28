@@ -92,6 +92,7 @@
 	"demon_bow": {"wiki": "Demon_Bow", "pattern": "bow", "colors": ["#6a4aa0", "#4a2a80"], "top_colors": ["#e0e0e0"]},
 	"suspicious_looking_eye": {"wiki": "Suspicious_Looking_Eye", "pattern": "blob", "colors": ["#e8e0e0", "#c0b0b0", "#ffffff"], "top_colors": ["#c02020"]},
 	"green_slime": {"wiki": "Green_Slime"},
+	"blue_slime": {"wiki": "Blue_Slime"},
 	"zombie": {"wiki": "Zombie"},
 	"demon_eye": {"wiki": "Demon_Eye"},
 	"eye_of_cthulhu_1": {"wiki": "Eye_of_Cthulhu_(Phase_1)"},

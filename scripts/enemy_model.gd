@@ -120,16 +120,42 @@ static func _eye(root: Node3D, r: float, def: Dictionary) -> void:
 		t.name = "Tendril%d" % i
 
 
+# Slime legível no gramado: gelatina brilhante e translúcida com um contorno escuro por trás, miolo mais escuro, olhos e uma sombra
+# no chão. A frente é -Z.
 static func _slime(root: Node3D, size: Array, c: Color) -> void:
+	var w: float = size[0]
+	var h: float = size[1]
+	var shadow := CylinderMesh.new()
+	shadow.top_radius = 0.5
+	shadow.bottom_radius = 0.5
+	shadow.height = 0.01
+	shadow.radial_segments = 16
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.albedo_color = Color(0, 0, 0, 0.38)
+	_part(root, shadow, Vector3(w * 1.15, 1.0, w * 1.15), Color.BLACK, Vector3(0, 0.02, 0), sm)
 	var body := Node3D.new()
 	body.name = "Squash"
 	root.add_child(body)
-	var gel := _mat(Color(c, 0.72))
+	var rim := StandardMaterial3D.new()   # casca escura vista só por trás: vira o contorno da silhueta
+	rim.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rim.cull_mode = BaseMaterial3D.CULL_FRONT
+	rim.albedo_color = c.darkened(0.6)
+	_part(body, SphereMesh.new(), Vector3(w * 1.08, h * 1.4, w * 1.08), c, Vector3(0, h * 0.66, 0), rim)
+	var gel := _mat(Color(c.lightened(0.1), 0.8))
 	gel.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	gel.roughness = 0.2
-	_part(body, SphereMesh.new(), Vector3(size[0], size[1] * 1.3, size[0]), c, Vector3(0, size[1] * 0.65, 0), gel)
-	_part(body, SphereMesh.new(), Vector3(size[0], size[1], size[0]) * 0.35, c.darkened(0.5), Vector3(0, size[1] * 0.6, 0))
-	_part(body, SphereMesh.new(), Vector3.ONE * size[0] * 0.18, Color(1, 1, 1, 1), Vector3(-size[0] * 0.2, size[1] * 1.0, -size[0] * 0.2))
+	gel.roughness = 0.12
+	gel.emission_enabled = true
+	gel.emission = c * 0.4
+	gel.rim_enabled = true
+	gel.rim = 0.7
+	_part(body, SphereMesh.new(), Vector3(w, h * 1.3, w), c, Vector3(0, h * 0.65, 0), gel)
+	_part(body, SphereMesh.new(), Vector3(w * 0.4, h * 0.5, w * 0.4), c.darkened(0.5), Vector3(w * 0.05, h * 0.36, w * 0.02))   # miolo
+	for side in [-1, 1]:   # olhos
+		_part(body, SphereMesh.new(), Vector3(w * 0.14, h * 0.26, w * 0.09), Color("#0c1018"), Vector3(side * w * 0.2, h * 0.78, -w * 0.4))
+		_part(body, SphereMesh.new(), Vector3(w * 0.05, w * 0.05, w * 0.04), Color.WHITE, Vector3(side * w * 0.2 - w * 0.02, h * 0.86, -w * 0.45))
+	_part(body, SphereMesh.new(), Vector3.ONE * w * 0.16, Color(1, 1, 1), Vector3(-w * 0.22, h * 1.02, -w * 0.05))   # brilho da gelatina
 
 
 # Animações por quadro: olho encara o jogador e mexe os tentáculos; slime estica com o pulo.
@@ -141,8 +167,8 @@ static func animate(model: Node3D, enemy: Node3D, target: Vector3, t: float) -> 
 			var ten: Node3D = look.get_node("Tendril%d" % i)
 			ten.rotation.y = sin(t * 6.0 + i) * 0.25
 	var squash := model.get_node_or_null("Squash")
-	if squash:
-		var k := clampf(enemy.velocity.y / 10.0, -0.3, 0.35)
+	if squash:   # estica com o pulo e balança parada, como gelatina
+		var k := clampf(enemy.velocity.y / 10.0, -0.3, 0.35) + sin(t * 4.0 + enemy.get_instance_id() % 7) * 0.04
 		squash.scale = Vector3(1.0 - k * 0.5, 1.0 + k, 1.0 - k * 0.5)
 
 

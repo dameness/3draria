@@ -20,6 +20,7 @@ const LAVA_DAMAGE := 50    # por golpe (há invencibilidade entre um e outro), s
 const MAX_HP := 100
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
 const REGEN_DELAY := 5.0
+const MINE_DECAY := 2.5        # sem golpear o bloco por este tempo, as rachaduras somem
 const TPP_DISTANCE := 4.0      # câmera em 3ª pessoa: distância atrás da cabeça
 const TPP_SHOULDER := 0.6      # e deslocada para a direita, para a mira não ficar sobre a cabeça
 const TPP_MARGIN := 0.4        # a câmera para antes do bloco que está no caminho (a lente vê ~0,1 além do ponto)
@@ -56,6 +57,16 @@ var shake := 0.0              # tremor da tela ao acertar ou ser acertado; some 
 var swing_item := {}          # golpe em andamento: acerta no momento do impacto da animação
 var swing_timer := 0.0
 var target := {}              # resultado do raycast da mira
+var mine_pos := Vector3i(-1, -1, -1)   # bloco que está sendo minerado e o dano acumulado nele (100 quebra)
+var mine_damage := 0.0
+var mine_idle := 0.0
+var place_anim := 0.0         # a mão dá um empurrão ao colocar um bloco
+var stride := 0.0             # distância andada desde a última nuvenzinha de poeira dos passos
+var last_depth := 0.0
+var bubble_timer := 0.0
+var was_on_floor := false
+var fall_speed := 0.0
+var crack: BlockCrack
 @onready var cam: Camera3D = $Camera
 var highlight: MeshInstance3D
 
@@ -84,6 +95,8 @@ func _ready() -> void:
 	highlight.mesh = box
 	highlight.top_level = true
 	add_child(highlight)
+	crack = BlockCrack.new()
+	add_child(crack)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -159,6 +172,10 @@ func _process(delta: float) -> void:
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
 		highlight.global_position = Vector3(target.pos) + Vector3.ONE * 0.5
+	if mine_damage > 0.0 and not target.is_empty() and target.pos == mine_pos:
+		crack.show_at(mine_pos, mine_damage / 100.0)
+	else:
+		crack.visible = false
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not inventory_open and not menu_open \
 			and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and cooldown <= 0:
 		use_item()
@@ -202,12 +219,22 @@ func lens_clear(p: Vector3) -> bool:
 func tick(delta: float) -> void:
 	iframes -= delta
 	cooldown -= delta
+	place_anim = maxf(place_anim - delta, 0.0)
 	if not swing_item.is_empty():
 		swing_timer -= delta
-		if swing_timer <= 0.0:
-			if swing(swing_item, eye(), -cam.global_basis.z) > 0:
+		if swing_timer <= 0.0:   # o impacto do golpe: a lâmina acerta o que está à frente e a picareta bate no bloco da mira
+			var hits := 0
+			if swing_item.get("damage", 0) > 0:
+				hits = swing(swing_item, eye(), -cam.global_basis.z)
+			if swing_item.has("pick_power"):
+				break_target()
+			if hits > 0:
 				shake = maxf(shake, 0.4)
 			swing_item = {}
+	mine_idle += delta
+	if mine_idle > MINE_DECAY:
+		mine_damage = 0.0
+		mine_pos = Vector3i(-1, -1, -1)
 	since_hit += delta
 	if since_hit > REGEN_DELAY:
 		hp = minf(hp + delta, MAX_HP)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
@@ -236,6 +263,7 @@ func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
 			velocity.y = JUMP
 	if depth > 0.0 and kind == Blocks.ids.lava:
 		hurt(LAVA_DAMAGE, Vector3.ZERO)
+	fall_speed = minf(velocity.y, fall_speed)
 	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta)
 	position = r[0]
 	var hit: Vector3i = r[1]
@@ -243,6 +271,35 @@ func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
 	hit_wall = hit.x != 0 or hit.z != 0
 	if hit.y != 0:
 		velocity.y = 0.0
+	_effects(delta)
+
+
+# Partículas do movimento: poeira dos passos e do pouso (na cor do chão), respingo ao entrar ou sair da água e bolhas nadando.
+func _effects(delta: float) -> void:
+	if entities == null:
+		return
+	if on_floor and not was_on_floor and fall_speed < -7.0 and depth == 0.0:
+		Fx.dust(entities, position + Vector3(0, 0.1, 0), _ground_color(), 10, Vector3.UP)
+	if on_floor:
+		fall_speed = 0.0
+		var speed := Vector2(velocity.x, velocity.z).length()
+		stride += speed * delta
+		if stride > 1.5 and speed > 2.0 and depth == 0.0:
+			stride = 0.0
+			Fx.dust(entities, position + Vector3(0, 0.08, 0), _ground_color(), 2)
+	was_on_floor = on_floor
+	if (depth > 0.3) != (last_depth > 0.3) and absf(velocity.y) > 2.0:
+		Fx.splash(entities, position + Vector3(0, maxf(depth, 0.3), 0), 14)
+	last_depth = depth
+	if swimming:
+		bubble_timer -= delta
+		if bubble_timer <= 0.0:
+			bubble_timer = 0.45
+			Fx.bubbles(entities, position + Vector3(0, 1.5, 0))
+
+
+func _ground_color() -> Color:
+	return Blocks.color_of(world.get_block(floori(position.x), floori(position.y - 0.1), floori(position.z)))
 
 
 # Blocos de líquido acima dos pés (0 = seco): sobe pelos blocos do mesmo líquido e conta até a superfície do último.
@@ -318,13 +375,10 @@ func use_item() -> void:
 	if d.has("summon"):
 		summon(d)
 		return
-	if Items.pick_power[id] > 0:
-		break_target()
-		return
 	var forward := -cam.global_basis.z
 	if d.has("ammo"):
 		shoot(d, eye(), forward)
-	elif d.get("damage", 0) > 0:   # a lâmina só acerta quando o arco chega à frente (~1/3 do golpe; a estocada demora mais)
+	elif d.get("damage", 0) > 0 or Items.pick_power[id] > 0:   # a lâmina (ou a picareta) só acerta quando o arco chega à frente (~1/3 do golpe)
 		swing_item = d
 		swing_timer = d.get("use_time", 0.25) * (0.42 if d.get("use_style") == "thrust" else 0.3)
 
@@ -380,7 +434,9 @@ func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
 	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, d.shoot_speed, dmg, d.knockback)
 
 
-# Quebra o bloco na mira se a picareta na mão tiver poder; o drop cai como item solto.
+# Um golpe da picareta no bloco da mira, como no Terraria: cada golpe soma ao bloco (poder da picareta × dureza dele) e ele racha
+# até 100, quando quebra e o drop cai como item solto. A grama absorve o golpe que a quebraria: vira terra, ainda rachada.
+# Bloco que a picareta não alcança (poder abaixo do mínimo) só avisa.
 func break_target() -> void:
 	if target.is_empty():
 		return
@@ -395,9 +451,35 @@ func break_target() -> void:
 	if power < Blocks.power[b]:
 		say("%s precisa de picareta com poder %d (a sua: %d)" % [Blocks.ids.keys()[b].replace("_", " "), Blocks.power[b], power])
 		return
+	if p != mine_pos:
+		mine_pos = p
+		mine_damage = 0.0
+	mine_idle = 0.0
+	var normal := Vector3(target.normal)
+	var face := Vector3(p) + Vector3.ONE * 0.5 + normal * 0.5
+	var color := Blocks.color_of(b)
+	var hard := Blocks.mine[b] <= 1.0   # pedra e minério soltam faíscas
+	var damage := power * Blocks.mine[b]
+	if b == Blocks.ids.grass and mine_damage + damage >= 100.0:
+		world.set_block(p.x, p.y, p.z, Blocks.ids.dirt)
+		Fx.dust(entities, face, color, 6, normal)
+		return
+	mine_damage += damage
+	if mine_damage < 100.0:
+		Fx.dust(entities, face, color, 7, normal)
+		if hard:
+			Fx.sparks(entities, face, Color("#ffe27a"), 2, normal)
+		shake = maxf(shake, 0.15)
+		return
 	world.set_block(p.x, p.y, p.z, 0)
+	mine_damage = 0.0
+	mine_pos = Vector3i(-1, -1, -1)
 	if Items.drop[b] != -1:
 		entities.spawn_drop(Items.drop[b], 1, Vector3(p) + Vector3(0.5, 0.2, 0.5))
+	Fx.chips(entities, Vector3(p) + Vector3.ONE * 0.5, color, 12)
+	if hard:
+		Fx.sparks(entities, face, Color("#ffe27a"), 5, normal)
+	shake = maxf(shake, 0.3)
 
 
 func place_target() -> void:
@@ -411,3 +493,4 @@ func place_target() -> void:
 	if not inside and (there == 0 or Blocks.soft[there]):  # ar, planta ou líquido: o bloco novo substitui
 		world.set_block(p.x, p.y, p.z, Items.places[held()])
 		inv.take_one(slot)
+		place_anim = 0.18

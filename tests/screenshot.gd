@@ -11,7 +11,13 @@ const SHOTS := [
 	{"name": "noite", "time": 1100.0, "look": Vector2(2.0, -0.1), "item": "enchanted_sword"},
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
-	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime"], "item": "wooden_sword"},
+	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
+	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
+	{"name": "minera_pedra", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "block": "stone", "mine": 1, "mine_late": true},
+	{"name": "arco", "look": Vector2(0.8, -0.1), "item": "iron_broadsword", "arc": true},
+	{"name": "arco_3a", "third": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "arc": true},
+	{"name": "particulas", "look": Vector2(0, -0.1), "fx": true},
+	{"name": "golpe_slime", "look": Vector2(0, -0.3), "enemies": ["green_slime"], "item": "wooden_sword", "hurt_late": true},
 	{"name": "flash", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "hurt": true},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
@@ -20,6 +26,7 @@ const SHOTS := [
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
 	{"name": "chefe_fase2", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "phase2": true, "third": true},
 	{"name": "lago", "find": "water", "at": Vector3(14, 5, 0), "look": Vector2(PI / 2, -0.3)},
+	{"name": "respingo", "find": "water", "find_y": 70, "at": Vector3(-5, 5.5, 0), "look": Vector2(-PI / 2, -0.35), "splash": true},
 	{"name": "agua", "find": "water", "find_y": 66, "at": Vector3(0, 2.3, 0), "look": Vector2(PI / 2, 0.1), "flying": true},
 	{"name": "escoa", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "flying": true, "breach": 8, "flow": 14},
 	{"name": "escoa_depois", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "flying": true, "breach": 8, "flow": 60},
@@ -56,6 +63,40 @@ func _process(_delta: float) -> bool:
 	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.cooldown = shots[shot].swing
+		if shots[shot].get("mine_late", false) and wait == 16:   # mais um golpe pouco antes do print: rachaduras e poeira no ar
+			player.break_target()
+		if shots[shot].get("hurt_late", false) and wait == 18:
+			for e in main.get_node("Entities").enemies:
+				e.hurt(2, player.position - e.position, 3.0)
+		if shots[shot].get("arc", false) and wait == 19:   # um golpe inteiro de uma vez (o print roda a poucos quadros por segundo)
+			var hand: Node3D = player.get_node("Camera/Hand")
+			var model: Node3D = player.get_node("Model")
+			var use: float = Items.defs[player.held()].use_time
+			for i in 10:
+				player.cooldown = use * (1.0 - 0.75 * i / 9.0)
+				if player.third_person:
+					model._process(0.016)
+				else:
+					hand._process(0.016)
+		if shots[shot].get("fx", false) and wait == 19:   # um de cada tipo, em fileira à frente da câmera
+			var ent: Node3D = main.get_node("Entities")
+			var fwd := Vector3(-sin(player.rotation.y), 0, -cos(player.rotation.y))
+			var right := fwd.cross(Vector3.UP)
+			var base: Vector3 = player.position + fwd * 3.2 + Vector3.UP * 0.6
+			var kinds := [["dust", Color("#8a6a48")], ["chips", Color("#8a6a48")], ["sparks", Color("#ffd060")], ["blood", Color("#a01818")], ["puff", Color("#5f8a5a")], ["splash", Color.WHITE], ["bubbles", Color.WHITE]]
+			for k in kinds.size():
+				var at: Vector3 = base + right * (k - 3) * 0.75
+				match kinds[k][0]:
+					"dust": Fx.dust(ent, at, kinds[k][1], 8)
+					"chips": Fx.chips(ent, at, kinds[k][1], 12)
+					"sparks": Fx.sparks(ent, at, kinds[k][1], 8)
+					"blood": Fx.blood(ent, at, kinds[k][1], 10)
+					"puff": Fx.puff(ent, at, kinds[k][1], 14)
+					"splash": Fx.splash(ent, at, 16)
+					"bubbles": Fx.bubbles(ent, at, 6)
+		if shots[shot].get("splash", false) and wait == 12:
+			player.flying = false
+			player.velocity = Vector3(0, -8, 0)
 		if shots[shot].get("numbers", false) and wait == 15:  # números de dano no ar (duram menos de 1 s)
 			for e in main.get_node("Entities").enemies:
 				main.get_node("Entities").spawn_text(e.position + Vector3.UP * (e.tall + 0.3), str(23), Color("#ffa050"))
@@ -152,3 +193,13 @@ func _setup(s: Dictionary) -> void:
 		player.slot = player.inv.item.find(Items.ids[s.item])
 	else:
 		player.slot = 0
+	if s.has("mine"):   # um bloco à frente, na mira, já com `mine` golpes
+		player.pitch = -0.75
+		player.cam.rotation.x = -0.75
+		player._process(0.0)
+		if s.has("block") and not player.target.is_empty():
+			var t: Vector3i = player.target.pos
+			world.set_block(t.x, t.y, t.z, Blocks.ids[s.block])
+			player._process(0.0)
+		for _hit in s.mine:
+			player.break_target()

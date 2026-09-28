@@ -912,8 +912,11 @@ func test_mining():
 	p.inv.add(Items.ids.iron_pickaxe, 1)
 	p.slot = 1
 	p.break_target()
+	p.break_target()
+	check(w.get_block(20, 10, 20) == Blocks.ids.gold_ore and is_equal_approx(p.mine_damage, 80.0), "ferro (40) racha o ouro: 2 golpes = 80 de 100")
+	p.break_target()
 	var drops: Array = p.entities.get_children().filter(func(n): return n.get("item") == Items.ids.gold_ore)
-	check(w.get_block(20, 10, 20) == 0 and drops.size() == 1, "ferro minera ouro e o drop cai no chão")
+	check(w.get_block(20, 10, 20) == 0 and drops.size() == 1, "o 3º golpe quebra o ouro e o drop cai no chão")
 	p.inv.add(Items.ids.gold_ore, 1)
 	p.slot = 2
 	p.target = {"pos": Vector3i(20, 10, 21), "normal": Vector3i(0, 1, 0)}
@@ -921,6 +924,38 @@ func test_mining():
 	p.place_target()
 	check(w.get_block(20, 11, 21) == Blocks.ids.gold_ore and p.inv.total(Items.ids.gold_ore) == 0, "colocar usa o item da mão")
 	Blocks.power[Blocks.ids.gold_ore] = saved_power
+	# Golpes até quebrar, como a tabela da wiki (poder da picareta × dureza; 100 quebra): terra 2 com cobre, pedra 3, grama 3.
+	var hits := func(pick: String, block: String) -> int:
+		p.inv = Inventory.new()
+		p.inv.add(Items.ids[pick], 1)
+		p.slot = 0
+		p.mine_damage = 0.0
+		p.mine_pos = Vector3i(-1, -1, -1)
+		w.set_block(22, 10, 22, Blocks.ids[block])
+		p.target = {"pos": Vector3i(22, 10, 22), "normal": Vector3i(0, 1, 0)}
+		var n := 0
+		while w.get_block(22, 10, 22) != 0 and n < 20:
+			p.break_target()
+			n += 1
+		return n
+	check(hits.call("copper_pickaxe", "dirt") == 2 and hits.call("copper_pickaxe", "stone") == 3 and hits.call("copper_pickaxe", "grass") == 3, "cobre: terra 2 golpes, pedra 3, grama 3 (a grama absorve o primeiro)")
+	check(hits.call("iron_pickaxe", "stone") == 3 and hits.call("gold_pickaxe", "stone") == 2 and hits.call("gold_pickaxe", "dirt") == 1, "ferro: pedra 3; ouro: pedra 2, terra 1")
+	check(hits.call("copper_pickaxe", "torch") == 1 and hits.call("copper_pickaxe", "leaves") == 1, "tocha e folha quebram num golpe")
+	check(hits.call("gold_pickaxe", "demonite_ore") == 2, "demonita com picareta de ouro (55): 2 golpes")
+	# Rachaduras: trocar de bloco recomeça; parar de golpear as apaga.
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.slot = 0
+	w.set_block(22, 10, 22, Blocks.ids.stone)
+	w.set_block(23, 10, 22, Blocks.ids.stone)
+	p.target = {"pos": Vector3i(22, 10, 22), "normal": Vector3i(0, 1, 0)}
+	p.break_target()
+	p.break_target()
+	p.target = {"pos": Vector3i(23, 10, 22), "normal": Vector3i(0, 1, 0)}
+	p.break_target()
+	check(is_equal_approx(p.mine_damage, 35.0) and p.mine_pos == Vector3i(23, 10, 22), "trocar de bloco recomeça o dano")
+	p.tick(p.MINE_DECAY + 0.1)
+	check(p.mine_damage == 0.0, "sem golpear, as rachaduras somem")
 	free_player(p)
 	w.free()
 	return true
@@ -982,8 +1017,9 @@ func integration():
 			player._process(0)
 			var below := Vector3i(player.position.floor()) - Vector3i(0, 1, 0)
 			check(player.target.get("pos") == below, "mira olhando para baixo acerta o bloco sob os pés")
-			player.break_target()
-			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco com a picareta inicial")
+			for i in 4:
+				player.break_target()
+			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco com a picareta inicial (grama: 3 golpes)")
 			var closed: CanvasLayer = main.get_node("HUD")
 			check(closed.slots[0].visible and not closed.slots[Inventory.HOTBAR].visible and not closed.craft_root.visible and not closed.equip_root.visible and not closed.trash_slot.visible, "inventário fechado: só a hotbar aparece")
 			player.inventory_open = true  # exercita a janela de inventário/criação
@@ -1020,7 +1056,8 @@ func integration():
 			player.cooldown = 0.3
 			hand._process(0)
 			hand._process(0)
-			check(hand.glow != null and hand.sparks != null and hand.trail_points.size() >= 2, "Terra Blade na mão com brilho, faíscas e rastro (%s %s %d)" % [hand.glow, hand.sparks, hand.trail_points.size()])
+			check(hand.glow != null and hand.sparks != null and hand.trail.pts.size() >= 2, "Terra Blade na mão com brilho, faíscas e rastro (%s %s %d)" % [hand.glow, hand.sparks, hand.trail.pts.size()])
+			check(hand.arm != null and hand.arm.get_child_count() == 3, "braço em 1ª pessoa (antebraço, manga e punho)")
 			player.cooldown = 0
 			player.third_person = true
 			player.flying = true

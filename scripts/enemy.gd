@@ -161,12 +161,17 @@ func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 	hp -= taken
 	flash = FLASH_TIME
 	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ffa050"))
+	var blood := Color(def.get("blood", def.color))
+	var away := Vector3(dir.x, 0.4, dir.z).normalized()
+	Fx.blood(entities, position + Vector3.UP * tall * 0.55, blood, 8, away)
+	Fx.sparks(entities, position + Vector3.UP * tall * 0.55, Color(1, 0.95, 0.75), 3, away)
 	var kb: float = knockback * (1.0 - def.get("kb_resist", 0.0))
 	if kb > 0:
 		var flat := Vector3(dir.x, 0, dir.z).normalized()
 		velocity = flat * kb + Vector3.UP * (3.0 if def.ai != "fly" else 0.0)
 		stun = 0.25
 	if hp <= 0:
+		Fx.puff(entities, position + Vector3.UP * tall * 0.5, blood, 12 if not def.get("boss") else 40)
 		for d in def.drops:
 			if rng.randf() < d.chance:
 				entities.spawn_drop(Items.ids[d.item], rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)

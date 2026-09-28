@@ -79,7 +79,8 @@ scripts/             setup-godot.sh e um .gd por sistema:
   inventory.gd       slots, empilhar, remover
   crafting.gd        receitas e estações por perto
   voxel_body.gd      colisão AABB contra voxels (jogador, inimigos, itens)
-  player.gd          1ª pessoa, vida, usar item (minerar/golpear/atirar), colocar
+  player.gd          1ª pessoa, vida, usar item (minerar com dano acumulado e rachaduras / golpear / atirar), colocar
+  fx.gd  block_crack.gd  trail.gd   partículas (poeira, lascas, faíscas, gotas, respingo), rachaduras do bloco minerado, arco do golpe
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly/eye_of_cthulhu)
   enemy_model.gd     modelos 3D dos inimigos (eye/slime/humanoid; senão sprite extrudado)
@@ -89,7 +90,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
                      no gramado: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair
   ui.gd              tema e peças da interface do Terraria (fonte com contorno, painéis azuis, coração, dicas por raridade)
   hud.gd             GUI no layout do Terraria (docs/UI.md): hotbar/inventário, criação, equipamento, vida, cursor, pausa
-  item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  item na mão (1ª pessoa) + animação
+  item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  braço + item na mão (1ª pessoa): pose, inércia, balanço
   player_model.gd    boneco chibi arredondado com contorno (3ª pessoa, tecla V): poses, arma na mão, armadura por peça
 scripts/update.sh    após cada git pull: Godot + sprites + cache de classes
 tests/character_preview.gd  prévia dos personagens/armaduras (xvfb) → textures/personagens.png

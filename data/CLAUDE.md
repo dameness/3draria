@@ -20,7 +20,8 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 - Prévia ampliada (faces + ícones): `.tools/godot --headless -s tests/atlas_preview.gd` → `textures/preview.png`.
 
 ## blocks.json
-`{name, tiles:{all|top|side|bottom}, icon?, station_as? (conta como outra estação), solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
+`{name, tiles:{all|top|side|bottom}, icon?, station_as? (conta como outra estação), solid?=true, breakable?=true, power?=0 (picareta mínima), mine?=1 (dano por golpe = poder da picareta × mine; 100 quebra), drop?=name ("" = nada)}`.
+`mine` segue a wiki (Pickaxe power): terra, areia, cinza e grama 2; pedra e minérios 1; pedra infernal 0,5; tocha 100 (1 golpe). A grama absorve o golpe que a quebraria e vira terra.
 `icon`: textura do ícone do item-bloco (ex.: `dirt_item` → `Dirt_Block.png`).
 `shape`: forma não cúbica e não sólida: `"torch"`, `"plant"` (dois quadros em cruz que balançam ao vento; a mira
 atravessa e colocar bloco substitui; some se o chão sumir), `"liquid"` (água/lava: a mira atravessa; água = superfície
@@ -51,7 +52,7 @@ Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjun
 
 ## enemies.json
 `{name, ai: hop|walk|fly|eye_of_cthulhu, model?: eye|slime|humanoid (senão sprite extrudado), iris?, colors?,
-life, damage, defense, speed, size:[largura, altura], color, sprite?,
+life, damage, defense, speed, size:[largura, altura], color, blood? (cor das gotas ao levar golpe; padrão = color), sprite?,
 spawn: day|night|any|none, kb_resist?, boss?, minion?, phase2?:{below, damage, defense, sprite}, drops:[{item, min, max, chance}]}`.
 Escala: 1 tile do Terraria ≈ 0,6 bloco (jogador de 3 tiles = 1,8). IA nova = um `match` em `scripts/enemy.gd`.
 Chefes atravessam blocos e vão embora ao amanhecer; itens com `summon` os invocam (só à noite).

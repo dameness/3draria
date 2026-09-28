@@ -34,7 +34,9 @@ func _ready() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	gen = WorldGen.new(world_seed)
-	atlas_texture = ImageTexture.create_from_image(Atlas.build(Blocks.textures))
+	var atlas_image := Atlas.build(Blocks.textures)
+	Blocks.tile_colors = Atlas.tile_colors(atlas_image)
+	atlas_texture = ImageTexture.create_from_image(atlas_image)
 	material.shader = preload("res://shaders/chunk.gdshader")
 	water_material.shader = preload("res://shaders/water.gdshader")
 	for m in [material, water_material]:

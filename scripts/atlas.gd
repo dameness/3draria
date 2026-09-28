@@ -50,6 +50,22 @@ static func build(textures: Dictionary) -> Image:
 	return img
 
 
+# Cor média (só pixels opacos) de cada tile do atlas.
+static func tile_colors(img: Image) -> PackedColorArray:
+	var out := PackedColorArray()
+	for t in img.get_width() / TILE:
+		var sum := Color(0, 0, 0, 0)
+		var count := 0
+		for y in TILE:
+			for x in TILE:
+				var c := img.get_pixel(t * TILE + x, y)
+				if c.a > 0.5:
+					sum += c
+					count += 1
+		out.append(Color(sum.r / maxi(count, 1), sum.g / maxi(count, 1), sum.b / maxi(count, 1)))
+	return out
+
+
 static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 	var wiki := wiki_image(spec)
 	if wiki and spec.has("crop"):

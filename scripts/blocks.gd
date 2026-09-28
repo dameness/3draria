@@ -8,6 +8,7 @@ static var ids := {}                       # nome -> id
 static var solid := PackedByteArray()      # id -> 1 se sólido
 static var breakable := PackedByteArray()  # id -> 1 se o jogador pode quebrar
 static var power := PackedInt32Array()     # id -> poder de picareta mínimo
+static var mine := PackedFloat32Array()    # id -> dureza ao contrário: dano por golpe = poder da picareta × isto (100 de dano quebra o bloco)
 static var shape: Array[String] = []       # id -> "" (cubo) ou forma não sólida: "torch", "plant" (cruz), "liquid" (água/lava)
 static var special := PackedByteArray()    # id -> 1 se tem forma própria (shape != "")
 static var liquid := PackedByteArray()     # id -> 1 se é líquido (água/lava em qualquer nível; liquid.gd faz fluir)
@@ -22,6 +23,7 @@ static var station_as := PackedInt32Array() # id -> bloco de estação que ele e
 static var icons: Array[String] = []       # id -> textura do ícone do item-bloco ("" = face lateral)
 static var drop_names: Array[String] = []  # id -> item que dropa ("" = nada); Items resolve
 static var tiles := PackedInt32Array()     # id * FACES + face -> índice no atlas
+static var tile_colors := PackedColorArray()   # índice no atlas -> cor média do tile (poeira ao minerar); world.gd preenche
 static var textures := {}                  # nome -> spec, na ordem do atlas
 
 
@@ -34,6 +36,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	solid.clear()
 	breakable.clear()
 	power.clear()
+	mine.clear()
 	shape.clear()
 	special.clear()
 	liquid.clear()
@@ -54,6 +57,7 @@ static func load_pack(dir := "res://data/base") -> void:
 		solid.append(1 if b.get("solid", true) else 0)
 		breakable.append(1 if b.get("breakable", true) else 0)
 		power.append(b.get("power", 0))
+		mine.append(b.get("mine", 1.0))
 		shape.append(b.get("shape", ""))
 		special.append(1 if shape[-1] != "" else 0)
 		liquid.append(1 if shape[-1] == "liquid" else 0)
@@ -76,6 +80,12 @@ static func load_pack(dir := "res://data/base") -> void:
 			tiles.append(tile_index.get(n, 0))
 	for b in list:
 		station_as.append(ids[b.get("station_as", b.name)])
+
+
+# Cor média do bloco (face lateral), para a poeira; cinza se o atlas ainda não foi montado.
+static func color_of(id: int) -> Color:
+	var t := tiles[id * FACES + 4]
+	return tile_colors[t] if t < tile_colors.size() else Color(0.6, 0.6, 0.6)
 
 
 # Altura (em blocos, a partir da base do bloco) da superfície do líquido id, quando não há líquido igual em cima.
