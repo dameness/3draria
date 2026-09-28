@@ -19,8 +19,10 @@ func _init() -> void:
 	check(m is Node3D, "main.tscn instancia um Node3D")
 	m.free()
 	Blocks.load_pack()
+	Items.load_pack()
+	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://main.tscn").instantiate()
@@ -86,6 +88,71 @@ func test_player():
 	return true
 
 
+func test_items():
+	check(Items.places[Items.ids.stone] == Blocks.ids.stone, "bloco vira item que o coloca")
+	check(Items.drop[Blocks.ids.grass] == Items.ids.dirt, "grama dropa terra")
+	check(Items.drop[Blocks.ids.leaves] == -1 and Items.drop[Blocks.ids.bedrock] == -1, "folha e bedrock não dropam")
+	check(Items.pick_power[Items.ids.iron_pickaxe] > Items.pick_power[Items.ids.copper_pickaxe], "picareta de ferro é mais forte")
+	var inv := Inventory.new()
+	check(inv.add(Items.ids.dirt, 1500) == 0 and inv.item[0] == Items.ids.dirt and inv.count[0] == 999 and inv.count[1] == 501, "empilha até o limite")
+	check(inv.add(Items.ids.copper_pickaxe, 2) == 0 and inv.count[2] == 1 and inv.count[3] == 1, "picareta não empilha")
+	inv.remove(Items.ids.dirt, 600)
+	check(inv.total(Items.ids.dirt) == 900, "remove tira a quantidade certa")
+	check(inv.add(Items.ids.stone, 999 * 40) > 0, "inventário cheio devolve o que sobrou")
+	return true
+
+
+func test_crafting():
+	var by_result := {}
+	for r in Crafting.recipes:
+		by_result[Items.names[r.result]] = r
+	var inv := Inventory.new()
+	inv.add(Items.ids.wood, 20)
+	check(Crafting.craft(by_result.workbench, inv, {}), "bancada sem estação")
+	check(inv.total(Items.ids.wood) == 10 and inv.total(Items.ids.workbench) == 1, "criar consome ingredientes e dá o item")
+	inv.add(Items.ids.stone, 20)
+	check(not Crafting.craft(by_result.furnace, inv, {}), "fornalha exige bancada por perto")
+	var w := floor_world()
+	w.set_block(22, 11, 20, Blocks.ids.workbench)
+	var st := Crafting.stations_near(w, Vector3(20.5, 11, 20.5))
+	check(st.has(Blocks.ids.workbench) and Crafting.craft(by_result.furnace, inv, st), "bancada no mundo libera a fornalha")
+	check(Crafting.stations_near(w, Vector3(30.5, 11, 20.5)).is_empty(), "estação longe não conta")
+	w.free()
+	# Cadeia completa até a picareta de ferro.
+	inv.add(Items.ids.iron_ore, 51)
+	inv.add(Items.ids.wood, 3)
+	var all := {Blocks.ids.workbench: true, Blocks.ids.furnace: true, Blocks.ids.anvil: true}
+	for i in 17:
+		Crafting.craft(by_result.iron_bar, inv, all)
+	check(Crafting.craft(by_result.anvil, inv, all) and Crafting.craft(by_result.iron_pickaxe, inv, all), "minério → barra → bigorna → picareta de ferro")
+	return true
+
+
+func test_mining():
+	var w := floor_world()
+	var p: Node3D = load("res://scripts/player.gd").new()
+	p.world = w
+	p.target = {"pos": Vector3i(20, 10, 20), "normal": Vector3i(0, 1, 0)}
+	w.set_block(20, 10, 20, Blocks.ids.gold_ore)
+	p.break_target()
+	check(w.get_block(20, 10, 20) == Blocks.ids.gold_ore, "sem picareta não minera")
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.break_target()
+	check(w.get_block(20, 10, 20) == Blocks.ids.gold_ore and p.message.contains("40"), "cobre não minera ouro e avisa o poder")
+	p.inv.add(Items.ids.iron_pickaxe, 1)
+	p.slot = 1
+	p.break_target()
+	check(w.get_block(20, 10, 20) == 0 and p.inv.total(Items.ids.gold_ore) == 1, "ferro minera ouro e o drop entra no inventário")
+	p.slot = 2
+	p.target = {"pos": Vector3i(20, 10, 21), "normal": Vector3i(0, 1, 0)}
+	p.position = Vector3(25.5, 11, 25.5)
+	p.place_target()
+	check(w.get_block(20, 11, 21) == Blocks.ids.gold_ore and p.inv.total(Items.ids.gold_ore) == 0, "colocar usa o item da mão")
+	p.free()
+	w.free()
+	return true
+
+
 var main: Node
 var world: Node3D
 var player: Node3D
@@ -139,7 +206,9 @@ func integration():
 			var below := Vector3i(player.position.floor()) - Vector3i(0, 1, 0)
 			check(player.target.get("pos") == below, "mira olhando para baixo acerta o bloco sob os pés")
 			player.break_target()
-			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco")
+			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco com a picareta inicial")
+			check(player.inv.total(Items.ids.dirt) == 1, "o drop (terra) vai para o inventário")
+			player.inventory_open = true  # exercita a janela de inventário/criação
 			return false
 		var m: MeshInstance3D = world.meshes[world.center]
 		check(m.get_instance_id() != edit_mesh_id and m.mesh.surface_get_array_len(0) != edit_faces, "mesh do chunk editado foi refeita")
@@ -219,6 +288,14 @@ func test_gen():
 	check(count.get("cavernas:%d" % gen.STONE, 0) > count.get("cavernas:%d" % gen.DIRT, 0), "cavernas: pedra predomina")
 	check(count.has("cavernas:0"), "cavernas: há cavernas")
 	check(count.get("subterrâneo:%d" % gen.DIRT, 0) > count.get("subterrâneo:%d" % gen.STONE, 0), "subterrâneo: terra predomina")
+	var found := {}
+	for c in 4:
+		var cd := gen.generate(c, 3)
+		for i in cd.size():
+			found[cd[i]] = mini(found.get(cd[i], 999), i / (C * C))  # menor y de cada bloco
+	for o in gen.ores:
+		check(found.has(o.block) and found[o.block] >= o.min_y, "minério %s aparece a partir de y=%d" % [Blocks.ids.keys()[o.block], o.min_y])
+	check(found.has(gen.WOOD) and found.has(gen.LEAVES), "há árvores")
 	var nb := [gen.generate(9, 8), gen.generate(7, 8), gen.generate(8, 9), gen.generate(8, 7)]
 	t = Time.get_ticks_usec()
 	ChunkMesher.build(d, nb, Blocks.textures.size())

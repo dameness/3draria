@@ -24,6 +24,8 @@ var center := Vector2i(-999, -999)
 
 func _ready() -> void:
 	Blocks.load_pack()
+	Items.load_pack()
+	Crafting.load_pack()
 	gen = WorldGen.new(world_seed)
 	material.albedo_texture = ImageTexture.create_from_image(Atlas.build(Blocks.textures))
 	material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST

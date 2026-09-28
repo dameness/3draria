@@ -19,12 +19,17 @@ var DIRT: int
 var STONE: int
 var ASH: int
 var BEDROCK: int
+var WOOD: int
+var LEAVES: int
+var seed: int
+var ores: Array = []   # de ores.json, com "block" já convertido em id
 
 
-func _init(seed: int) -> void:
+func _init(world_seed: int, dir := "res://data/base") -> void:
+	seed = world_seed
 	for n in [height_noise, rock_noise, cave_noise, hell_noise]:
-		n.seed = seed
-		seed += 1
+		n.seed = world_seed
+		world_seed += 1
 	height_noise.frequency = 0.008
 	height_noise.fractal_octaves = 4
 	rock_noise.frequency = 0.06
@@ -35,6 +40,12 @@ func _init(seed: int) -> void:
 	STONE = Blocks.ids.stone
 	ASH = Blocks.ids.ash
 	BEDROCK = Blocks.ids.bedrock
+	WOOD = Blocks.ids.wood
+	LEAVES = Blocks.ids.leaves
+	for o in Blocks.read(dir + "/ores.json"):
+		o = o.duplicate()
+		o.block = Blocks.ids[o.block]
+		ores.append(o)
 
 
 func surface_height(wx: int, wz: int) -> int:
@@ -69,4 +80,44 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 				elif rock_noise.get_noise_3d(wx, y, wz) > 0.55:
 					b = DIRT
 				d[i + y * CHUNK * CHUNK] = b
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed, cx, cz])
+	_ores(d, rng)
+	_trees(d, rng)
 	return d
+
+
+# Veios por passeio aleatório; só trocam terra e pedra e ficam dentro do chunk.
+func _ores(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
+	for o in ores:
+		for v in int(o.veins):
+			var p := Vector3i(rng.randi() % CHUNK, rng.randi_range(o.min_y, o.max_y), rng.randi() % CHUNK)
+			for s in int(o.size):
+				var i := p.x + p.z * CHUNK + p.y * CHUNK * CHUNK
+				if d[i] == STONE or d[i] == DIRT:
+					d[i] = o.block
+				p[rng.randi() % 3] += 1 if rng.randf() < 0.5 else -1
+				p = p.clamp(Vector3i(0, o.min_y, 0), Vector3i(CHUNK - 1, o.max_y, CHUNK - 1))
+
+
+# Árvores longe da borda do chunk, para as folhas não cruzarem para o vizinho.
+func _trees(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
+	for z in range(2, CHUNK - 2):
+		for x in range(2, CHUNK - 2):
+			if rng.randf() > 0.015:
+				continue
+			var y := HEIGHT - 8
+			while y > 0 and d[x + z * CHUNK + y * CHUNK * CHUNK] == AIR:
+				y -= 1
+			if d[x + z * CHUNK + y * CHUNK * CHUNK] != GRASS:
+				continue
+			var top := y + rng.randi_range(4, 6)
+			for ly in range(top - 2, top + 2):
+				var r := 2 if ly < top else 1
+				for lz in range(-r, r + 1):
+					for lx in range(-r, r + 1):
+						var i := x + lx + (z + lz) * CHUNK + ly * CHUNK * CHUNK
+						if absi(lx) + absi(lz) < r * 2 and d[i] == AIR:
+							d[i] = LEAVES
+			for ty in range(y + 1, top + 1):
+				d[x + z * CHUNK + ty * CHUNK * CHUNK] = WOOD

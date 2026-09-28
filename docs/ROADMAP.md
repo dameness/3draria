@@ -13,9 +13,13 @@ Pronto quando: testes verificam que um chunk sólido cercado só gera as faces d
 Controle em 1ª pessoa, colisão, quebrar/colocar bloco, hotbar.
 Pronto quando: testes verificam que o raycast de voxel acerta o bloco e a face certos, colisão (cair e parar no chão, pulo de ~1,4 bloco, parede bloqueia), e que quebrar pela mira altera o chunk e refaz a mesh (e a do vizinho na borda); no playtest, dá pra andar, pular sem atravessar blocos, quebrar, colocar e trocar o bloco pela hotbar.
 
-## F3 Itens
+## F3 Itens ✅ (falta playtest)
 Drops, inventário, bancadas e receitas por dados, poder de mineração por tier bloqueando minérios.
+Drops vão direto para o inventário (itens soltos no chão ficam para a F4).
 Pronto quando: testes carregam items/recipes/ores de `data/base/`, validam referências cruzadas, verificam empilhamento no inventário, craft só perto da bancada certa e minério recusado abaixo do tier; no playtest, minerar → coletar → craftar picareta melhor → minerar minério antes bloqueado.
+
+## Depois (anotado)
+Mundo mais profundo e maior (ALTURA/SIZE_CHUNKS em world_gen.gd; conferir memória e tempo de geração), mais minérios e biomas.
 
 ## F4 Sobrevivência
 Vida, dia/noite, 2-3 inimigos básicos, combate corpo a corpo e à distância, salvar/carregar.

@@ -1,0 +1,8 @@
+[
+	{"name": "copper_bar", "icon": "copper_bar"},
+	{"name": "iron_bar", "icon": "iron_bar"},
+	{"name": "gold_bar", "icon": "gold_bar"},
+	{"name": "copper_pickaxe", "icon": "copper_pickaxe", "pick_power": 35, "stack": 1},
+	{"name": "iron_pickaxe", "icon": "iron_pickaxe", "pick_power": 40, "stack": 1},
+	{"name": "gold_pickaxe", "icon": "gold_pickaxe", "pick_power": 55, "stack": 1}
+]

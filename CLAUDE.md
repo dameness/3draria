@@ -23,12 +23,19 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
 - Não economize em: entender o problema, validação em fronteiras, perda de dados, segurança.
 - Lógica não trivial deixa UM check executável (assert em tests/run.gd). One-liners triviais não precisam.
 
+## Referência de conteúdo
+- Terraria: https://terraria.wiki.gg (ex.: /wiki/Pickaxe_power, /wiki/Ores, /wiki/Recipes)
+- Calamity: https://calamitymod.wiki.gg
+Consulte antes de criar itens, receitas, minérios, inimigos e chefes; adapte os números, não copie texto.
+Na sessão remota os domínios precisam estar liberados em Network access do ambiente (senão WebFetch é bloqueado).
+
 ## Stack
 Godot 4.7.2-stable (fixado em scripts/setup-godot.sh), GDScript, renderer Compatibility (gl_compatibility).
 
 ## Comandos
 ```sh
 scripts/setup-godot.sh                        # baixa o Godot em .tools/godot (idempotente; roda sozinho no SessionStart remoto)
+.tools/godot --headless --import              # após pull ou novo class_name: atualiza o cache de classes
 .tools/godot -e                               # abre o editor (local)
 .tools/godot                                  # roda o jogo (local)
 .tools/godot --headless --quit                # smoke test: projeto abre sem erros
@@ -47,8 +54,10 @@ scripts/             setup-godot.sh e um .gd por sistema:
   world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128)
   chunk_mesher.gd    faces visíveis → arrays de mesh (thread-safe)
   world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool
-  player.gd          1ª pessoa, colisão AABB contra voxels (sem física), quebrar/colocar, hotbar
-  hud.gd             mira, hotbar, texto de fps/depuração
+  items.gd           itens (blocos viram itens + items.json), drops, poder de picareta
+  inventory.gd       slots, empilhar, remover   crafting.gd  receitas e estações por perto
+  player.gd          1ª pessoa, colisão AABB contra voxels (sem física), minerar por tier, colocar
+  hud.gd             mira, hotbar, avisos, fps, janela de inventário/criação (E)
 tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)
@@ -58,8 +67,9 @@ docs/ROADMAP.md      fases e critérios de pronto
 ```
 
 ## Onde fica cada tipo de dado
-Um arquivo JSON por tipo em `data/<pacote>/`: `blocks.json`, `textures.json` (paleta + padrão), e depois `items.json`, `recipes.json`, `ores.json`, `enemies.json`.
-Não reordene `blocks.json`: o id do bloco é a posição (saves vão depender disso). Adicione no fim.
+Um arquivo JSON por tipo em `data/<pacote>/`: `blocks.json` (power = picareta mínima, drop), `textures.json` (paleta + padrão; também ícones),
+`items.json` (itens que não são bloco), `recipes.json` (needs, station), `ores.json` (faixa de y, veios); depois `enemies.json`.
+Não reordene `blocks.json` nem `items.json`: o id é a posição (saves vão depender disso). Adicione no fim.
 O Calamity é outra pasta com os mesmos arquivos + poucos comportamentos novos em script.
 
 ## Roadmap (detalhes em docs/ROADMAP.md)

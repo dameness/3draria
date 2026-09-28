@@ -1,0 +1,5 @@
+[
+	{"block": "copper_ore", "min_y": 50, "max_y": 88, "veins": 5, "size": 7},
+	{"block": "iron_ore", "min_y": 30, "max_y": 70, "veins": 4, "size": 6},
+	{"block": "gold_ore", "min_y": 20, "max_y": 48, "veins": 3, "size": 5}
+]

@@ -1,7 +1,8 @@
 extends Node3D
 # Jogador em 1ª pessoa com colisão AABB contra os voxels (sem motor de física).
 # WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce),
-# mouse esquerdo quebra, direito coloca, 1-9 ou roda escolhem o bloco. Clique captura o mouse, Esc solta.
+# mouse esquerdo quebra (precisa de picareta), direito coloca, 1-0 ou roda escolhem o slot,
+# E abre inventário/criação. Clique captura o mouse, Esc solta.
 
 const HALF := 0.3        # meia largura da caixa
 const TALL := 1.8
@@ -18,8 +19,11 @@ const HI := Vector3(HALF, TALL, HALF)
 var velocity := Vector3.ZERO
 var on_floor := false
 var flying := false
-var hotbar: Array[int] = []   # ids de bloco; a F3 troca pelo inventário
-var slot := 0
+var inv := Inventory.new()
+var slot := 0                 # slot da hotbar na mão
+var inventory_open := false
+var message := ""             # aviso curto para o HUD
+var message_until := 0
 var pitch := 0.0
 var target := {}              # resultado do raycast da mira
 @onready var cam: Camera3D = $Camera
@@ -27,9 +31,7 @@ var highlight: MeshInstance3D
 
 
 func _ready() -> void:
-	for id in Blocks.ids.size():
-		if Blocks.solid[id] and Blocks.breakable[id] and hotbar.size() < 9:
-			hotbar.append(id)
+	inv.add(Items.ids.copper_pickaxe, 1)
 	var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2
 	position = Vector3(mid + 0.5, world.gen.surface_height(mid, mid) + 1, mid + 0.5)
 	cam.position.y = EYE
@@ -49,7 +51,13 @@ func _ready() -> void:
 
 func _unhandled_input(e: InputEvent) -> void:
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-	if e is InputEventMouseMotion and captured:
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_E:
+		inventory_open = not inventory_open
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if inventory_open else Input.MOUSE_MODE_CAPTURED
+	elif inventory_open:
+		if e.is_action_pressed("ui_cancel"):
+			inventory_open = false
+	elif e is InputEventMouseMotion and captured:
 		rotation.y -= e.relative.x * 0.003
 		pitch = clampf(pitch - e.relative.y * 0.003, -1.55, 1.55)
 		cam.rotation.x = pitch
@@ -61,14 +69,14 @@ func _unhandled_input(e: InputEvent) -> void:
 		elif e.button_index == MOUSE_BUTTON_RIGHT:
 			place_target()
 		elif e.button_index == MOUSE_BUTTON_WHEEL_UP:
-			slot = posmod(slot - 1, hotbar.size())
+			slot = posmod(slot - 1, Inventory.HOTBAR)
 		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			slot = posmod(slot + 1, hotbar.size())
+			slot = posmod(slot + 1, Inventory.HOTBAR)
 	elif e.is_action_pressed("ui_cancel"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif e is InputEventKey and e.pressed and not e.echo:
-		if e.physical_keycode >= KEY_1 and e.physical_keycode < KEY_1 + hotbar.size():
-			slot = e.physical_keycode - KEY_1
+		if e.physical_keycode >= KEY_0 and e.physical_keycode <= KEY_9:
+			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
 		elif e.physical_keycode == KEY_F:
 			flying = not flying
 
@@ -134,17 +142,42 @@ func overlaps_solid(p: Vector3) -> bool:
 	return false
 
 
+func held() -> int:
+	return inv.item[slot]
+
+
+func say(text: String) -> void:
+	message = text
+	message_until = Time.get_ticks_msec() + 2000
+
+
+# Quebra o bloco na mira se a picareta na mão tiver poder; o drop vai direto para o inventário.
 func break_target() -> void:
-	if not target.is_empty() and Blocks.breakable[world.get_block(target.pos.x, target.pos.y, target.pos.z)]:
-		world.set_block(target.pos.x, target.pos.y, target.pos.z, 0)
+	if target.is_empty():
+		return
+	var p: Vector3i = target.pos
+	var b: int = world.get_block(p.x, p.y, p.z)
+	var power := Items.pick_power[held()] if held() != -1 else 0
+	if not Blocks.breakable[b]:
+		return
+	if power == 0:
+		say("segure uma picareta")
+		return
+	if power < Blocks.power[b]:
+		say("%s precisa de picareta com poder %d (a sua: %d)" % [Blocks.ids.keys()[b].replace("_", " "), Blocks.power[b], power])
+		return
+	world.set_block(p.x, p.y, p.z, 0)
+	if Items.drop[b] != -1:
+		inv.add(Items.drop[b], 1)
 
 
 func place_target() -> void:
-	if target.is_empty() or hotbar.is_empty():
+	if target.is_empty() or held() == -1 or Items.places[held()] == -1:
 		return
 	var p: Vector3i = target.pos + target.normal
 	var lo := Vector3i((position + LO).floor())
 	var hi := Vector3i((position + HI - Vector3.ONE * EPS).floor())
 	var inside := p.x >= lo.x and p.x <= hi.x and p.y >= lo.y and p.y <= hi.y and p.z >= lo.z and p.z <= hi.z
 	if not inside and world.get_block(p.x, p.y, p.z) == 0:
-		world.set_block(p.x, p.y, p.z, hotbar[slot])
+		world.set_block(p.x, p.y, p.z, Items.places[held()])
+		inv.take_one(slot)
