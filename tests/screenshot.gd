@@ -10,7 +10,7 @@ const SHOTS := [
 	{"name": "alto", "up": 30.0, "look": Vector2(0.6, -0.6)},
 	{"name": "noite", "time": 1100.0, "look": Vector2(2.0, -0.1), "item": "enchanted_sword"},
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
-	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"]},
+	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime"], "item": "wooden_sword"},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
@@ -53,7 +53,11 @@ func _process(_delta: float) -> bool:
 	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.cooldown = shots[shot].swing
+		if shots[shot].get("numbers", false) and wait == 15:  # números de dano no ar (duram menos de 1 s)
+			for e in main.get_node("Entities").enemies:
+				main.get_node("Entities").spawn_text(e.position + Vector3.UP * (e.tall + 0.3), str(23), Color("#ffa050"))
 		return false
+	main.get_node("HUD").item_until = Time.get_ticks_msec() + 5000   # o nome do item some em 2 s; aqui fica
 	var img := root.get_texture().get_image()
 	img.save_png("res://textures/shot_%s.png" % shots[shot].name)
 	print("salvo textures/shot_%s.png" % shots[shot].name)

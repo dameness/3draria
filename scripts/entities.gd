@@ -91,6 +91,32 @@ func spawn_boss(n: String) -> Node3D:
 	return boss
 
 
+# Número de dano flutuante, como no Terraria: aparece com um salto, sobe e some. Laranja nos inimigos, vermelho no jogador.
+func spawn_text(pos: Vector3, text: String, color: Color) -> void:
+	if not is_inside_tree():
+		return
+	var l := Label3D.new()
+	l.text = text
+	l.font_size = 64
+	l.outline_size = 14
+	l.outline_modulate = Color(0.12, 0.02, 0.0)
+	l.modulate = color
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.shaded = false
+	l.render_priority = 10
+	l.pixel_size = 0.005 * maxf(1.0, pos.distance_to(player.eye()) / 7.0)   # de longe continua legível
+	l.position = pos + Vector3(rng.randf_range(-0.3, 0.3), 0, rng.randf_range(-0.3, 0.3))
+	l.scale = Vector3.ONE * 1.6
+	add_child(l)
+	var tw := l.create_tween().set_parallel(true)
+	tw.tween_property(l, "scale", Vector3.ONE, 0.15)
+	tw.tween_property(l, "position:y", l.position.y + 1.5, 0.9).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
+	tw.tween_property(l, "outline_modulate:a", 0.0, 0.35).set_delay(0.55)
+	tw.chain().tween_callback(l.queue_free)
+
+
 func remove_enemy(e: Node3D) -> void:
 	if e == boss:
 		boss = null

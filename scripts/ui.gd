@@ -47,6 +47,7 @@ static func theme() -> Theme:
 	_theme.set_color("font_hover_color", "Button", GOLD)
 	_theme.set_color("font_disabled_color", "Button", Color(1, 1, 1, 0.5))
 	_theme.set_stylebox("panel", "PanelContainer", box(NAVY, EDGE, 3, 8))
+	_theme.set_stylebox("panel", "TooltipPanel", box(NAVY, EDGE, 2, 6))
 	_theme.set_stylebox("normal", "LineEdit", box(NAVY))
 	_theme.set_stylebox("focus", "LineEdit", box(NAVY, GOLD))
 	_theme.set_stylebox("fill", "ProgressBar", box(Color("#c62a2a"), Color("#ff9a8a"), 1, 3))
@@ -89,8 +90,8 @@ static func heart() -> Texture2D:
 			var c := Color("#ff5252").lerp(Color("#b81616"), t)
 			if edge:
 				c = Color("#3a0606")
-			elif px < s * 0.42 and py < s * 0.36 and (px + py) % 4 < 3:
-				c = Color("#ffc4c4")
+			elif Vector2(px, py).distance_to(Vector2(s * 0.3, s * 0.32)) < 2.3:
+				c = Color("#ffc4c4")   # brilho
 			img.set_pixel(px, py, c)
 	_heart = ImageTexture.create_from_image(img)
 	return _heart

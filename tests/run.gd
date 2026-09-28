@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_ui"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -494,6 +494,20 @@ func face_corners(arrays: Array, p: Vector3i, normal: Vector3) -> Array:
 	return []
 
 
+func test_ui():
+	var tip := Ui.item_tip(Items.ids.terra_blade)
+	check(tip.begins_with("[color=#ffff0a]Terra Blade[/color]") and tip.contains("85 de dano") and tip.contains("Velocidade"), "dica do item: nome na cor da raridade e estatísticas")
+	check(Ui.item_tip(Items.ids.copper_pickaxe).contains("35% de poder de picareta") and Ui.item_tip(Items.ids.gold_helmet).contains("4 de defesa"), "dica: picareta e armadura")
+	check(Ui.heart().get_width() == 24 and Ui.heart().get_image().get_pixel(12, 9).a > 0.5 and Ui.heart().get_image().get_pixel(0, 0).a == 0.0, "coração procedural com fundo transparente")
+	check(Ui.theme().get_constant("outline_size", "Label") > 0 and Ui.theme().get_default_font() != null, "tema: texto com contorno")
+	var slot = load("res://scripts/hud.gd").Slot.new()
+	var label = slot._make_custom_tooltip(tip)
+	check(label is RichTextLabel and label.bbcode_enabled and label.text.contains("Terra Blade"), "slot mostra a dica em BBCode")
+	label.free()
+	slot.free()
+	return true
+
+
 func test_liquids():
 	var w := floor_world()   # chão de pedra até y = 10
 	for y in range(11, 17):
@@ -752,6 +766,10 @@ func integration():
 				return false  # espera o drop de terra ser coletado
 			var m: MeshInstance3D = world.meshes.get(edit_chunk)
 			check(m != null and m.get_instance_id() != edit_mesh_id and m.mesh.surface_get_array_len(0) != edit_faces, "mesh do chunk editado foi refeita")
+			var hud: CanvasLayer = main.get_node("HUD")
+			check(hud.hearts.size() == 5 and hud.panel.visible and hud.grid.get_child_count() == Inventory.SIZE, "HUD monta corações e a janela de inventário")
+			check(hud.craft_grid.get_child_count() == Crafting.recipes.size(), "janela de criação lista as %d receitas" % Crafting.recipes.size())
+			check(hud.life_label.text == "Vida: 100/100" and hud.get_node_or_null("Info") == null, "HUD novo mostra a vida")
 			player.inv.add(Items.ids.terra_blade, 1)
 			player.slot = player.inv.item.find(Items.ids.terra_blade)
 			phase = 2

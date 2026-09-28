@@ -156,6 +156,7 @@ func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 	var taken := maxi(1, dmg - ceili(defense / 2.0))
 	hp -= taken
 	flash = 0.12
+	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ffa050"))
 	var kb: float = knockback * (1.0 - def.get("kb_resist", 0.0))
 	if kb > 0:
 		var flat := Vector3(dir.x, 0, dir.z).normalized()

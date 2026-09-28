@@ -222,6 +222,8 @@ func hurt(damage: int, dir: Vector3) -> int:
 		return 0
 	var taken := maxi(1, damage - ceili(inv.defense() / 2.0))
 	hp -= taken
+	if entities:
+		entities.spawn_text(position + Vector3.UP * (TALL + 0.4), str(taken), Color("#ff5058"))
 	iframes = IFRAMES
 	since_hit = 0.0
 	knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
