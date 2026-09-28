@@ -8,7 +8,8 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
 - Scripts diretos, um por sistema. Nada de arquitetura corporativa.
 - Conteúdo é dado, não código: blocos, itens, receitas, minérios e inimigos em arquivos de dados lidos por sistemas genéricos.
 - Desempenho é requisito: 60 fps em GPU integrada, renderer Compatibility, distância de renderização configurável.
-- Sem addons no MVP. Sem assets de terceiros: texturas 16x16 geradas por script (Image.save_png, paleta limitada).
+- Sem addons no MVP. Visual: sprites do Terraria/Calamity baixados da wiki para `assets/wiki/` (fora do git, uso pessoal),
+  com fallback procedural (atlas.gd) quando não houver sprite. Detalhes em docs/VISUAL.md.
 - Respostas curtas; não repita código que não mudou.
 - **Todo passo termina com teste headless passando + instrução objetiva de playtest para o dono.**
 

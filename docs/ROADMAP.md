@@ -33,6 +33,11 @@ Itens soltos no chão (miniatura girando + feixe na cor da raridade), tochas/gel
 Pronto quando: testes verificam dano/defesa/morte/respawn, invencibilidade, IA de slime/zumbi/olho, espada e flecha, coleta de itens, ciclo dia/noite, e que salvar→carregar reproduz mundo e inventário; no playtest, sobreviver a uma noite lutando com espada e arco, sair e voltar com tudo salvo.
 Pendente (fora do protótipo): dano de queda, regeneração fiel, knockback resist, inimigos com modelo.
 
+## V1–V3 Visual Terraria (ver docs/VISUAL.md)
+V1 ícones/blocos exatos da wiki (baixados, fora do git) com fallback procedural; V2 item 3D extrudado na mão;
+V3 efeitos e projéteis por dados. Pronto quando: testes verificam fallback sem rede, extrusão (faces só nas bordas)
+e que `effects`/`shoot` vêm do JSON; no playtest, Terra Blade com o ícone do jogo, brilho verde e o feixe.
+
 ## F5 Primeiro chefe + progressão completa de minérios pré-hardmode
 Tiers da wiki: minérios comuns com qualquer picareta; meteorito 50; demonita/carmesim e obsidiana 55; pedra infernal 65.
 Pronto quando: testes verificam a cadeia de tiers de minério pré-hardmode sem buracos e o invocador/drops do chefe por dados; no playtest, do cobre ao último tier pré-hardmode e o chefe derrotado.
