@@ -3,13 +3,14 @@ extends Node3D
 # animação de andar e de uso do item, a arma 3D na mão direita e a armadura vestida por cima.
 # Armadura: uma "casca" um pouco maior sobre cada parte, com as cores do sprite da peça.
 
-const SKIN := Color("#e8b890")
-const HAIR := Color("#4a2e1a")
-const SHIRT := Color("#b04a3a")
-const PANTS := Color("#3a4a8a")
 const SHOES := Color("#5a3a2a")
 
-@export var player: Node3D
+@export var player: Node3D           # jogador ou inimigo humanoide (usa velocity; held/inv/pitch se existirem)
+var skin := Color("#e8b890")
+var hair := Color("#4a2e1a")
+var shirt := Color("#b04a3a")
+var pants := Color("#3a4a8a")
+var arms_forward := false            # zumbi
 var parts := {}      # nome -> pivô (Node3D) na articulação
 var shells := {}     # slot de armadura -> [MeshInstance3D]
 var held: MeshInstance3D
@@ -20,12 +21,12 @@ var phase := 0.0
 
 func _ready() -> void:
 	# [nome, pivô (articulação), tamanho, cor, deslocamento da caixa a partir do pivô]
-	for p in [["leg_l", Vector3(-0.12, 0.75, 0), Vector3(0.22, 0.75, 0.24), PANTS, Vector3(0, -0.375, 0)],
-			["leg_r", Vector3(0.12, 0.75, 0), Vector3(0.22, 0.75, 0.24), PANTS, Vector3(0, -0.375, 0)],
-			["torso", Vector3(0, 0.75, 0), Vector3(0.46, 0.6, 0.26), SHIRT, Vector3(0, 0.3, 0)],
-			["head", Vector3(0, 1.35, 0), Vector3(0.44, 0.44, 0.44), SKIN, Vector3(0, 0.22, 0)],
-			["arm_l", Vector3(-0.32, 1.32, 0), Vector3(0.18, 0.62, 0.18), SKIN, Vector3(0, -0.28, 0)],
-			["arm_r", Vector3(0.32, 1.32, 0), Vector3(0.18, 0.62, 0.18), SKIN, Vector3(0, -0.28, 0)]]:
+	for p in [["leg_l", Vector3(-0.12, 0.75, 0), Vector3(0.22, 0.75, 0.24), pants, Vector3(0, -0.375, 0)],
+			["leg_r", Vector3(0.12, 0.75, 0), Vector3(0.22, 0.75, 0.24), pants, Vector3(0, -0.375, 0)],
+			["torso", Vector3(0, 0.75, 0), Vector3(0.46, 0.6, 0.26), shirt, Vector3(0, 0.3, 0)],
+			["head", Vector3(0, 1.35, 0), Vector3(0.44, 0.44, 0.44), skin, Vector3(0, 0.22, 0)],
+			["arm_l", Vector3(-0.32, 1.32, 0), Vector3(0.18, 0.62, 0.18), skin, Vector3(0, -0.28, 0)],
+			["arm_r", Vector3(0.32, 1.32, 0), Vector3(0.18, 0.62, 0.18), skin, Vector3(0, -0.28, 0)]]:
 		var pivot := Node3D.new()
 		pivot.position = p[1]
 		add_child(pivot)
@@ -34,10 +35,10 @@ func _ready() -> void:
 	for leg in ["leg_l", "leg_r"]:
 		parts[leg].add_child(_box(Vector3(0.23, 0.12, 0.28), SHOES, Vector3(0, -0.69, -0.02)))
 	for arm in ["arm_l", "arm_r"]:
-		parts[arm].add_child(_box(Vector3(0.19, 0.24, 0.19), SHIRT, Vector3(0, -0.1, 0)))  # manga
+		parts[arm].add_child(_box(Vector3(0.19, 0.24, 0.19), shirt, Vector3(0, -0.1, 0)))  # manga
 	var head: Node3D = parts.head
-	head.add_child(_box(Vector3(0.46, 0.16, 0.46), HAIR, Vector3(0, 0.38, 0.01)))
-	head.add_child(_box(Vector3(0.46, 0.3, 0.1), HAIR, Vector3(0, 0.28, 0.2)))
+	head.add_child(_box(Vector3(0.46, 0.16, 0.46), hair, Vector3(0, 0.38, 0.01)))
+	head.add_child(_box(Vector3(0.46, 0.3, 0.1), hair, Vector3(0, 0.28, 0.2)))
 	for x in [-0.1, 0.1]:
 		head.add_child(_box(Vector3(0.08, 0.06, 0.02), Color.WHITE, Vector3(x, 0.24, -0.225)))
 		head.add_child(_box(Vector3(0.04, 0.06, 0.02), Color("#2a4aa0"), Vector3(x + 0.02, 0.24, -0.23)))
@@ -59,12 +60,20 @@ static func _box(size: Vector3, color: Color, offset: Vector3) -> MeshInstance3D
 
 
 func _process(delta: float) -> void:
+	if player == null:
+		player = get_parent().get_parent() if get_parent() else null  # modelo de inimigo: dono é o avô
+		if player == null:
+			return
 	var speed := Vector2(player.velocity.x, player.velocity.z).length()
 	phase += delta * speed * 2.2
 	var swing := sin(phase) * clampf(speed / 4.5, 0, 1) * 0.8
 	parts.leg_l.rotation.x = swing
 	parts.leg_r.rotation.x = -swing
 	parts.arm_l.rotation.x = -swing * 0.8
+	if arms_forward:
+		parts.arm_l.rotation.x = -PI / 2 + swing * 0.2
+		parts.arm_r.rotation.x = -PI / 2 - swing * 0.2
+		return
 	parts.head.rotation.x = player.pitch * 0.6
 	var id: int = player.held()
 	var dur: float = Items.defs[id].get("use_time", 0.25) if id != -1 else 0.25

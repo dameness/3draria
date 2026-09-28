@@ -39,7 +39,8 @@ Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjun
 (cobre/estanho...): a seed escolhe um por mundo. Altura do mundo: 128 (submundo < 20, cavernas < 48).
 
 ## enemies.json
-`{name, ai: hop|walk|fly|eye_of_cthulhu, life, damage, defense, speed, size:[largura, altura], color, sprite?,
+`{name, ai: hop|walk|fly|eye_of_cthulhu, model?: eye|slime|humanoid (senão sprite extrudado), iris?, colors?,
+life, damage, defense, speed, size:[largura, altura], color, sprite?,
 spawn: day|night|any|none, kb_resist?, boss?, minion?, phase2?:{below, damage, defense, sprite}, drops:[{item, min, max, chance}]}`.
 Escala: 1 tile do Terraria ≈ 0,6 bloco (jogador de 3 tiles = 1,8). IA nova = um `match` em `scripts/enemy.gd`.
 Chefes atravessam blocos e vão embora ao amanhecer; itens com `summon` os invocam (só à noite).

@@ -6,15 +6,15 @@ const THICK := 1.5          # espessura em pixels do sprite
 const SHADE_FRONT := 1.0
 const SHADE_SIDE := 0.7
 
-static var cache := {}      # item -> [ArrayMesh, Material]
+static var cache := {}      # [item, tamanho] -> [ArrayMesh, Material]
 
 
 # Malha com origem no canto inferior esquerdo da imagem; o lado maior mede `length`.
-static func build(img: Image, length: float) -> ArrayMesh:
+static func build(img: Image, length: float, thick_px := THICK) -> ArrayMesh:
 	var w := img.get_width()
 	var h := img.get_height()
 	var s := length / maxi(w, h)
-	var d := THICK * s / 2
+	var d := thick_px * s / 2
 	var a := {"v": PackedVector3Array(), "n": PackedVector3Array(), "c": PackedColorArray(), "uv": PackedVector2Array(), "i": PackedInt32Array()}
 	var W := w * s
 	var H := h * s
@@ -71,7 +71,8 @@ static func _quad(a: Dictionary, c: Array, uvs: Array, n: Vector3, shade: float)
 
 # [malha, material] do item, a partir do mesmo ícone da interface. Cacheado por item.
 static func for_item(id: int, icon: Texture2D, length: float) -> Array:
-	if not cache.has(id):
+	var key := [id, length]
+	if not cache.has(key):
 		var img := icon.get_image()
 		img.convert(Image.FORMAT_RGBA8)
 		var mat := StandardMaterial3D.new()
@@ -80,5 +81,5 @@ static func for_item(id: int, icon: Texture2D, length: float) -> Array:
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
 		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		mat.vertex_color_use_as_albedo = true
-		cache[id] = [build(img, length), mat]
-	return cache[id]
+		cache[key] = [build(img, length), mat]
+	return cache[key]

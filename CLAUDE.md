@@ -66,7 +66,8 @@ scripts/             setup-godot.sh e um .gd por sistema:
   voxel_body.gd      colisão AABB contra voxels (jogador, inimigos, itens)
   player.gd          1ª pessoa, vida, usar item (minerar/golpear/atirar), colocar
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
-  enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly)
+  enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly/eye_of_cthulhu)
+  enemy_model.gd     modelos 3D dos inimigos (eye/slime/humanoid; senão sprite extrudado)
   day_night.gd       ciclo 15+9 min
   save_game.gd       user://players/*.plr e user://worlds/*.wld (seed, hora, spawn, chunks editados)
   menu.gd            menu inicial: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair

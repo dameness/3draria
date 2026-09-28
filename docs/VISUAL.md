@@ -44,7 +44,8 @@ Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e part�
   flechas voam como o ícone extrudado. F8 no jogo dá um kit de teste.
 - V4 ✅: tecla V (1ª/3ª pessoa por cima do ombro, câmera desvia de blocos), corpo em blocos animado,
   arma na mão, armaduras dos 8 metais com defesa e bônus de conjunto; cascas coloridas pelo sprite da peça.
-- V5: inimigos e chefes em 3D (extrusão como base; modelo próprio nos chefes; humanoides usam o corpo da V4).
+- V5 ✅: inimigos em 3D por `model` (scripts/enemy_model.gd): eye (veias, íris, tentáculos; fase 2 = boca com
+  dentes), slime (gelatina translúcida que estica), humanoid (corpo da V4); sem modelo, sprite extrudado.
 
 ## Limites conhecidos
 - Blocos do Terraria têm bordas que mudam com os vizinhos (tile framing); em voxel usamos só o tile central.

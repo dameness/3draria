@@ -10,9 +10,11 @@ const SHOTS := [
 	{"name": "noite", "time": 1100.0, "look": Vector2(2.0, -0.1), "item": "enchanted_sword"},
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"]},
+	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime"], "item": "wooden_sword"},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
+	{"name": "chefe_fase2", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "phase2": true, "third": true},
 ]
 
 var main: Node
@@ -69,7 +71,7 @@ func _setup(s: Dictionary) -> void:
 	var side := fwd.cross(Vector3.UP)
 	var i := 0
 	for n in s.get("enemies", []):
-		var pos: Vector3 = player.position + fwd * 7 + side * (i - 1) * 2.5
+		var pos: Vector3 = player.position + fwd * 6 + side * (i - (s.enemies.size() - 1) / 2.0) * 2.2
 		pos.y = world.surface_y(int(pos.x), int(pos.z)) + (2.5 if n == "demon_eye" else 0.0)
 		var e: Node3D = ent.spawn_enemy(ent.def_named(n), pos)
 		e.set_physics_process(false)
@@ -78,6 +80,8 @@ func _setup(s: Dictionary) -> void:
 		var b: Node3D = ent.spawn_boss(s.boss)
 		b.position = player.position + fwd * 12 + Vector3.UP * 5
 		b.set_physics_process(false)
+		if s.get("phase2", false):
+			EnemyModel.set_phase(b.model, 2)
 	player.third_person = s.get("third", false)
 	for n in s.get("armor", []):
 		player.inv.add(Items.ids[n], 1)

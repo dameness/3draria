@@ -1,7 +1,7 @@
 extends Node3D
 # Um inimigo de enemies.json com IA genérica por "ai": hop (slime), walk (zumbi), fly (olho demoníaco)
 # e eye_of_cthulhu (chefe: paira, invoca servos e investe; fase 2 abaixo de phase2.below da vida).
-# Visual: sprite da wiki virado para a câmera; sem sprite baixado, caixa colorida.
+# Visual: EnemyModel (modelo 3D por "model"; senão o sprite da wiki extrudado).
 
 const GRAVITY := 28.0
 const JUMP := 8.0
@@ -20,7 +20,8 @@ var timer := 0.0   # espera entre pulos do slime / tempo no estado do chefe
 var stun := 0.0    # após levar golpe a IA para e o knockback age
 var flash := 0.0
 var rng := RandomNumberGenerator.new()
-var sprite: Sprite3D
+var model: Node3D
+var flash_mat: StandardMaterial3D
 # chefe
 var mode := "hover"
 var dashes := 0
@@ -34,40 +35,24 @@ func _ready() -> void:
 	defense = def.defense
 	half = def.size[0] / 2.0
 	tall = def.size[1]
-	var tex := _texture(def.get("sprite", ""))
-	if tex:
-		sprite = Sprite3D.new()
-		sprite.texture = tex
-		sprite.pixel_size = tall / tex.get_height()
-		sprite.billboard = BaseMaterial3D.BILLBOARD_ENABLED if def.ai != "walk" and def.ai != "hop" else BaseMaterial3D.BILLBOARD_FIXED_Y
-		sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		sprite.shaded = false
-		sprite.position.y = tall / 2
-		add_child(sprite)
-		return
-	var box := BoxMesh.new()
-	box.size = Vector3(def.size[0], tall, def.size[0])
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(def.color)
-	box.material = mat
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = box
-	mesh.position.y = tall / 2
-	add_child(mesh)
-
-
-# Sprite da wiki se baixado; senão null (usa a caixa).
-static func _texture(n: String) -> Texture2D:
-	if n == "" or Atlas.wiki_image(Blocks.textures.get(n, {})) == null:
-		return null
-	return Atlas.texture(n, 0, null)
+	model = EnemyModel.build(def)
+	model.rotation.y = PI  # modelos olham para -Z; o nó gira para o jogador por +Z
+	add_child(model)
+	flash_mat = StandardMaterial3D.new()
+	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	flash_mat.albedo_color = Color(1, 0.1, 0.1, 0.45)
+	flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
 
 func _process(delta: float) -> void:
-	if sprite:
-		flash -= delta
-		sprite.modulate = Color(1, 0.4, 0.4) if flash > 0 else Color.WHITE
+	if model == null:
+		return
+	var was := flash > 0
+	flash -= delta
+	if was != (flash > 0):  # pisca vermelho ao levar dano
+		for m in model.find_children("", "MeshInstance3D", true, false):
+			m.material_overlay = flash_mat if flash > 0 else null
+	EnemyModel.animate(model, self, entities.player.eye(), Time.get_ticks_msec() / 1000.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -120,9 +105,8 @@ func eye_of_cthulhu(delta: float, to: Vector3) -> void:
 		phase = 2
 		damage = p2.damage
 		defense = p2.defense
-		var tex := _texture(p2.sprite)
-		if sprite and tex:
-			sprite.texture = tex
+		if model:
+			EnemyModel.set_phase(model, 2)
 	timer -= delta
 	match mode:
 		"hover":

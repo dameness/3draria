@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -401,6 +401,26 @@ func test_armor():
 	check(p.inv.defense() == 4 + 5 + 4 + 3 and p.hurt(30, Vector3.RIGHT) == 30 - 8, "conjunto de ouro: defesa 16 reduz o dano em 8")
 	free_player(p)
 	w.free()
+	return true
+
+
+func test_enemy_models():
+	var ent: Node3D = load("res://scripts/entities.gd").new()
+	ent.load_defs()
+	for d in ent.defs:
+		var m := EnemyModel.build(d)
+		check(m.find_children("", "MeshInstance3D", true, false).size() > 0 or m.get_node_or_null("Body") != null, "%s tem modelo 3D" % d.name)
+		m.free()
+	var eye := EnemyModel.build(ent.def_named("eye_of_cthulhu"))
+	EnemyModel.set_phase(eye, 2)
+	check(not eye.get_node("Look/Iris").visible and eye.get_node("Look/Mouth").visible, "fase 2: íris vira boca")
+	eye.free()
+	check(ent.def_named("zombie").model == "humanoid", "zumbi usa o corpo humanoide")
+	var icon := Items.icon_texture(Items.ids.copper_pickaxe, ImageTexture.create_from_image(Atlas.build(Blocks.textures)))
+	var small: Array = ItemModel.for_item(Items.ids.copper_pickaxe, icon, 0.4)
+	var big: Array = ItemModel.for_item(Items.ids.copper_pickaxe, icon, 0.9)
+	check(small[0] != big[0] and big[0].get_aabb().size.x > small[0].get_aabb().size.x, "modelo do item cacheado por tamanho")
+	ent.free()
 	return true
 
 
