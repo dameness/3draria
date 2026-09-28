@@ -28,11 +28,14 @@ static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 				for x in range(3 if y > 6 else 4, 13 if y > 6 else 12):
 					set_px.call(x, y, cols[2] if y == 6 else cols[1] if y == 11 else cols[0])
 		"pickaxe":
-			for i in 9:
-				set_px.call(2 + i, 13 - i, top[0])
-			for t in range(-3, 4):
-				set_px.call(11 + t, 4 + t, cols[0])
-				set_px.call(11 + t, 3 + t, cols[1])
+			for i in 10:
+				set_px.call(2 + i, 13 - i, top[0])  # cabo na diagonal
+			# cabeça em arco, perpendicular ao cabo, com borda interna mais escura
+			for p in [Vector2i(3, 3), Vector2i(4, 2), Vector2i(5, 1), Vector2i(6, 1), Vector2i(7, 1), Vector2i(8, 1), Vector2i(9, 2), Vector2i(10, 2),
+					Vector2i(11, 3), Vector2i(12, 4), Vector2i(13, 5), Vector2i(13, 6), Vector2i(14, 7), Vector2i(14, 8), Vector2i(14, 9), Vector2i(14, 10), Vector2i(13, 11)]:
+				set_px.call(p.x, p.y, cols[0])
+				if p.y < 12 and p.x > 3:
+					set_px.call(p.x - 1, p.y + 1, cols[1])
 		"sword":
 			for i in 9:
 				set_px.call(5 + i, 10 - i, cols[0])

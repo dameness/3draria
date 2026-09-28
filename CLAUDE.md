@@ -24,7 +24,8 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
 - Lógica não trivial deixa UM check executável (assert em tests/run.gd). One-liners triviais não precisam.
 
 ## Referência de conteúdo
-- Terraria: https://terraria.wiki.gg (ex.: /wiki/Pickaxe_power, /wiki/Ores) · Calamity: https://calamitymod.wiki.gg
+- Terraria: https://terraria.wiki.gg (ex.: /wiki/Pickaxe_power, /wiki/Ores)
+- Calamity: https://calamitymod.wiki.gg
 Consulte antes de criar itens, receitas, minérios, inimigos e chefes; adapte os números, não copie texto.
 Leia pela API com curl (WebFetch é bloqueado; curl passa): `curl -sS "https://terraria.wiki.gg/api.php?action=parse&page=Iron_Bar&prop=text&format=json&formatversion=2"`.
 
@@ -54,7 +55,8 @@ scripts/             setup-godot.sh e um .gd por sistema:
   chunk_mesher.gd    faces visíveis → arrays de mesh (thread-safe)
   world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool
   items.gd           itens (blocos viram itens + items.json), drops, poder de picareta
-  inventory.gd  crafting.gd   slots/empilhar; receitas e estações por perto
+  inventory.gd       slots, empilhar, remover
+  crafting.gd        receitas e estações por perto
   voxel_body.gd      colisão AABB contra voxels (jogador, inimigos, itens)
   player.gd          1ª pessoa, vida, usar item (minerar/golpear/atirar), colocar
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
@@ -65,8 +67,14 @@ tests/run.gd         testes headless (asserts simples, sem framework) + integra�
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)
 textures/            atlas.png gerado pelos testes, só para inspeção (ignorado pelo git)
-docs/ROADMAP.md      fases e critérios de pronto     .tools/  binário do Godot (ignorado pelo git)
+docs/ROADMAP.md      fases e critérios de pronto
+docs/atlas.png       prévia ampliada das texturas (tests/atlas_preview.gd)
+.tools/              binário do Godot (ignorado pelo git)
 ```
+
+## Documentação do projeto
+Este arquivo: até 200 linhas. Cada pasta pode ter o próprio CLAUDE.md (até 50 linhas) com detalhes daquela seção,
+ex.: `data/CLAUDE.md` (formato dos JSON e das texturas).
 
 ## Onde fica cada tipo de dado
 Um arquivo JSON por tipo em `data/<pacote>/`: `blocks.json` (power = picareta mínima, drop), `textures.json` (paleta + padrão; também ícones),

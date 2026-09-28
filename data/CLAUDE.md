@@ -1,0 +1,36 @@
+# data/ — conteúdo do jogo
+
+Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `scripts/` só leem; conteúdo novo = editar JSON.
+**Ids são a posição na lista** em `blocks.json` e `items.json`: só acrescente no fim (o save grava ids de bloco).
+
+## textures.json — tudo que é desenhado
+`nome: {pattern, colors, top_colors?}`. `scripts/atlas.gd` pinta cada entrada num tile 16x16, numa única fileira (o atlas),
+com RNG semeado pelo nome (sempre o mesmo resultado). Sem arquivos de imagem: o atlas é gerado ao abrir o jogo.
+- Blocos (opacos): `noise` (pixels sorteados da paleta), `grass_side` (topo com top_colors), `stripes`, `rings`,
+  `ore` (base + manchas de top_colors), `planks`, `bricks` (top_colors = argamassa).
+- Ícones (fundo transparente): `bar`, `pickaxe`, `sword`, `bow`, `arrow`, `blob` (+ pupila se top_colors), `torch`.
+- Padrão novo = um `match` em atlas.gd. Paleta curta (2-4 cores) mantém o estilo.
+- Prévia ampliada: `.tools/godot --headless -s tests/atlas_preview.gd` → `docs/atlas.png`.
+
+## blocks.json
+`{name, tiles:{all|top|side|bottom}, solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
+Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral).
+
+## items.json (itens que não são bloco)
+`{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?}`.
+Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` golpeia.
+
+## recipes.json
+`{result, count?=1, needs:{item: n}, station?: bloco}`; a estação precisa estar a até 4 blocos do jogador.
+
+## ores.json
+`{block, min_y, max_y, veins (por chunk), size (blocos por veio)}`. Altura do mundo: 128 (submundo < 20, cavernas < 48).
+
+## enemies.json
+`{name, ai: hop|walk|fly, life, damage, defense, speed, size:[largura, altura], color, spawn: day|night|any,
+drops:[{item, min, max, chance}]}`. IA nova = um `match` em `scripts/enemy.gd`.
+
+## rarities.json
+`raridade: cor` (valores do código do Terraria, −1 a 11). Pinta o feixe do item solto.
+
+Números: conferir na wiki (links no CLAUDE.md da raiz) antes de criar conteúdo.
