@@ -29,6 +29,8 @@ flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glo
 `use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).
 Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` golpeia.
 
+Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus}}`.
+
 ## recipes.json
 `{result, count?=1, needs:{item: n}, station?: bloco}`; a estação precisa estar a até 4 blocos do jogador.
 

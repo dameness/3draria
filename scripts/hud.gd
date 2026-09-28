@@ -8,6 +8,7 @@ extends CanvasLayer
 @onready var bar: HBoxContainer = $Hotbar
 var panel: PanelContainer
 var grid: GridContainer
+var armor_row: HBoxContainer
 var recipe_list: VBoxContainer
 var shown_version := -1
 var boss_bar: ProgressBar
@@ -24,9 +25,19 @@ func _ready() -> void:
 	grid.columns = Inventory.HOTBAR
 	for i in Inventory.SIZE:
 		grid.add_child(_slot(i))
+	armor_row = HBoxContainer.new()
+	var armor_label := Label.new()
+	armor_label.text = "Armadura (clique para tirar):"
+	armor_row.add_child(armor_label)
+	for k in Inventory.ARMOR.size():
+		var b := _slot(-1)
+		b.mouse_filter = Control.MOUSE_FILTER_STOP
+		b.pressed.connect(func(): player.inv.unequip(k))
+		armor_row.add_child(b)
 	var box := VBoxContainer.new()
+	box.add_child(armor_row)
 	var title := Label.new()
-	title.text = "Inventário — clique num slot para trocar com o da mão. Criação (estações a %d blocos):" % Crafting.STATION_RANGE
+	title.text = "Clique: armadura veste; outros itens trocam com o slot da mão. Criação (estações a %d blocos):" % Crafting.STATION_RANGE
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(0, 240)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -114,6 +125,8 @@ func _icon(id: int) -> Texture2D:
 
 
 func _on_slot(i: int) -> void:
+	if player.inv.equip_from(i):  # armadura: veste
+		return
 	if i < Inventory.HOTBAR:
 		player.slot = i
 	else:
@@ -165,12 +178,18 @@ func _process(_delta: float) -> void:
 			stations = near
 			for i in Inventory.SIZE:
 				_show_slot(grid.get_child(i), i)
+			for k in Inventory.ARMOR.size():
+				var b: Button = armor_row.get_child(k + 1)
+				var id: int = player.inv.equip[k]
+				b.icon = _icon(id) if id != -1 else null
+				b.text = "" if id != -1 else Inventory.ARMOR[k]
+				b.tooltip_text = Items.label(id) if id != -1 else ""
 			_refresh_recipes()
 	shown_version = player.inv.version
 	var p: Vector3 = player.position
 	var id: int = player.held()
 	var msg: String = player.message if Time.get_ticks_msec() < player.message_until else ""
-	info.text = "Vida %d/%d | %s %s\nFPS %d | distância %d chunks (+/-) | %s | na mão: %s\npos %d %d %d\n%s" % [
-		ceili(player.hp), player.MAX_HP, clock.clock(), "(noite)" if clock.is_night() else "",
-		Engine.get_frames_per_second(), world.render_distance, "voo (F)" if player.flying else "andando (F voa)",
+	info.text = "Vida %d/%d | Defesa %d | %s %s\nFPS %d | distância %d chunks (+/-) | %s | na mão: %s\npos %d %d %d\n%s" % [
+		ceili(player.hp), player.MAX_HP, player.inv.defense(), clock.clock(), "(noite)" if clock.is_night() else "",
+		Engine.get_frames_per_second(), world.render_distance, ("voo (F)" if player.flying else "andando (F voa)") + (" | 3ª pessoa (V)" if player.third_person else " | 1ª pessoa (V)"),
 		Items.label(id) if id != -1 else "nada", p.x, p.y, p.z, msg]

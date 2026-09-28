@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -216,6 +216,8 @@ func test_save():
 	p.inv.add(Items.ids.iron_pickaxe, 1)
 	p.inv.add(Items.ids.stone, 42)
 	p.hp = 37
+	p.inv.add(Items.ids.iron_helmet, 1)
+	p.inv.equip_from(p.inv.item.find(Items.ids.iron_helmet))
 	p.spawn = Vector3(21.5, 11, 22.5)
 	p.clock.time = 123.0
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
@@ -225,6 +227,7 @@ func test_save():
 	check(SaveGame.load_world(w2, p2, p2.clock, wp) and SaveGame.load_player(p2, pp), "carregar")
 	check(w2.get_block(20, 11, 20) == Blocks.ids.dirt and w2.world_seed == w.world_seed, "bloco editado volta, seed do mundo")
 	check(p2.inv.total(Items.ids.stone) == 42 and p2.inv.total(Items.ids.iron_pickaxe) == 1 and p2.hp == 37, "inventário e vida voltam")
+	check(p2.inv.equip[0] == Items.ids.iron_helmet, "armadura vestida volta")
 	check(p2.spawn == p.spawn and p2.clock.time == 123.0, "spawn e hora do mundo voltam")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
@@ -371,6 +374,31 @@ func test_boss():
 	p.shoot(Items.defs[Items.ids.wooden_bow], eye, Vector3.RIGHT)
 	var arrow: Node3D = ent.get_children().back()
 	check(arrow.def.name == "unholy_arrow" and p.inv.total(Items.ids.unholy_arrow) == 4, "arco atira Unholy Arrow")
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_armor():
+	var inv := Inventory.new()
+	for n in ["copper_helmet", "copper_chainmail", "copper_greaves", "iron_helmet", "dirt"]:
+		inv.add(Items.ids[n], 1)
+	check(not inv.equip_from(4) and inv.equip == PackedInt32Array([-1, -1, -1]), "terra não é armadura")
+	inv.equip_from(0)
+	inv.equip_from(1)
+	check(inv.defense() == 1 + 2, "defesa soma as peças (%d)" % inv.defense())
+	inv.equip_from(2)
+	check(inv.defense() == 1 + 2 + 1 + 2, "conjunto de cobre completo: +2 de bônus (%d)" % inv.defense())
+	inv.equip_from(3)
+	check(inv.equip[0] == Items.ids.iron_helmet and inv.item[3] == Items.ids.copper_helmet and inv.defense() == 2 + 2 + 1, "trocar capacete devolve o antigo e perde o bônus")
+	inv.unequip(1)
+	check(inv.equip[1] == -1 and inv.total(Items.ids.copper_chainmail) == 1, "tirar armadura volta ao inventário")
+	var w := floor_world()
+	var p := make_player(w)
+	for n in ["gold_helmet", "gold_chainmail", "gold_greaves"]:
+		p.inv.add(Items.ids[n], 1)
+		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
+	check(p.inv.defense() == 4 + 5 + 4 + 3 and p.hurt(30, Vector3.RIGHT) == 30 - 8, "conjunto de ouro: defesa 16 reduz o dano em 8")
 	free_player(p)
 	w.free()
 	return true
@@ -554,6 +582,15 @@ func integration():
 			hand._process(0)
 			check(hand.glow != null and hand.sparks != null and hand.trail_points.size() >= 2, "Terra Blade na mão com brilho, faíscas e rastro (%s %s %d)" % [hand.glow, hand.sparks, hand.trail_points.size()])
 			player.cooldown = 0
+			player.third_person = true
+			player.flying = true
+			player.position += Vector3.UP * 20  # céu aberto: nada entre a cabeça e a câmera
+			player._process(0)
+			var model: Node3D = player.get_node("Model")
+			check(player.cam.position.distance_to(Vector3(0, player.EYE, 0)) > 3.5 and model.visible and not hand.visible, "V: 3ª pessoa afasta a câmera e mostra o corpo")
+			player.third_person = false
+			player._process(0)
+			check(player.cam.position == Vector3(0, player.EYE, 0) and not model.visible, "V de novo: volta à 1ª pessoa")
 			return true
 	return false
 

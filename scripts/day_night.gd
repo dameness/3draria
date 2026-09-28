@@ -10,6 +10,7 @@ const SKY_NIGHT := Color(0.03, 0.04, 0.1)
 const NIGHT_LIGHT := 0.3
 
 @export var world: Node3D
+@export var sun: DirectionalLight3D   # ilumina só os modelos (jogador, itens); os blocos são sem sombreamento
 var time := 60.0   # segundos desde o amanhecer
 
 
@@ -32,6 +33,8 @@ func _process(delta: float) -> void:
 	time = fmod(time + delta, CYCLE)
 	var l := light()
 	world.material.albedo_color = Color(l, l, l)
+	if sun:
+		sun.light_energy = l
 	var env := world.get_world_3d().environment
 	if env:
 		var sky := SKY_NIGHT.lerp(SKY_DAY, (l - NIGHT_LIGHT) / (1.0 - NIGHT_LIGHT))

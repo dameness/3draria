@@ -42,7 +42,9 @@ Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e part�
   Ver sem GPU: `.tools/godot --headless -s tests/model_preview.gd -- item1 item2` → textures/item_models.png.
 - V3 ✅: `effects` (glow/trail/particles) + `projectiles.json`; Enchanted Sword e Terra Blade disparam feixes;
   flechas voam como o ícone extrudado. F8 no jogo dá um kit de teste.
-- V4: 3ª pessoa + modelo do jogador + armaduras (já listado no roadmap pós-protótipo).
+- V4 ✅: tecla V (1ª/3ª pessoa por cima do ombro, câmera desvia de blocos), corpo em blocos animado,
+  arma na mão, armaduras dos 8 metais com defesa e bônus de conjunto; cascas coloridas pelo sprite da peça.
+- V5: inimigos e chefes em 3D (extrusão como base; modelo próprio nos chefes; humanoides usam o corpo da V4).
 
 ## Limites conhecidos
 - Blocos do Terraria têm bordas que mudam com os vizinhos (tile framing); em voxel usamos só o tile central.

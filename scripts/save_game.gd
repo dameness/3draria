@@ -57,7 +57,8 @@ static func save_player(player, path: String) -> Error:
 	for i in Inventory.SIZE:
 		var id: int = player.inv.item[i]
 		inv.append([Items.names[id] if id != -1 else "", player.inv.count[i]])
-	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "inv": inv})
+	var equip := Array(player.inv.equip).map(func(id): return Items.names[id] if id != -1 else "")
+	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "inv": inv, "equip": equip})
 
 
 # Retorna false para personagem novo (o jogo dá os itens iniciais).
@@ -72,6 +73,9 @@ static func load_player(player, path: String) -> bool:
 		if Items.ids.has(entry[0]):  # item removido dos dados some do save
 			player.inv.item[i] = Items.ids[entry[0]]
 			player.inv.count[i] = entry[1]
+	var equip: Array = data.get("equip", [])
+	for k in equip.size():
+		player.inv.equip[k] = Items.ids.get(equip[k], -1)
 	return true
 
 

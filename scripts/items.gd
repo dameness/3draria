@@ -10,6 +10,7 @@ static var places := PackedInt32Array()   # id -> bloco que coloca, ou -1
 static var pick_power := PackedInt32Array()
 static var stack := PackedInt32Array()
 static var drop := PackedInt32Array()     # bloco -> item que dropa, ou -1
+static var sets := {}                     # conjunto de armadura -> {pieces: [ids], defense: bônus}
 static var rarity_colors := {}            # raridade (int) -> Color, de rarities.json
 static var defs: Array[Dictionary] = []   # id -> entrada crua do JSON (damage, use_time, reach, knockback, ammo, shoot_speed)
 
@@ -26,6 +27,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	drop.clear()
 	defs.clear()
 	rarity_colors.clear()
+	sets.clear()
 	var rc: Dictionary = Blocks.read(dir + "/rarities.json")
 	for r in rc:
 		rarity_colors[int(r)] = Color(rc[r])
@@ -39,6 +41,9 @@ static func load_pack(dir := "res://data/base") -> void:
 		_add(it, tile_index.find(it.icon), -1)
 	for d in defs:
 		assert(not d.has("ammo") or defs.any(func(x): return x.get("ammo_class") == d.ammo), "munição sem itens: " + str(d.get("ammo")))
+	var set_data: Dictionary = Blocks.read(dir + "/armor_sets.json")
+	for k in set_data:
+		sets[k] = {"pieces": set_data[k].pieces.map(func(n): return ids[n]), "defense": set_data[k].defense}
 	for n in Blocks.drop_names:
 		assert(n == "" or ids.has(n), "drop desconhecido: " + n)
 		drop.append(ids.get(n, -1))

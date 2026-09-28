@@ -1,6 +1,6 @@
 extends Node3D
 # Jogador em 1ª pessoa com colisão AABB contra os voxels (VoxelBody).
-# WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce).
+# WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce), V troca 1ª/3ª pessoa.
 # Segurar o botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira); direito coloca bloco.
 # 1-0 ou roda escolhem o slot; E abre inventário/criação; F5 salva (também salva ao fechar); F8 dá o kit de teste.
 # Esc abre o menu (Continuar / Salvar e sair).
@@ -15,6 +15,8 @@ const REACH := 5.0
 const MAX_HP := 100
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
 const REGEN_DELAY := 5.0
+const TPP_DISTANCE := 4.0      # câmera em 3ª pessoa: distância atrás da cabeça
+const TPP_SHOULDER := 0.6      # e deslocada para a direita, para a mira não ficar sobre a cabeça
 const EPS := VoxelBody.EPS
 const TEST_KIT := {"terra_blade": 1, "enchanted_sword": 1, "wooden_bow": 1, "wooden_arrow": 200, "iron_pickaxe": 1}  # F8, para playtest
 const LO := Vector3(-HALF, 0, -HALF)
@@ -31,6 +33,7 @@ var inv := Inventory.new()
 var slot := 0                 # slot da hotbar na mão
 var inventory_open := false
 var menu_open := false        # Esc: Continuar / Salvar e sair
+var third_person := false     # V alterna
 var message := ""             # aviso curto para o HUD
 var message_until := 0
 var hp := float(MAX_HP)
@@ -110,6 +113,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
 		elif e.physical_keycode == KEY_F:
 			flying = not flying
+		elif e.physical_keycode == KEY_V:
+			third_person = not third_person
 		elif e.physical_keycode == KEY_F8:
 			for n in TEST_KIT:
 				inv.add(Items.ids[n], TEST_KIT[n])
@@ -127,14 +132,31 @@ func _physics_process(delta: float) -> void:
 	tick(delta)
 
 
+func eye() -> Vector3:
+	return global_position + Vector3.UP * EYE
+
+
 func _process(_delta: float) -> void:
-	target = world.raycast(cam.global_position, -cam.global_basis.z, REACH)
+	_update_camera()
+	target = world.raycast(eye(), -cam.global_basis.z, REACH)
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
 		highlight.global_position = Vector3(target.pos) + Vector3.ONE * 0.5
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not inventory_open and not menu_open \
 			and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and cooldown <= 0:
 		use_item()
+
+
+# 1ª pessoa: câmera nos olhos e item na mão da câmera. 3ª pessoa: câmera atrás da cabeça (chega mais
+# perto se houver bloco no caminho) e o corpo do jogador aparece.
+func _update_camera() -> void:
+	var d := 0.0
+	if third_person:
+		var hit: Dictionary = world.raycast(eye(), cam.global_basis.z, TPP_DISTANCE)
+		d = TPP_DISTANCE if hit.is_empty() else maxf(eye().distance_to(Vector3(hit.pos) + Vector3.ONE * 0.5) - 0.9, 0.3)
+	cam.position = Vector3(TPP_SHOULDER * minf(d, 1.0), EYE, 0) + Basis(Vector3.RIGHT, pitch) * Vector3(0, 0, d)
+	cam.get_node("Hand").visible = not third_person
+	get_node("Model").visible = third_person
 
 
 # Timers de vida: invencibilidade, cooldown de uso e regeneração lenta.
@@ -179,11 +201,12 @@ func say(text: String) -> void:
 	message_until = Time.get_ticks_msec() + 2000
 
 
-# Dano como no Terraria (modo normal): dano − defesa/2. Sem armadura por enquanto.
-func hurt(damage: int, dir: Vector3) -> void:
+# Dano como no Terraria (modo normal): dano − defesa/2 (armadura + bônus de conjunto), mínimo 1.
+func hurt(damage: int, dir: Vector3) -> int:
 	if iframes > 0 or flying:
-		return
-	hp -= maxi(1, damage)
+		return 0
+	var taken := maxi(1, damage - ceili(inv.defense() / 2.0))
+	hp -= taken
 	iframes = IFRAMES
 	since_hit = 0.0
 	knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
@@ -194,6 +217,7 @@ func hurt(damage: int, dir: Vector3) -> void:
 		velocity = Vector3.ZERO
 		knock = Vector3.ZERO
 		say("você morreu")
+	return taken
 
 
 # Botão esquerdo: picareta minera, arma com munição atira, arma golpeia.
@@ -209,12 +233,11 @@ func use_item() -> void:
 	if Items.pick_power[id] > 0:
 		break_target()
 		return
-	var eye := cam.global_position
 	var forward := -cam.global_basis.z
 	if d.has("ammo"):
-		shoot(d, eye, forward)
+		shoot(d, eye(), forward)
 	elif d.get("damage", 0) > 0:
-		swing(d, eye, forward)
+		swing(d, eye(), forward)
 
 
 # Acerta todos os inimigos à frente dentro do alcance.

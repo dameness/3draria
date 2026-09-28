@@ -4,9 +4,11 @@ extends RefCounted
 
 const SIZE := 40
 const HOTBAR := 10
+const ARMOR := ["head", "body", "legs"]   # slots de equipamento
 
 var item := PackedInt32Array()    # -1 = vazio
 var count := PackedInt32Array()
+var equip := PackedInt32Array([-1, -1, -1])   # armadura vestida, na ordem de ARMOR
 var version := 0                  # muda a cada alteração (a interface redesenha)
 
 
@@ -68,3 +70,35 @@ func swap(a: int, b: int) -> void:
 	count[a] = count[b]
 	count[b] = t
 	version += 1
+
+
+# Veste a armadura do slot i (troca com a peça que estava vestida). Retorna false se não for armadura.
+func equip_from(i: int) -> bool:
+	var id := item[i]
+	if id == -1 or not Items.defs[id].has("armor"):
+		return false
+	var k := ARMOR.find(Items.defs[id].armor)
+	item[i] = equip[k]
+	count[i] = 1 if equip[k] != -1 else 0
+	equip[k] = id
+	version += 1
+	return true
+
+
+# Tira a peça do slot de equipamento k para o inventário (se couber).
+func unequip(k: int) -> void:
+	if equip[k] != -1 and add(equip[k], 1) == 0:
+		equip[k] = -1
+	version += 1
+
+
+# Defesa das peças vestidas + bônus do conjunto completo (como no Terraria).
+func defense() -> int:
+	var d := 0
+	for id in equip:
+		if id != -1:
+			d += Items.defs[id].defense
+	for s in Items.sets.values():
+		if s.pieces.all(func(p): return p in equip):
+			d += s.defense
+	return d

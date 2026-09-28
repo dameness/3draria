@@ -10,6 +10,8 @@ const SHOTS := [
 	{"name": "noite", "time": 1100.0, "look": Vector2(2.0, -0.1), "item": "enchanted_sword"},
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"]},
+	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
+	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
 ]
 
@@ -76,6 +78,10 @@ func _setup(s: Dictionary) -> void:
 		var b: Node3D = ent.spawn_boss(s.boss)
 		b.position = player.position + fwd * 12 + Vector3.UP * 5
 		b.set_physics_process(false)
+	player.third_person = s.get("third", false)
+	for n in s.get("armor", []):
+		player.inv.add(Items.ids[n], 1)
+		player.inv.equip_from(player.inv.item.find(Items.ids[n]))
 	if s.has("item"):
 		player.inv.add(Items.ids[s.item], 1)
 		player.slot = player.inv.item.find(Items.ids[s.item])

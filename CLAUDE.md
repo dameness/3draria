@@ -72,6 +72,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   menu.gd            menu inicial: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair
   hud.gd             mira, hotbar, vida, hora, avisos, janela de inventário/criação (E)
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  item na mão (1ª pessoa) + animação
+  player_model.gd    corpo em blocos (3ª pessoa, tecla V): andar, golpe, arma na mão, armadura vestida
 tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)

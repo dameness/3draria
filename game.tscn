@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3]
+[gd_scene load_steps=9 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="2"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://scripts/day_night.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/entities.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/held_item.gd" id="6"]
+[ext_resource type="Script" path="res://scripts/player_model.gd" id="7"]
 
 [sub_resource type="Environment" id="env"]
 background_mode = 1
@@ -16,6 +17,9 @@ fog_light_color = Color(0.53, 0.75, 0.95, 1)
 fog_density = 1.0
 fog_depth_begin = 58.0
 fog_depth_end = 96.0
+ambient_light_source = 2
+ambient_light_color = Color(0.75, 0.78, 0.85, 1)
+ambient_light_energy = 0.6
 
 [node name="Main" type="Node3D"]
 
@@ -25,9 +29,13 @@ environment = SubResource("env")
 [node name="World" type="Node3D" parent="."]
 script = ExtResource("1")
 
-[node name="DayNight" type="Node" parent="." node_paths=PackedStringArray("world")]
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.25, 0.433, 0, 0.866, 0.5, -0.5, -0.433, 0.75, 0, 0, 0)
+
+[node name="DayNight" type="Node" parent="." node_paths=PackedStringArray("world", "sun")]
 script = ExtResource("4")
 world = NodePath("../World")
+sun = NodePath("../Sun")
 
 [node name="Entities" type="Node3D" parent="." node_paths=PackedStringArray("world", "player", "clock")]
 script = ExtResource("5")
@@ -40,6 +48,10 @@ script = ExtResource("2")
 world = NodePath("../World")
 entities = NodePath("../Entities")
 clock = NodePath("../DayNight")
+
+[node name="Model" type="Node3D" parent="Player" node_paths=PackedStringArray("player")]
+script = ExtResource("7")
+player = NodePath("..")
 
 [node name="Camera" type="Camera3D" parent="Player"]
 near = 0.02
