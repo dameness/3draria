@@ -12,6 +12,9 @@ const SHOTS := [
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
 	{"name": "inventario_cheio", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "hp": 22},
 	{"name": "bau", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "chest": true},
+	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true},
+	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "flying": true},
+	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "flying": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
@@ -138,6 +141,15 @@ func _setup(s: Dictionary) -> void:
 			for dy in range(1, 5):
 				world.set_block(x + s.breach - 1, best.y - dy, best.z, 0)
 			world.liquid.settle(world, s.get("flow", 10))
+	if s.has("evil"):   # bioma do mal: acima do centro, ou dentro do 1º abismo
+		var g: WorldGen = world.gen
+		var at := Vector2i(g.evil_center)
+		if s.evil is String:
+			var o: Vector3i = g.chasm_orb(0)
+			player.position = Vector3(o.x + 0.5, o.y + 24, o.z + 0.5)
+		else:
+			player.position = Vector3(at.x + 0.5, world.surface_y(at.x, at.y) + s.get("up", 0.0), at.y + 0.5)
+		print("  ", s.name, " ", g.evil, " em ", player.position)
 	var sp := Vector3i(player.spawn.floor())
 	if s.get("cave", false):  # sala escavada 12 blocos abaixo, com tochas no chão
 		for x in range(-5, 6):
@@ -196,6 +208,17 @@ func _setup(s: Dictionary) -> void:
 			e.hurt(1, Vector3.ZERO, 0)
 			e.flash = 99.0
 		i += 1
+	if s.get("worm", false):
+		var w: Node3D = ent.spawn_worm(ent.def_named("eater_of_worlds"), player.position + fwd * 10 + Vector3.UP * 1.0)
+		for e in ent.enemies:
+			e.set_physics_process(false)
+		# dobra a fila em S para o print mostrar as juntas
+		var k := 0
+		for e in ent.enemies:
+			e.position = w.position - fwd * 1.15 * k + side * sin(k * 0.45) * 3.0 + Vector3.UP * (1.0 + sin(k * 0.3))
+			k += 1
+			if e.follow:
+				e.velocity = Vector3.ZERO
 	if s.has("boss"):
 		var b: Node3D = ent.spawn_boss(s.boss)
 		b.position = player.position + fwd * 12 + Vector3.UP * 5

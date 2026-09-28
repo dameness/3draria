@@ -74,5 +74,6 @@
 	{"name": "platinum_coin", "icon": "platinum_coin", "stack": 100, "rarity": 3},
 	{"name": "hermes_boots", "icon": "hermes_boots", "stack": 1, "rarity": 1, "accessory": {"speed": 0.4}},
 	{"name": "shiny_red_balloon", "icon": "shiny_red_balloon", "stack": 1, "rarity": 1, "accessory": {"jump": 0.25}},
-	{"name": "band_of_regeneration", "icon": "band_of_regeneration", "stack": 1, "rarity": 1, "accessory": {"regen": 2}}
+	{"name": "band_of_regeneration", "icon": "band_of_regeneration", "stack": 1, "rarity": 1, "accessory": {"regen": 2}},
+	{"name": "shadow_scale", "icon": "shadow_scale", "rarity": 1}
 ]

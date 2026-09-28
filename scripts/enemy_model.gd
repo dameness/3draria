@@ -3,6 +3,7 @@ class_name EnemyModel
 #   eye      esfera com veias, íris, pupila e tentáculos (Olho de Cthulhu, olho demoníaco, servos);
 #            set_phase(2) troca a íris por uma boca com dentes.
 #   slime    gelatina translúcida com núcleo; achata/estica com a velocidade vertical.
+#   worm     segmento de verme (esfera com anéis; cabeça com mandíbula, rabo mais fino), centrado na origem; enemy.gd gira inteiro.
 #   humanoid corpo do jogador (player_model.gd) com as cores de "colors" e braços estendidos.
 #   (outro)  sprite da wiki extrudado com espessura; sem sprite, caixa colorida.
 # A frente de todos é -Z; enemy.gd gira o nó para o jogador.
@@ -18,6 +19,8 @@ static func build(def: Dictionary) -> Node3D:
 			_eye(root, size[1] / 2.0, def)
 		"slime":
 			_slime(root, size, Color(def.color))
+		"worm":
+			_worm(root, size[0], def)
 		"humanoid":
 			var body: Node3D = PlayerModel.new()
 			var c: Dictionary = def.get("colors", {})
@@ -118,6 +121,37 @@ static func _eye(root: Node3D, r: float, def: Dictionary) -> void:
 		var t := _part(pivot, CylinderMesh.new(), Vector3(r * 0.12, r * 1.2, r * 0.12), Color("#b0202a"), Vector3(cos(a) * r * 0.45, sin(a) * r * 0.45, r * 1.3))
 		t.rotation.x = PI / 2
 		t.name = "Tendril%d" % i
+
+
+# Segmento de verme: esfera na cor do def, dois anéis mais escuros (placas) e, na cabeça, boca com dentes; o rabo termina em ponta.
+static func _worm(root: Node3D, w: float, def: Dictionary) -> void:
+	var c := Color(def.color)
+	var r := w / 2.0
+	var shell := _mat(c)
+	shell.roughness = 0.45
+	shell.rim_enabled = true
+	shell.rim = 0.5
+	_part(root, SphereMesh.new(), Vector3.ONE * w, c, Vector3.ZERO, shell)
+	for z in [-0.25, 0.25]:
+		var ring := CylinderMesh.new()
+		ring.radial_segments = 14
+		var m := _part(root, ring, Vector3(w * 1.02, w * 0.16, w * 1.02), c.darkened(0.4), Vector3(0, 0, r * z * 2.0))
+		m.rotation.x = PI / 2
+	_part(root, SphereMesh.new(), Vector3(w * 0.5, w * 0.35, w * 0.5), c.lightened(0.25), Vector3(0, r * 0.62, 0))   # placa das costas
+	if def.get("head", false):
+		var mouth := _mat(Color("#2a0a18"))
+		_part(root, SphereMesh.new(), Vector3(w * 0.7, w * 0.7, w * 0.35), Color("#2a0a18"), Vector3(0, 0, -r * 0.85), mouth)
+		for i in 8:
+			var a := TAU * i / 8.0
+			var tooth := _part(root, BoxMesh.new(), Vector3(w * 0.08, w * 0.22, w * 0.08), Color("#e8e0c8"), Vector3(cos(a) * r * 0.42, sin(a) * r * 0.42, -r * 1.02))
+			tooth.rotation.z = a + PI / 2
+	if def.get("tail", false):
+		var tip := CylinderMesh.new()
+		tip.top_radius = 0.0
+		tip.bottom_radius = 0.5
+		var m := _part(root, tip, Vector3(w * 0.7, w * 1.0, w * 0.7), c.darkened(0.2), Vector3(0, 0, r * 1.1))
+		m.rotation.x = PI / 2
+		tip.top_radius = 0.0   # _part deixa todo cilindro reto; aqui é um cone
 
 
 # Slime legível no gramado: gelatina brilhante e translúcida com um contorno escuro por trás, miolo mais escuro, olhos e uma sombra

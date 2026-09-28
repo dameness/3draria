@@ -16,6 +16,9 @@ const LAVA_CAVE := 24          # cavernas: o que está aberto abaixo disto é la
 const ROCK_LINE := 100         # acima disto a superfície é pedra pelada
 const MARGIN := 5              # alturas calculadas além do chunk: inclinação e árvores dos chunks vizinhos
 const TREE_CELL := 5           # no máximo uma árvore por célula 5x5 (posição sorteada dentro dela)
+const EVIL_RADIUS := 30.0      # raio do bioma do mal
+const CHASMS := 6              # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
+const CHASM_DEPTH := 38
 const CENTER := Vector2(SIZE_CHUNKS * CHUNK / 2.0, SIZE_CHUNKS * CHUNK / 2.0)   # nascimento: planície
 enum {TOP_GRASS, TOP_STONE, TOP_SAND}   # o que cobre a superfície de uma coluna
 const DIRS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
@@ -45,6 +48,13 @@ var TUFT: int
 var FLOWERS: Array
 var MUSHROOM: int
 var seed: int
+var evil := "corruption"          # "corruption" ou "crimson": um por mundo, escolhido pela seed
+var evil_center := Vector2.ZERO   # centro do bioma do mal (longe do nascimento)
+var chasm_centers: Array[Vector2i] = []   # abismos com um orbe no fundo
+var chasm_heights := PackedInt32Array()   # altura da superfície em cada abismo
+var EVIL_STONE: int
+var EVIL_GRASS: int
+var ORB: int
 var ores: Array = []   # de ores.json, com "block" já convertido em id
 
 
@@ -79,6 +89,17 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	TUFT = Blocks.ids.grass_tuft
 	FLOWERS = [Blocks.ids.flower_yellow, Blocks.ids.flower_red, Blocks.ids.flower_pink]
 	MUSHROOM = Blocks.ids.mushroom
+	var er := RandomNumberGenerator.new()   # bioma do mal: tipo, posição e abismos só dependem da seed
+	er.seed = hash([seed, "evil"])
+	evil = "corruption" if er.randi() % 2 == 0 else "crimson"
+	evil_center = CENTER + Vector2.from_angle(er.randf() * TAU) * er.randf_range(62.0, 80.0)
+	EVIL_STONE = Blocks.ids.ebonstone if evil == "corruption" else Blocks.ids.crimstone
+	EVIL_GRASS = Blocks.ids.corrupt_grass if evil == "corruption" else Blocks.ids.crimson_grass
+	ORB = Blocks.ids.shadow_orb if evil == "corruption" else Blocks.ids.crimson_heart
+	for k in CHASMS:
+		var c := evil_center + Vector2.from_angle(TAU * k / CHASMS + er.randf_range(-0.15, 0.15)) * er.randf_range(13.0, 19.0)
+		chasm_centers.append(Vector2i(c))
+		chasm_heights.append(surface_height(int(c.x), int(c.y)))
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
@@ -166,6 +187,7 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 				d[i + y * CHUNK * CHUNK] = WATER
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([seed, cx, cz])
+	_evil(d, hs, W, cx, cz)
 	_ores(d, rng)
 	_trees(d, hs, W, cx, cz)
 	_plants(d, hs, W, rng)
@@ -174,6 +196,77 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	rng.seed = hash([seed, cx, cz, "chest"])
 	_chest(d, rng)
 	return d
+
+
+# Quanto do bioma do mal cobre a coluna (0 a 1): disco com a borda irregular por ruído.
+func evil_weight(wx: int, wz: int) -> float:
+	var d := Vector2(wx, wz).distance_to(evil_center)
+	if d > EVIL_RADIUS + 8.0:
+		return 0.0
+	return clampf((EVIL_RADIUS - d + rock_noise.get_noise_2d(wx, wz) * 8.0) / 4.0, 0.0, 1.0)
+
+
+# Corrupção/Carmesim: grama e pedra do bioma trocadas, mais os abismos estreitos com um orbe no fundo.
+func _evil(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(evil_center) > EVIL_RADIUS + 8.0 + CHUNK:
+		return
+	var layer := CHUNK * CHUNK
+	for z in CHUNK:
+		for x in CHUNK:
+			if evil_weight(ox + x, oz + z) < 0.5:
+				continue
+			var h := hs[(x + MARGIN) + (z + MARGIN) * W]
+			var i := x + z * CHUNK
+			if d[i + h * layer] == GRASS:
+				d[i + h * layer] = EVIL_GRASS
+			for y in range(UNDERWORLD_TOP + 8, h + 1):
+				if d[i + y * layer] == STONE:
+					d[i + y * layer] = EVIL_STONE
+	for k in chasm_centers.size():
+		var c := chasm_centers[k]
+		if absi(c.x - (ox + CHUNK / 2)) > CHUNK / 2 + 4 or absi(c.y - (oz + CHUNK / 2)) > CHUNK / 2 + 4:
+			continue
+		var top := chasm_heights[k]
+		var bottom := maxi(top - CHASM_DEPTH, UNDERWORLD_TOP + 6)
+		for y in range(bottom, top + 2):
+			var r := 2.6 - 0.9 * float(top - y) / CHASM_DEPTH + rock_noise.get_noise_2d(c.x * 3 + y * 5, c.y) * 0.9   # afunila e serpenteia
+			r = maxf(r, 1.6)
+			var off := _chasm_off(c, y)
+			for dz in range(-5, 6):
+				for dx in range(-5, 6):
+					var lx: int = c.x + dx - ox
+					var lz: int = c.y + dz - oz
+					if lx < 0 or lx >= CHUNK or lz < 0 or lz >= CHUNK:
+						continue
+					var q := Vector2(dx, dz).distance_to(off)
+					var i := lx + lz * CHUNK + y * layer
+					if q <= r and y > bottom:
+						if d[i] != WATER and d[i] != LAVA:
+							d[i] = AIR
+					elif q <= r + 1.4 and d[i] != AIR and d[i] != WATER and d[i] != LAVA and y <= top:
+						d[i] = EVIL_STONE   # parede do abismo
+		var o := chasm_orb(k)   # o orbe fica no chão do abismo, no eixo dele
+		var lx := o.x - ox
+		var lz := o.z - oz
+		if lx >= 0 and lx < CHUNK and lz >= 0 and lz < CHUNK:
+			var i := lx + lz * CHUNK + o.y * layer
+			d[i - layer] = EVIL_STONE
+			d[i] = ORB
+
+
+# O eixo do abismo serpenteia devagar com a altura.
+func _chasm_off(c: Vector2i, y: int) -> Vector2:
+	return Vector2(rock_noise.get_noise_2d(y * 1.5, c.x) * 3.0, rock_noise.get_noise_2d(y * 1.5, c.y + 99) * 3.0)
+
+
+# Posição do orbe do abismo k (bloco dele, no chão): o eixo do abismo balança com a altura, como em _evil.
+func chasm_orb(k: int) -> Vector3i:
+	var c := chasm_centers[k]
+	var y := maxi(chasm_heights[k] - CHASM_DEPTH, UNDERWORLD_TOP + 6) + 1
+	var off := _chasm_off(c, y)
+	return Vector3i(c.x + roundi(off.x), y, c.y + roundi(off.y))
 
 
 # Altar demoníaco raro no chão de uma caverna (camada de cavernas).
@@ -243,7 +336,7 @@ func _trees(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) 
 			var wz := gz * TREE_CELL + (h >> 16) % TREE_CELL
 			var ix := wx - ox + MARGIN
 			var iz := wz - oz + MARGIN
-			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0:
+			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5:
 				continue
 			var forest := clampf(0.3 + forest_noise.get_noise_2d(wx, wz) * 1.0, 0.0, 0.75)   # matas e clareiras
 			var by := hs[ix + iz * W]

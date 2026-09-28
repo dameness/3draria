@@ -22,6 +22,7 @@ var meshable: Array[Vector2i] = []     # desses, os que já têm dados (e os dos
 var need_gen: Array[Vector2i] = []  # chunks a gerar para os pending (o mais perto no fim)
 var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
 var chests := {}    # Vector3i -> {item: PackedInt32Array, count: PackedInt32Array}; só os baús já abertos (os outros ainda não têm conteúdo)
+var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do mal); vai no save do mundo
 var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
 var versions := {}  # Vector2i -> nº de edições; descarta mesh de job que ficou velho
 var jobs := {}     # id da task -> resultado preenchido pela thread
@@ -131,6 +132,7 @@ func set_seed(s: int) -> void:
 	chunks.clear()
 	edited.clear()
 	chests.clear()
+	orbs_broken = 0
 	liquid = Liquid.new()
 
 

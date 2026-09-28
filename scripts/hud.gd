@@ -708,9 +708,10 @@ func _process(delta: float) -> void:
 	var boss: Node3D = player.entities.boss
 	boss_bar.visible = boss != null
 	if boss:
-		boss_bar.max_value = boss.def.life
-		boss_bar.value = boss.hp
-		boss_bar.get_node("Name").text = "%s  %d/%d" % [boss.def.name.replace("_", " ").capitalize(), maxi(boss.hp, 0), boss.def.life]
+		var life: int = player.entities.boss_life()
+		boss_bar.max_value = player.entities.boss_max
+		boss_bar.value = life
+		boss_bar.get_node("Name").text = "%s  %d/%d" % [player.entities.group_of(boss).replace("_", " ").capitalize(), life, player.entities.boss_max]
 	var inv: Inventory = player.inv
 	var changed: bool = inv.version != shown_version
 	if changed or player.slot != shown_slot or Engine.get_process_frames() % 30 == 0:

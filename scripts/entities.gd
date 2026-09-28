@@ -18,6 +18,7 @@ var defs: Array = []
 var projectiles := {}   # nome -> entrada de projectiles.json
 var enemies: Array[Node3D] = []
 var boss: Node3D = null
+var boss_max := 0           # vida total do chefe ao nascer (a de todos os segmentos, se for verme)
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
 
@@ -58,7 +59,8 @@ func try_spawn() -> void:
 	if enemies.size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
 		return
 	var when := "night" if night else "day"
-	var options := defs.filter(func(d): return d.spawn == when or d.spawn == "any")
+	var evil: String = world.gen.evil if world.gen.evil_weight(floori(player.position.x), floori(player.position.z)) >= 0.5 else ""
+	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (not d.has("biome") or d.biome == evil))
 	if options.is_empty():
 		return
 	var d: Dictionary = options[rng.randi() % options.size()]
@@ -75,6 +77,7 @@ func spawn_enemy(d: Dictionary, pos: Vector3) -> Node3D:
 	var e: Node3D = Enemy.new()
 	e.def = d
 	e.entities = self
+	e.hp = d.life
 	e.position = pos
 	add_child(e)
 	enemies.append(e)
@@ -87,8 +90,65 @@ func def_named(n: String) -> Dictionary:
 
 func spawn_boss(n: String) -> Node3D:
 	var ang := rng.randf() * TAU
-	boss = spawn_enemy(def_named(n), player.position + Vector3(cos(ang) * 20, 15, sin(ang) * 20))
+	var d := def_named(n)
+	if d.has("worm"):
+		boss = spawn_worm(d, player.position + Vector3(cos(ang) * 22, 2, sin(ang) * 22))
+	else:
+		boss = spawn_enemy(d, player.position + Vector3(cos(ang) * 20, 15, sin(ang) * 20))
+	boss_max = boss_life()
 	return boss
+
+
+# Verme: cabeça e uma fila de segmentos (d.worm: quantos, e qual def é o corpo e o rabo), cada um seguindo o da frente.
+func spawn_worm(d: Dictionary, pos: Vector3) -> Node3D:
+	var dir := (player.position - pos).normalized()
+	var prev := spawn_enemy(d, pos)
+	prev.heading = dir
+	var head := prev
+	for i in range(1, int(d.worm.segments)):
+		var e := spawn_enemy(def_named(d.worm.tail if i == d.worm.segments - 1 else d.worm.body), pos - dir * d.size[0] * 0.8 * i)
+		e.follow = prev
+		prev = e
+	return head
+
+
+func group_of(e: Node3D) -> String:
+	return e.def.get("group", e.def.name)
+
+
+func group_count(group: String) -> int:
+	return enemies.filter(func(e): return e.def.get("group") == group).size()
+
+
+func final_drops(group: String) -> Array:
+	for d in defs:
+		if d.get("group") == group and d.has("final_drops"):
+			return d.final_drops
+	return []
+
+
+# Vida somada do chefe (todos os segmentos, se for verme).
+func boss_life() -> int:
+	if boss == null:
+		return 0
+	var g := group_of(boss)
+	var t := 0
+	for e in enemies:
+		if group_of(e) == g:
+			t += maxi(e.hp, 0)
+	return t
+
+
+# Um orbe quebrado (Shadow Orb / Crimson Heart): a cada 3º acorda o chefe do bioma.
+func orb_broken(id: int) -> void:
+	world.orbs_broken += 1
+	if world.orbs_broken % 3 != 0:
+		player.say("você sente uma presença maligna (%d/3)" % (world.orbs_broken % 3))
+	elif boss == null:
+		var n := "eater_of_worlds" if id == Blocks.ids.shadow_orb else "brain_of_cthulhu"
+		if defs.any(func(d): return d.name == n):
+			spawn_boss(n)
+			player.say("%s despertou!" % n.replace("_", " "))
 
 
 # Número de dano flutuante, como no Terraria: aparece com um salto, sobe e some. Laranja nos inimigos, vermelho no jogador.
@@ -118,9 +178,13 @@ func spawn_text(pos: Vector3, text: String, color: Color) -> void:
 
 
 func remove_enemy(e: Node3D) -> void:
-	if e == boss:
-		boss = null
 	enemies.erase(e)
+	if e == boss:   # verme: outro segmento vira o "chefe" da barra de vida
+		boss = null
+		for o in enemies:
+			if e.def.has("group") and group_of(o) == e.def.group:
+				boss = o
+				break
 	e.queue_free()
 
 

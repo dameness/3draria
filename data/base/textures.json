@@ -143,5 +143,20 @@
 	"band_of_regeneration": {"wiki": "Band_of_Regeneration", "pattern": "blob", "colors": ["#c8a030", "#806010", "#ff5050"]},
 	"chest_top": {"pattern": "planks", "colors": ["#8a653c", "#6e4e2c", "#a0784a"]},
 	"chest_side": {"pattern": "bricks", "colors": ["#a0784a", "#8a653c", "#b3895a"], "top_colors": ["#d8b040"]},
-	"chest": {"wiki": "Chest", "pattern": "blob", "colors": ["#a0784a", "#6e4e2c", "#d8b040"]}
+	"chest": {"wiki": "Chest", "pattern": "blob", "colors": ["#a0784a", "#6e4e2c", "#d8b040"]},
+	"ebonstone": {"wiki": "Ebonstone_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#5a4d78", "#4a3f66", "#6a5c8a", "#3a3252"]},
+	"ebonstone_item": {"wiki": "Ebonstone_Block"},
+	"corrupt_grass_top": {"pattern": "noise", "colors": ["#6a4a9a", "#5a3a8a", "#7a5aa8", "#4a2a7a"]},
+	"corrupt_grass_side": {"pattern": "grass_side", "colors": ["#7a5230", "#6b4728", "#86603a", "#5e3d22"], "top_colors": ["#6a4a9a", "#5a3a8a", "#7a5aa8"]},
+	"crimstone": {"wiki": "Crimstone_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#8a4a48", "#783c3a", "#9a5a56", "#5e2e2e"]},
+	"crimstone_item": {"wiki": "Crimstone_Block"},
+	"crimson_grass_top": {"pattern": "noise", "colors": ["#b02a2a", "#9a2222", "#c83c3c", "#801a1a"]},
+	"crimson_grass_side": {"pattern": "grass_side", "colors": ["#7a5230", "#6b4728", "#86603a", "#5e3d22"], "top_colors": ["#b02a2a", "#9a2222", "#c83c3c"]},
+	"shadow_orb": {"pattern": "rings", "colors": ["#8a5ad0", "#5a2aa0", "#c8a0ff"]},
+	"shadow_orb_item": {"wiki": "Shadow_Orb", "pattern": "blob", "colors": ["#8a5ad0", "#5a2aa0", "#c8a0ff"]},
+	"crimson_heart": {"pattern": "rings", "colors": ["#d03a3a", "#901818", "#ff9090"]},
+	"crimson_heart_item": {"wiki": "Crimson_Heart", "pattern": "blob", "colors": ["#d03a3a", "#901818", "#ff9090"]},
+	"crimtane_ore": {"wiki": "Crimtane_Ore_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#8a4a48", "#783c3a", "#9a5a56"], "top_colors": ["#d05a5a", "#a02a2a"]},
+	"crimtane_ore_item": {"wiki": "Crimtane_Ore"},
+	"shadow_scale": {"wiki": "Shadow_Scale", "pattern": "blob", "colors": ["#6a4aa0", "#4a2a80", "#b090e0"]}
 }

@@ -467,6 +467,8 @@ func break_target() -> void:
 		return
 	world.set_block(p.x, p.y, p.z, 0)
 	world.chests.erase(p)
+	if b == Blocks.ids.shadow_orb or b == Blocks.ids.crimson_heart:
+		entities.orb_broken(b)
 	mine_damage = 0.0
 	mine_pos = Vector3i(-1, -1, -1)
 	if Items.drop[b] != -1:

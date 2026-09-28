@@ -29,6 +29,9 @@ var mode := "hover"
 var dashes := 0
 var summoned := 0
 var phase := 1
+# verme (Eater of Worlds): cada segmento é um inimigo que segue o da frente; sem `follow` ele é a cabeça
+var follow: Node3D = null
+var heading := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -39,6 +42,8 @@ func _ready() -> void:
 	tall = def.size[1]
 	model = EnemyModel.build(def)
 	model.rotation.y = PI  # modelos olham para -Z; o nó gira para o jogador por +Z
+	if def.ai == "worm":
+		model.position.y = tall / 2.0   # o modelo é centrado na origem e gira inteiro (cima/baixo também)
 	add_child(model)
 	flash_mat = StandardMaterial3D.new()
 	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -56,6 +61,10 @@ func _process(delta: float) -> void:
 		flashing = flash > 0.0
 		for m in model.find_children("", "MeshInstance3D", true, false):
 			m.material_overlay = flash_mat if flashing else null
+	if def.ai == "worm":
+		var ahead := (follow.position - position) if follow else velocity   # a frente do segmento: para quem ele segue
+		if ahead.length() > 0.01:
+			model.basis = Basis.looking_at(ahead.normalized(), Vector3.UP)
 	EnemyModel.animate(model, self, entities.player.eye(), Time.get_ticks_msec() / 1000.0)
 
 
@@ -92,6 +101,9 @@ func think(delta: float) -> void:
 			velocity = velocity.lerp(to.normalized() * def.speed, delta * 1.5)
 		"eye_of_cthulhu":
 			eye_of_cthulhu(delta, to)
+		"worm":
+			worm(delta, to)
+			return
 	if flat != Vector3.ZERO:
 		rotation.y = atan2(flat.x, flat.z)
 
@@ -137,6 +149,21 @@ func eye_of_cthulhu(delta: float, to: Vector3) -> void:
 			velocity *= 1.0 - delta * 0.8
 
 
+# Cabeça: vira devagar para o jogador e atravessa os blocos (por isso circula ao errar). Corpo: mantém a distância do da frente.
+func worm(delta: float, to: Vector3) -> void:
+	if follow == null:
+		if heading == Vector3.ZERO:
+			heading = to.normalized()
+		heading = heading.lerp(to.normalized(), clampf(delta * 1.6, 0.0, 1.0))
+		heading = heading.normalized() if heading.length() > 0.05 else to.normalized()
+		velocity = heading * def.speed
+		return
+	velocity = Vector3.ZERO
+	var d := position - follow.position
+	var spacing: float = def.size[0] * 0.8
+	position = follow.position + (d.normalized() if d.length() > 0.001 else Vector3.BACK) * spacing
+
+
 func move(delta: float) -> void:
 	if def.get("boss"):
 		position += velocity * delta  # chefes atravessam blocos, como no Terraria
@@ -172,6 +199,13 @@ func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 		stun = 0.25
 	if hp <= 0:
 		Fx.puff(entities, position + Vector3.UP * tall * 0.5, blood, 12 if not def.get("boss") else 40)
+		for o in entities.enemies:   # verme: quem seguia este segmento vira cabeça de um verme novo
+			if o.follow == self:
+				o.follow = null
+		if def.has("group") and entities.group_count(def.group) <= 1:   # o último segmento solta o prêmio do chefe
+			for d in entities.final_drops(def.group):
+				if rng.randf() < d.chance:
+					entities.spawn_drop(Items.ids[d.item], rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
 		for d in def.drops:
 			if rng.randf() < d.chance:
 				entities.spawn_drop(Items.ids[d.item], rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)

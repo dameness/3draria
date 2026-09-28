@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -617,6 +617,82 @@ func test_gui_extras():
 	var w3: Node3D = load("res://scripts/world.gd").new()
 	check(w3.chest_at(Vector3i(3, 4, 5)).item[0] != -1, "baú sem seed também sorteia (nunca vazio)")
 	w3.free()
+	w.free()
+	return true
+
+
+func test_evil():
+	var kinds := {}
+	for sd in [1, 2, 3, 4, 5, 6, 7, 8]:
+		kinds[WorldGen.new(sd).evil] = true
+	check(kinds.has("corruption") and kinds.has("crimson"), "a seed escolhe Corrupção ou Carmesim (ambos aparecem)")
+	var g := WorldGen.new(1337)
+	var reach := g.evil_center.distance_to(WorldGen.CENTER)
+	check(reach >= 60.0 and g.evil_center.x - 30 > 0 and g.evil_center.x + 30 < WorldGen.SIZE_CHUNKS * C and g.evil_center.y - 30 > 0 \
+		and g.evil_center.y + 30 < WorldGen.SIZE_CHUNKS * C, "o bioma fica longe do nascimento e dentro do mundo")
+	var stone := 0
+	var grass := 0
+	var c0 := Vector2i(floori(g.evil_center.x / C), floori(g.evil_center.y / C))
+	for dz in range(-1, 2):
+		for dx in range(-1, 2):
+			var d := g.generate(c0.x + dx, c0.y + dz)
+			stone += d.count(g.EVIL_STONE)
+			grass += d.count(g.EVIL_GRASS)
+	check(stone > 500 and grass > 100, "pedra e grama do mal cobrem o centro (%d, %d)" % [stone, grass])
+	check(g.generate(1, 1).count(g.EVIL_STONE) == 0 and g.generate(1, 1).count(g.ORB) == 0, "o resto do mundo fica intacto")
+	var orbs := 0
+	for k in WorldGen.CHASMS:
+		var o := g.chasm_orb(k)
+		var d := g.generate(floori(o.x / float(C)), floori(o.z / float(C)))
+		var i := posmod(o.x, C) + posmod(o.z, C) * C + o.y * C * C
+		if d[i] == g.ORB and d[i + C * C] == 0 and d[i + 2 * C * C] == 0 and d[i - C * C] == g.EVIL_STONE:
+			orbs += 1
+	check(orbs == WorldGen.CHASMS, "cada abismo tem um orbe no chão, com ar em cima (%d/%d)" % [orbs, WorldGen.CHASMS])
+	var again := WorldGen.new(1337)
+	check(again.generate(c0.x, c0.y) == g.generate(c0.x, c0.y), "geração do bioma é determinística")
+	return true
+
+
+func test_worm():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	p.position = Vector3(24.5, 11, 24.5)
+	var head: Node3D = ent.spawn_boss("eater_of_worlds")
+	var segs: Array = ent.enemies.filter(func(e): return e.def.get("group") == "eater_of_worlds")
+	check(segs.size() == 24 and ent.boss == head and ent.boss_max == 24 * 150 and ent.boss_life() == 24 * 150, "verme: 24 segmentos de 150 de vida")
+	check(segs[1].follow == head and segs[23].def.name == "eater_of_worlds_tail" and head.follow == null, "cada segmento segue o da frente")
+	var start := head.position.distance_to(p.position)
+	for i in 60 * 3:
+		for s in segs:
+			s._physics_process(1.0 / 60)
+	check(head.position.distance_to(p.position) < start - 10.0 or head.hp < 150, "a cabeça vai atrás do jogador")
+	var gap := 0.0
+	for i in range(1, segs.size()):
+		gap = maxf(gap, absf(segs[i].position.distance_to(segs[i].follow.position) - segs[i].def.size[0] * 0.8))
+	check(gap < 0.05, "o corpo mantém a distância do segmento da frente (%.3f)" % gap)
+	segs[10].hurt(1000, Vector3.RIGHT, 5)
+	check(segs[11].follow == null and not ent.enemies.has(segs[10]) and ent.boss == head, "segmento do meio morto: a fila se divide, o de trás vira cabeça")
+	check(ent.boss_life() == 23 * 150, "a barra soma os segmentos vivos")
+	head.hurt(1000, Vector3.RIGHT, 5)
+	check(segs[1].follow == null and ent.boss != head and ent.boss != null, "cabeça morta: outro segmento vira o chefe da barra")
+	for s in segs:
+		if ent.enemies.has(s):
+			s.hurt(1000, Vector3.RIGHT, 0)
+	var scales := 0
+	var ore := 0
+	for n in ent.get_children():
+		if n.get("item") == Items.ids.shadow_scale:
+			scales += n.count
+		if n.get("item") == Items.ids.demonite_ore:
+			ore += n.count
+	check(ent.boss == null and ent.enemies.is_empty() and scales >= 20 and ore >= 30, "último segmento morto: prêmio do chefe (escamas %d, demonita %d)" % [scales, ore])
+	w.world_seed = 1
+	p.world.orbs_broken = 0
+	for i in 3:
+		ent.orb_broken(Blocks.ids.shadow_orb)
+	check(ent.boss != null and ent.boss.def.name == "eater_of_worlds" and p.world.orbs_broken == 3, "o 3º orbe quebrado acorda o Eater of Worlds")
+	free_player(p)
 	w.free()
 	return true
 
