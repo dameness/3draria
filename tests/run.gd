@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -750,6 +750,43 @@ func test_brain():
 			has_demonite += 1 if "demonite_ore" in names and not "crimtane_ore" in names else 0
 	check(has_crimtane > 0 and has_demonite > 0, "Carmesim só tem crimtano e Corrupção só tem demonita")
 	free_player(p)
+	w.free()
+	return true
+
+
+func test_forge():
+	var mines := func(pick: String, block: String): return Items.pick_power[Items.ids[pick]] >= Blocks.power[Blocks.ids[block]]
+	check(not mines.call("platinum_pickaxe", "hellstone") and mines.call("nightmare_pickaxe", "hellstone") and mines.call("deathbringer_pickaxe", "hellstone"), "Nightmare (65) e Deathbringer (70) minerem pedra infernal")
+	check(not mines.call("silver_pickaxe", "obsidian") and mines.call("gold_pickaxe", "obsidian") and mines.call("molten_pickaxe", "hellstone") and Items.pick_power[Items.ids.molten_pickaxe] == 100, "obsidiana pede 55; a Molten tem 100")
+	var by_result := {}
+	for r in Crafting.recipes:
+		by_result[Items.names[r.result]] = r
+	check(by_result.nightmare_pickaxe.needs == {Items.ids.demonite_bar: 12, Items.ids.shadow_scale: 6} and by_result.deathbringer_pickaxe.needs == {Items.ids.crimtane_bar: 12, Items.ids.tissue_sample: 6}, "receitas dos dois picaretões (wiki)")
+	check(by_result.molten_pickaxe.needs == {Items.ids.hellstone_bar: 20} and by_result.hellstone_bar.needs == {Items.ids.hellstone: 3, Items.ids.obsidian: 1}, "receitas da Molten e da barra infernal (wiki)")
+	var w := floor_world()
+	w.set_block(22, 11, 20, Blocks.ids.hellforge)
+	var near := Crafting.stations_near(w, Vector3(20.5, 11, 20.5))
+	check(near.has(Blocks.ids.hellforge) and near.has(Blocks.ids.furnace), "a forja infernal também vale como fornalha")
+	var inv := Inventory.new()
+	inv.add(Items.ids.hellstone, 3)
+	inv.add(Items.ids.obsidian, 1)
+	check(Crafting.craft(by_result.hellstone_bar, inv, near) and inv.total(Items.ids.hellstone_bar) == 1 and not Crafting.can_craft(by_result.hellstone_bar, inv, {}), "barra infernal só na forja")
+	inv = Inventory.new()
+	for n in ["molten_helmet", "molten_breastplate", "molten_greaves"]:
+		inv.add(Items.ids[n], 1)
+		inv.equip_from(inv.item.find(Items.ids[n]))
+	check(inv.defense() == 8 + 9 + 8, "armadura Molten: 8+9+8 de defesa")
+	# lava encostada em água vira obsidiana (cheia) ou pedra (rasa)
+	w.set_block(20, 12, 20, Blocks.ids.lava, false)
+	w.set_block(21, 12, 20, Blocks.ids.water, false)
+	w.liquid.wake(20, 12, 20)
+	w.liquid.settle(w)
+	check(w.get_block(20, 12, 20) == Blocks.ids.obsidian, "lava cheia + água = obsidiana (%s)" % Blocks.ids.keys()[w.get_block(20, 12, 20)])
+	w.set_block(24, 12, 20, Blocks.ids.lava_3, false)
+	w.set_block(25, 12, 20, Blocks.ids.water, false)
+	w.liquid.wake(24, 12, 20)
+	w.liquid.settle(w)
+	check(w.get_block(24, 12, 20) == Blocks.ids.stone, "lava rasa + água = pedra")
 	w.free()
 	return true
 

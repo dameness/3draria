@@ -162,5 +162,17 @@
 	"tissue_sample": {"wiki": "Tissue_Sample", "pattern": "blob", "colors": ["#c04a4a", "#8a2222", "#ff9a9a"]},
 	"crimtane_bar": {"wiki": "Crimtane_Bar", "pattern": "bar", "colors": ["#c04a4a", "#8a2222", "#ffffff"]},
 	"blood_butcherer": {"wiki": "Blood_Butcherer", "pattern": "sword", "colors": ["#b03030", "#802020"], "top_colors": ["#6e4b2a"]},
-	"tendon_bow": {"wiki": "Tendon_Bow", "pattern": "bow", "colors": ["#b03030", "#802020"], "top_colors": ["#e0e0e0"]}
+	"tendon_bow": {"wiki": "Tendon_Bow", "pattern": "bow", "colors": ["#b03030", "#802020"], "top_colors": ["#e0e0e0"]},
+	"obsidian": {"wiki": "Obsidian_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#2a2038", "#1e1628", "#3a2c4c", "#150e1e"]},
+	"obsidian_item": {"wiki": "Obsidian"},
+	"hellforge_top": {"pattern": "noise", "colors": ["#3a3a3a", "#2e2e2e", "#4a4a4a"]},
+	"hellforge_front": {"pattern": "grass_side", "colors": ["#ff5a1a", "#ffa03a", "#c02a0a"], "top_colors": ["#3a3a3a", "#2e2e2e"]},
+	"hellforge_item": {"wiki": "Hellforge", "pattern": "blob", "colors": ["#3a3a3a", "#ff5a1a", "#ffa03a"]},
+	"hellstone_bar": {"wiki": "Hellstone_Bar", "pattern": "bar", "colors": ["#ff5a1a", "#c02a0a", "#ffd050"]},
+	"nightmare_pickaxe": {"wiki": "Nightmare_Pickaxe", "pattern": "pickaxe", "colors": ["#6a4aa0", "#4a2a80"], "top_colors": ["#6e4b2a"]},
+	"deathbringer_pickaxe": {"wiki": "Deathbringer_Pickaxe", "pattern": "pickaxe", "colors": ["#c04a4a", "#8a2222"], "top_colors": ["#6e4b2a"]},
+	"molten_pickaxe": {"wiki": "Molten_Pickaxe", "pattern": "pickaxe", "colors": ["#ff7a2a", "#c02a0a"], "top_colors": ["#6e4b2a"]},
+	"molten_helmet": {"wiki": "Molten_Helmet", "pattern": "blob", "colors": ["#c04a1a", "#7a2a0a", "#ffa03a"]},
+	"molten_breastplate": {"wiki": "Molten_Breastplate", "pattern": "blob", "colors": ["#c04a1a", "#7a2a0a", "#ffa03a"]},
+	"molten_greaves": {"wiki": "Molten_Greaves", "pattern": "blob", "colors": ["#c04a1a", "#7a2a0a", "#ffa03a"]}
 }

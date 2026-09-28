@@ -15,6 +15,7 @@ const SHOTS := [
 	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true},
 	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "flying": true},
 	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "flying": true},
+	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
@@ -152,6 +153,13 @@ func _setup(s: Dictionary) -> void:
 		else:
 			player.position = Vector3(at.x + 0.5, world.surface_y(at.x, at.y) + s.get("up", 0.0), at.y + 0.5)
 		print("  ", s.name, " ", g.evil, " em ", player.position)
+	if s.has("row"):   # uma fileira de blocos novos à frente, para conferir as texturas
+		var f := Vector3(-sin(s.look.x), 0, -cos(s.look.x))
+		var r := f.cross(Vector3.UP)
+		for k in s.row.size():
+			var q: Vector3 = player.position + f * 4.0 + r * (k - s.row.size() / 2.0) * 1.15
+			var y: int = world.surface_y(int(q.x), int(q.z))
+			world.set_block(int(q.x), y, int(q.z), Blocks.ids[s.row[k]])
 	var sp := Vector3i(player.spawn.floor())
 	if s.get("cave", false):  # sala escavada 12 blocos abaixo, com tochas no chão
 		for x in range(-5, 6):

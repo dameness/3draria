@@ -52,5 +52,7 @@
 	{"name": "crimson_grass", "mine": 2, "drop": "dirt", "tiles": {"top": "crimson_grass_top", "side": "crimson_grass_side", "bottom": "dirt"}},
 	{"name": "shadow_orb", "mine": 1, "glow": true, "icon": "shadow_orb_item", "tiles": {"all": "shadow_orb"}},
 	{"name": "crimson_heart", "mine": 1, "glow": true, "icon": "crimson_heart_item", "tiles": {"all": "crimson_heart"}},
-	{"name": "crimtane_ore", "power": 55, "icon": "crimtane_ore_item", "tiles": {"all": "crimtane_ore"}}
+	{"name": "crimtane_ore", "power": 55, "icon": "crimtane_ore_item", "tiles": {"all": "crimtane_ore"}},
+	{"name": "obsidian", "power": 55, "icon": "obsidian_item", "tiles": {"all": "obsidian"}},
+	{"name": "hellforge", "mine": 4, "station_also": ["furnace"], "icon": "hellforge_item", "tiles": {"top": "hellforge_top", "side": "hellforge_front", "bottom": "hellforge_top"}}
 ]

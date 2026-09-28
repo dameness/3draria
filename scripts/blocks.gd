@@ -20,6 +20,7 @@ static var clear := PackedByteArray()      # id -> 1 se a luz do céu passa (tro
 static var glow := PackedByteArray()       # id -> 1 se brilha sozinho (lava)
 static var light := PackedInt32Array()     # id -> raio de luz em blocos (0 = não ilumina)
 static var station_as := PackedInt32Array() # id -> bloco de estação que ele equivale (bigorna de chumbo = bigorna)
+static var station_also := {}                 # id -> ids de outras estações que ele também é (a forja infernal também é fornalha)
 static var icons: Array[String] = []       # id -> textura do ícone do item-bloco ("" = face lateral)
 static var drop_names: Array[String] = []  # id -> item que dropa ("" = nada); Items resolve
 static var tiles := PackedInt32Array()     # id * FACES + face -> índice no atlas
@@ -50,6 +51,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	drop_names.clear()
 	icons.clear()
 	station_as.clear()
+	station_also.clear()
 	tiles.clear()
 	var list: Array = read(dir + "/blocks.json")
 	for b in list:
@@ -80,6 +82,8 @@ static func load_pack(dir := "res://data/base") -> void:
 			tiles.append(tile_index.get(n, 0))
 	for b in list:
 		station_as.append(ids[b.get("station_as", b.name)])
+		if b.has("station_also"):
+			station_also[ids[b.name]] = b.station_also.map(func(n): return ids[n])
 
 
 # Cor média do bloco (face lateral), para a poeira; cinza se o atlas ainda não foi montado.

@@ -79,5 +79,12 @@
 	{"name": "tissue_sample", "icon": "tissue_sample", "rarity": 1},
 	{"name": "crimtane_bar", "icon": "crimtane_bar", "rarity": 1},
 	{"name": "blood_butcherer", "icon": "blood_butcherer", "damage": 22, "use_time": 0.417, "reach": 2.6, "knockback": 5, "stack": 1, "rarity": 1},
-	{"name": "tendon_bow", "icon": "tendon_bow", "damage": 19, "use_time": 0.5, "ammo": "arrow", "shoot_speed": 25.1, "knockback": 1, "stack": 1, "rarity": 1}
+	{"name": "tendon_bow", "icon": "tendon_bow", "damage": 19, "use_time": 0.5, "ammo": "arrow", "shoot_speed": 25.1, "knockback": 1, "stack": 1, "rarity": 1},
+	{"name": "hellstone_bar", "icon": "hellstone_bar", "rarity": 2},
+	{"name": "nightmare_pickaxe", "icon": "nightmare_pickaxe", "pick_power": 65, "damage": 9, "use_time": 0.333, "reach": 2.2, "knockback": 3, "stack": 1, "rarity": 1},
+	{"name": "deathbringer_pickaxe", "icon": "deathbringer_pickaxe", "pick_power": 70, "damage": 12, "use_time": 0.367, "reach": 2.2, "knockback": 3.5, "stack": 1, "rarity": 1},
+	{"name": "molten_pickaxe", "icon": "molten_pickaxe", "pick_power": 100, "damage": 12, "use_time": 0.383, "reach": 2.2, "knockback": 2, "stack": 1, "rarity": 3},
+	{"name": "molten_helmet", "icon": "molten_helmet", "armor": "head", "defense": 8, "stack": 1, "rarity": 3, "set": "molten"},
+	{"name": "molten_breastplate", "icon": "molten_breastplate", "armor": "body", "defense": 9, "stack": 1, "rarity": 3, "set": "molten"},
+	{"name": "molten_greaves", "icon": "molten_greaves", "armor": "legs", "defense": 8, "stack": 1, "rarity": 3, "set": "molten"}
 ]

@@ -71,5 +71,13 @@
 	{"result": "chest", "needs": {"wood": 8, "iron_bar": 2}, "station": "workbench"},
 	{"result": "crimtane_bar", "needs": {"crimtane_ore": 3}, "station": "furnace"},
 	{"result": "blood_butcherer", "needs": {"crimtane_bar": 10}, "station": "anvil"},
-	{"result": "tendon_bow", "needs": {"crimtane_bar": 8}, "station": "anvil"}
+	{"result": "tendon_bow", "needs": {"crimtane_bar": 8}, "station": "anvil"},
+	{"result": "hellforge", "needs": {"stone": 15, "hellstone": 20, "furnace": 1}, "station": "workbench"},
+	{"result": "hellstone_bar", "needs": {"hellstone": 3, "obsidian": 1}, "station": "hellforge"},
+	{"result": "nightmare_pickaxe", "needs": {"demonite_bar": 12, "shadow_scale": 6}, "station": "anvil"},
+	{"result": "deathbringer_pickaxe", "needs": {"crimtane_bar": 12, "tissue_sample": 6}, "station": "anvil"},
+	{"result": "molten_pickaxe", "needs": {"hellstone_bar": 20}, "station": "anvil"},
+	{"result": "molten_helmet", "needs": {"hellstone_bar": 10}, "station": "anvil"},
+	{"result": "molten_breastplate", "needs": {"hellstone_bar": 20}, "station": "anvil"},
+	{"result": "molten_greaves", "needs": {"hellstone_bar": 15}, "station": "anvil"}
 ]

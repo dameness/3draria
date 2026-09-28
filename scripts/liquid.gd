@@ -5,7 +5,8 @@ extends RefCounted
 # sobrar é repartido com os vizinhos laterais mais baixos (uma unidade por vez, para o mais baixo) até a diferença ficar em 1.
 # O volume se conserva (nada nasce nem some), como no Terraria: um lago esvazia devagar para a cova que se abre nele.
 # Só reage a edições: o mundo recém-gerado fica parado; cada mudança acorda o bloco e os seus 6 vizinhos.
-# ponytail: sem pressão (nada sobe por canos em U além do que o cair e o espalhar já fazem); água + lava ainda não reagem (obsidiana).
+# Lava encostada em água vira obsidiana (bloco cheio) ou pedra (lava rasa), como no Terraria.
+# ponytail: sem pressão (nada sobe por canos em U além do que o cair e o espalhar já fazem).
 
 const C := WorldGen.CHUNK
 const H := WorldGen.HEIGHT
@@ -111,6 +112,14 @@ func _cell(world: Node, k: int) -> void:
 	if b <= 0 or not Blocks.liquid[b]:
 		return
 	var kind: int = Blocks.liquid_kind[b]
+	if kind == Blocks.ids.lava:   # reage na hora, sem esperar a vez lenta da lava
+		var lv8: int = Blocks.liquid_level[b]
+		for o in AROUND:
+			var nb := _at(chunks, x + o.x, y + o.y, z + o.z)
+			if nb > 0 and Blocks.liquid[nb] and Blocks.liquid_kind[nb] == Blocks.ids.water:
+				world.set_block(x, y, z, Blocks.ids.obsidian if lv8 == 8 else Blocks.ids.stone, false)
+				wake(x, y, z)
+				return
 	if kind == Blocks.ids.lava and generation % LAVA_EVERY != 0:
 		if not queued.has(k):   # a lava espera a sua vez
 			queued[k] = true

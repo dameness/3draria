@@ -6,5 +6,6 @@
 	"silver": {"pieces": ["silver_helmet", "silver_chainmail", "silver_greaves"], "defense": 3},
 	"tungsten": {"pieces": ["tungsten_helmet", "tungsten_chainmail", "tungsten_greaves"], "defense": 3},
 	"gold": {"pieces": ["gold_helmet", "gold_chainmail", "gold_greaves"], "defense": 3},
-	"platinum": {"pieces": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"], "defense": 4}
+	"platinum": {"pieces": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"], "defense": 4},
+	"molten": {"pieces": ["molten_helmet", "molten_breastplate", "molten_greaves"], "defense": 0}
 }

@@ -63,7 +63,11 @@ static func stations_near(world, pos: Vector3) -> Dictionary:
 	for y in range(p.y - STATION_RANGE, p.y + STATION_RANGE + 2):
 		for z in range(p.z - STATION_RANGE, p.z + STATION_RANGE + 1):
 			for x in range(p.x - STATION_RANGE, p.x + STATION_RANGE + 1):
-				var b: int = Blocks.station_as[world.get_block(x, y, z)]
+				var id: int = world.get_block(x, y, z)
+				var b: int = Blocks.station_as[id]
 				if ids.has(b):
 					found[b] = true
+				for a in Blocks.station_also.get(id, []):
+					if ids.has(a):
+						found[a] = true
 	return found
