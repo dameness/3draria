@@ -17,6 +17,7 @@ const SWIM_SINK := 3.0     # sem Espaço: afunda devagar
 const SWIM_DEPTH := 1.0    # com mais líquido que isto acima dos pés (até a cintura) nada; com menos, vadeia: anda e pula como em terra
 const HOP_DEPTH := 1.5     # perto da superfície, Espaço junto de uma margem dá um pulo inteiro para sair da água
 const LAVA_DAMAGE := 50    # por golpe (há invencibilidade entre um e outro), sem tirar a armadura
+const METEORITE_BURN := 4  # por golpe (há invencibilidade entre um e outro)
 const MAX_HP := 100
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
 const REGEN_DELAY := 5.0
@@ -231,6 +232,9 @@ func tick(delta: float) -> void:
 			if hits > 0:
 				shake = maxf(shake, 0.4)
 			swing_item = {}
+	if on_floor and world.get_block(floori(position.x), floori(position.y - 0.1), floori(position.z)) == Blocks.ids.meteorite:
+		hurt(METEORITE_BURN, Vector3.ZERO)   # meteorito queima quem pisa (Burning do Terraria)
+		Fx.sparks(entities, position + Vector3.UP * 0.2, Color("#ff9a3a"), 2, Vector3.UP)
 	mine_idle += delta
 	if mine_idle > MINE_DECAY:
 		mine_damage = 0.0
@@ -406,7 +410,7 @@ func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 
 # Invocador de chefe (ex.: Suspicious Looking Eye): só à noite e com um chefe por vez.
 func summon(d: Dictionary) -> void:
-	if not clock.is_night():
+	if d.get("night", false) and not clock.is_night():
 		say("nada acontece... (só à noite)")
 	elif entities.boss:
 		say("já há um chefe")

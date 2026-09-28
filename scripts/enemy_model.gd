@@ -19,7 +19,7 @@ static func build(def: Dictionary) -> Node3D:
 		"eye":
 			_eye(root, size[1] / 2.0, def)
 		"slime":
-			_slime(root, size, Color(def.color))
+			_slime(root, size, Color(def.color), def)
 		"worm":
 			_worm(root, size[0], def)
 		"brain":
@@ -190,7 +190,7 @@ static func _worm(root: Node3D, w: float, def: Dictionary) -> void:
 
 # Slime legível no gramado: gelatina brilhante e translúcida com um contorno escuro por trás, miolo mais escuro, olhos e uma sombra
 # no chão. A frente é -Z.
-static func _slime(root: Node3D, size: Array, c: Color) -> void:
+static func _slime(root: Node3D, size: Array, c: Color, def: Dictionary) -> void:
 	var w: float = size[0]
 	var h: float = size[1]
 	var shadow := CylinderMesh.new()
@@ -224,6 +224,15 @@ static func _slime(root: Node3D, size: Array, c: Color) -> void:
 		_part(body, SphereMesh.new(), Vector3(w * 0.14, h * 0.26, w * 0.09), Color("#0c1018"), Vector3(side * w * 0.2, h * 0.78, -w * 0.4))
 		_part(body, SphereMesh.new(), Vector3(w * 0.05, w * 0.05, w * 0.04), Color.WHITE, Vector3(side * w * 0.2 - w * 0.02, h * 0.86, -w * 0.45))
 	_part(body, SphereMesh.new(), Vector3.ONE * w * 0.16, Color(1, 1, 1), Vector3(-w * 0.22, h * 1.02, -w * 0.05))   # brilho da gelatina
+	if def.get("crown", false):   # King Slime: coroa dourada de 5 pontas na cabeça
+		var gold := _mat(Color("#f0c030"))
+		gold.emission_enabled = true
+		gold.emission = Color("#a07810")
+		_part(body, CylinderMesh.new(), Vector3(w * 0.4, h * 0.1, w * 0.4), Color("#f0c030"), Vector3(0, h * 1.28, 0), gold)
+		for i in 5:
+			var a := TAU * i / 5.0
+			var spike := _part(body, BoxMesh.new(), Vector3(w * 0.06, h * 0.2, w * 0.06), Color("#f0c030"), Vector3(cos(a) * w * 0.16, h * 1.4, sin(a) * w * 0.16), gold)
+			spike.rotation = Vector3(sin(a) * 0.3, 0, -cos(a) * 0.3)
 
 
 # Animações por quadro: olho encara o jogador e mexe os tentáculos; slime estica com o pulo.

@@ -54,5 +54,6 @@
 	{"name": "crimson_heart", "mine": 1, "glow": true, "icon": "crimson_heart_item", "tiles": {"all": "crimson_heart"}},
 	{"name": "crimtane_ore", "power": 55, "icon": "crimtane_ore_item", "tiles": {"all": "crimtane_ore"}},
 	{"name": "obsidian", "power": 55, "icon": "obsidian_item", "tiles": {"all": "obsidian"}},
-	{"name": "hellforge", "mine": 4, "station_also": ["furnace"], "icon": "hellforge_item", "tiles": {"top": "hellforge_top", "side": "hellforge_front", "bottom": "hellforge_top"}}
+	{"name": "hellforge", "mine": 4, "station_also": ["furnace"], "icon": "hellforge_item", "tiles": {"top": "hellforge_top", "side": "hellforge_front", "bottom": "hellforge_top"}},
+	{"name": "meteorite", "power": 50, "light": 4, "icon": "meteorite_item", "tiles": {"all": "meteorite"}}
 ]

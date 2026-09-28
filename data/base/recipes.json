@@ -79,5 +79,10 @@
 	{"result": "molten_pickaxe", "needs": {"hellstone_bar": 20}, "station": "anvil"},
 	{"result": "molten_helmet", "needs": {"hellstone_bar": 10}, "station": "anvil"},
 	{"result": "molten_breastplate", "needs": {"hellstone_bar": 20}, "station": "anvil"},
-	{"result": "molten_greaves", "needs": {"hellstone_bar": 15}, "station": "anvil"}
+	{"result": "molten_greaves", "needs": {"hellstone_bar": 15}, "station": "anvil"},
+	{"result": "meteorite_bar", "needs": {"meteorite": 3}, "station": "furnace"},
+	{"result": "meteor_helmet", "needs": {"meteorite_bar": 10}, "station": "anvil"},
+	{"result": "meteor_suit", "needs": {"meteorite_bar": 20}, "station": "anvil"},
+	{"result": "meteor_leggings", "needs": {"meteorite_bar": 15}, "station": "anvil"},
+	{"result": "slime_crown", "needs": {"gel": 20, "gold_bar": 5}, "station": "demon_altar"}
 ]

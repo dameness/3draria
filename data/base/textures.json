@@ -174,5 +174,15 @@
 	"molten_pickaxe": {"wiki": "Molten_Pickaxe", "pattern": "pickaxe", "colors": ["#ff7a2a", "#c02a0a"], "top_colors": ["#6e4b2a"]},
 	"molten_helmet": {"wiki": "Molten_Helmet", "pattern": "blob", "colors": ["#c04a1a", "#7a2a0a", "#ffa03a"]},
 	"molten_breastplate": {"wiki": "Molten_Breastplate", "pattern": "blob", "colors": ["#c04a1a", "#7a2a0a", "#ffa03a"]},
-	"molten_greaves": {"wiki": "Molten_Greaves", "pattern": "blob", "colors": ["#c04a1a", "#7a2a0a", "#ffa03a"]}
+	"molten_greaves": {"wiki": "Molten_Greaves", "pattern": "blob", "colors": ["#c04a1a", "#7a2a0a", "#ffa03a"]},
+	"meteorite": {"wiki": "Meteorite_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#4a3a52", "#3a2c44", "#5a4a62"], "top_colors": ["#ff7a2a", "#c04a12"]},
+	"meteorite_item": {"wiki": "Meteorite"},
+	"meteorite_bar": {"wiki": "Meteorite_Bar", "pattern": "bar", "colors": ["#8a5aa0", "#5a3a70", "#ffb060"]},
+	"meteor_helmet": {"wiki": "Meteor_Helmet", "pattern": "blob", "colors": ["#8a5aa0", "#5a3a70", "#ffb060"]},
+	"meteor_suit": {"wiki": "Meteor_Suit", "pattern": "blob", "colors": ["#8a5aa0", "#5a3a70", "#ffb060"]},
+	"meteor_leggings": {"wiki": "Meteor_Leggings", "pattern": "blob", "colors": ["#8a5aa0", "#5a3a70", "#ffb060"]},
+	"ninja_hood": {"wiki": "Ninja_Hood", "pattern": "blob", "colors": ["#2a2a34", "#1a1a22", "#5a5a6a"]},
+	"ninja_shirt": {"wiki": "Ninja_Shirt", "pattern": "blob", "colors": ["#2a2a34", "#1a1a22", "#5a5a6a"]},
+	"ninja_pants": {"wiki": "Ninja_Pants", "pattern": "blob", "colors": ["#2a2a34", "#1a1a22", "#5a5a6a"]},
+	"slime_crown": {"wiki": "Slime_Crown", "pattern": "blob", "colors": ["#f0c030", "#b08810", "#4a7ae8"]}
 }

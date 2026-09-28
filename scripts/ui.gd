@@ -127,7 +127,7 @@ static func item_tip(id: int) -> String:
 	if Items.pick_power[id] > 0:
 		lines.append("%d%% de poder de picareta" % Items.pick_power[id])
 	if d.has("summon"):
-		lines.append("Invoca um chefe (só à noite)")
+		lines.append("Invoca um chefe (só à noite)" if d.get("night", false) else "Invoca um chefe")
 	if d.has("set"):
 		lines.append("Conjunto: %s" % str(d.set))
 	if Items.places[id] != -1:

@@ -32,6 +32,8 @@ var phase := 1
 # verme (Eater of Worlds): cada segmento é um inimigo que segue o da frente; sem `follow` ele é a cabeça
 var follow: Node3D = null
 var heading := Vector3.ZERO
+var summoned_timer := 3.0   # king slime: espera até soltar mais um slime
+var teleport_timer := 9.0
 var angle := 0.0    # creeper: fase da órbita em volta do cérebro (follow = o cérebro)
 
 
@@ -117,6 +119,8 @@ func think(delta: float) -> void:
 			brain(delta, to)
 		"creeper":
 			creeper(delta, to)
+		"king_slime":
+			king_slime(delta, to, flat)
 	if flat != Vector3.ZERO:
 		rotation.y = atan2(flat.x, flat.z)
 
@@ -207,6 +211,36 @@ func brain(delta: float, to: Vector3) -> void:
 				timer = 1.6
 
 
+# King Slime: pulos grandes atrás do jogador (a cada 3º, um salto alto), teleporta perto dele de tempos em tempos ou se ficar
+# longe, e solta slimes menores.
+func king_slime(delta: float, to: Vector3, flat: Vector3) -> void:
+	var p: Node3D = entities.player
+	summoned_timer -= delta
+	teleport_timer -= delta
+	if teleport_timer <= 0.0 or position.distance_to(p.position) > 30.0:
+		teleport_timer = 9.0
+		Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 20)
+		var a := rng.randf() * TAU
+		var x := floori(p.position.x + cos(a) * 9.0)
+		var z := floori(p.position.z + sin(a) * 9.0)
+		position = Vector3(x + 0.5, entities.world.surface_y(x, z) + 0.2, z + 0.5)
+		velocity = Vector3.ZERO
+		Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 20)
+	if summoned_timer <= 0.0 and entities.enemies.size() < 10:
+		summoned_timer = 5.0
+		var names: Array = def.minion
+		entities.spawn_enemy(entities.def_named(names[rng.randi() % names.size()]), position + Vector3(rng.randf_range(-1, 1), tall, rng.randf_range(-1, 1)))
+	if on_floor:
+		velocity.x *= 0.6
+		velocity.z *= 0.6
+		timer -= delta
+		if timer <= 0:
+			dashes += 1
+			var big := dashes % 3 == 0
+			timer = rng.randf_range(0.9, 1.6)
+			velocity = flat * def.speed * (1.7 if big else 1.2) + Vector3.UP * (JUMP * (1.5 if big else 1.0))
+
+
 func _teleport(p: Node3D, dist: float) -> void:
 	Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 14)
 	var a := rng.randf() * TAU
@@ -251,8 +285,8 @@ func worm(delta: float, to: Vector3) -> void:
 
 
 func move(delta: float) -> void:
-	if def.get("boss"):
-		position += velocity * delta  # chefes atravessam blocos, como no Terraria
+	if def.get("noclip", def.get("boss", false)):
+		position += velocity * delta  # chefes voadores atravessam blocos, como no Terraria
 		return
 	if def.ai != "fly":
 		velocity.y = maxf(velocity.y - GRAVITY * delta, -50.0)
@@ -292,10 +326,19 @@ func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 			if o.follow == self:
 				o.follow = null
 		if def.has("group") and entities.group_count(def.group) <= 1:   # o último segmento solta o prêmio do chefe
+			entities.evil_boss_down(def.group)
 			for d in entities.final_drops(def.group):
 				if rng.randf() < d.chance:
 					entities.spawn_drop(entities.drop_id(d.item), rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
-		for d in def.drops:
+		var picked := {}   # drops com "pick": só um item de cada grupo cai (as 3 peças do Ninja: sai uma)
+		for entry in def.drops:
+			var d: Dictionary = entry
+			if d.has("pick"):
+				if picked.has(d.pick):
+					continue
+				var group: Array = def.drops.filter(func(x): return x.get("pick") == d.pick)
+				d = group[rng.randi() % group.size()]
+				picked[d.pick] = true
 			if rng.randf() < d.chance:
 				entities.spawn_drop(entities.drop_id(d.item), rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
 		entities.remove_enemy(self)

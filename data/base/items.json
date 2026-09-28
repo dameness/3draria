@@ -42,7 +42,7 @@
 	{"name": "demonite_bar", "icon": "demonite_bar", "rarity": 1},
 	{"name": "lights_bane", "icon": "lights_bane", "damage": 16, "use_time": 0.333, "reach": 2.6, "knockback": 5, "stack": 1, "rarity": 1},
 	{"name": "demon_bow", "icon": "demon_bow", "damage": 14, "use_time": 0.417, "ammo": "arrow", "shoot_speed": 25.1, "knockback": 1, "stack": 1, "rarity": 1},
-	{"name": "suspicious_looking_eye", "icon": "suspicious_looking_eye", "rarity": 1, "stack": 20, "use_time": 0.75, "summon": "eye_of_cthulhu"},
+	{"name": "suspicious_looking_eye", "icon": "suspicious_looking_eye", "rarity": 1, "stack": 20, "use_time": 0.75, "summon": "eye_of_cthulhu", "night": true},
 	{"name": "unholy_arrow", "icon": "unholy_arrow", "damage": 12, "knockback": 3, "rarity": 1, "ammo_class": "arrow", "projectile": "unholy_arrow", "sprite_angle": -90},
 	{"name": "copper_helmet", "icon": "copper_helmet", "armor": "head", "defense": 1, "stack": 1, "set": "copper"},
 	{"name": "copper_chainmail", "icon": "copper_chainmail", "armor": "body", "defense": 2, "stack": 1, "set": "copper"},
@@ -86,5 +86,13 @@
 	{"name": "molten_pickaxe", "icon": "molten_pickaxe", "pick_power": 100, "damage": 12, "use_time": 0.383, "reach": 2.2, "knockback": 2, "stack": 1, "rarity": 3},
 	{"name": "molten_helmet", "icon": "molten_helmet", "armor": "head", "defense": 8, "stack": 1, "rarity": 3, "set": "molten"},
 	{"name": "molten_breastplate", "icon": "molten_breastplate", "armor": "body", "defense": 9, "stack": 1, "rarity": 3, "set": "molten"},
-	{"name": "molten_greaves", "icon": "molten_greaves", "armor": "legs", "defense": 8, "stack": 1, "rarity": 3, "set": "molten"}
+	{"name": "molten_greaves", "icon": "molten_greaves", "armor": "legs", "defense": 8, "stack": 1, "rarity": 3, "set": "molten"},
+	{"name": "meteorite_bar", "icon": "meteorite_bar", "rarity": 1},
+	{"name": "meteor_helmet", "icon": "meteor_helmet", "armor": "head", "defense": 5, "stack": 1, "rarity": 1, "set": "meteor"},
+	{"name": "meteor_suit", "icon": "meteor_suit", "armor": "body", "defense": 6, "stack": 1, "rarity": 1, "set": "meteor"},
+	{"name": "meteor_leggings", "icon": "meteor_leggings", "armor": "legs", "defense": 5, "stack": 1, "rarity": 1, "set": "meteor"},
+	{"name": "ninja_hood", "icon": "ninja_hood", "armor": "head", "defense": 2, "stack": 1, "rarity": 1, "set": "ninja"},
+	{"name": "ninja_shirt", "icon": "ninja_shirt", "armor": "body", "defense": 4, "stack": 1, "rarity": 1, "set": "ninja"},
+	{"name": "ninja_pants", "icon": "ninja_pants", "armor": "legs", "defense": 3, "stack": 1, "rarity": 1, "set": "ninja"},
+	{"name": "slime_crown", "icon": "slime_crown", "rarity": 1, "summon": "king_slime", "use_time": 0.75, "stack": 20}
 ]

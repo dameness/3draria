@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge", "test_king_meteor"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -787,6 +787,72 @@ func test_forge():
 	w.liquid.wake(24, 12, 20)
 	w.liquid.settle(w)
 	check(w.get_block(24, 12, 20) == Blocks.ids.stone, "lava rasa + água = pedra")
+	w.free()
+	return true
+
+
+func test_king_meteor():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	p.inv.add(Items.ids.slime_crown, 2)
+	p.slot = p.inv.item.find(Items.ids.slime_crown)
+	p.clock.time = 300   # de dia: a coroa funciona a qualquer hora
+	p.use_item()
+	var king: Node3D = ent.boss
+	check(king != null and king.def.name == "king_slime" and king.hp == 2000 and p.inv.total(Items.ids.slime_crown) == 1, "a Slime Crown invoca o King Slime de dia, com 2000 de vida")
+	check(king.hurt(100, Vector3.RIGHT, 10) == 100 - 5 and king.velocity.length() < 1.0, "defesa 10 e imune a knockback")
+	king.position = Vector3(24.5, 11, 24.5) + Vector3(6, 0, 0)
+	var hops := 0
+	var wasfloor := true
+	for i in 60 * 12:
+		king._physics_process(1.0 / 60)
+		if wasfloor and not king.on_floor:
+			hops += 1
+		wasfloor = king.on_floor
+	var minions: int = ent.enemies.filter(func(e): return e.def.name in ["blue_slime", "green_slime"]).size()
+	check(hops >= 4 and minions >= 2, "pula atrás do jogador (%d pulos) e solta slimes (%d)" % [hops, minions])
+	check(p.position.distance_to(king.position) < 25.0, "teleporta para perto se ficar longe")
+	king.hurt(9999, Vector3.RIGHT, 0)
+	var gold := 0
+	var ninja := 0
+	for n in ent.get_children():
+		if n.get("item") == Items.ids.gold_coin:
+			gold += n.count
+		if n.get("item") in [Items.ids.ninja_hood, Items.ids.ninja_shirt, Items.ids.ninja_pants]:
+			ninja += 1
+	check(ent.boss == null and gold == 1 and ninja == 1, "morto: 1 ouro e uma (só uma) peça de Ninja")
+	# meteorito: só depois do 1º chefe do mal, à meia-noite
+	p.clock.time = p.clock.DAY_SECONDS + 100
+	for i in 5:
+		ent._physics_process(1.0 / 60)
+	check(ent.meteor == null and not p.world.meteor_due, "sem chefe do mal derrotado, nada cai")
+	ent.evil_boss_down("eater_of_worlds")
+	check(p.world.meteor_due and p.world.evil_boss_down, "derrotar o Eater/Brain libera o meteorito")
+	ent._physics_process(1.0 / 60)
+	check(ent.meteor == null, "antes da meia-noite ainda não cai")
+	p.clock.time = p.clock.DAY_SECONDS + p.clock.NIGHT_SECONDS / 2.0 + 5.0
+	ent._physics_process(1.0 / 60)
+	check(ent.meteor != null and not p.world.meteor_due and p.message.contains("meteorito"), "à meia-noite a bola de fogo aparece e avisa a direção")
+	var target := Vector3i(ent.meteor.position)
+	for i in 60 * 6:
+		ent._physics_process(1.0 / 60)
+	var ore := 0
+	for dz in range(-7, 8):
+		for dx in range(-7, 8):
+			for dy in range(-8, 3):
+				if p.world.get_block(target.x + dx, p.world.surface_y(target.x, target.z, true) + dy, target.z + dz) == Blocks.ids.meteorite:
+					ore += 1
+	check(ent.meteor == null and ore > 30, "cratera com meteorito no fundo (%d blocos)" % ore)
+	# pisar em meteorito queima
+	p.position = Vector3(24.5, 11, 24.5)
+	p.world.set_block(24, 10, 24, Blocks.ids.meteorite)
+	p.on_floor = true
+	p.hp = 100
+	p.iframes = 0
+	p.tick(0.016)
+	check(p.hp < 100, "meteorito queima quem pisa")
+	free_player(p)
 	w.free()
 	return true
 

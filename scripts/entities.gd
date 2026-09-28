@@ -18,6 +18,7 @@ var defs: Array = []
 var projectiles := {}   # nome -> entrada de projectiles.json
 var enemies: Array[Node3D] = []
 var boss: Node3D = null
+var meteor: Node3D = null    # bola de fogo em queda
 var boss_max := 0           # vida total do chefe ao nascer (a de todos os segmentos, se for verme)
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
@@ -45,6 +46,16 @@ func icon(item: int) -> Texture2D:
 
 
 func _physics_process(delta: float) -> void:
+	if world.meteor_due and meteor == null and clock.is_night() and clock.time >= clock.DAY_SECONDS + clock.NIGHT_SECONDS / 2.0:
+		start_meteor()   # depois do 1º chefe do mal, um meteorito cai na 1ª meia-noite (ou já, se ele caiu depois dela)
+	if meteor:
+		meteor.position.y -= 40.0 * delta
+		Fx.sparks(self, meteor.position, Color("#ffb050"), 3, Vector3.UP)
+		if meteor.position.y <= meteor.get_meta("ground"):
+			var at: Vector3 = meteor.position
+			meteor.queue_free()
+			meteor = null
+			crater(int(at.x), int(at.z))
 	spawn_timer -= delta
 	if spawn_timer <= 0:
 		spawn_timer = 1.0
@@ -71,6 +82,76 @@ func try_spawn() -> void:
 	if not world.in_world(Vector2i(floori(x / 16.0), floori(z / 16.0))):
 		return
 	spawn_enemy(d, Vector3(x + 0.5, world.surface_y(x, z) + (6 if d.ai == "fly" else 0), z + 0.5))
+
+
+# Primeira vez que um chefe do mal (Eater of Worlds ou Brain) morre: libera o meteorito.
+func evil_boss_down(group: String) -> void:
+	if group in ["eater_of_worlds", "brain_of_cthulhu"] and not world.evil_boss_down:
+		world.evil_boss_down = true
+		world.meteor_due = true
+
+
+# Escolhe um ponto de superfície seco, longe do nascimento e do bioma do mal, a 40-90 blocos do jogador, e solta a bola de fogo.
+func start_meteor() -> void:
+	var pos := Vector3i.ZERO
+	for attempt in 30:
+		var a := rng.randf() * TAU
+		var d := rng.randf_range(40.0, 90.0)
+		var x := floori(player.position.x + cos(a) * d)
+		var z := floori(player.position.z + sin(a) * d)
+		var y: int = world.surface_y(x, z, true) if world.in_world(Vector2i(floori(x / 16.0), floori(z / 16.0))) else 0
+		var lo := 16
+		var hi: int = WorldGen.SIZE_CHUNKS * WorldGen.CHUNK - 16
+		if y > WorldGen.WATER_LEVEL + 1 and x > lo and z > lo and x < hi and z < hi and Vector2(x, z).distance_to(WorldGen.CENTER) > 30.0 \
+				and world.gen.evil_weight(x, z) < 0.5:
+			pos = Vector3i(x, y, z)
+			break
+	if pos == Vector3i.ZERO:
+		return   # sem lugar bom agora: tenta de novo no próximo quadro
+	world.meteor_due = false
+	meteor = MeshInstance3D.new()
+	var sphere := SphereMesh.new()
+	sphere.radius = 1.4
+	sphere.height = 2.8
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Color("#ff9a3a")
+	sphere.material = mat
+	meteor.mesh = sphere
+	meteor.position = Vector3(pos.x + 0.5, pos.y + 90, pos.z + 0.5)
+	meteor.set_meta("ground", float(pos.y))
+	add_child(meteor)
+	player.say("um meteorito caiu do céu! (%d blocos a %s)" % [int(Vector2(pos.x, pos.z).distance_to(Vector2(player.position.x, player.position.z))), _compass(Vector2(pos.x - player.position.x, pos.z - player.position.z))])
+
+
+static func _compass(v: Vector2) -> String:
+	return ("norte" if v.y < 0 else "sul") if absf(v.y) > absf(v.x) * 2.0 else ("oeste" if v.x < 0 else "leste") if absf(v.x) > absf(v.y) * 2.0 \
+		else ("noroeste" if v.x < 0 else "nordeste") if v.y < 0 else ("sudoeste" if v.x < 0 else "sudeste")
+
+
+# Cratera de 6 blocos de raio (cava o chão, derruba árvores) com meteorito no fundo.
+func crater(cx: int, cz: int) -> void:
+	var y0: int = world.surface_y(cx, cz, true)
+	for dz in range(-7, 8):
+		for dx in range(-7, 8):
+			var r := Vector2(dx, dz).length()
+			if r > 6.5:
+				continue
+			var floor_y := y0 - int((6.5 - r) * 0.55)
+			for y in range(floor_y + 1, y0 + 14):
+				var b: int = world.get_block(cx + dx, y, cz + dz)
+				if b != 0 and b != Blocks.ids.bedrock:
+					world.set_block(cx + dx, y, cz + dz, 0, false)
+			if r < 3.6:
+				world.set_block(cx + dx, floor_y, cz + dz, Blocks.ids.meteorite, false)
+				world.set_block(cx + dx, floor_y - 1, cz + dz, Blocks.ids.meteorite, false)
+			elif r < 5.0 and rng.randf() < 0.5:
+				world.set_block(cx + dx, floor_y, cz + dz, Blocks.ids.meteorite, false)
+	var at := Vector3(cx + 0.5, y0, cz + 0.5)
+	Fx.puff(self, at, Color("#ff8a3a"), 40)
+	Fx.sparks(self, at, Color("#ffd060"), 30, Vector3.UP)
+	if player.position.distance_to(at) < 60.0:
+		player.shake = maxf(player.shake, 1.0)
 
 
 func spawn_enemy(d: Dictionary, pos: Vector3) -> Node3D:

@@ -16,6 +16,8 @@ const SHOTS := [
 	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "flying": true},
 	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "flying": true},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
+	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
+	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
@@ -153,6 +155,9 @@ func _setup(s: Dictionary) -> void:
 		else:
 			player.position = Vector3(at.x + 0.5, world.surface_y(at.x, at.y) + s.get("up", 0.0), at.y + 0.5)
 		print("  ", s.name, " ", g.evil, " em ", player.position)
+	if s.get("crater", false):
+		var q: Vector3 = player.position + fwd_of(s.look.x) * 14.0
+		main.get_node("Entities").crater(int(q.x), int(q.z))
 	if s.has("row"):   # uma fileira de blocos novos à frente, para conferir as texturas
 		var f := Vector3(-sin(s.look.x), 0, -cos(s.look.x))
 		var r := f.cross(Vector3.UP)
@@ -231,7 +236,7 @@ func _setup(s: Dictionary) -> void:
 				e.velocity = Vector3.ZERO
 	if s.has("boss"):
 		var b: Node3D = ent.spawn_boss(s.boss)
-		b.position = player.position + fwd * 12 + Vector3.UP * 5
+		b.position = player.position + fwd * 12 + Vector3.UP * (0.2 if b.def.ai == "king_slime" else 5.0)
 		var k := 0
 		for e in ent.enemies:
 			e.set_physics_process(false)
@@ -264,3 +269,7 @@ func _setup(s: Dictionary) -> void:
 			player._process(0.0)
 		for _hit in s.mine:
 			player.break_target()
+
+
+func fwd_of(yaw: float) -> Vector3:
+	return Vector3(-sin(yaw), 0, -cos(yaw))
