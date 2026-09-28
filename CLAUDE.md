@@ -36,6 +36,7 @@ Godot 4.7.2-stable (fixado em scripts/setup-godot.sh), GDScript, renderer Compat
 ## Comandos
 ```sh
 scripts/setup-godot.sh                        # baixa o Godot em .tools/godot (idempotente; roda sozinho no SessionStart remoto)
+scripts/fetch-sprites.sh                      # baixa os sprites da wiki em assets/wiki/ (idempotente; opcional)
 .tools/godot --headless --import              # após pull ou novo class_name: atualiza o cache de classes
 .tools/godot -e                               # abre o editor (local)
 .tools/godot                                  # roda o jogo (local)
@@ -69,7 +70,8 @@ data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)
 textures/            atlas.png gerado pelos testes, só para inspeção (ignorado pelo git)
 docs/ROADMAP.md      fases e critérios de pronto
-docs/atlas.png       prévia ampliada das texturas (tests/atlas_preview.gd)
+docs/VISUAL.md       plano do visual Terraria → 3D
+assets/wiki/         sprites baixados da wiki (fora do git)
 .tools/              binário do Godot (ignorado pelo git)
 ```
 

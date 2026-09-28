@@ -61,7 +61,7 @@ func _show_slot(b: Button, i: int) -> void:
 	b.modulate = Color.WHITE if i == player.slot or i >= Inventory.HOTBAR else Color(1, 1, 1, 0.55)
 
 
-func _icon(id: int) -> AtlasTexture:
+func _icon(id: int) -> Texture2D:
 	return player.entities.icon(id)
 
 

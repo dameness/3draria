@@ -4,7 +4,9 @@ Objetivo: cada item tem **o mesmo ícone do Terraria** e, na mão, uma **versão
 **mesmos efeitos** (ex.: Terra Blade brilha verde, deixa rastro e dispara o Terra Beam). Inspiração: a colaboração
 Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e partículas).
 
-## Regra de assets (mudou em relação à F0)
+## Regra de assets (aprovada pelo dono)
+- **Ícones = os do Terraria/Calamity, exatos.** O 3D *evolui* a partir deles: parte do sprite, mas pode ganhar forma,
+  materiais e efeitos próprios; itens novos do dono podem ter visual original (sem sprite da wiki).
 - Os sprites são do Terraria (© Re-Logic). Uso pessoal, sem distribuição: **não vão para o git**.
 - `scripts/fetch-sprites.sh` baixa da wiki (terraria.wiki.gg / calamitymod.wiki.gg) para `assets/wiki/` (ignorado
   pelo git), igual ao binário do Godot. Idempotente; roda no setup local e no SessionStart remoto.
@@ -12,11 +14,12 @@ Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e part�
 
 ## Camadas (cada uma é dado + um sistema genérico)
 1. **Sprites 2D (ícones e blocos)**
-   - Item: campo `wiki` no JSON (`"wiki": "Terra Blade"`) → `assets/wiki/items/Terra_Blade.png` (tamanho original).
-   - Bloco: `Dirt_Block_(placed).png` (48x48 = 3x3 tiles) → face = tile central 16x16; topo/lado por bloco quando
-     o Terraria tiver variação (grama).
-   - Atlas: blocos continuam num atlas 16x16; ícones de item viram texturas próprias (tamanhos variam: 32x32, 46x54…).
-2. **Item 3D na mão (extrusão do sprite)**
+   - Em `textures.json`: `"wiki": "Terra_Blade"` → `assets/wiki/Terra_Blade.png` (ícone em tamanho original).
+   - Face de bloco: `"wiki": "Dirt_Block_(placed)", "crop": [16, 16]` (48x48 = 3x3 tiles; centro = face;
+     grama usa `[16, 0]`, o tile de cima, para a lateral; o topo verde é procedural com as cores do sprite).
+   - Blocos continuam num atlas 16x16; ícones de item são texturas próprias (32x32, 46x54…).
+2. **Item 3D na mão (extrusão do sprite = ponto de partida)**
+   - Campo `model` no item sobrepõe a extrusão quando o item "evoluir" (malha procedural própria ou .glb feito à mão).
    - Cada pixel opaco vira um voxel fino → malha gerada uma vez e guardada em cache. Funciona para *todo* item sem
      modelagem manual; mantém a silhueta exata do Terraria.
    - "Mais realista": bordas chanfradas, espessura variável (lâmina fina, cabo grosso — pelo alfa/cor), material com
@@ -34,7 +37,7 @@ Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e part�
    - Sprite da wiki extrudado como "papel 3D" ou billboard animado (frames do sprite sheet) — decidir no playtest.
 
 ## Ordem proposta
-- V1 (antes da F5): fetch-sprites + ícones e blocos exatos + fallback. Pequeno, e todo item futuro já nasce certo.
+- V1 ✅: fetch-sprites + ícones e blocos exatos + fallback (tests/atlas_preview.gd → textures/preview.png).
 - V2: item extrudado na mão + animação de golpe/tiro.
 - V3: `effects` + `projectiles.json` (primeiro caso real: Enchanted Sword/Terra Beam, depois arco e flechas).
 - V4: 3ª pessoa + modelo do jogador + armaduras (já listado no roadmap pós-protótipo).

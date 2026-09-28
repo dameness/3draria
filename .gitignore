@@ -5,3 +5,4 @@ export_presets.cfg
 # Binário do Godot baixado por scripts/setup-godot.sh
 .tools/
 textures/
+assets/wiki/

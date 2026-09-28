@@ -7,6 +7,7 @@ static var ids := {}                       # nome -> id
 static var solid := PackedByteArray()      # id -> 1 se sólido
 static var breakable := PackedByteArray()  # id -> 1 se o jogador pode quebrar
 static var power := PackedInt32Array()     # id -> poder de picareta mínimo
+static var icons: Array[String] = []       # id -> textura do ícone do item-bloco ("" = face lateral)
 static var drop_names: Array[String] = []  # id -> item que dropa ("" = nada); Items resolve
 static var tiles := PackedInt32Array()     # id * FACES + face -> índice no atlas
 static var textures := {}                  # nome -> spec, na ordem do atlas
@@ -22,12 +23,14 @@ static func load_pack(dir := "res://data/base") -> void:
 	breakable.clear()
 	power.clear()
 	drop_names.clear()
+	icons.clear()
 	tiles.clear()
 	for b in read(dir + "/blocks.json"):
 		ids[b.name] = ids.size()
 		solid.append(1 if b.get("solid", true) else 0)
 		breakable.append(1 if b.get("breakable", true) else 0)
 		power.append(b.get("power", 0))
+		icons.append(b.get("icon", ""))
 		drop_names.append(b.get("drop", b.name if solid[-1] and breakable[-1] else ""))
 		var t: Dictionary = b.get("tiles", {})
 		var side: String = t.get("side", t.get("all", ""))

@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "[ \"$CLAUDE_CODE_REMOTE\" != true ] || \"$CLAUDE_PROJECT_DIR\"/scripts/setup-godot.sh"
+            "command": "[ \"$CLAUDE_CODE_REMOTE\" != true ] || { \"$CLAUDE_PROJECT_DIR\"/scripts/setup-godot.sh && { \"$CLAUDE_PROJECT_DIR\"/scripts/fetch-sprites.sh || true; }; }"
           }
         ]
       }

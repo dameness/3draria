@@ -4,16 +4,20 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 **Ids são a posição na lista** em `blocks.json` e `items.json`: só acrescente no fim (o save grava ids de bloco).
 
 ## textures.json — tudo que é desenhado
-`nome: {pattern, colors, top_colors?}`. `scripts/atlas.gd` pinta cada entrada num tile 16x16, numa única fileira (o atlas),
-com RNG semeado pelo nome (sempre o mesmo resultado). Sem arquivos de imagem: o atlas é gerado ao abrir o jogo.
+`nome: {wiki?, crop?, pattern?, colors?, top_colors?}`.
+- `wiki`: arquivo da wiki (sem .png) baixado por `scripts/fetch-sprites.sh` em `assets/wiki/` (fora do git).
+  Com `crop: [x, y]` recorta 16x16 para face de bloco; sem crop é ícone de item em tamanho original.
+- Sem o arquivo (ou sem `wiki`), `scripts/atlas.gd` pinta `pattern` num tile 16x16 com RNG semeado pelo nome.
+  Entrada só com `wiki` (ícone) não tem fallback próprio: o item-bloco usa a face lateral.
 - Blocos (opacos): `noise` (pixels sorteados da paleta), `grass_side` (topo com top_colors), `stripes`, `rings`,
   `ore` (base + manchas de top_colors), `planks`, `bricks` (top_colors = argamassa).
 - Ícones (fundo transparente): `bar`, `pickaxe`, `sword`, `bow`, `arrow`, `blob` (+ pupila se top_colors), `torch`.
 - Padrão novo = um `match` em atlas.gd. Paleta curta (2-4 cores) mantém o estilo.
-- Prévia ampliada: `.tools/godot --headless -s tests/atlas_preview.gd` → `docs/atlas.png`.
+- Prévia ampliada (faces + ícones): `.tools/godot --headless -s tests/atlas_preview.gd` → `textures/preview.png`.
 
 ## blocks.json
-`{name, tiles:{all|top|side|bottom}, solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
+`{name, tiles:{all|top|side|bottom}, icon?, solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
+`icon`: textura do ícone do item-bloco (ex.: `dirt_item` → `Dirt_Block.png`).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral).
 
 ## items.json (itens que não são bloco)

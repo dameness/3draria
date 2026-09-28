@@ -19,7 +19,7 @@ var icon: Sprite3D
 func _ready() -> void:
 	icon = Sprite3D.new()
 	icon.texture = entities.icon(item)
-	icon.pixel_size = 0.45 / Atlas.TILE
+	icon.pixel_size = 0.45 / maxf(icon.texture.get_width(), icon.texture.get_height())
 	icon.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	icon.position.y = 0.25
 	add_child(icon)

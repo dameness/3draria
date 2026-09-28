@@ -18,7 +18,6 @@ var defs: Array = []
 var enemies: Array[Node3D] = []
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
-var icons := {}   # item -> AtlasTexture
 
 
 func _ready() -> void:
@@ -32,13 +31,8 @@ func load_defs(dir := "res://data/base") -> void:
 			assert(Items.ids.has(dr.item), "drop desconhecido: " + dr.item)
 
 
-func icon(item: int) -> AtlasTexture:
-	if not icons.has(item):
-		var t := AtlasTexture.new()
-		t.atlas = world.material.albedo_texture
-		t.region = Rect2(Items.icon[item] * Atlas.TILE, 0, Atlas.TILE, Atlas.TILE)
-		icons[item] = t
-	return icons[item]
+func icon(item: int) -> Texture2D:
+	return Items.icon_texture(item, world.material.albedo_texture)
 
 
 func _physics_process(delta: float) -> void:

@@ -5,6 +5,21 @@ class_name Atlas
 
 const TILE := 16
 
+static var wiki_dir := "res://assets/wiki/"   # sprites baixados por scripts/fetch-sprites.sh
+
+
+# Sprite da wiki para a textura, ou null se não foi baixado (aí vale o procedural).
+static func wiki_image(spec: Dictionary) -> Image:
+	if not spec.has("wiki"):
+		return null
+	var path := ProjectSettings.globalize_path(wiki_dir + spec.wiki + ".png")
+	if not FileAccess.file_exists(path):
+		return null
+	var img := Image.load_from_file(path)
+	if img:
+		img.convert(Image.FORMAT_RGBA8)
+	return img
+
 
 static func build(textures: Dictionary) -> Image:
 	var img := Image.create(TILE * textures.size(), TILE, false, Image.FORMAT_RGBA8)
@@ -16,6 +31,12 @@ static func build(textures: Dictionary) -> Image:
 
 
 static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
+	var wiki := wiki_image(spec)
+	if wiki and spec.has("crop"):
+		img.blit_rect(wiki, Rect2i(spec.crop[0], spec.crop[1], TILE, TILE), Vector2i(ox, 0))
+		return
+	if not spec.has("pattern"):
+		return  # entrada só de ícone da wiki; não ocupa pixels no atlas
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed
 	var cols: Array = spec.colors.map(func(c): return Color(c))

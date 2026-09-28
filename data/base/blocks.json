@@ -1,16 +1,16 @@
 [
 	{"name": "air", "solid": false},
 	{"name": "grass", "drop": "dirt", "tiles": {"top": "grass_top", "side": "grass_side", "bottom": "dirt"}},
-	{"name": "dirt", "tiles": {"all": "dirt"}},
-	{"name": "stone", "tiles": {"all": "stone"}},
-	{"name": "ash", "tiles": {"all": "ash"}},
+	{"name": "dirt", "tiles": {"all": "dirt"}, "icon": "dirt_item"},
+	{"name": "stone", "tiles": {"all": "stone"}, "icon": "stone_item"},
+	{"name": "ash", "tiles": {"all": "ash"}, "icon": "ash_item"},
 	{"name": "bedrock", "breakable": false, "tiles": {"all": "bedrock"}},
-	{"name": "wood", "tiles": {"top": "wood_top", "side": "wood_side"}},
+	{"name": "wood", "tiles": {"top": "wood_top", "side": "wood_side"}, "icon": "wood_item"},
 	{"name": "leaves", "drop": "", "tiles": {"all": "leaves"}},
-	{"name": "copper_ore", "tiles": {"all": "copper_ore"}},
-	{"name": "iron_ore", "tiles": {"all": "iron_ore"}},
-	{"name": "gold_ore", "tiles": {"all": "gold_ore"}},
-	{"name": "workbench", "tiles": {"top": "workbench_top", "side": "planks"}},
-	{"name": "furnace", "tiles": {"top": "furnace", "side": "furnace_front", "bottom": "furnace"}},
-	{"name": "anvil", "tiles": {"all": "anvil"}}
+	{"name": "copper_ore", "tiles": {"all": "copper_ore"}, "icon": "copper_ore_item"},
+	{"name": "iron_ore", "tiles": {"all": "iron_ore"}, "icon": "iron_ore_item"},
+	{"name": "gold_ore", "tiles": {"all": "gold_ore"}, "icon": "gold_ore_item"},
+	{"name": "workbench", "tiles": {"top": "workbench_top", "side": "planks"}, "icon": "workbench_item"},
+	{"name": "furnace", "tiles": {"top": "furnace", "side": "furnace_front", "bottom": "furnace"}, "icon": "furnace_item"},
+	{"name": "anvil", "tiles": {"all": "anvil"}, "icon": "anvil_item"}
 ]

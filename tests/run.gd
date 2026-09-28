@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://main.tscn").instantiate()
@@ -222,6 +222,37 @@ func test_save():
 	free_player(p2)
 	w.free()
 	w2.free()
+	return true
+
+
+# Sprites da wiki: com arquivo usa o recorte/ícone original; sem arquivo cai no procedural. Não depende de rede.
+func test_wiki_sprites():
+	var saved := Atlas.wiki_dir
+	var plain := {}
+	for k in Blocks.textures:
+		var spec: Dictionary = Blocks.textures[k].duplicate()
+		spec.erase("wiki")
+		plain[k] = spec
+	Atlas.wiki_dir = "user://sem_sprites/"
+	check(Atlas.build(Blocks.textures).get_data() == Atlas.build(plain).get_data(), "sem sprites: atlas procedural")
+	var dir := "user://wiki_test/"
+	DirAccess.make_dir_recursive_absolute(dir)
+	var placed := Image.create(48, 48, false, Image.FORMAT_RGBA8)
+	placed.fill_rect(Rect2i(16, 16, 16, 16), Color.MAGENTA)
+	placed.save_png(dir + "Dirt_Block_(placed).png")
+	var pick := Image.create(32, 32, false, Image.FORMAT_RGBA8)
+	pick.save_png(dir + "Copper_Pickaxe.png")
+	Atlas.wiki_dir = dir
+	var tile: int = Blocks.textures.keys().find("dirt")
+	check(Atlas.build(Blocks.textures).get_pixel(tile * 16 + 5, 5) == Color.MAGENTA, "com sprite: face = tile central do bloco colocado")
+	Items.icon_cache.clear()
+	var tex := Items.icon_texture(Items.ids.copper_pickaxe, null)
+	check(tex.get_width() == 32, "ícone da wiki em tamanho original")
+	check(Items.icon_texture(Items.ids.gel, null) is AtlasTexture, "sem sprite do item: ícone do atlas")
+	for f in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir + f)
+	Atlas.wiki_dir = saved
+	Items.icon_cache.clear()
 	return true
 
 
