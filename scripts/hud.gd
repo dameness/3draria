@@ -494,8 +494,8 @@ func _process(delta: float) -> void:
 		cursor_view.get_node("Icon").texture = _icon(inv.cursor_id)
 		cursor_view.get_node("Count").text = str(inv.cursor_count) if inv.cursor_count > 1 else ""
 	var cam: Vector3 = player.cam.global_position
-	var block: int = world.get_block(floori(cam.x), floori(cam.y), floori(cam.z))
-	tint.color = Color(0.08, 0.28, 0.7, 0.4) if block == Blocks.ids.water else Color(1.0, 0.3, 0.05, 0.55) if block == Blocks.ids.lava else Color.TRANSPARENT
+	var wet: int = world.liquid_at(cam)
+	tint.color = Color(0.08, 0.28, 0.7, 0.4) if wet == Blocks.ids.water else Color(1.0, 0.3, 0.05, 0.55) if wet == Blocks.ids.lava else Color.TRANSPARENT
 	flash.color = Color(0.9, 0.05, 0.05, clampf((player.iframes - (player.IFRAMES - 0.3)) / 0.3, 0.0, 1.0) * 0.3)
 	note_label.text = player.message if now < player.message_until else ""
 	var p: Vector3 = player.position

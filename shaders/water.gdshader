@@ -11,7 +11,7 @@ uniform float alpha = 0.62;
 varying vec3 wpos;
 
 void vertex() {
-	if (fract(VERTEX.y + 0.001) > 0.5) {
+	if (COLOR.b > 0.5) {   // vértice da superfície (b = 1, ver chunk_mesher.gd): ondula
 		VERTEX.y += sin(TIME * 1.4 + VERTEX.x * 0.9 + VERTEX.z * 0.7) * 0.035;
 	}
 	wpos = VERTEX;

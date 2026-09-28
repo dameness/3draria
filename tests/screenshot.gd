@@ -12,6 +12,7 @@ const SHOTS := [
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime"], "item": "wooden_sword"},
+	{"name": "flash", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "hurt": true},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
 	{"name": "caverna", "cave": true, "look": Vector2(0.3, -0.25), "item": "copper_pickaxe"},
@@ -20,6 +21,8 @@ const SHOTS := [
 	{"name": "chefe_fase2", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "phase2": true, "third": true},
 	{"name": "lago", "find": "water", "at": Vector3(14, 5, 0), "look": Vector2(PI / 2, -0.3)},
 	{"name": "agua", "find": "water", "find_y": 66, "at": Vector3(0, 2.3, 0), "look": Vector2(PI / 2, 0.1), "flying": true},
+	{"name": "escoa", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "flying": true, "breach": 8, "flow": 14},
+	{"name": "escoa_depois", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "flying": true, "breach": 8, "flow": 60},
 	{"name": "submundo", "find": "lava", "find_y": 4, "at": Vector3(6, 6, 0), "look": Vector2(PI / 2, -0.25), "flying": true},
 	{"name": "ceu_manha", "time": 25.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.12},
 	{"name": "ceu_por_do_sol", "time": 850.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.08},
@@ -83,6 +86,15 @@ func _setup(s: Dictionary) -> void:
 					best = Vector3i(x, s.get("find_y", WorldGen.WATER_LEVEL), z)
 		player.position = Vector3(best) + Vector3(0.5, 0, 0.5) + s.at
 		print("  ", s.name, " em ", player.position)
+		if s.has("breach"):   # abre um canal de `breach` blocos para o lado (+X) a partir da borda do lago, com uma cova no fim, e deixa fluir
+			var x := best.x
+			while world.get_block(x, best.y, best.z) == Blocks.ids.water:
+				x += 1
+			for i in range(s.breach):
+				world.set_block(x + i, best.y, best.z, 0)
+			for dy in range(1, 5):
+				world.set_block(x + s.breach - 1, best.y - dy, best.z, 0)
+			world.liquid.settle(world, s.get("flow", 10))
 	var sp := Vector3i(player.spawn.floor())
 	if s.get("cave", false):  # sala escavada 12 blocos abaixo, com tochas no chão
 		for x in range(-5, 6):
@@ -121,6 +133,9 @@ func _setup(s: Dictionary) -> void:
 		pos.y = world.surface_y(int(pos.x), int(pos.z)) + (2.5 if n == "demon_eye" else 0.0)
 		var e: Node3D = ent.spawn_enemy(ent.def_named(n), pos)
 		e.set_physics_process(false)
+		if s.get("hurt", false):   # o clarão vermelho do golpe, congelado para o print
+			e.hurt(1, Vector3.ZERO, 0)
+			e.flash = 99.0
 		i += 1
 	if s.has("boss"):
 		var b: Node3D = ent.spawn_boss(s.boss)

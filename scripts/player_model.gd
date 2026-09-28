@@ -5,8 +5,10 @@ extends Node3D
 # e botas), pintada com a paleta do ícone. Animação: respirar, piscar, andar (com balanço do corpo), pular, cair, nadar e
 # golpear. Tudo por código; nada de arquivo de arte.
 
+const HeldItem := preload("res://scripts/held_item.gd")
 const OUTLINE := 0.014            # espessura do contorno em blocos
 const SPHERE_SEGMENTS := 14
+const HEAD := 0.78                # escala da cabeça (o boneco tem ~1,85 de altura com o cabelo)
 
 @export var player: Node3D           # jogador, inimigo humanoide ou boneco do menu (lê velocity, pitch, held(), cooldown, inv, entities)
 var skin := Color("#f0b890")
@@ -28,15 +30,24 @@ static var _outline: StandardMaterial3D
 
 
 func _ready() -> void:
-	var upper := _pivot(self, "upper", Vector3(0, 0.62, 0))   # tronco, cabeça e braços: inclinam juntos
+	if SaveGame.player_path != "" and get_parent() == player:   # o jogador da partida usa a aparência do personagem escolhido
+		var look := SaveGame.look(SaveGame.player_path)
+		skin = look.skin
+		hair = look.hair
+		shirt = look.shirt
+		pants = look.pants
+	var upper := _pivot(self, "upper", Vector3(0, 0.72, 0))   # tronco, cabeça e braços: inclinam juntos a partir da cintura
 	for side in [-1, 1]:
-		var leg := _pivot(self, "leg_l" if side < 0 else "leg_r", Vector3(side * 0.115, 0.64, 0))
-		_part(leg, _capsule(0.105, 0.56), pants, Vector3(0, -0.27, 0))
-		_part(leg, _sphere(), pants, Vector3(0, -0.02, 0), Vector3(0.23, 0.2, 0.23))
-		_part(leg, _sphere(), Color("#5a3a2a"), Vector3(0, -0.57, -0.04), Vector3(0.2, 0.14, 0.32))   # bota
-	_part(upper, _capsule(0.17, 0.5), shirt, Vector3(0, 0.27, 0), Vector3(1.32, 1.0, 0.92))
-	_part(upper, _sphere(), pants, Vector3(0, 0.03, 0), Vector3(0.44, 0.1, 0.32))   # cós da calça
-	var head := _pivot(upper, "head", Vector3(0, 0.53, 0))
+		var leg := _pivot(self, "leg_l" if side < 0 else "leg_r", Vector3(side * 0.105, 0.75, 0))
+		_part(leg, _capsule(0.1, 0.62), pants, Vector3(0, -0.33, 0))
+		_part(leg, _sphere(), pants, Vector3(0, -0.02, 0), Vector3(0.24, 0.22, 0.24))   # quadril
+		_part(leg, _sphere(), Color("#5a3a2a"), Vector3(0, -0.67, -0.035), Vector3(0.21, 0.16, 0.34))   # bota (a sola toca o chão)
+	_part(upper, _capsule(0.15, 0.56), shirt, Vector3(0, 0.28, 0), Vector3(1.4, 1.0, 0.98))    # camiseta
+	_part(upper, _sphere(), shirt, Vector3(0, 0.46, 0), Vector3(0.5, 0.2, 0.28))               # ombros: a camiseta cobre a parte de cima
+	_part(upper, _sphere(), pants, Vector3(0, 0.04, 0), Vector3(0.4, 0.15, 0.28))               # cós da calça
+	_part(upper, _capsule(0.055, 0.15), skin, Vector3(0, 0.57, 0), Vector3(1, 1, 1), Vector3.ZERO, false)   # pescoço
+	var head := _pivot(upper, "head", Vector3(0, 0.56, 0))
+	head.scale = Vector3.ONE * HEAD   # cabeça, cabelo e capacete escalam juntos
 	_part(head, _sphere(), skin, Vector3(0, 0.3, 0), Vector3(0.62, 0.6, 0.6))
 	for side in [-1, 1]:
 		var eye := Node3D.new()   # olho: branco, íris e brilho
@@ -51,11 +62,12 @@ func _ready() -> void:
 	_part(head, _sphere(), skin.darkened(0.08), Vector3(-0.29, 0.28, 0), Vector3(0.05, 0.11, 0.09), Vector3.ZERO, false)   # orelhas
 	_part(head, _sphere(), skin.darkened(0.08), Vector3(0.29, 0.28, 0), Vector3(0.05, 0.11, 0.09), Vector3.ZERO, false)
 	_hair(head)
-	for side in [-1, 1]:
-		var arm := _pivot(upper, "arm_l" if side < 0 else "arm_r", Vector3(side * 0.3, 0.5, 0))
-		_part(arm, _capsule(0.075, 0.5), skin, Vector3(0, -0.2, 0))
-		_part(arm, _capsule(0.09, 0.3), shirt, Vector3(0, -0.11, 0))   # manga
-		_part(arm, _sphere(), skin, Vector3(0, -0.46, 0), Vector3(0.17, 0.17, 0.17))   # mão
+	for side in [-1, 1]:   # o pivô do braço é o ombro, dentro do tronco: girar o braço não abre vão
+		var arm := _pivot(upper, "arm_l" if side < 0 else "arm_r", Vector3(side * 0.232, 0.47, 0))
+		_part(arm, _capsule(0.072, 0.6), skin, Vector3(0, -0.26, 0))
+		_part(arm, _capsule(0.092, 0.29), shirt, Vector3(0, -0.11, 0))    # manga
+		_part(arm, _sphere(), shirt, Vector3.ZERO, Vector3(0.19, 0.19, 0.19))   # ombro
+		_part(arm, _sphere(), skin, Vector3(0, -0.55, 0), Vector3(0.17, 0.17, 0.17))   # mão
 	held = MeshInstance3D.new()
 	parts.arm_r.add_child(held)
 
@@ -138,12 +150,12 @@ static func _part(parent: Node3D, mesh: Mesh, c: Color, pos: Vector3, size := Ve
 	m.material_override = _mat(c, outline)
 	m.position = pos
 	m.rotation = rot
-	if mesh is SphereMesh:
-		m.scale = size
+	m.scale = size
 	parent.add_child(m)
 	return m
 
 
+# Convenção: rotation.x positivo balança o braço/perna para a FRENTE (o corpo olha para -Z).
 func _process(delta: float) -> void:
 	if player == null:
 		player = get_parent().get_parent() if get_parent() else null  # modelo de inimigo: dono é o avô
@@ -152,24 +164,24 @@ func _process(delta: float) -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	var speed := Vector2(player.velocity.x, player.velocity.z).length()
 	var grounded: bool = player.get("on_floor") != false
-	var swimming: bool = player.has_method("liquid_at") and player.liquid_at() != 0
+	var swimming: bool = player.get("swimming") == true
 	phase += delta * speed * 2.2
 	var walk := clampf(speed / 4.5, 0, 1.5)
 	var swing := sin(phase) * minf(walk, 1.0) * 0.85
 	var bob := absf(sin(phase)) * walk * 0.035 if grounded and not swimming else 0.0
 	var breathe := sin(t * 2.0) * 0.012
 	position.y = bob + breathe
-	parts.upper.rotation.x = walk * 0.1 if not swimming else 0.35   # inclina ao andar; nadando, para a frente
+	parts.upper.rotation.x = -walk * 0.08 if not swimming else -0.5   # inclina para a frente ao andar; nadando, deitado
 	parts.upper.scale.y = 1.0 + breathe * 0.6
-	# pernas e braços: andar; no ar, abertos; nadando, batendo
+	# pernas e braços: andar; no ar, abertos; nadando, braçadas
 	var leg := swing
 	var arm := -swing * 0.8
 	if swimming:
 		leg = sin(t * 7.0) * 0.5
-		arm = sin(t * 5.0) * 0.9 - 0.4
+		arm = sin(t * 5.0) * 0.9 + 1.2
 	elif not grounded:
 		leg = 0.5 if player.velocity.y > 0 else 0.25
-		arm = -1.6 if player.velocity.y > 0 else -0.5
+		arm = 2.4 if player.velocity.y > 0 else 0.6
 	parts.leg_l.rotation.x = leg
 	parts.leg_r.rotation.x = -leg if not (swimming or not grounded) else -leg * 0.6
 	parts.arm_l.rotation.x = arm
@@ -181,20 +193,35 @@ func _process(delta: float) -> void:
 		blink = 0.13
 	for e in eyes:
 		e.scale.y = 0.12 if blink > 0 else 1.0
-	if arms_forward:
-		parts.arm_l.rotation.x = -PI / 2 + swing * 0.2
-		parts.arm_r.rotation.x = -PI / 2 - swing * 0.2
+	if arms_forward:   # zumbi: braços esticados para a frente
+		parts.arm_l.rotation.x = PI / 2 + swing * 0.2
+		parts.arm_r.rotation.x = PI / 2 - swing * 0.2
 		return
 	parts.head.rotation.x = player.pitch * 0.6
 	var id: int = player.held()
+	var st := HeldItem.style(id) if id != -1 else ""
 	var dur: float = Items.defs[id].get("use_time", 0.25) if id != -1 else 0.25
 	var use: float = clampf(1.0 - player.cooldown / dur, 0, 1) if player.cooldown > 0 else 1.0
-	# braço da arma: golpe de cima para baixo durante o uso (o corpo gira junto); parado, um pouco à frente
-	if player.cooldown > 0:
-		parts.arm_r.rotation.x = lerpf(-2.6, -0.3, ease(use, 0.5))
-		parts.upper.rotation.y = lerpf(0.35, -0.25, ease(use, 0.5))
+	var rest: float = (swing * 0.5 if grounded and not swimming else arm)
+	if id != -1:   # com item na mão o braço fica à frente
+		rest = {"swing": 1.0, "thrust": 1.35, "shoot": 0.7, "hold": 0.8}[st] + rest * 0.3
+	var target_twist := 0.0
+	if player.cooldown > 0 and id != -1:
+		match st:
+			"swing":   # de cima para trás, por cima da cabeça, até à frente e para baixo; o corpo gira junto
+				parts.arm_r.rotation.x = lerpf(rest, 3.3, use / 0.1) if use < 0.1 else lerpf(3.3, 0.35, ease((use - 0.1) / 0.9, 0.4))
+				target_twist = lerpf(-0.3, 0.3, ease(use, 0.5))
+			"thrust":   # estocada para a frente, com o corpo indo junto
+				parts.arm_r.rotation.x = lerpf(0.5, 1.55, sin(PI * use))
+				target_twist = 0.2 * sin(PI * use)
+			"shoot":   # mira à frente e o recuo do disparo
+				parts.arm_r.rotation.x = 1.5 - 0.2 * (1.0 - use)
+				parts.arm_l.rotation.x = 1.3
+			_:
+				parts.arm_r.rotation.x = rest
+		parts.upper.rotation.y = target_twist
 	else:
-		parts.arm_r.rotation.x = swing * 0.8 - 0.3 if grounded and not swimming else arm - 0.3
+		parts.arm_r.rotation.x = lerpf(parts.arm_r.rotation.x, rest, minf(1.0, delta * 14.0))
 		parts.upper.rotation.y = lerpf(parts.upper.rotation.y, 0.0, minf(1.0, delta * 12.0))
 	if id != held_id:
 		held_id = id
@@ -204,16 +231,27 @@ func _process(delta: float) -> void:
 		_dress()
 
 
+# Item na mão: o cabo na mão e a lâmina saindo dela (inclinada para a frente em `swing`, no eixo do braço em `thrust`);
+# arcos e itens de segurar ficam de pé, centrados. O plano do sprite é o do golpe (o lado da lâmina fica para fora).
 func _show_held(id: int) -> void:
 	held.visible = id != -1
 	if id == -1:
 		return
-	var m := ItemModel.for_item(id, player.entities.icon(id), 0.9)
+	var st := HeldItem.style(id)
+	var m := ItemModel.for_item(id, player.entities.icon(id), 0.9 if st != "hold" else 0.5)
 	held.mesh = m[0]
 	held.material_override = m[1]
-	# cabo na mão (ponta do braço), lâmina para cima e para a frente
+	var blade := st in ["swing", "thrust"]
+	var phi: float = {"swing": 0.8, "thrust": 0.0}.get(st, PI / 2)
+	var b := Vector3(0, -cos(phi), -sin(phi))
+	var frame := Basis(b.cross(Vector3.RIGHT), b, Vector3.RIGHT)   # x = largura do sprite, y = direção da lâmina, z = plano do golpe
 	var ang: float = Items.defs[id].get("sprite_angle", 45.0)
-	held.transform = Transform3D(Basis(Vector3.RIGHT, -PI / 4) * Basis(Vector3.BACK, deg_to_rad(90.0 - ang)), Vector3(0, -0.5, 0))
+	var align := Basis(Vector3.BACK, deg_to_rad(90.0 - ang)) if blade else Basis()
+	var m3 := frame * align
+	var origin := Vector3(0, -0.55, 0)
+	if not blade:
+		origin -= m3 * m[0].get_aabb().get_center()
+	held.transform = Transform3D(m3, origin)
 
 
 # Cores da peça tiradas do sprite: média da metade mais clara dos pixels (o contorno escuro do Terraria deixaria tudo
@@ -264,25 +302,26 @@ func _dress() -> void:
 				add.call("head", _sphere(), c[0], Vector3(0, 0.33, 0.01), Vector3(0.7, 0.6, 0.68))          # calota
 				add.call("head", _capsule(0.02, 0.6), c[1], Vector3(0, 0.34, 0.0), Vector3(1, 1, 1), Vector3(0, 0, PI / 2))   # aba
 				add.call("head", _sphere(), c[2], Vector3(0, 0.24, 0.24), Vector3(0.66, 0.32, 0.24))         # protetor da nuca
-				add.call("head", _sphere(), c[2], Vector3(-0.3, 0.26, -0.02), Vector3(0.09, 0.22, 0.24))     # protetores de orelha
-				add.call("head", _sphere(), c[2], Vector3(0.3, 0.26, -0.02), Vector3(0.09, 0.22, 0.24))
-				add.call("head", _capsule(0.035, 0.42), c[1], Vector3(0, 0.63, 0.0), Vector3(1, 1, 1), Vector3(PI / 2, 0, 0))   # nervura do topo
+				add.call("head", _sphere(), c[1], Vector3(-0.31, 0.26, -0.02), Vector3(0.07, 0.2, 0.22))     # protetores de orelha
+				add.call("head", _sphere(), c[1], Vector3(0.31, 0.26, -0.02), Vector3(0.07, 0.2, 0.22))
+				add.call("head", _capsule(0.035, 0.5), c[1], Vector3(0, 0.6, 0.0), Vector3(1, 1, 1), Vector3(PI / 2, 0, 0))   # nervura do topo
 				for n in hair_nodes:   # o cabelo não atravessa o capacete
 					n.visible = false
 			"body":
-				add.call("upper", _capsule(0.19, 0.52), c[0], Vector3(0, 0.27, 0), Vector3(1.3, 1.0, 0.96))   # peitoral
-				add.call("upper", _sphere(), c[2], Vector3(0, 0.05, 0), Vector3(0.5, 0.1, 0.36))             # cinto
-				add.call("upper", _sphere(), c[1], Vector3(0, 0.36, -0.12), Vector3(0.24, 0.2, 0.1))         # placa do peito
+				add.call("upper", _capsule(0.168, 0.58), c[0], Vector3(0, 0.28, 0), Vector3(1.4, 1.0, 1.0))    # peitoral
+				add.call("upper", _sphere(), c[1], Vector3(0, 0.46, 0), Vector3(0.56, 0.24, 0.33))             # gola / ombros
+				add.call("upper", _sphere(), c[2], Vector3(0, 0.04, 0), Vector3(0.48, 0.1, 0.34))              # cinto
+				add.call("upper", BoxMesh.new(), c[1], Vector3(0, 0.36, -0.155), Vector3(0.13, 0.13, 0.05), Vector3(0, 0, PI / 4))   # emblema do peito
 				for side in [-1, 1]:
-					add.call("arm_l" if side < 0 else "arm_r", _sphere(), c[1], Vector3(0, -0.01, 0), Vector3(0.26, 0.2, 0.26))   # ombreira
-					add.call("arm_l" if side < 0 else "arm_r", _capsule(0.095, 0.26), c[0], Vector3(0, -0.13, 0))                   # braçadeira
+					add.call("arm_l" if side < 0 else "arm_r", _sphere(), c[1], Vector3(0, 0.0, 0), Vector3(0.25, 0.22, 0.25))   # ombreira
+					add.call("arm_l" if side < 0 else "arm_r", _capsule(0.103, 0.3), c[0], Vector3(0, -0.12, 0))                # braçadeira
 			"legs":
 				for side in [-1, 1]:
 					var p := "leg_l" if side < 0 else "leg_r"
-					add.call(p, _capsule(0.118, 0.5), c[0], Vector3(0, -0.25, 0))                          # greva
-					add.call(p, _sphere(), c[1], Vector3(0, -0.29, -0.09), Vector3(0.18, 0.18, 0.14))      # joelheira
-					add.call(p, _sphere(), c[2], Vector3(0, -0.57, -0.04), Vector3(0.24, 0.17, 0.36))      # bota
-					add.call(p, _sphere(), c[1], Vector3(0, -0.5, 0), Vector3(0.26, 0.09, 0.26))           # cano da bota
+					add.call(p, _capsule(0.118, 0.6), c[0], Vector3(0, -0.33, 0))                          # greva
+					add.call(p, _sphere(), c[1], Vector3(0, -0.36, -0.1), Vector3(0.15, 0.15, 0.1))        # joelheira
+					add.call(p, _sphere(), c[2], Vector3(0, -0.67, -0.04), Vector3(0.24, 0.17, 0.36))      # bota
+					add.call(p, _sphere(), c[1], Vector3(0, -0.6, 0), Vector3(0.26, 0.09, 0.26))           # cano da bota
 		shells[Inventory.ARMOR[k]] = list
 	if worn[0] == -1:
 		for n in hair_nodes:

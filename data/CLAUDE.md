@@ -23,8 +23,10 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 `{name, tiles:{all|top|side|bottom}, icon?, station_as? (conta como outra estação), solid?=true, breakable?=true, power?=0 (picareta mínima), drop?=name ("" = nada)}`.
 `icon`: textura do ícone do item-bloco (ex.: `dirt_item` → `Dirt_Block.png`).
 `shape`: forma não cúbica e não sólida: `"torch"`, `"plant"` (dois quadros em cruz que balançam ao vento; a mira
-atravessa e colocar bloco substitui; some se o chão sumir), `"liquid"` (água/lava: estático, nada flui; a mira
-atravessa; água = superfície translúcida à parte, `"glow": true` = brilha sozinho, como a lava).
+atravessa e colocar bloco substitui; some se o chão sumir), `"liquid"` (água/lava: a mira atravessa; água = superfície
+translúcida à parte, `"glow": true` = brilha sozinho, como a lava). Líquido flui (scripts/liquid.gd) e tem nível 1-8 por bloco:
+`water`/`lava` são o nível 8 (cheio) e `water_1..7`/`lava_1..7` (`"liquid": "water", "level": n`) os níveis parciais; a altura da
+superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 níveis, no fim da lista.
 `light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
 `clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral). Plantas e líquidos são

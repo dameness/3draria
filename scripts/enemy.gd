@@ -5,6 +5,7 @@ extends Node3D
 
 const GRAVITY := 28.0
 const JUMP := 8.0
+const FLASH_TIME := 0.25   # o inimigo fica vermelho e volta ao normal neste tempo depois de levar um golpe
 
 var def: Dictionary
 var entities: Node3D
@@ -19,6 +20,7 @@ var hit_wall := false
 var timer := 0.0   # espera entre pulos do slime / tempo no estado do chefe
 var stun := 0.0    # após levar golpe a IA para e o knockback age
 var flash := 0.0
+var flashing := false   # a sobreposição vermelha está ligada nos modelos
 var rng := RandomNumberGenerator.new()
 var model: Node3D
 var flash_mat: StandardMaterial3D
@@ -40,18 +42,20 @@ func _ready() -> void:
 	add_child(model)
 	flash_mat = StandardMaterial3D.new()
 	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	flash_mat.albedo_color = Color(1, 0.1, 0.1, 0.45)
+	flash_mat.albedo_color = Color(1, 0.1, 0.1, 0.65)
 	flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 
 
 func _process(delta: float) -> void:
 	if model == null:
 		return
-	var was := flash > 0
-	flash -= delta
-	if was != (flash > 0):  # pisca vermelho ao levar dano
+	flash = maxf(flash - delta, 0.0)
+	if flash > 0.0:   # vermelho ao levar dano, esmaecendo até sumir
+		flash_mat.albedo_color.a = 0.65 * minf(flash / FLASH_TIME, 1.0)
+	if (flash > 0.0) != flashing:
+		flashing = flash > 0.0
 		for m in model.find_children("", "MeshInstance3D", true, false):
-			m.material_overlay = flash_mat if flash > 0 else null
+			m.material_overlay = flash_mat if flashing else null
 	EnemyModel.animate(model, self, entities.player.eye(), Time.get_ticks_msec() / 1000.0)
 
 
@@ -155,7 +159,7 @@ func move(delta: float) -> void:
 func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 	var taken := maxi(1, dmg - ceili(defense / 2.0))
 	hp -= taken
-	flash = 0.12
+	flash = FLASH_TIME
 	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ffa050"))
 	var kb: float = knockback * (1.0 - def.get("kb_resist", 0.0))
 	if kb > 0:

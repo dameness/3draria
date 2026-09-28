@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_ui", "test_cursor"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -621,6 +621,138 @@ func test_liquids():
 	return true
 
 
+# Soma dos níveis (unidades de 1/8 de bloco) do líquido `kind` numa caixa.
+func volume(w: Node3D, lo: Vector3i, hi: Vector3i, kind := -1) -> int:
+	var total := 0
+	for y in range(lo.y, hi.y + 1):
+		for z in range(lo.z, hi.z + 1):
+			for x in range(lo.x, hi.x + 1):
+				var b: int = w.get_block(x, y, z)
+				if Blocks.liquid[b] and (kind == -1 or Blocks.liquid_kind[b] == kind):
+					total += Blocks.liquid_level[b]
+	return total
+
+
+func test_flow():
+	var water: int = Blocks.ids.water
+	var ids: PackedInt32Array = Blocks.level_ids[water]
+	check(ids[0] == 0 and ids[8] == water and ids[3] == Blocks.ids.water_3 and Blocks.liquid_kind[Blocks.ids.water_5] == water and Blocks.liquid_level[Blocks.ids.lava_2] == 2, "níveis de líquido: 8 = cheio, ids por nível")
+	var lo := Vector3i(0, 11, 0)
+	var hi := Vector3i(47, 40, 47)
+	# Um bloco cheio no chão se espalha em poça, sem perder volume e com níveis vizinhos a no máximo 1 de diferença.
+	var w := floor_world()
+	w.set_block(24, 11, 24, water)
+	w.liquid.settle(w)
+	check(volume(w, lo, hi) == 8 and volume(w, Vector3i(0, 12, 0), hi) == 0, "poça: o volume se conserva (8) e fica no chão")
+	var wet := 0
+	var flat := true
+	for z in range(18, 31):
+		for x in range(18, 31):
+			var l: int = Blocks.liquid_level[w.get_block(x, 11, z)]
+			wet += int(l > 0)
+			for o in [Vector2i(1, 0), Vector2i(0, 1)]:
+				flat = flat and absi(l - Blocks.liquid_level[w.get_block(x + o.x, 11, z + o.y)]) <= 1
+	check(wet >= 5 and flat, "poça: espalha em volta (%d blocos) até os níveis diferirem de no máximo 1" % wet)
+	check(w.liquid.is_idle(), "poça: assenta e para de gastar CPU")
+	w.free()
+	# Cai de longe até o chão.
+	w = floor_world()
+	w.set_block(24, 30, 24, water)
+	w.liquid.settle(w)
+	check(volume(w, Vector3i(0, 12, 0), hi) == 0 and volume(w, lo, hi) == 8, "queda: a água desce até o chão sem perder volume")
+	w.free()
+	# Lago com margem de 1 bloco: a margem quebra e uma cova ao lado enche (o lago baixa).
+	w = floor_world()
+	for x in range(19, 26):
+		for z in range(19, 26):
+			w.set_block(x, 11, z, water if x in range(20, 25) and z in range(20, 25) else Blocks.ids.stone)
+	w.liquid.settle(w)
+	check(volume(w, lo, hi) == 25 * 8, "lago cercado fica parado (%d)" % volume(w, lo, hi))
+	for y in [10, 9, 8]:
+		w.set_block(25, y, 22, 0)   # cova ao lado da margem
+	w.set_block(25, 11, 22, 0)      # a margem se abre
+	w.liquid.settle(w)
+	check(volume(w, Vector3i(0, 0, 0), hi) == 25 * 8, "lago que vaza conserva o volume")
+	check(Blocks.liquid[w.get_block(25, 8, 22)] == 1 and Blocks.liquid_level[w.get_block(25, 8, 22)] == 8, "a cova enche pelo fundo")
+	check(volume(w, Vector3i(20, 11, 20), Vector3i(24, 11, 24)) < 25 * 8, "o lago baixa")
+	# Desempenho: um lago grande que vaza não passa de poucos ms por quadro.
+	w.free()
+	w = floor_world()
+	for x in range(14, 34):
+		for z in range(14, 34):
+			for y in range(11, 14):
+				w.set_block(x, y, z, water if x in range(15, 33) and z in range(15, 33) else Blocks.ids.stone)
+	w.liquid.settle(w)
+	w.set_block(33, 11, 24, 0)
+	w.set_block(33, 12, 24, 0)
+	var before := volume(w, Vector3i(0, 11, 0), Vector3i(47, 20, 47))
+	var t := Time.get_ticks_usec()
+	var gens: int = w.liquid.settle(w, 300)
+	var ms := (Time.get_ticks_usec() - t) / 1000.0
+	check(volume(w, Vector3i(0, 11, 0), Vector3i(47, 20, 47)) == before, "lago grande que vaza conserva o volume")
+	print("fluxo: lago 18x18x3 vazando: %d gerações, %.0f ms (%.1f ms por geração)" % [gens, ms, ms / maxi(gens, 1)])
+	w.free()
+	# Lava também flui, mais devagar (uma geração em cada LAVA_EVERY).
+	w = floor_world()
+	w.set_block(24, 11, 24, Blocks.ids.lava)
+	w.liquid.settle(w)
+	check(volume(w, lo, hi, Blocks.ids.lava) == 8 and volume(w, lo, hi, water) == 0 and Blocks.liquid_level[w.get_block(25, 11, 24)] > 0, "lava também se espalha")
+	w.free()
+	return true
+
+
+# Piscina: chão de pedra até y = 10; água em y = 11..10+deep numa área de 5x5 e margem de pedra da mesma altura (x >= 25).
+func pool_world(deep: int) -> Node3D:
+	var w := floor_world()
+	for y in range(11, 11 + deep):
+		for z in range(18, 30):
+			for x in range(20, 30):
+				w.set_block(x, y, z, Blocks.ids.water if x < 25 else Blocks.ids.stone)
+	return w
+
+
+func test_swim_out():
+	# 1 bloco de água: vadeia e pula para fora da margem (o bug do playtest).
+	var w := pool_world(1)
+	var p := make_player(w)
+	p.position = Vector3(23.5, 11, 22.5)
+	p.step(1.0 / 60, Vector3.ZERO, false)
+	check(not p.swimming and p.depth > 0.5 and p.depth < 1.0, "água de 1 bloco: vadeia, não nada (%.2f)" % p.depth)
+	var out := Vector3.ZERO
+	for i in 120:
+		p.step(1.0 / 60, Vector3.RIGHT, true)
+		if out == Vector3.ZERO and p.position.x > 25.4 and p.on_floor:
+			out = p.position
+	check(out != Vector3.ZERO and absf(out.y - 12) < 0.05, "sai de uma poça de 1 bloco pulando para a margem (%s)" % out)
+	free_player(p)
+	w.free()
+	# Fundo: nada até a superfície e sai pela margem com Espaço (pulo inteiro junto da parede).
+	for deep in [2, 3, 5]:
+		w = pool_world(deep)
+		p = make_player(w)
+		p.position = Vector3(22.5, 11, 22.5)
+		var out2 := Vector3.ZERO
+		var left := -1.0
+		for i in 60 * 8:
+			p.step(1.0 / 60, Vector3.RIGHT, true)
+			if left < 0 and p.position.x > 25.4 and p.on_floor:
+				left = i / 60.0
+				out2 = p.position
+		check(left > 0 and absf(out2.y - (11 + deep)) < 0.05, "água de %d blocos: nada e sai para a margem (em %.1f s, pos %s)" % [deep, left, out2])
+		free_player(p)
+		w.free()
+	# Sem Espaço afunda; no meio da piscina de 5 blocos não há como andar no fundo sem nadar.
+	w = pool_world(5)
+	p = make_player(w)
+	p.position = Vector3(22.5, 13, 22.5)
+	for i in 240:
+		p.step(1.0 / 60, Vector3.ZERO, false)
+	check(p.swimming and absf(p.position.y - 11) < 0.05, "sem Espaço afunda até o fundo")
+	free_player(p)
+	w.free()
+	return true
+
+
 func test_visuals():
 	var n := Blocks.textures.size()
 	var Y := 60
@@ -656,6 +788,29 @@ func test_visuals():
 		top_y = maxf(top_y, v.y)
 	check(is_equal_approx(top_y, Y + 1 + ChunkMesher.LIQUID_TOP), "água: superfície abaixo do topo do bloco (%.2f)" % top_y)
 	check(Array(wa[Mesh.ARRAY_COLOR]).any(func(c): return is_equal_approx(c.b, 1.0)), "lava brilha (b = 1) na superfície opaca")
+	# Níveis: um bloco pela metade tem a superfície na metade da altura; ao lado de um cheio só aparece o degrau.
+	var lv := chunk(0)
+	for i in C * C * (Y + 1):
+		lv[i] = Blocks.ids.stone
+	lv[8 + 8 * C + (Y + 1) * C * C] = Blocks.ids.water_4
+	var lwater: Array = []
+	ChunkMesher.build(lv, [lv, lv, lv, lv], n, lwater)
+	var ly := 0.0
+	for v in lwater[Mesh.ARRAY_VERTEX]:
+		ly = maxf(ly, v.y)
+	check(is_equal_approx(ly, Y + 1 + ChunkMesher.LIQUID_TOP / 2.0), "água nível 4: superfície na metade da altura (%.2f)" % ly)
+	lv[9 + 8 * C + (Y + 1) * C * C] = Blocks.ids.water
+	lwater = []
+	ChunkMesher.build(lv, [lv, lv, lv, lv], n, lwater)
+	var lo_y := 99999.0
+	var strip := 0
+	var lvs: PackedVector3Array = lwater[Mesh.ARRAY_VERTEX]
+	var lns: PackedVector3Array = lwater[Mesh.ARRAY_NORMAL]
+	for i in lvs.size():
+		if lns[i] == Vector3.LEFT and is_equal_approx(lvs[i].x, 9.0) and lvs[i].y > Y + 1:   # a face -X do bloco cheio (x = 9)
+			lo_y = minf(lo_y, lvs[i].y)
+			strip += 1
+	check(strip == 4 and is_equal_approx(lo_y, Y + 1 + ChunkMesher.LIQUID_TOP / 2.0), "água: entre níveis diferentes só o degrau acima da superfície vizinha (%.2f)" % lo_y)
 	# Mundo: mira atravessa planta e líquido; bloco novo substitui; planta sem chão some.
 	var wd := floor_world()
 	wd.set_block(20, 11, 20, Blocks.ids.grass_tuft)
@@ -883,6 +1038,37 @@ func integration():
 			esc.pressed = true
 			main.get_node("HUD")._unhandled_input(esc)
 			check(not main.get_tree().paused and not player.menu_open, "Esc de novo: o HUD despausa")
+			phase = 3
+		3:   # câmera em 3ª pessoa: nunca dentro de bloco, em qualquer ângulo (ver abaixo da terra era a câmera atravessando o chão)
+			player.flying = false
+			player.third_person = true
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 7
+			var bad := 0
+			var samples := 1500
+			for i in samples:
+				var x := 128 + rng.randi_range(-60, 60)
+				var z := 128 + rng.randi_range(-60, 60)
+				player.position = Vector3(x + 0.5, world.surface_y(x, z), z + 0.5)
+				player.rotation.y = rng.randf() * TAU
+				player.pitch = rng.randf_range(-1.5, 1.5)
+				player.cam.rotation.x = player.pitch
+				player._update_camera(0.0)
+				bad += int(not player.lens_clear(player.cam.global_position))
+			check(bad == 0, "3ª pessoa: a câmera nunca fica dentro de bloco (%d de %d ângulos)" % [bad, samples])
+			# Colado numa parede do lado do ombro: a câmera não pode entrar nela.
+			var px := 128
+			var pz := 128
+			var gy: int = world.surface_y(px, pz)
+			for dy in range(0, 4):
+				for dz in range(-8, 9):
+					world.set_block(px + 1, gy + dy, pz + dz, Blocks.ids.stone)
+			player.position = Vector3(px + 0.5, gy, pz + 0.5)
+			player.rotation.y = 0.0
+			player.pitch = -0.2
+			player.cam.rotation.x = -0.2
+			player._update_camera(0.0)
+			check(player.lens_clear(player.cam.global_position), "3ª pessoa: junto de uma parede do lado do ombro a câmera para antes dela")
 			return true
 	return false
 

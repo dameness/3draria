@@ -14,12 +14,15 @@ const WALK := 4.5
 const REACH := 5.0
 const SWIM_UP := 4.5       # Espaço na água: sobe a esta velocidade
 const SWIM_SINK := 3.0     # sem Espaço: afunda devagar
+const SWIM_DEPTH := 1.0    # com mais líquido que isto acima dos pés (até a cintura) nada; com menos, vadeia: anda e pula como em terra
+const HOP_DEPTH := 1.5     # perto da superfície, Espaço junto de uma margem dá um pulo inteiro para sair da água
 const LAVA_DAMAGE := 50    # por golpe (há invencibilidade entre um e outro), sem tirar a armadura
 const MAX_HP := 100
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
 const REGEN_DELAY := 5.0
 const TPP_DISTANCE := 4.0      # câmera em 3ª pessoa: distância atrás da cabeça
 const TPP_SHOULDER := 0.6      # e deslocada para a direita, para a mira não ficar sobre a cabeça
+const TPP_MARGIN := 0.4        # a câmera para antes do bloco que está no caminho (a lente vê ~0,1 além do ponto)
 const EPS := VoxelBody.EPS
 const TEST_KIT := {"terra_blade": 1, "enchanted_sword": 1, "wooden_bow": 1, "wooden_arrow": 200, "iron_pickaxe": 1}  # F8, para playtest
 const LO := Vector3(-HALF, 0, -HALF)
@@ -31,6 +34,9 @@ const HI := Vector3(HALF, TALL, HALF)
 var velocity := Vector3.ZERO
 var knock := Vector3.ZERO     # empurrão horizontal de golpes, some aos poucos
 var on_floor := false
+var hit_wall := false         # o último passo bateu numa parede (usado para sair da água)
+var depth := 0.0              # blocos de líquido acima dos pés
+var swimming := false         # mais fundo que SWIM_DEPTH
 var flying := false
 var inv := Inventory.new()
 var slot := 0                 # slot da hotbar na mão
@@ -156,14 +162,20 @@ func _process(delta: float) -> void:
 		use_item()
 
 
-# 1ª pessoa: câmera nos olhos e item na mão da câmera. 3ª pessoa: câmera atrás da cabeça (chega mais
-# perto se houver bloco no caminho) e o corpo do jogador aparece.
+# 1ª pessoa: câmera nos olhos e item na mão da câmera. 3ª pessoa: câmera atrás da cabeça e ao lado do ombro, mais perto se
+# houver bloco no caminho (o raio vai dos olhos até o ponto da câmera, ombro incluído), e o corpo do jogador aparece.
 func _update_camera(delta := 0.0) -> void:
-	var d := 0.0
+	var offset := Vector3.ZERO
 	if third_person:
-		var hit: Dictionary = world.raycast(eye(), cam.global_basis.z, TPP_DISTANCE)
-		d = TPP_DISTANCE if hit.is_empty() else maxf(eye().distance_to(Vector3(hit.pos) + Vector3.ONE * 0.5) - 0.9, 0.3)
-	cam.position = Vector3(TPP_SHOULDER * minf(d, 1.0), EYE, 0) + Basis(Vector3.RIGHT, pitch) * Vector3(0, 0, d)
+		var want := Basis(Vector3.RIGHT, pitch) * Vector3(0, 0, TPP_DISTANCE) + Vector3(TPP_SHOULDER, 0, 0)   # em relação aos olhos
+		var hit: Dictionary = world.raycast(eye(), (global_basis * want).normalized(), want.length() + TPP_MARGIN)
+		var k := 1.0 if hit.is_empty() else clampf((hit.t - TPP_MARGIN) / want.length(), 0.0, 1.0)
+		for i in 6:   # rede de segurança: encosta na parede lateral ou no teto sem a lente entrar em bloco
+			if lens_clear(eye() + global_basis * (want * k)):
+				break
+			k *= 0.7
+		offset = want * k
+	cam.position = Vector3(0, EYE, 0) + offset
 	var walk := clampf(Vector2(velocity.x, velocity.z).length() / WALK, 0.0, 1.4) if on_floor and not flying else 0.0
 	bob += delta * (7.0 + walk * 3.0) * walk
 	shake = maxf(shake - delta * 2.5, 0.0)
@@ -172,6 +184,16 @@ func _update_camera(delta := 0.0) -> void:
 		cam.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * 0.05
 	cam.get_node("Hand").visible = not third_person
 	get_node("Model").visible = third_person
+
+
+# A lente (um cubo de 0,3 em volta de p) não toca em bloco sólido.
+func lens_clear(p: Vector3) -> bool:
+	for dx in [-0.15, 0.15]:
+		for dy in [-0.15, 0.15]:
+			for dz in [-0.15, 0.15]:
+				if Blocks.solid[world.get_block(floori(p.x + dx), floori(p.y + dy), floori(p.z + dz))]:
+					return false
+	return true
 
 
 # Timers de vida: invencibilidade, cooldown de uso e regeneração lenta.
@@ -195,30 +217,58 @@ func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
 		velocity = Vector3.ZERO
 		position += wish * speed * 3.0 * delta  # voo atravessa blocos
 		return
-	var liquid := liquid_at()
-	velocity.x = wish.x * speed * (0.55 if liquid else 1.0) + knock.x
-	velocity.z = wish.z * speed * (0.55 if liquid else 1.0) + knock.z
+	depth = liquid_depth()
+	var kind := liquid_kind_below()
+	swimming = depth > SWIM_DEPTH
+	var slow := 0.55 if swimming else 0.75 if depth > 0.0 else 1.0
+	velocity.x = wish.x * speed * slow + knock.x
+	velocity.z = wish.z * speed * slow + knock.z
 	knock = knock.move_toward(Vector3.ZERO, 20.0 * delta)
-	if liquid:  # nadando: afunda devagar e Espaço sobe; a lava também queima
+	if swimming:  # nadando: afunda devagar e Espaço sobe; junto de uma margem, perto da superfície, Espaço dá um pulo inteiro
 		velocity.y = move_toward(velocity.y, SWIM_UP if jump else -SWIM_SINK, 30.0 * delta)
-		if liquid == Blocks.ids.lava:
-			hurt(LAVA_DAMAGE, Vector3.ZERO)
+		if jump and depth < HOP_DEPTH and (hit_wall or on_floor):
+			velocity.y = JUMP
 	else:
 		velocity.y = maxf(velocity.y - GRAVITY * delta, -50.0)
 		if jump and on_floor:
 			velocity.y = JUMP
+	if depth > 0.0 and kind == Blocks.ids.lava:
+		hurt(LAVA_DAMAGE, Vector3.ZERO)
 	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta)
 	position = r[0]
 	var hit: Vector3i = r[1]
 	on_floor = hit.y < 0
+	hit_wall = hit.x != 0 or hit.z != 0
 	if hit.y != 0:
 		velocity.y = 0.0
 
 
-# Líquido (id do bloco) no meio do corpo, ou 0.
+# Blocos de líquido acima dos pés (0 = seco): sobe pelos blocos do mesmo líquido e conta até a superfície do último.
+func liquid_depth() -> float:
+	var x := floori(position.x)
+	var z := floori(position.z)
+	var y := floori(position.y + 0.05)
+	var b: int = world.get_block(x, y, z)
+	if not Blocks.liquid[b]:
+		return 0.0
+	while true:
+		var above: int = world.get_block(x, y + 1, z)
+		if not (Blocks.liquid[above] and Blocks.liquid_kind[above] == Blocks.liquid_kind[b]):
+			break
+		b = above
+		y += 1
+	return maxf(y + Blocks.liquid_height(b) - position.y, 0.0)
+
+
+# Líquido (id do cheio: water, lava) nos pés, ou 0.
+func liquid_kind_below() -> int:
+	var b: int = world.get_block(floori(position.x), floori(position.y + 0.05), floori(position.z))
+	return Blocks.liquid_kind[b] if Blocks.liquid[b] else 0
+
+
+# Líquido (id do cheio) no meio do corpo, ou 0.
 func liquid_at() -> int:
-	var b: int = world.get_block(floori(position.x), floori(position.y + 0.6), floori(position.z))
-	return b if Blocks.liquid[b] else 0
+	return world.liquid_at(position + Vector3.UP * 0.6)
 
 
 func overlaps_solid(p: Vector3) -> bool:

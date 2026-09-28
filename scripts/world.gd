@@ -11,6 +11,7 @@ const NB: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Ve
 @export var world_seed := 1337
 
 var gen: WorldGen
+var liquid := Liquid.new()   # água e lava fluindo (liquid.gd)
 var chunks := {}   # Vector2i -> PackedByteArray
 var meshes := {}   # Vector2i -> MeshInstance3D, ou null (sem faces / em construção)
 var material := ShaderMaterial.new()   # shaders/chunk.gdshader: atlas × luz do céu/tochas
@@ -59,7 +60,8 @@ func get_block(x: int, y: int, z: int) -> int:
 	return chunks[c][posmod(x, C) + posmod(z, C) * C + y * C * C]
 
 
-func set_block(x: int, y: int, z: int, id: int) -> void:
+# wake = false: o fluxo dos líquidos grava sem acordar de novo os vizinhos (ele mesmo acorda os que importam).
+func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 	if y < 0 or y >= H:
 		return
 	get_block(x, y, z)  # garante que o chunk existe
@@ -72,11 +74,27 @@ func set_block(x: int, y: int, z: int, id: int) -> void:
 	if y + 1 < H and Blocks.shape[chunks[c][lx + lz * C + (y + 1) * C * C]] == "plant" and not Blocks.solid[id]:
 		chunks[c][lx + lz * C + (y + 1) * C * C] = 0  # planta sem chão some
 	edited[c] = true
+	if wake:
+		liquid.wake(x, y, z)
 	_rebuild(c)
 	if lx == 0: _rebuild(c + Vector2i(-1, 0))
 	if lx == C - 1: _rebuild(c + Vector2i(1, 0))
 	if lz == 0: _rebuild(c + Vector2i(0, -1))
 	if lz == C - 1: _rebuild(c + Vector2i(0, 1))
+
+
+# Líquido (id do cheio: water, lava) que contém o ponto p, ou 0: o ponto tem de estar abaixo da superfície do bloco.
+func liquid_at(p: Vector3) -> int:
+	var x := floori(p.x)
+	var y := floori(p.y)
+	var z := floori(p.z)
+	var b := get_block(x, y, z)
+	if not Blocks.liquid[b]:
+		return 0
+	var above := get_block(x, y + 1, z)
+	if p.y - y < Blocks.liquid_height(b) or (Blocks.liquid[above] and Blocks.liquid_kind[above] == Blocks.liquid_kind[b]):
+		return Blocks.liquid_kind[b]
+	return 0
 
 
 # Troca a seed e descarta tudo o que foi gerado (usado ao carregar um save).
@@ -85,6 +103,7 @@ func set_seed(s: int) -> void:
 	gen = WorldGen.new(s)
 	chunks.clear()
 	edited.clear()
+	liquid = Liquid.new()
 
 
 # Primeiro y livre acima do bloco sólido mais alto da coluna (ground: sem contar tronco e folhas).
@@ -103,7 +122,7 @@ func _rebuild(k: Vector2i) -> void:
 
 
 # Percorre voxels ao longo do raio (Amanatides & Woo).
-# Retorna {"pos": bloco atingido, "normal": face atingida} ou {} se não acertar.
+# Retorna {"pos": bloco atingido, "normal": face atingida, "t": distância até a entrada no bloco} ou {} se não acertar.
 func raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
 	var p := Vector3i(from.floor())
 	var step := Vector3i(dir.sign())
@@ -118,7 +137,7 @@ func raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
 	while t <= max_dist:
 		var b := get_block(p.x, p.y, p.z)
 		if b != 0 and not Blocks.soft[b]:  # a mira pega também blocos não sólidos (tochas), mas atravessa plantas e líquidos
-			return {"pos": p, "normal": normal}
+			return {"pos": p, "normal": normal, "t": t}
 		var a := t_max.min_axis_index()
 		t = t_max[a]
 		p[a] += step[a]
@@ -149,7 +168,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			set_render_distance(render_distance - 1)
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	liquid.step(self, delta)
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return

@@ -54,7 +54,7 @@ script = ExtResource("7")
 player = NodePath("..")
 
 [node name="Camera" type="Camera3D" parent="Player"]
-near = 0.02
+near = 0.05
 
 [node name="Hand" type="Node3D" parent="Player/Camera" node_paths=PackedStringArray("player")]
 script = ExtResource("6")

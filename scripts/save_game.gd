@@ -5,6 +5,10 @@ class_name SaveGame
 # sair" e ao fechar a janela. Sem caminhos (testes, rodar game.tscn direto) nada é lido nem gravado.
 
 const VERSION := 2
+const SKINS := ["#f0b890", "#e0a070", "#c98a5c", "#a86a44", "#f6cfae"]
+const HAIRS := ["#5a3220", "#2a1c14", "#d6a94a", "#a83a1e", "#8a8a90", "#3a2a5a"]
+const SHIRTS := ["#c0503c", "#3f8f4f", "#3e6fbf", "#c9a13a", "#8a4fb0", "#4fa8a8", "#b0b0b8"]
+const PANTS := ["#3c4c98", "#3a3a48", "#6a4a2a", "#2a5a4a", "#5a2a3a"]
 static var players_dir := "user://players/"
 static var worlds_dir := "user://worlds/"
 static var player_path := ""
@@ -37,6 +41,13 @@ static func create_world(name: String, seed: int) -> String:
 	if path == "" or _write(path, {"version": VERSION, "name": name.strip_edges(), "seed": seed, "time": 60.0, "chunks": {}}) != OK:
 		return ""
 	return path
+
+
+# Aparência (cores) do personagem, tirada do nome: cada personagem tem a sua sem guardar nada no save.
+static func look(path: String) -> Dictionary:
+	var h := str(_read(path).get("name", "")).hash()
+	return {"skin": Color(SKINS[h % SKINS.size()]), "hair": Color(HAIRS[(h >> 3) % HAIRS.size()]),
+		"shirt": Color(SHIRTS[(h >> 6) % SHIRTS.size()]), "pants": Color(PANTS[(h >> 9) % PANTS.size()])}
 
 
 static func delete(path: String) -> void:

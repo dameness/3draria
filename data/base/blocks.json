@@ -30,5 +30,19 @@
 	{"name": "flower_pink", "solid": false, "shape": "plant", "breakable": false, "tiles": {"all": "flower_pink"}},
 	{"name": "mushroom", "solid": false, "shape": "plant", "breakable": false, "tiles": {"all": "mushroom"}},
 	{"name": "water", "solid": false, "shape": "liquid", "breakable": false, "tiles": {"all": "water"}},
-	{"name": "lava", "solid": false, "shape": "liquid", "breakable": false, "glow": true, "tiles": {"all": "lava"}}
+	{"name": "lava", "solid": false, "shape": "liquid", "breakable": false, "glow": true, "tiles": {"all": "lava"}},
+	{"name": "water_1", "solid": false, "shape": "liquid", "liquid": "water", "level": 1, "breakable": false, "tiles": {"all": "water"}},
+	{"name": "water_2", "solid": false, "shape": "liquid", "liquid": "water", "level": 2, "breakable": false, "tiles": {"all": "water"}},
+	{"name": "water_3", "solid": false, "shape": "liquid", "liquid": "water", "level": 3, "breakable": false, "tiles": {"all": "water"}},
+	{"name": "water_4", "solid": false, "shape": "liquid", "liquid": "water", "level": 4, "breakable": false, "tiles": {"all": "water"}},
+	{"name": "water_5", "solid": false, "shape": "liquid", "liquid": "water", "level": 5, "breakable": false, "tiles": {"all": "water"}},
+	{"name": "water_6", "solid": false, "shape": "liquid", "liquid": "water", "level": 6, "breakable": false, "tiles": {"all": "water"}},
+	{"name": "water_7", "solid": false, "shape": "liquid", "liquid": "water", "level": 7, "breakable": false, "tiles": {"all": "water"}},
+	{"name": "lava_1", "solid": false, "shape": "liquid", "liquid": "lava", "level": 1, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
+	{"name": "lava_2", "solid": false, "shape": "liquid", "liquid": "lava", "level": 2, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
+	{"name": "lava_3", "solid": false, "shape": "liquid", "liquid": "lava", "level": 3, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
+	{"name": "lava_4", "solid": false, "shape": "liquid", "liquid": "lava", "level": 4, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
+	{"name": "lava_5", "solid": false, "shape": "liquid", "liquid": "lava", "level": 5, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
+	{"name": "lava_6", "solid": false, "shape": "liquid", "liquid": "lava", "level": 6, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
+	{"name": "lava_7", "solid": false, "shape": "liquid", "liquid": "lava", "level": 7, "breakable": false, "glow": true, "tiles": {"all": "lava"}}
 ]

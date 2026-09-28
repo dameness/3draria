@@ -27,7 +27,7 @@ const SKY_FADE := 12.0   # blocos abaixo da superfície da coluna até a luz do 
 const SKY_MIN := 0.05
 const AO_LIGHT := [0.5, 0.68, 0.84, 1.0]   # brilho de um canto conforme a oclusão (0 = dois lados tapados)
 const JITTER := 0.07     # cada bloco fica até 7% mais escuro, para o gramado não ser uma cor só
-const LIQUID_TOP := 0.88 # a superfície do líquido fica um pouco abaixo do topo do bloco
+const LIQUID_TOP := Blocks.LIQUID_TOP # a superfície do líquido cheio fica um pouco abaixo do topo do bloco
 const PLANT_H := 0.9     # altura das plantas (<1: o shader identifica a ponta pela parte fracionária de y)
 const HELL_AMBIENT := 0.5  # brilho quente do submundo (canal de tocha) perto do fundo do mundo
 const CANOPY_SHADE := 0.66 # a luz do céu que passa por baixo de uma copa de árvore
@@ -287,31 +287,52 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 				_vquad(a, pos + pair[1], pos + pair[0], PLANT_H, u0, tw, c)
 
 
-# Faces de um bloco de líquido: só onde o vizinho não é o mesmo líquido nem sólido; a superfície fica um pouco
-# abaixo do topo. `a` é a água (superfície translúcida) ou, para a lava, as formas opacas (b = 1: brilha sozinha).
+# Faces de um bloco de líquido. O nível 1-8 é a altura da superfície (Blocks.liquid_height); com o mesmo líquido em cima (ou
+# cheio sob um teto) o bloco vai até o topo, e ao lado do mesmo líquido só aparece o degrau acima da superfície vizinha.
+# `a` é a água (superfície translúcida: b = 1 nos vértices da superfície, que ondulam no shader) ou, para a lava, as formas
+# opacas (b = 1: brilha sozinha).
 static func _liquid(a: Dictionary, p: PackedByteArray, hts: PackedInt32Array, lights: Array, b: int, x: int, y: int, z: int, tw: float) -> void:
 	var pi := (x + 1) + (z + 1) * P + (y + 1) * PP
-	var surface: bool = p[pi + PP] != b
-	var kind := 1.0 if Blocks.glow[b] else 0.0
+	var kinds := Blocks.liquid_kind
+	var levels := Blocks.liquid_level
+	var solid := Blocks.solid
+	var kind := kinds[b]
+	var above := p[pi + PP]
+	var sealed: bool = (levels[above] > 0 and kinds[above] == kind) or (levels[b] == 8 and solid[above] == 1)
+	var h := 1.0 if sealed else LIQUID_TOP * levels[b] / 8.0
+	var glow := 1.0 if Blocks.glow[b] else 0.0
 	for f in 6:
 		var dir := DIRS[f]
 		if y + dir.y < 0:
 			continue
 		var n := p[pi + DIR_IDX[f]]
-		if n == b or Blocks.solid[n]:
+		var lo := 0.0
+		if f == 2:
+			if sealed:
+				continue
+		elif solid[n]:
 			continue
+		elif levels[n] > 0 and kinds[n] == kind:   # o mesmo líquido ao lado ou embaixo
+			if f == 3:
+				continue
+			var na := p[pi + DIR_IDX[f] + PP]
+			var hn := 1.0 if levels[na] > 0 and kinds[na] == kind else LIQUID_TOP * levels[n] / 8.0
+			if hn >= h:
+				continue
+			lo = hn
 		var light := _light(p, hts, lights, x + dir.x, y + dir.y, z + dir.z)
 		var sh: float = SHADE[f]
-		var c := Color(sh * light.x, sh * light.y, kind)
+		var c_low := Color(sh * light.x, sh * light.y, glow)
+		var c_high := Color(sh * light.x, sh * light.y, 1.0)
 		var u0 := tiles_of(b, f) * tw
 		var base: int = a.v.size()
 		for k in 4:
 			var v: Vector3 = CORNERS[f][k]
-			if surface and v.y > 0.5:
-				v.y = LIQUID_TOP
+			var top := v.y > 0.5
+			v.y = h if top else lo
 			a.v.append(Vector3(x, y, z) + v)
 			a.n.append(Vector3(dir))
-			a.c.append(c)
+			a.c.append(c_high if top or lo > 0.0 else c_low)
 		a.uv.append_array([Vector2(u0, 1), Vector2(u0, 0), Vector2(u0 + tw, 0), Vector2(u0 + tw, 1)])
 		a.i.append_array([base, base + 2, base + 1, base, base + 3, base + 2])
 
