@@ -821,6 +821,8 @@ func integration():
 			check(player.target.get("pos") == below, "mira olhando para baixo acerta o bloco sob os pés")
 			player.break_target()
 			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco com a picareta inicial")
+			var closed: CanvasLayer = main.get_node("HUD")
+			check(closed.slots[0].visible and not closed.slots[Inventory.HOTBAR].visible and not closed.craft_root.visible and not closed.equip_root.visible and not closed.trash_slot.visible, "inventário fechado: só a hotbar aparece")
 			player.inventory_open = true  # exercita a janela de inventário/criação
 			edit_chunk = k
 			phase = 1

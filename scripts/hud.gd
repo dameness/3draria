@@ -115,6 +115,16 @@ func _ready() -> void:
 	cursor_view.add_child(cn)
 	cursor_view.visible = false
 	root.add_child(cursor_view)
+	_set_open(false)
+
+
+# Mostra ou esconde a parte do inventário (fileiras 2 a 5, criação, equipamento e lixeira); a hotbar fica sempre.
+func _set_open(open: bool) -> void:
+	for i in slots.size():
+		slots[i].visible = i < Inventory.HOTBAR or open
+		slots[i].mouse_filter = Control.MOUSE_FILTER_STOP if open or i >= Inventory.HOTBAR else Control.MOUSE_FILTER_IGNORE
+	for n in [craft_root, equip_root, trash_slot]:
+		n.visible = open
 
 
 func _label(text: String, size: int, align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
@@ -416,11 +426,7 @@ func _process(delta: float) -> void:
 	var open: bool = player.inventory_open
 	pause.visible = player.menu_open
 	if open != was_open:
-		for i in slots.size():
-			slots[i].visible = i < Inventory.HOTBAR or open
-			slots[i].mouse_filter = Control.MOUSE_FILTER_STOP if open or i >= Inventory.HOTBAR else Control.MOUSE_FILTER_IGNORE
-		for n in [craft_root, equip_root, trash_slot]:
-			n.visible = open
+		_set_open(open)
 		if not open:  # fechou com item na mão: volta ao inventário; o que não couber cai no chão
 			var held_id: int = player.inv.cursor_id
 			var left: int = player.inv.release_cursor()
