@@ -67,6 +67,7 @@ class Slot extends Button:
 
 
 func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS   # segue vivo com o jogo pausado (menu de pausa)
 	root = Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -348,7 +349,15 @@ func _build_pause() -> void:
 	root.add_child(pause)
 
 
+# Com o jogo pausado o jogador não recebe teclas: é o HUD que fecha o menu com Esc.
+func _unhandled_input(e: InputEvent) -> void:
+	if player.menu_open and e.is_action_pressed("ui_cancel"):
+		player.set_menu(false)
+		get_viewport().set_input_as_handled()
+
+
 func _save_and_quit() -> void:
+	get_tree().paused = false
 	SaveGame.save_all(world, player, clock)
 	get_tree().change_scene_to_file("res://menu.tscn")
 

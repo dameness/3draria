@@ -45,6 +45,10 @@ var since_hit := 99.0
 var cooldown := 0.0
 var spawn := Vector3.ZERO
 var pitch := 0.0
+var bob := 0.0                # fase do balanço da câmera ao andar
+var shake := 0.0              # tremor da tela ao acertar ou ser acertado; some rápido
+var swing_item := {}          # golpe em andamento: acerta no momento do impacto da animação
+var swing_timer := 0.0
 var target := {}              # resultado do raycast da mira
 @onready var cam: Camera3D = $Camera
 var highlight: MeshInstance3D
@@ -83,6 +87,8 @@ func _notification(what: int) -> void:
 func set_menu(open: bool) -> void:
 	menu_open = open
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
+	if is_inside_tree():
+		get_tree().paused = open   # pausa de verdade: mundo, inimigos e relógio param (o HUD continua vivo)
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -139,8 +145,8 @@ func eye() -> Vector3:
 	return global_position + Vector3.UP * EYE
 
 
-func _process(_delta: float) -> void:
-	_update_camera()
+func _process(delta: float) -> void:
+	_update_camera(delta)
 	target = world.raycast(eye(), -cam.global_basis.z, REACH)
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
@@ -152,12 +158,18 @@ func _process(_delta: float) -> void:
 
 # 1ª pessoa: câmera nos olhos e item na mão da câmera. 3ª pessoa: câmera atrás da cabeça (chega mais
 # perto se houver bloco no caminho) e o corpo do jogador aparece.
-func _update_camera() -> void:
+func _update_camera(delta := 0.0) -> void:
 	var d := 0.0
 	if third_person:
 		var hit: Dictionary = world.raycast(eye(), cam.global_basis.z, TPP_DISTANCE)
 		d = TPP_DISTANCE if hit.is_empty() else maxf(eye().distance_to(Vector3(hit.pos) + Vector3.ONE * 0.5) - 0.9, 0.3)
 	cam.position = Vector3(TPP_SHOULDER * minf(d, 1.0), EYE, 0) + Basis(Vector3.RIGHT, pitch) * Vector3(0, 0, d)
+	var walk := clampf(Vector2(velocity.x, velocity.z).length() / WALK, 0.0, 1.4) if on_floor and not flying else 0.0
+	bob += delta * (7.0 + walk * 3.0) * walk
+	shake = maxf(shake - delta * 2.5, 0.0)
+	if not third_person and delta > 0.0:   # em 1ª pessoa a câmera balança ao andar e treme nos golpes
+		cam.position += Vector3(cos(bob * 0.5) * 0.02, absf(sin(bob)) * 0.035, 0) * walk
+		cam.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * 0.05
 	cam.get_node("Hand").visible = not third_person
 	get_node("Model").visible = third_person
 
@@ -166,6 +178,12 @@ func _update_camera() -> void:
 func tick(delta: float) -> void:
 	iframes -= delta
 	cooldown -= delta
+	if not swing_item.is_empty():
+		swing_timer -= delta
+		if swing_timer <= 0.0:
+			if swing(swing_item, eye(), -cam.global_basis.z) > 0:
+				shake = maxf(shake, 0.4)
+			swing_item = {}
 	since_hit += delta
 	if since_hit > REGEN_DELAY:
 		hp = minf(hp + delta, MAX_HP)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
@@ -226,6 +244,7 @@ func hurt(damage: int, dir: Vector3) -> int:
 		entities.spawn_text(position + Vector3.UP * (TALL + 0.4), str(taken), Color("#ff5058"))
 	iframes = IFRAMES
 	since_hit = 0.0
+	shake = 1.0
 	knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
 	velocity.y = 5.0
 	if hp <= 0:
@@ -253,16 +272,25 @@ func use_item() -> void:
 	var forward := -cam.global_basis.z
 	if d.has("ammo"):
 		shoot(d, eye(), forward)
-	elif d.get("damage", 0) > 0:
-		swing(d, eye(), forward)
+	elif d.get("damage", 0) > 0:   # a lâmina só acerta quando o arco chega à frente (~1/3 do golpe; a estocada demora mais)
+		swing_item = d
+		swing_timer = d.get("use_time", 0.25) * (0.42 if d.get("use_style") == "thrust" else 0.3)
 
 
-# Acerta todos os inimigos à frente dentro do alcance.
+# Acerta todos os inimigos que a lâmina varre: à frente no plano horizontal (cone de ~75°) na altura do corpo, como o
+# arco do Terraria, ou dentro do cone 3D da mira (para mirar em voadores). O feixe das espadas mágicas sai junto.
 func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 	var hits := 0
+	var flat := Vector3(forward.x, 0, forward.z)
+	flat = flat.normalized() if flat.length() > 0.01 else forward
 	for e in entities.enemies.duplicate():
 		var to: Vector3 = e.position + Vector3.UP * e.tall / 2 - eye
-		if to.length() < d.reach + e.half and forward.dot(to.normalized()) > 0.5:
+		var flat_to := Vector3(to.x, 0, to.z)
+		var reach: float = d.reach + e.half
+		var in_arc: bool = flat_to.length() < reach and flat.dot(flat_to.normalized()) > 0.25 \
+			and e.position.y < position.y + TALL + 0.5 and e.position.y + e.tall > position.y - 0.4
+		var in_cone: bool = to.length() < reach and forward.dot(to.normalized()) > 0.5
+		if in_arc or in_cone:
 			e.hurt(d.damage, forward, d.knockback)
 			hits += 1
 	if d.has("shoot"):  # espadas como a Terra Blade disparam um feixe a cada golpe

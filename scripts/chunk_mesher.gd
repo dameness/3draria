@@ -1,7 +1,7 @@
 class_name ChunkMesher
 # Monta os arrays de mesh de um chunk só com as faces que dão para blocos não sólidos, já com luz:
 # cor do vértice r = luz do céu × tom da face × oclusão ambiente, g = luz de tochas × o mesmo,
-# b = tipo (0 bloco, 0.5 planta que balança, 1 brilha sozinho, como a lava) (ver shaders/chunk.gdshader).
+# b = tipo (0 bloco, 0.25 chama de tocha, 0.5 planta que balança, 1 brilha sozinho, como a lava) (ver shaders/chunk.gdshader).
 # Formas (tocha, plantas), lava e a água (superfície à parte, shaders/water.gdshader) saem daqui também.
 # Não toca em nada compartilhado: pode rodar em thread. Neste Godot, chamadas de função GDScript disputam uma
 # trava entre threads (arrays, operadores e métodos nativos não): por isso o laço quente só indexa arrays, e o
@@ -278,7 +278,7 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 			for f in 6:
 				var sh: float = SHADE[f]
 				_face(a, pos + Vector3(0.44, 0, 0.44), f, Vector3(0.12, 0.55, 0.12), stick, tw, Color(sh, sh, 0))
-				_face(a, pos + Vector3(0.41, 0.55, 0.41), f, Vector3(0.18, 0.2, 0.18), flame, tw, Color(1, 1, 0))
+				_face(a, pos + Vector3(0.41, 0.55, 0.41), f, Vector3(0.18, 0.2, 0.18), flame, tw, Color(1, 1, 0.25))
 		"plant":
 			var u0 := tiles_of(b, 0) * tw
 			var c := Color(light.x * 0.95, light.y * 0.95, 0.5)

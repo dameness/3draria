@@ -158,6 +158,14 @@ func test_combat():
 	var eye: Vector3 = p.position + Vector3.UP * p.EYE
 	check(p.swing(sword, eye, Vector3.RIGHT) == 1, "espada acerta o zumbi à frente")
 	check(p.swing(sword, eye, Vector3.LEFT) == 0, "espada não acerta atrás")
+	z.position = Vector3(24.5, 11, 25.4)   # colado ao lado, na altura dos pés: o arco horizontal acerta mesmo com a mira reta
+	check(p.swing(sword, eye, Vector3.FORWARD * -1) == 1 and p.swing(sword, eye, Vector3.FORWARD) == 0, "acerta o que está colado ao corpo (sem precisar olhar para baixo)")
+	z.position = Vector3(26, 11, 24.5)
+	p.slot = p.inv.item.find(Items.ids.copper_shortsword)
+	var hp0: int = z.hp
+	p.swing_item = Items.defs[Items.ids.copper_shortsword]
+	p.swing_timer = 0.05
+	check(z.hp == hp0, "o golpe ainda não acertou antes do impacto")
 	var hp: int = z.hp
 	p.inv.add(Items.ids.wooden_arrow, 2)
 	p.shoot(Items.defs[Items.ids.wooden_bow], eye, Vector3.RIGHT)
@@ -868,6 +876,13 @@ func integration():
 			player.third_person = false
 			player._process(0)
 			check(player.cam.position == Vector3(0, player.EYE, 0) and not model.visible, "V de novo: volta à 1ª pessoa")
+			player.set_menu(true)
+			check(main.get_tree().paused and player.menu_open, "Esc: pausa de verdade (a árvore para)")
+			var esc := InputEventAction.new()
+			esc.action = "ui_cancel"
+			esc.pressed = true
+			main.get_node("HUD")._unhandled_input(esc)
+			check(not main.get_tree().paused and not player.menu_open, "Esc de novo: o HUD despausa")
 			return true
 	return false
 
