@@ -184,5 +184,7 @@
 	"ninja_hood": {"wiki": "Ninja_Hood", "pattern": "blob", "colors": ["#2a2a34", "#1a1a22", "#5a5a6a"]},
 	"ninja_shirt": {"wiki": "Ninja_Shirt", "pattern": "blob", "colors": ["#2a2a34", "#1a1a22", "#5a5a6a"]},
 	"ninja_pants": {"wiki": "Ninja_Pants", "pattern": "blob", "colors": ["#2a2a34", "#1a1a22", "#5a5a6a"]},
-	"slime_crown": {"wiki": "Slime_Crown", "pattern": "blob", "colors": ["#f0c030", "#b08810", "#4a7ae8"]}
+	"slime_crown": {"wiki": "Slime_Crown", "pattern": "blob", "colors": ["#f0c030", "#b08810", "#4a7ae8"]},
+	"dungeon_brick": {"wiki": "Blue_Brick_(placed)", "crop": [16, 16], "pattern": "bricks", "colors": ["#3a4a9a", "#33428a", "#4658aa"], "top_colors": ["#1c2452"]},
+	"dungeon_brick_item": {"wiki": "Blue_Brick"}
 }

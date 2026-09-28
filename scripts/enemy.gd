@@ -72,6 +72,8 @@ func _process(delta: float) -> void:
 		flashing = flash > 0.0
 		for m in model.find_children("", "MeshInstance3D", true, false):
 			m.material_overlay = flash_mat if flashing else null
+	if def.ai == "skeletron":   # gira na fase 2, senão encara o jogador
+		model.rotation.y = model.rotation.y + delta * 14.0 if phase == 2 else PI
 	if def.ai == "worm":
 		var ahead := (follow.position - position) if follow else velocity   # a frente do segmento: para quem ele segue
 		if ahead.length() > 0.01:
@@ -83,7 +85,7 @@ func _physics_process(delta: float) -> void:
 	think(delta)
 	move(delta)
 	var p: Node3D = entities.player
-	if VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
+	if damage > 0 and VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
 		p.hurt(damage, p.position - position)
 
 
@@ -121,6 +123,11 @@ func think(delta: float) -> void:
 			creeper(delta, to)
 		"king_slime":
 			king_slime(delta, to, flat)
+		"skeletron":
+			skeletron(delta, to)
+		"npc":
+			velocity.x = 0.0
+			velocity.z = 0.0
 	if flat != Vector3.ZERO:
 		rotation.y = atan2(flat.x, flat.z)
 
@@ -241,6 +248,40 @@ func king_slime(delta: float, to: Vector3, flat: Vector3) -> void:
 			velocity = flat * def.speed * (1.7 if big else 1.2) + Vector3.UP * (JUMP * (1.5 if big else 1.0))
 
 
+# Skeletron (só à noite: ao amanhecer ele foge). Fase 1: paira sobre o jogador e investe de tempos em tempos, com as mãos em volta
+# (ai "creeper" nelas); abaixo de 50% da vida ou sem mãos, gira sem defesa atrás do jogador.
+func skeletron(delta: float, to: Vector3) -> void:
+	if not entities.clock.is_night():
+		velocity = Vector3.UP * 20
+		if position.distance_to(entities.player.position) > 60:
+			for o in entities.enemies.duplicate():
+				if o.def.get("group") == def.group:
+					entities.remove_enemy(o)
+		return
+	timer -= delta
+	if phase == 1 and (hp < def.life * 0.5 or entities.group_count(def.group) <= 1):
+		phase = 2
+		damage = 60
+		defense = 0
+		entities.player.say("o Skeletron gira, furioso!")
+	if phase == 2:
+		velocity = velocity.lerp(to.normalized() * def.speed * 1.4, delta * 3.0)
+		return
+	var t := Time.get_ticks_msec() / 1000.0
+	if mode == "dash":
+		if timer <= 0:
+			mode = "hover"
+			timer = 6.0
+		velocity *= 1.0 - delta * 0.7
+		return
+	var target: Vector3 = entities.player.position + Vector3(cos(t * 0.7) * 4.0, 5.0, sin(t * 0.7) * 4.0)
+	velocity = velocity.lerp((target - position).limit_length(def.speed), delta * 2.5)
+	if timer <= 0:
+		mode = "dash"
+		timer = 0.8
+		velocity = to.normalized() * 15.0
+
+
 func _teleport(p: Node3D, dist: float) -> void:
 	Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 14)
 	var a := rng.randf() * TAU
@@ -304,6 +345,8 @@ func move(delta: float) -> void:
 
 # Dano como no Terraria (modo normal): dano − defesa/2, mínimo 1. Retorna o dano causado.
 func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
+	if def.get("invulnerable", false):
+		return 0
 	if def.ai == "brain" and phase == 1:   # imune enquanto houver Creepers
 		Fx.sparks(entities, position + Vector3.UP * tall * 0.5, Color(0.8, 0.8, 1.0), 4, dir)
 		return 0
@@ -325,8 +368,12 @@ func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 		for o in entities.enemies:   # verme: quem seguia este segmento vira cabeça de um verme novo
 			if o.follow == self:
 				o.follow = null
+		if def.ai == "skeletron":   # matar a cabeça acaba a luta: as mãos somem
+			for o in entities.enemies.duplicate():
+				if o != self and o.def.get("group") == def.group:
+					entities.remove_enemy(o)
 		if def.has("group") and entities.group_count(def.group) <= 1:   # o último segmento solta o prêmio do chefe
-			entities.evil_boss_down(def.group)
+			entities.boss_down(def.group)
 			for d in entities.final_drops(def.group):
 				if rng.randf() < d.chance:
 					entities.spawn_drop(entities.drop_id(d.item), rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)

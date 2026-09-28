@@ -3,6 +3,7 @@ class_name EnemyModel
 #   eye      esfera com veias, íris, pupila e tentáculos (Olho de Cthulhu, olho demoníaco, servos);
 #            set_phase(2) troca a íris por uma boca com dentes.
 #   slime    gelatina translúcida com núcleo; achata/estica com a velocidade vertical.
+#   skull    caveira (Cursed Skull; "big" = Skeletron, com brilho vermelho nas órbitas)   hand  mão de osso (Skeletron).
 #   brain    cérebro rosado com dobras, olhos e tentáculos (Brain of Cthulhu).
 #   worm     segmento de verme (esfera com anéis; cabeça com mandíbula, rabo mais fino), centrado na origem; enemy.gd gira inteiro.
 #   humanoid corpo do jogador (player_model.gd) com as cores de "colors" e braços estendidos.
@@ -24,6 +25,10 @@ static func build(def: Dictionary) -> Node3D:
 			_worm(root, size[0], def)
 		"brain":
 			_brain(root, size, Color(def.color))
+		"skull":
+			_skull(root, size[0], def)
+		"hand":
+			_hand(root, size[0], Color(def.color))
 		"humanoid":
 			var body: Node3D = PlayerModel.new()
 			var c: Dictionary = def.get("colors", {})
@@ -124,6 +129,47 @@ static func _eye(root: Node3D, r: float, def: Dictionary) -> void:
 		var t := _part(pivot, CylinderMesh.new(), Vector3(r * 0.12, r * 1.2, r * 0.12), Color("#b0202a"), Vector3(cos(a) * r * 0.45, sin(a) * r * 0.45, r * 1.3))
 		t.rotation.x = PI / 2
 		t.name = "Tendril%d" % i
+
+
+# Caveira centrada na origem, de frente para -Z: crânio, mandíbula com dentes, órbitas escuras (com brilho se "big") e nariz.
+static func _skull(root: Node3D, w: float, def: Dictionary) -> void:
+	var c := Color(def.color)
+	var r := w / 2.0
+	var pivot := Node3D.new()
+	pivot.position.y = def.size[1] / 2.0
+	pivot.name = "Squash"
+	root.add_child(pivot)
+	var bone := _mat(c)
+	bone.rim_enabled = true
+	bone.rim = 0.4
+	_part(pivot, SphereMesh.new(), Vector3(r * 2.0, r * 1.8, r * 2.0), c, Vector3(0, r * 0.1, 0), bone)
+	_part(pivot, BoxMesh.new(), Vector3(r * 1.1, r * 0.5, r * 1.1), c.darkened(0.08), Vector3(0, -r * 0.85, -r * 0.35), bone)   # mandíbula
+	for i in 5:
+		_part(pivot, BoxMesh.new(), Vector3(r * 0.14, r * 0.22, r * 0.08), Color("#f4f0e0"), Vector3((i - 2) * r * 0.22, -r * 0.62, -r * 0.92))
+	for side in [-1, 1]:
+		_part(pivot, SphereMesh.new(), Vector3(r * 0.5, r * 0.55, r * 0.3), Color("#0a0a10"), Vector3(side * r * 0.42, r * 0.15, -r * 0.88))
+		if def.get("big", false):
+			var glow := StandardMaterial3D.new()
+			glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			glow.albedo_color = Color("#ff3020")
+			_part(pivot, SphereMesh.new(), Vector3.ONE * r * 0.16, Color.RED, Vector3(side * r * 0.42, r * 0.15, -r * 1.02), glow)
+	_part(pivot, SphereMesh.new(), Vector3(r * 0.2, r * 0.3, r * 0.15), Color("#1a1a20"), Vector3(0, -r * 0.15, -r * 0.95))
+
+
+# Mão de osso: palma, quatro dedos em leque e o polegar (para -Z, para o jogador).
+static func _hand(root: Node3D, w: float, c: Color) -> void:
+	var r := w / 2.0
+	var pivot := Node3D.new()
+	pivot.position.y = w / 2.0
+	pivot.name = "Squash"
+	root.add_child(pivot)
+	var bone := _mat(c)
+	_part(pivot, BoxMesh.new(), Vector3(r * 1.3, r * 0.4, r * 1.2), c, Vector3.ZERO, bone)
+	for i in 4:
+		var f := _part(pivot, CylinderMesh.new(), Vector3(r * 0.2, r * 1.0, r * 0.2), c.lightened(0.05), Vector3((i - 1.5) * r * 0.36, 0, -r * 1.05), bone)
+		f.rotation = Vector3(PI / 2, 0, (i - 1.5) * 0.12)
+	var thumb := _part(pivot, CylinderMesh.new(), Vector3(r * 0.22, r * 0.7, r * 0.22), c, Vector3(r * 0.85, 0, -r * 0.4), bone)
+	thumb.rotation = Vector3(PI / 2, 0, -0.7)
 
 
 # Cérebro: massa rosada de lóbulos com sulcos escuros e dois olhos na frente (-Z); os tentáculos pendem atrás.

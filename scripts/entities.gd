@@ -19,6 +19,7 @@ var projectiles := {}   # nome -> entrada de projectiles.json
 var enemies: Array[Node3D] = []
 var boss: Node3D = null
 var meteor: Node3D = null    # bola de fogo em queda
+var old_man: Node3D = null   # guarda do dungeon: à noite, até o Skeletron cair, espera na entrada
 var boss_max := 0           # vida total do chefe ao nascer (a de todos os segmentos, se for verme)
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
@@ -48,6 +49,7 @@ func icon(item: int) -> Texture2D:
 func _physics_process(delta: float) -> void:
 	if world.meteor_due and meteor == null and clock.is_night() and clock.time >= clock.DAY_SECONDS + clock.NIGHT_SECONDS / 2.0:
 		start_meteor()   # depois do 1º chefe do mal, um meteorito cai na 1ª meia-noite (ou já, se ele caiu depois dela)
+	_old_man()
 	if meteor:
 		meteor.position.y -= 40.0 * delta
 		Fx.sparks(self, meteor.position, Color("#ffb050"), 3, Vector3.UP)
@@ -70,11 +72,23 @@ func try_spawn() -> void:
 	if enemies.size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
 		return
 	var when := "night" if night else "day"
-	var evil: String = world.gen.evil if world.gen.evil_weight(floori(player.position.x), floori(player.position.z)) >= 0.5 else ""
-	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (not d.has("biome") or d.biome == evil))
+	var px := floori(player.position.x)
+	var pz := floori(player.position.z)
+	var evil: String = world.gen.evil if world.gen.evil_weight(px, pz) >= 0.5 else ""
+	if world.gen.in_dungeon(px, floori(player.position.y), pz):
+		evil = "dungeon"
+	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (d.biome == evil if d.has("biome") else evil != "dungeon"))
 	if options.is_empty():
 		return
 	var d: Dictionary = options[rng.randi() % options.size()]
+	if evil == "dungeon":   # dentro do dungeon: numa sala perto do jogador (chão com dois blocos de ar em cima)
+		for attempt in 12:
+			var p := Vector3i(px + rng.randi_range(-9, 9), floori(player.position.y) + rng.randi_range(-2, 2), pz + rng.randi_range(-9, 9))
+			if world.get_block(p.x, p.y, p.z) == 0 and world.get_block(p.x, p.y + 1, p.z) == 0 and Blocks.solid[world.get_block(p.x, p.y - 1, p.z)] \
+					and Vector3(p).distance_to(player.position) > 6.0:
+				spawn_enemy(d, Vector3(p.x + 0.5, p.y, p.z + 0.5))
+				return
+		return
 	var ang := rng.randf() * TAU
 	var dist := rng.randf_range(SPAWN_MIN, SPAWN_MAX)
 	var x := floori(player.position.x + cos(ang) * dist)
@@ -84,11 +98,56 @@ func try_spawn() -> void:
 	spawn_enemy(d, Vector3(x + 0.5, world.surface_y(x, z) + (6 if d.ai == "fly" else 0), z + 0.5))
 
 
-# Primeira vez que um chefe do mal (Eater of Worlds ou Brain) morre: libera o meteorito.
-func evil_boss_down(group: String) -> void:
+# O Velho na entrada do dungeon: aparece à noite (até o Skeletron cair) e some ao amanhecer.
+func _old_man() -> void:
+	if old_man and not enemies.has(old_man):
+		old_man = null
+	var e: Vector3i = world.gen.dungeon_entrance
+	var near := Vector2(player.position.x, player.position.z).distance_to(Vector2(e.x, e.z)) < 90.0
+	if old_man and (not clock.is_night() or world.skeletron_down):
+		remove_enemy(old_man)
+		old_man = null
+	elif old_man == null and near and clock.is_night() and not world.skeletron_down and boss == null:
+		old_man = spawn_enemy(def_named("old_man"), Vector3(e.x + 0.5, world.surface_y(e.x, e.z + 3, true) + 0.1, e.z + 3.5))
+
+
+# Inimigo "npc" na mira (até `reach`), ou null.
+func npc_aimed(reach: float) -> Node3D:
+	for e in enemies:
+		if e.def.ai == "npc":
+			var eye: Vector3 = player.eye()
+			var dir: Vector3 = -player.cam.global_basis.z
+			var to: Vector3 = e.position + Vector3.UP * e.tall * 0.5 - eye
+			if to.length() < reach and dir.dot(to.normalized()) > 0.9:
+				return e
+	return null
+
+
+# Falar com um NPC (botão direito). O Velho: à noite amaldiçoa e vira o Skeletron.
+func talk(e: Node3D) -> void:
+	if e.def.talk == "skeletron":
+		if not clock.is_night():
+			player.say("O Velho: \"Volte à noite... se tiver coragem.\"")
+		elif boss == null:
+			var at: Vector3 = e.position
+			remove_enemy(e)
+			old_man = null
+			var b := spawn_boss("skeletron")
+			b.position = at + Vector3.UP * 3.0
+			for o in enemies:
+				if o.follow == b:
+					o.position = at + Vector3.UP * 3.0
+			player.say("O Velho: \"Você foi amaldiçoado!\"")
+
+
+# Primeira vez que um chefe morre: o do mal libera o meteorito, o Skeletron abre o dungeon.
+func boss_down(group: String) -> void:
 	if group in ["eater_of_worlds", "brain_of_cthulhu"] and not world.evil_boss_down:
 		world.evil_boss_down = true
 		world.meteor_due = true
+	elif group == "skeletron" and not world.skeletron_down:
+		world.skeletron_down = true
+		player.say("o dungeon está aberto!")
 
 
 # Escolhe um ponto de superfície seco, longe do nascimento e do bioma do mal, a 40-90 blocos do jogador, e solta a bola de fogo.
@@ -172,7 +231,13 @@ func def_named(n: String) -> Dictionary:
 func spawn_boss(n: String) -> Node3D:
 	var ang := rng.randf() * TAU
 	var d := def_named(n)
-	if d.has("worm"):
+	if d.has("hands"):
+		boss = spawn_enemy(d, player.position + Vector3(cos(ang) * 14, 8, sin(ang) * 14))
+		for i in int(d.hands):   # as mãos giram em volta da cabeça
+			var h := spawn_enemy(def_named("skeletron_hand"), boss.position + Vector3(i * 4 - 2, -1, 0))
+			h.follow = boss
+			h.angle = PI * i
+	elif d.has("worm"):
 		boss = spawn_worm(d, player.position + Vector3(cos(ang) * 22, 2, sin(ang) * 22))
 	else:
 		boss = spawn_enemy(d, player.position + Vector3(cos(ang) * 20, 15, sin(ang) * 20))

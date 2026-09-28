@@ -23,6 +23,7 @@ var need_gen: Array[Vector2i] = []  # chunks a gerar para os pending (o mais per
 var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
 var chests := {}    # Vector3i -> {item: PackedInt32Array, count: PackedInt32Array}; só os baús já abertos (os outros ainda não têm conteúdo)
 var evil_boss_down := false   # Eater of Worlds / Brain já derrotado: libera o meteorito e, depois, o Wall of Flesh vale
+var skeletron_down := false   # Skeletron derrotado: o dungeon abre para qualquer picareta
 var meteor_due := false       # cai um meteorito à meia-noite
 var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do mal); vai no save do mundo
 var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
@@ -137,6 +138,7 @@ func set_seed(s: int) -> void:
 	orbs_broken = 0
 	evil_boss_down = false
 	meteor_due = false
+	skeletron_down = false
 	liquid = Liquid.new()
 
 

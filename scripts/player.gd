@@ -446,6 +446,9 @@ func break_target() -> void:
 	if b == Blocks.ids.chest and Array(world.chest_at(p).item).any(func(id): return id != -1):
 		say("esvazie o baú primeiro")
 		return
+	if Blocks.guard[b] > power and not world.skeletron_down:
+		say("os tijolos do dungeon resistem (poder %d, ou derrote o Skeletron)" % Blocks.guard[b])
+		return
 	if power < Blocks.power[b]:
 		say("%s precisa de picareta com poder %d (a sua: %d)" % [Blocks.ids.keys()[b].replace("_", " "), Blocks.power[b], power])
 		return
@@ -484,6 +487,10 @@ func break_target() -> void:
 
 
 func place_target() -> void:
+	var npc: Node3D = entities.npc_aimed(REACH)
+	if npc:
+		entities.talk(npc)
+		return
 	if not target.is_empty() and world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
 		inventory_open = true   # botão direito num baú abre o inventário com o painel do baú
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE

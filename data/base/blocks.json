@@ -55,5 +55,6 @@
 	{"name": "crimtane_ore", "power": 55, "icon": "crimtane_ore_item", "tiles": {"all": "crimtane_ore"}},
 	{"name": "obsidian", "power": 55, "icon": "obsidian_item", "tiles": {"all": "obsidian"}},
 	{"name": "hellforge", "mine": 4, "station_also": ["furnace"], "icon": "hellforge_item", "tiles": {"top": "hellforge_top", "side": "hellforge_front", "bottom": "hellforge_top"}},
-	{"name": "meteorite", "power": 50, "light": 4, "icon": "meteorite_item", "tiles": {"all": "meteorite"}}
+	{"name": "meteorite", "power": 50, "light": 4, "icon": "meteorite_item", "tiles": {"all": "meteorite"}},
+	{"name": "dungeon_brick", "mine": 0.5, "guard": 65, "icon": "dungeon_brick_item", "tiles": {"all": "dungeon_brick"}}
 ]

@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge", "test_king_meteor"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -827,7 +827,7 @@ func test_king_meteor():
 	for i in 5:
 		ent._physics_process(1.0 / 60)
 	check(ent.meteor == null and not p.world.meteor_due, "sem chefe do mal derrotado, nada cai")
-	ent.evil_boss_down("eater_of_worlds")
+	ent.boss_down("eater_of_worlds")
 	check(p.world.meteor_due and p.world.evil_boss_down, "derrotar o Eater/Brain libera o meteorito")
 	ent._physics_process(1.0 / 60)
 	check(ent.meteor == null, "antes da meia-noite ainda não cai")
@@ -852,6 +852,158 @@ func test_king_meteor():
 	p.iframes = 0
 	p.tick(0.016)
 	check(p.hp < 100, "meteorito queima quem pisa")
+	free_player(p)
+	w.free()
+	return true
+
+
+func dungeon_world(seed_: int) -> Node3D:
+	var w: Node3D = load("res://scripts/world.gd").new()
+	w.gen = WorldGen.new(seed_)
+	w.world_seed = seed_
+	return w
+
+
+func test_dungeon():
+	for sd in [1, 2]:
+		var w := dungeon_world(sd)
+		var g: WorldGen = w.gen
+		var x1 := g.dungeon_x + WorldGen.DUNGEON_W * WorldGen.DUNGEON_CELL
+		var z1 := g.dungeon_z + WorldGen.DUNGEON_D * WorldGen.DUNGEON_CELL
+		var top := WorldGen.DUNGEON_Y + WorldGen.DUNGEON_FLOORS * WorldGen.DUNGEON_CELL
+		var opposite: bool = (g.dungeon_x < 128) == (g.evil_center.x > 128)
+		check(opposite and g.dungeon_x >= 0 and x1 < WorldGen.SIZE_CHUNKS * C, "seed %d: o dungeon fica do lado oposto ao mal, dentro do mundo" % sd)
+		# flood fill de ar a partir do poço de entrada: todas as salas têm de ser alcançáveis
+		var e := g.dungeon_entrance
+		var seen := {}
+		var todo: Array[Vector3i] = [Vector3i(e.x, top, e.z)]
+		seen[todo[0]] = true
+		var air_total := 0
+		for y in range(WorldGen.DUNGEON_Y + 1, top):
+			for z in range(g.dungeon_z + 1, z1):
+				for x in range(g.dungeon_x + 1, x1):
+					if not Blocks.solid[w.get_block(x, y, z)]:
+						air_total += 1
+		var reached := 0
+		while not todo.is_empty():
+			var p: Vector3i = todo.pop_back()
+			if p.y < top:
+				reached += 1
+			for dv in [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]:
+				var q: Vector3i = p + dv
+				if seen.has(q) or q.x < g.dungeon_x or q.x > x1 or q.z < g.dungeon_z or q.z > z1 or q.y < WorldGen.DUNGEON_Y or q.y > top + 2:
+					continue
+				if not Blocks.solid[w.get_block(q.x, q.y, q.z)]:
+					seen[q] = true
+					todo.append(q)
+		check(air_total > 5000 and reached >= air_total - 5, "seed %d: todas as salas do dungeon se ligam ao poço de entrada (%d/%d)" % [sd, reached, air_total])
+		var open_sky := true
+		for y in range(top, e.y + 6):
+			open_sky = open_sky and not Blocks.solid[w.get_block(e.x, y, e.z)]
+		check(open_sky and w.get_block(e.x, e.y - 1, e.z + 2) == g.BRICK or w.get_block(e.x, e.y + 4, e.z + 2) == g.BRICK, "seed %d: torre de entrada com poço aberto até o céu" % sd)
+		var chests := 0
+		for y in range(WorldGen.DUNGEON_Y + 1, top):
+			for z in range(g.dungeon_z, z1 + 1, 1):
+				for x in range(g.dungeon_x, x1 + 1, 1):
+					chests += 1 if w.get_block(x, y, z) == g.CHEST else 0
+		check(chests >= 6, "seed %d: baús nas salas (%d)" % [sd, chests])
+		w.free()
+	# tijolos protegidos até o Skeletron cair
+	var w := floor_world()
+	var p := make_player(w)
+	w.set_block(20, 11, 20, Blocks.ids.dungeon_brick)
+	p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i(0, 1, 0)}
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.inv.add(Items.ids.nightmare_pickaxe, 1)
+	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
+	for i in 10:
+		p.break_target()
+	check(w.get_block(20, 11, 20) == Blocks.ids.dungeon_brick and p.message.contains("Skeletron"), "tijolo do dungeon resiste à picareta de cobre")
+	p.slot = p.inv.item.find(Items.ids.nightmare_pickaxe)
+	for i in 10:
+		p.break_target()
+	check(w.get_block(20, 11, 20) == 0, "…mas cede à Nightmare (65)")
+	w.set_block(20, 11, 20, Blocks.ids.dungeon_brick)
+	w.skeletron_down = true
+	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
+	for i in 20:
+		p.break_target()
+	check(w.get_block(20, 11, 20) == 0, "com o Skeletron derrotado qualquer picareta serve")
+	free_player(p)
+	w.free()
+	# inimigos do dungeon nascem dentro dele
+	var dw := dungeon_world(1)
+	var dp := make_player(dw)
+	var ent: Node3D = dp.entities
+	var g: WorldGen = dw.gen
+	dp.position = Vector3(g.dungeon_x + 15.5, WorldGen.DUNGEON_Y + 1, g.dungeon_z + 15.5)
+	dp.clock.time = 300
+	for i in 40:
+		ent.try_spawn()
+	var inside: int = ent.enemies.filter(func(e): return e.def.get("biome") == "dungeon" and g.in_dungeon(floori(e.position.x), floori(e.position.y), floori(e.position.z))).size()
+	check(inside >= 3 and ent.enemies.all(func(e): return e.def.get("biome") == "dungeon"), "no dungeon só nascem inimigos do dungeon, dentro das salas (%d)" % inside)
+	free_player(dp)
+	dw.free()
+	return true
+
+
+func test_skeletron():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var man: Node3D = ent.spawn_enemy(ent.def_named("old_man"), p.position + Vector3(2, 0, 0))
+	check(man.hurt(500, Vector3.RIGHT, 0) == 0 and ent.enemies.has(man), "o Velho é imune")
+	p.clock.time = 300
+	ent.talk(man)
+	check(ent.boss == null and p.message.contains("noite"), "de dia o Velho manda voltar à noite")
+	p.clock.time = p.clock.DAY_SECONDS + 100
+	ent.talk(man)
+	var head: Node3D = ent.boss
+	check(head != null and head.def.name == "skeletron" and not ent.enemies.has(man), "à noite o Velho vira o Skeletron")
+	var hands: Array = ent.enemies.filter(func(e): return e.def.name == "skeletron_hand")
+	check(hands.size() == 2 and ent.boss_max == 4400 + 2 * 600 and hands[0].follow == head, "duas mãos (600 de vida) seguem a cabeça; a barra soma tudo")
+	check(head.hurt(100, Vector3.RIGHT, 5) == 100 - 5 and hands[0].hurt(100, Vector3.RIGHT, 0) == 100 - 7, "defesa 10 na cabeça e 14 nas mãos")
+	var far := 0.0
+	for i in 60 * 5:
+		for e in ent.enemies:
+			e._physics_process(1.0 / 60)
+	for h in hands:
+		far = maxf(far, h.position.distance_to(head.position))
+	check(far < 14.0, "as mãos giram em volta da cabeça (%.1f)" % far)
+	head.hp = 2000
+	head.think(1.0 / 60)
+	check(head.phase == 2 and head.damage == 60 and head.defense == 0 and head.hurt(50, Vector3.RIGHT, 0) == 50, "abaixo de 50%: gira, dano 60 e defesa 0")
+	head.hurt(9999, Vector3.RIGHT, 0)
+	var gold := 0
+	for n in ent.get_children():
+		if n.get("item") == Items.ids.gold_coin:
+			gold += n.count
+	check(ent.boss == null and ent.enemies.is_empty() and gold == 5 and w.skeletron_down, "cabeça morta: mãos somem, 5 de ouro e o dungeon abre")
+	p.clock.time = p.clock.DAY_SECONDS + 100
+	var head2: Node3D = ent.spawn_boss("skeletron")
+	p.clock.time = 100   # amanheceu
+	for i in 60 * 6:
+		if not ent.enemies.has(head2):
+			break
+		head2._physics_process(1.0 / 60)
+	check(ent.boss == null, "ao amanhecer o Skeletron foge")
+	# o Velho só aparece à noite, perto da entrada, e não depois do Skeletron
+	var dw := dungeon_world(1)
+	var dp := make_player(dw)
+	var e2: Node3D = dp.entities
+	dp.position = Vector3(dw.gen.dungeon_entrance) + Vector3(0, 0, 20)
+	dp.clock.time = dp.clock.DAY_SECONDS + 100
+	e2._physics_process(1.0 / 60)
+	check(e2.old_man != null and e2.old_man.position.distance_to(Vector3(dw.gen.dungeon_entrance)) < 6.0, "à noite o Velho espera na entrada do dungeon")
+	dp.clock.time = 100
+	e2._physics_process(1.0 / 60)
+	check(e2.old_man == null, "ao amanhecer o Velho some")
+	dw.skeletron_down = true
+	dp.clock.time = dp.clock.DAY_SECONDS + 100
+	e2._physics_process(1.0 / 60)
+	check(e2.old_man == null, "com o Skeletron derrotado o Velho não volta")
+	free_player(dp)
+	dw.free()
 	free_player(p)
 	w.free()
 	return true

@@ -17,6 +17,11 @@ const ROCK_LINE := 100         # acima disto a superfície é pedra pelada
 const MARGIN := 5              # alturas calculadas além do chunk: inclinação e árvores dos chunks vizinhos
 const TREE_CELL := 5           # no máximo uma árvore por célula 5x5 (posição sorteada dentro dela)
 const EVIL_RADIUS := 30.0      # raio do bioma do mal
+const DUNGEON_CELL := 10       # dungeon: grade de salas de 10 blocos (parede incluída), 6 x 5 salas em 2 andares
+const DUNGEON_W := 6
+const DUNGEON_D := 5
+const DUNGEON_Y := 30          # chão do 1º andar
+const DUNGEON_FLOORS := 2
 const CHASMS := 6              # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
 const CHASM_DEPTH := 38
 const CENTER := Vector2(SIZE_CHUNKS * CHUNK / 2.0, SIZE_CHUNKS * CHUNK / 2.0)   # nascimento: planície
@@ -52,6 +57,11 @@ var evil := "corruption"          # "corruption" ou "crimson": um por mundo, esc
 var evil_center := Vector2.ZERO   # centro do bioma do mal (longe do nascimento)
 var chasm_centers: Array[Vector2i] = []   # abismos com um orbe no fundo
 var chasm_heights := PackedInt32Array()   # altura da superfície em cada abismo
+var dungeon_x := 0                # canto (x, z) do dungeon, do lado oposto ao bioma do mal
+var dungeon_z := 0
+var dungeon_entrance := Vector3i.ZERO   # torre de entrada (centro, altura da superfície)
+var BRICK: int
+var TORCH: int
 var EVIL_STONE: int
 var EVIL_GRASS: int
 var ORB: int
@@ -100,6 +110,13 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 		var c := evil_center + Vector2.from_angle(TAU * k / CHASMS + er.randf_range(-0.15, 0.15)) * er.randf_range(13.0, 19.0)
 		chasm_centers.append(Vector2i(c))
 		chasm_heights.append(surface_height(int(c.x), int(c.y)))
+	BRICK = Blocks.ids.dungeon_brick
+	TORCH = Blocks.ids.torch
+	dungeon_x = 6 if evil_center.x > CENTER.x else SIZE_CHUNKS * CHUNK - 6 - DUNGEON_W * DUNGEON_CELL - 1
+	dungeon_z = int(CENTER.y) - DUNGEON_D * DUNGEON_CELL / 2
+	var ex := dungeon_x + DUNGEON_W / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
+	var ez := dungeon_z + DUNGEON_D / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
+	dungeon_entrance = Vector3i(ex, surface_height(ex, ez), ez)
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
@@ -190,6 +207,7 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([seed, cx, cz])
 	_evil(d, hs, W, cx, cz)
+	_dungeon(d, cx, cz)
 	_ores(d, rng)
 	_trees(d, hs, W, cx, cz)
 	_plants(d, hs, W, rng)
@@ -198,6 +216,74 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	rng.seed = hash([seed, cx, cz, "chest"])
 	_chest(d, rng)
 	return d
+
+
+func in_dungeon(x: int, y: int, z: int) -> bool:
+	return x >= dungeon_x and x <= dungeon_x + DUNGEON_W * DUNGEON_CELL and z >= dungeon_z and z <= dungeon_z + DUNGEON_D * DUNGEON_CELL \
+		and y >= DUNGEON_Y and y <= DUNGEON_Y + DUNGEON_FLOORS * DUNGEON_CELL
+
+
+# Dungeon: labirinto de tijolos azuis (salas de 10 blocos em 2 andares) do lado oposto ao mal, com portas entre as salas de cada fileira,
+# uma passagem entre fileiras e entre andares, tochas, baús e uma torre de entrada aberta na superfície. Tudo por coordenada:
+# cada chunk escreve a sua parte.
+func _dungeon(d: PackedByteArray, cx: int, cz: int) -> void:
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	var x1 := dungeon_x + DUNGEON_W * DUNGEON_CELL
+	var z1 := dungeon_z + DUNGEON_D * DUNGEON_CELL
+	if ox > x1 or oz > z1 or ox + CHUNK <= dungeon_x or oz + CHUNK <= dungeon_z:
+		return
+	var layer := CHUNK * CHUNK
+	var top := DUNGEON_Y + DUNGEON_FLOORS * DUNGEON_CELL
+	var e := dungeon_entrance
+	for z in CHUNK:
+		for x in CHUNK:
+			var wx := ox + x
+			var wz := oz + z
+			var i := x + z * CHUNK
+			if wx >= dungeon_x and wx <= x1 and wz >= dungeon_z and wz <= z1:
+				for y in range(DUNGEON_Y, top + 1):
+					d[i + y * layer] = _dungeon_block(wx, y, wz)
+			var ring := maxi(absi(wx - e.x), absi(wz - e.z))   # torre de entrada: poço 3x3 aberto até o céu, parede de tijolos em volta
+			if ring <= 2:
+				for y in range(top, e.y + 7):
+					if ring <= 1:
+						d[i + y * layer] = AIR
+					elif y <= e.y + 5 and not (wz - e.z == 2 and wx == e.x and y <= e.y + 2):   # a porta é o vão da frente
+						d[i + y * layer] = BRICK
+
+
+func _dungeon_block(wx: int, y: int, wz: int) -> int:
+	var ax := wx - dungeon_x
+	var az := wz - dungeon_z
+	var ay := y - DUNGEON_Y
+	var lx := ax % DUNGEON_CELL
+	var lz := az % DUNGEON_CELL
+	var ly := ay % DUNGEON_CELL
+	var cell_x := ax / DUNGEON_CELL
+	var cell_z := az / DUNGEON_CELL
+	var floor_n := ay / DUNGEON_CELL
+	if ay == DUNGEON_FLOORS * DUNGEON_CELL:   # teto: só o poço de entrada fura
+		var e := dungeon_entrance
+		return AIR if absi(wx - e.x) <= 1 and absi(wz - e.z) <= 1 else BRICK
+	if ly == 0:   # laje entre andares e chão do 1º: um buraco por andar (e o poço de entrada)
+		var hole_x: int = hash([seed, "hx", floor_n]) % DUNGEON_W
+		var hole_z: int = hash([seed, "hz", floor_n]) % DUNGEON_D
+		var e := dungeon_entrance
+		var through := (cell_x == hole_x and cell_z == hole_z) or (absi(wx - e.x) <= 1 and absi(wz - e.z) <= 1)
+		return AIR if floor_n > 0 and through and lx >= 3 and lx <= 6 and lz >= 3 and lz <= 6 else BRICK
+	if lx == 0:   # parede entre salas vizinhas em x: sempre tem porta (no meio), menos na borda do dungeon
+		return AIR if ax != 0 and ax != DUNGEON_W * DUNGEON_CELL and lz >= 3 and lz <= 6 and ly <= 3 else BRICK
+	if lz == 0:   # parede em z: porta numa coluna de salas escolhida por fileira (mais algumas ao acaso)
+		var col: int = hash([seed, "dz", cell_z, floor_n]) % DUNGEON_W
+		var open := cell_x == col or _hash01(cell_x, cell_z, floor_n, seed) < 0.3
+		return AIR if az != 0 and az != DUNGEON_D * DUNGEON_CELL and open and lx >= 3 and lx <= 6 and ly <= 3 else BRICK
+	var h := _hash01(cell_x, cell_z, floor_n, seed + 7)
+	if ly == 1 and lx == 1 and lz == 1 and h < 0.3:
+		return CHEST
+	if ly == 3 and lx == 5 and lz == 1 and h > 0.4:
+		return TORCH
+	return AIR
 
 
 # Quanto do bioma do mal cobre a coluna (0 a 1): disco com a borda irregular por ruído.

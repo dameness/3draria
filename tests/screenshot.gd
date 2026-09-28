@@ -18,6 +18,9 @@ const SHOTS := [
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
 	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
 	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},
+	{"name": "dungeon_fora", "dungeon": "out", "look": Vector2(0, -0.25), "flying": true, "time": 1100.0},
+	{"name": "dungeon_sala", "dungeon": "in", "look": Vector2(-PI / 2, -0.05), "flying": true, "time": 300.0},
+	{"name": "skeletron", "look": Vector2(0, 0.2), "boss": "skeletron", "time": 1100.0, "item": "terra_blade"},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
@@ -146,6 +149,14 @@ func _setup(s: Dictionary) -> void:
 			for dy in range(1, 5):
 				world.set_block(x + s.breach - 1, best.y - dy, best.z, 0)
 			world.liquid.settle(world, s.get("flow", 10))
+	if s.has("dungeon"):
+		var g: WorldGen = world.gen
+		var e := g.dungeon_entrance
+		if s.dungeon == "out":
+			player.position = Vector3(e.x + 0.5, e.y + 8, e.z + 16.5)
+		else:
+			player.position = Vector3(g.dungeon_x + 25.5, WorldGen.DUNGEON_Y + 1, g.dungeon_z + 25.5)
+		print("  ", s.name, " em ", player.position)
 	if s.has("evil"):   # bioma do mal: acima do centro, ou dentro do 1º abismo
 		var g: WorldGen = world.gen
 		var at := Vector2i(g.evil_center)

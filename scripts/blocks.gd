@@ -8,6 +8,7 @@ static var ids := {}                       # nome -> id
 static var solid := PackedByteArray()      # id -> 1 se sólido
 static var breakable := PackedByteArray()  # id -> 1 se o jogador pode quebrar
 static var power := PackedInt32Array()     # id -> poder de picareta mínimo
+static var guard := PackedInt32Array()      # id -> poder de picareta exigido enquanto o Skeletron não foi derrotado (tijolos do dungeon); 0 = livre
 static var mine := PackedFloat32Array()    # id -> dureza ao contrário: dano por golpe = poder da picareta × isto (100 de dano quebra o bloco)
 static var shape: Array[String] = []       # id -> "" (cubo) ou forma não sólida: "torch", "plant" (cruz), "liquid" (água/lava)
 static var special := PackedByteArray()    # id -> 1 se tem forma própria (shape != "")
@@ -37,6 +38,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	solid.clear()
 	breakable.clear()
 	power.clear()
+	guard.clear()
 	mine.clear()
 	shape.clear()
 	special.clear()
@@ -59,6 +61,7 @@ static func load_pack(dir := "res://data/base") -> void:
 		solid.append(1 if b.get("solid", true) else 0)
 		breakable.append(1 if b.get("breakable", true) else 0)
 		power.append(b.get("power", 0))
+		guard.append(b.get("guard", 0))
 		mine.append(b.get("mine", 1.0))
 		shape.append(b.get("shape", ""))
 		special.append(1 if shape[-1] != "" else 0)
