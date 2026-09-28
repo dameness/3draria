@@ -21,7 +21,8 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral).
 
 ## items.json (itens que não são bloco)
-`{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?}`.
+`{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?}`.
+`use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).
 Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` golpeia.
 
 ## recipes.json

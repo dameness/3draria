@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://main.tscn").instantiate()
@@ -256,6 +256,36 @@ func test_wiki_sprites():
 	return true
 
 
+func quads(mesh: ArrayMesh) -> int:
+	return mesh.surface_get_array_len(0) / 4
+
+
+func test_item_model():
+	var plus := Image.create(3, 3, false, Image.FORMAT_RGBA8)
+	for p in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 2)]:
+		plus.set_pixel(p.x, p.y, Color.RED)
+	var mesh := ItemModel.build(plus, 1.0)
+	check(quads(mesh) == 2 + 12, "extrusão: frente + verso + só as 12 bordas expostas (%d)" % quads(mesh))
+	var a := mesh.surface_get_arrays(0)
+	var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+	var nr: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+	var ix: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	var wound := true
+	for t in range(0, ix.size(), 3):
+		wound = wound and (v[ix[t + 1]] - v[ix[t]]).cross(v[ix[t + 2]] - v[ix[t]]).dot(nr[ix[t]]) < 0
+	check(wound, "extrusão: todas as faces viradas para fora")
+	check(is_equal_approx(mesh.get_aabb().size.x, 1.0) and mesh.get_aabb().position == Vector3(0, 0, mesh.get_aabb().position.z), "extrusão: lado maior = comprimento, origem no canto inferior esquerdo")
+	var icon := Items.icon_texture(Items.ids.copper_pickaxe, ImageTexture.create_from_image(Atlas.build(Blocks.textures)))
+	check(quads(ItemModel.build(icon.get_image(), 0.5)) > 10, "ícone real vira malha 3D")
+	var H = load("res://scripts/held_item.gd")
+	check(H.style(Items.ids.copper_shortsword) == "thrust" and H.style(Items.ids.wooden_bow) == "shoot", "estilo: espada curta estoca, arco atira")
+	check(H.style(Items.ids.copper_pickaxe) == "swing" and H.style(Items.ids.dirt) == "hold", "estilo: picareta golpeia, bloco só segura")
+	check(H.pose("swing", 0) != H.pose("swing", 0.5) and H.pose("swing", 1).origin == H.REST, "golpe anima e volta à mão")
+	check(H.pose("hold", 0.3) == Transform3D(Basis(), H.REST), "segurar não anima")
+	Items.icon_cache.clear()
+	return true
+
+
 func test_items():
 	check(Items.places[Items.ids.stone] == Blocks.ids.stone, "bloco vira item que o coloca")
 	check(Items.drop[Blocks.ids.grass] == Items.ids.dirt, "grama dropa terra")
@@ -384,6 +414,8 @@ func integration():
 			player.break_target()
 			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco com a picareta inicial")
 			player.inventory_open = true  # exercita a janela de inventário/criação
+			var hand: Node3D = player.get_node("Camera/Hand")
+			check(hand.mesh.visible and hand.mesh.mesh != null, "picareta aparece em 3D na mão")
 			return false
 		if player.inv.total(Items.ids.dirt) == 0 and elapsed < 60000:
 			return false  # espera o drop de terra ser coletado

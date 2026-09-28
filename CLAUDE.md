@@ -65,6 +65,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly)
   day_night.gd       ciclo 15+9 min   save_game.gd  user://save.dat (seed + chunks editados)
   hud.gd             mira, hotbar, vida, hora, avisos, janela de inventário/criação (E)
+  item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  item na mão (1ª pessoa) + animação
 tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)

@@ -38,7 +38,8 @@ Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e part�
 
 ## Ordem proposta
 - V1 ✅: fetch-sprites + ícones e blocos exatos + fallback (tests/atlas_preview.gd → textures/preview.png).
-- V2: item extrudado na mão + animação de golpe/tiro.
+- V2 ✅: item extrudado na mão (scripts/item_model.gd + held_item.gd) com swing/thrust/shoot/hold.
+  Ver sem GPU: `.tools/godot --headless -s tests/model_preview.gd -- item1 item2` → textures/item_models.png.
 - V3: `effects` + `projectiles.json` (primeiro caso real: Enchanted Sword/Terra Beam, depois arco e flechas).
 - V4: 3ª pessoa + modelo do jogador + armaduras (já listado no roadmap pós-protótipo).
 

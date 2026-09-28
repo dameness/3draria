@@ -1,10 +1,11 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="2"]
 [ext_resource type="Script" path="res://scripts/hud.gd" id="3"]
 [ext_resource type="Script" path="res://scripts/day_night.gd" id="4"]
 [ext_resource type="Script" path="res://scripts/entities.gd" id="5"]
+[ext_resource type="Script" path="res://scripts/held_item.gd" id="6"]
 
 [sub_resource type="Environment" id="env"]
 background_mode = 1
@@ -41,6 +42,11 @@ entities = NodePath("../Entities")
 clock = NodePath("../DayNight")
 
 [node name="Camera" type="Camera3D" parent="Player"]
+near = 0.02
+
+[node name="Hand" type="Node3D" parent="Player/Camera" node_paths=PackedStringArray("player")]
+script = ExtResource("6")
+player = NodePath("../..")
 
 [node name="HUD" type="CanvasLayer" parent="." node_paths=PackedStringArray("world", "player", "clock")]
 script = ExtResource("3")
