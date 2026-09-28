@@ -38,6 +38,10 @@ V1 ícones/blocos exatos da wiki (baixados, fora do git) com fallback procedural
 V3 efeitos e projéteis por dados. Pronto quando: testes verificam fallback sem rede, extrusão (faces só nas bordas)
 e que `effects`/`shoot` vêm do JSON; no playtest, Terra Blade com o ícone do jogo, brilho verde e o feixe.
 
+## Menu e saves ✅
+Menu como no Terraria (Um jogador → personagem → mundo), saves separados de personagem e de mundo,
+F5/Salvar e sair/fechar salvam. Depois: seed escolhida na criação, multijogador, build para Windows.
+
 ## F5 Primeiro chefe + progressão completa de minérios pré-hardmode ✅ (falta playtest)
 Feito: 8 metais em pares por mundo (picareta, espada, arco de cada), demonita (55) com Light's Bane e Demon Bow,
 pedra infernal (65) no submundo, altares demoníacos, Olho de Cthulhu (2 fases, servos, investidas, barra de vida,

@@ -11,6 +11,7 @@ var grid: GridContainer
 var recipe_list: VBoxContainer
 var shown_version := -1
 var boss_bar: ProgressBar
+var pause: PanelContainer
 var stations := {}
 
 
@@ -55,6 +56,26 @@ func _ready() -> void:
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	boss_bar.add_child(name_label)
 	add_child(boss_bar)
+	pause = PanelContainer.new()
+	var pbox := VBoxContainer.new()
+	pbox.add_theme_constant_override("separation", 12)
+	for b in [["Continuar", func(): player.set_menu(false)], ["Salvar e sair", _save_and_quit]]:
+		var btn := Button.new()
+		btn.text = b[0]
+		btn.custom_minimum_size = Vector2(260, 44)
+		btn.pressed.connect(b[1])
+		pbox.add_child(btn)
+	pause.add_child(pbox)
+	for a in ["anchor_left", "anchor_top", "anchor_right", "anchor_bottom"]:
+		pause.set(a, 0.5)
+	pause.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	pause.grow_vertical = Control.GROW_DIRECTION_BOTH
+	add_child(pause)
+
+
+func _save_and_quit() -> void:
+	SaveGame.save_all(world, player, clock)
+	get_tree().change_scene_to_file("res://menu.tscn")
 
 
 static func _flat(c: Color) -> StyleBoxFlat:
@@ -127,6 +148,7 @@ func _refresh_recipes() -> void:
 
 func _process(_delta: float) -> void:
 	panel.visible = player.inventory_open
+	pause.visible = player.menu_open
 	var boss: Node3D = player.entities.boss
 	boss_bar.visible = boss != null
 	if boss:

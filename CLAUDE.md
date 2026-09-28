@@ -44,6 +44,7 @@ scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki (tabe
 .tools/godot --headless --quit                # smoke test: projeto abre sem erros
 .tools/godot --headless -s tests/run.gd       # testes; código de saída != 0 em falha
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd   # prints reais (OpenGL por CPU) em textures/shot_*.png
+xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar
 ```
 Sessão remota: **sempre confira mudanças visuais com tests/screenshot.gd** e olhe as imagens (FPS ali é de CPU, não vale).
 Testes: cada `test_*` retorna `true` no fim (erro de script aborta a função → retorna null → falha).
@@ -52,7 +53,7 @@ Não use `Logger` em GDScript para capturar erros: trava o Godot 4.7.2 em erro d
 ## Estrutura
 ```
 project.godot        config (renderer Compatibility)
-main.tscn            cena inicial
+menu.tscn            cena inicial: menu (personagem/mundo)   game.tscn  o jogo (roda direto sem save, p/ testes)
 scripts/             setup-godot.sh e um .gd por sistema:
   blocks.gd          carrega blocks.json/textures.json (id = posição na lista, 0 = ar)
   atlas.gd           gera o atlas 16x16 procedural
@@ -66,7 +67,9 @@ scripts/             setup-godot.sh e um .gd por sistema:
   player.gd          1ª pessoa, vida, usar item (minerar/golpear/atirar), colocar
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly)
-  day_night.gd       ciclo 15+9 min   save_game.gd  user://save.dat (seed + chunks editados)
+  day_night.gd       ciclo 15+9 min
+  save_game.gd       user://players/*.plr e user://worlds/*.wld (seed, hora, spawn, chunks editados)
+  menu.gd            menu inicial: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair
   hud.gd             mira, hotbar, vida, hora, avisos, janela de inventário/criação (E)
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  item na mão (1ª pessoa) + animação
 tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal

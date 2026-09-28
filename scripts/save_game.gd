@@ -1,44 +1,70 @@
 class_name SaveGame
-# Salva e carrega: seed, hora, jogador (posição, vida, inventário por nome) e só os chunks editados.
+# Saves como no Terraria: personagens em user://players/*.plr (nome, vida, inventário) e mundos em
+# user://worlds/*.wld (nome, seed, hora, spawn, só os chunks editados). O menu escolhe os dois e
+# guarda os caminhos em player_path/world_path; o jogo carrega ao entrar e salva no F5, no "Salvar e
+# sair" e ao fechar a janela. Sem caminhos (testes, rodar game.tscn direto) nada é lido nem gravado.
 
-const PATH := "user://save.dat"
-const VERSION := 1
+const VERSION := 2
+static var players_dir := "user://players/"
+static var worlds_dir := "user://worlds/"
+static var player_path := ""
+static var world_path := ""
 
 
-static func save(world, player, clock, path := PATH) -> Error:
-	var chunks := {}
-	for k in world.edited:
-		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
+# [{path, name, info}] dos saves de um diretório, ordenados pelo nome.
+static func list(dir: String) -> Array:
+	var out := []
+	DirAccess.make_dir_recursive_absolute(dir)
+	for f in DirAccess.get_files_at(dir):
+		if f.ends_with(".plr") or f.ends_with(".wld"):
+			var data := _read(dir + f)
+			if not data.is_empty():
+				out.append({"path": dir + f, "name": data.name, "info": data})
+	out.sort_custom(func(a, b): return a.name.naturalnocasecmp_to(b.name) < 0)
+	return out
+
+
+# Cria o arquivo e retorna o caminho, ou "" se o nome for vazio ou já existir.
+static func create_player(name: String) -> String:
+	var path := _path(players_dir, name, ".plr")
+	if path == "" or _write(path, {"version": VERSION, "name": name.strip_edges(), "new": true}) != OK:
+		return ""
+	return path
+
+
+static func create_world(name: String, seed: int) -> String:
+	var path := _path(worlds_dir, name, ".wld")
+	if path == "" or _write(path, {"version": VERSION, "name": name.strip_edges(), "seed": seed, "time": 60.0, "chunks": {}}) != OK:
+		return ""
+	return path
+
+
+static func delete(path: String) -> void:
+	DirAccess.remove_absolute(path)
+
+
+static func save_all(world, player, clock) -> Error:
+	var err := OK
+	if world_path != "":
+		err = save_world(world, player, clock, world_path)
+	if player_path != "" and err == OK:
+		err = save_player(player, player_path)
+	return err
+
+
+static func save_player(player, path: String) -> Error:
 	var inv := []
 	for i in Inventory.SIZE:
 		var id: int = player.inv.item[i]
 		inv.append([Items.names[id] if id != -1 else "", player.inv.count[i]])
-	var data := {"version": VERSION, "seed": world.world_seed, "time": clock.time, "pos": player.position,
-		"spawn": player.spawn, "hp": player.hp, "inv": inv, "chunks": chunks}
-	# Grava num temporário e renomeia, para um crash no meio não estragar o save anterior.
-	var f := FileAccess.open(path + ".tmp", FileAccess.WRITE)
-	if f == null:
-		return FileAccess.get_open_error()
-	f.store_var(data)
-	f.close()
-	return DirAccess.rename_absolute(path + ".tmp", path)
+	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "inv": inv})
 
 
-static func load_into(world, player, clock, path := PATH) -> bool:
-	if not FileAccess.file_exists(path):
+# Retorna false para personagem novo (o jogo dá os itens iniciais).
+static func load_player(player, path: String) -> bool:
+	var data := _read(path)
+	if data.is_empty() or data.get("new", false):
 		return false
-	var data = FileAccess.open(path, FileAccess.READ).get_var()
-	if typeof(data) != TYPE_DICTIONARY or data.get("version") != VERSION:
-		push_warning("save ignorado (inválido ou de outra versão): " + path)
-		return false
-	world.set_seed(data.seed)
-	var size := WorldGen.CHUNK * WorldGen.CHUNK * WorldGen.HEIGHT
-	for k in data.chunks:
-		world.chunks[k] = data.chunks[k].decompress(size, FileAccess.COMPRESSION_ZSTD)
-		world.edited[k] = true
-	clock.time = data.time
-	player.position = data.pos
-	player.spawn = data.spawn
 	player.hp = data.hp
 	player.inv = Inventory.new()
 	for i in Inventory.SIZE:
@@ -47,3 +73,55 @@ static func load_into(world, player, clock, path := PATH) -> bool:
 			player.inv.item[i] = Items.ids[entry[0]]
 			player.inv.count[i] = entry[1]
 	return true
+
+
+static func save_world(world, player, clock, path: String) -> Error:
+	var chunks := {}
+	for k in world.edited:
+		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
+	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed,
+		"time": clock.time, "spawn": player.spawn, "chunks": chunks})
+
+
+static func load_world(world, player, clock, path: String) -> bool:
+	var data := _read(path)
+	if data.is_empty():
+		return false
+	world.set_seed(data.seed)
+	var size := WorldGen.CHUNK * WorldGen.CHUNK * WorldGen.HEIGHT
+	for k in data.chunks:
+		world.chunks[k] = data.chunks[k].decompress(size, FileAccess.COMPRESSION_ZSTD)
+		world.edited[k] = true
+	clock.time = data.time
+	if data.has("spawn"):
+		player.spawn = data.spawn
+	return true
+
+
+static func _path(dir: String, name: String, ext: String) -> String:
+	var file := name.strip_edges().validate_filename()
+	if file == "":
+		return ""
+	DirAccess.make_dir_recursive_absolute(dir)
+	var path := dir + file + ext
+	return "" if FileAccess.file_exists(path) else path
+
+
+static func _read(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var data = FileAccess.open(path, FileAccess.READ).get_var()
+	if typeof(data) != TYPE_DICTIONARY or data.get("version") != VERSION:
+		push_warning("save ignorado (inválido ou de outra versão): " + path)
+		return {}
+	return data
+
+
+# Grava num temporário e renomeia, para um crash no meio não estragar o save anterior.
+static func _write(path: String, data: Dictionary) -> Error:
+	var f := FileAccess.open(path + ".tmp", FileAccess.WRITE)
+	if f == null:
+		return FileAccess.get_open_error()
+	f.store_var(data)
+	f.close()
+	return DirAccess.rename_absolute(path + ".tmp", path)

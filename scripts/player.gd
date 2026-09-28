@@ -3,7 +3,7 @@ extends Node3D
 # WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce).
 # Segurar o botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira); direito coloca bloco.
 # 1-0 ou roda escolhem o slot; E abre inventário/criação; F5 salva (também salva ao fechar); F8 dá o kit de teste.
-# Clique captura o mouse, Esc solta.
+# Esc abre o menu (Continuar / Salvar e sair).
 
 const HALF := 0.3        # meia largura da caixa
 const TALL := 1.8
@@ -23,7 +23,6 @@ const HI := Vector3(HALF, TALL, HALF)
 @export var world: Node3D
 @export var entities: Node3D
 @export var clock: Node
-@export var load_save := true   # testes desligam para não pegar o save de quem joga
 var velocity := Vector3.ZERO
 var knock := Vector3.ZERO     # empurrão horizontal de golpes, some aos poucos
 var on_floor := false
@@ -31,6 +30,7 @@ var flying := false
 var inv := Inventory.new()
 var slot := 0                 # slot da hotbar na mão
 var inventory_open := false
+var menu_open := false        # Esc: Continuar / Salvar e sair
 var message := ""             # aviso curto para o HUD
 var message_until := 0
 var hp := float(MAX_HP)
@@ -45,13 +45,15 @@ var highlight: MeshInstance3D
 
 
 func _ready() -> void:
-	var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2
-	position = Vector3(mid + 0.5, world.surface_y(mid, mid), mid + 0.5)
-	spawn = position
-	inv.add(Items.ids.copper_pickaxe, 1)
-	inv.add(Items.ids.copper_shortsword, 1)
-	if load_save and SaveGame.load_into(world, self, clock):
-		say("jogo carregado")
+	if SaveGame.world_path != "":
+		SaveGame.load_world(world, self, clock, SaveGame.world_path)
+	if spawn == Vector3.ZERO:  # mundo novo: nasce no meio, na superfície
+		var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2
+		spawn = Vector3(mid + 0.5, world.surface_y(mid, mid), mid + 0.5)
+	position = spawn
+	if SaveGame.player_path == "" or not SaveGame.load_player(self, SaveGame.player_path):
+		inv.add(Items.ids.copper_pickaxe, 1)  # itens iniciais de personagem novo
+		inv.add(Items.ids.copper_shortsword, 1)
 	cam.position.y = EYE
 	highlight = MeshInstance3D.new()
 	var box := BoxMesh.new()
@@ -68,8 +70,13 @@ func _ready() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST and load_save:
-		SaveGame.save(world, self, clock)
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		SaveGame.save_all(world, self, clock)
+
+
+func set_menu(open: bool) -> void:
+	menu_open = open
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
 
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -80,6 +87,11 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif inventory_open:
 		if e.is_action_pressed("ui_cancel"):
 			inventory_open = false
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	elif e.is_action_pressed("ui_cancel"):
+		set_menu(not menu_open)
+	elif menu_open:
+		pass
 	elif e is InputEventMouseMotion and captured:
 		rotation.y -= e.relative.x * 0.003
 		pitch = clampf(pitch - e.relative.y * 0.003, -1.55, 1.55)
@@ -93,8 +105,6 @@ func _unhandled_input(e: InputEvent) -> void:
 			slot = posmod(slot - 1, Inventory.HOTBAR)
 		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			slot = posmod(slot + 1, Inventory.HOTBAR)
-	elif e.is_action_pressed("ui_cancel"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	elif e is InputEventKey and e.pressed and not e.echo:
 		if e.physical_keycode >= KEY_0 and e.physical_keycode <= KEY_9:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
@@ -105,7 +115,7 @@ func _unhandled_input(e: InputEvent) -> void:
 				inv.add(Items.ids[n], TEST_KIT[n])
 			say("kit de teste")
 		elif e.physical_keycode == KEY_F5:
-			say("jogo salvo" if SaveGame.save(world, self, clock) == OK else "erro ao salvar")
+			say("jogo salvo" if SaveGame.save_all(world, self, clock) == OK else "erro ao salvar")
 
 
 func _physics_process(delta: float) -> void:
@@ -122,7 +132,7 @@ func _process(_delta: float) -> void:
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
 		highlight.global_position = Vector3(target.pos) + Vector3.ONE * 0.5
-	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not inventory_open \
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not inventory_open and not menu_open \
 			and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and cooldown <= 0:
 		use_item()
 

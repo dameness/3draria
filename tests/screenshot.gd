@@ -21,10 +21,9 @@ var wait := 0
 
 
 func _initialize() -> void:
-	main = load("res://main.tscn").instantiate()
+	main = load("res://game.tscn").instantiate()
 	world = main.get_node("World")
 	player = main.get_node("Player")
-	player.load_save = false
 	root.add_child(main)
 	DirAccess.make_dir_recursive_absolute("res://textures")
 

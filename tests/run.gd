@@ -15,8 +15,8 @@ func check(cond: bool, msg: String) -> void:
 
 func _init() -> void:
 	check(ProjectSettings.get_setting("rendering/renderer/rendering_method") == "gl_compatibility", "renderer Compatibility")
-	var m: Node = load("res://main.tscn").instantiate()
-	check(m is Node3D, "main.tscn instancia um Node3D")
+	var m: Node = load("res://game.tscn").instantiate()
+	check(m is Node3D, "game.tscn instancia um Node3D")
 	m.free()
 	Blocks.load_pack()
 	Items.load_pack()
@@ -25,10 +25,9 @@ func _init() -> void:
 	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
-	main = load("res://main.tscn").instantiate()
+	main = load("res://game.tscn").instantiate()
 	world = main.get_node("World")
 	player = main.get_node("Player")
-	player.load_save = false
 	root.add_child(main)
 	started = Time.get_ticks_msec()
 
@@ -201,29 +200,45 @@ func test_drops():
 
 
 func test_save():
-	var path := "user://test_save.dat"
+	var saved_dirs := [SaveGame.players_dir, SaveGame.worlds_dir]
+	SaveGame.players_dir = "user://test_players/"
+	SaveGame.worlds_dir = "user://test_worlds/"
+	var pp := SaveGame.create_player("Ana")
+	var wp := SaveGame.create_world("Mundo 1", 777)
+	check(pp != "" and wp != "", "criar personagem e mundo")
+	check(SaveGame.create_player("Ana") == "" and SaveGame.create_world("  ", 1) == "", "nome repetido ou vazio é recusado")
+	check(SaveGame.list(SaveGame.players_dir).map(func(s): return s.name) == ["Ana"], "lista de personagens")
+	check(SaveGame.list(SaveGame.worlds_dir)[0].info.seed == 777, "mundo guarda a seed")
 	var w := floor_world()
 	var p := make_player(w)
+	check(not SaveGame.load_player(p, pp), "personagem novo: jogo dá os itens iniciais")
 	w.set_block(20, 11, 20, Blocks.ids.dirt)
 	p.inv.add(Items.ids.iron_pickaxe, 1)
 	p.inv.add(Items.ids.stone, 42)
 	p.hp = 37
-	p.position = Vector3(21.5, 11, 22.5)
+	p.spawn = Vector3(21.5, 11, 22.5)
 	p.clock.time = 123.0
-	check(SaveGame.save(w, p, p.clock, path) == OK, "salvar")
-	var w2 := floor_world()
+	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
+	var w2: Node3D = load("res://scripts/world.gd").new()
+	w2.gen = WorldGen.new(1)
 	var p2 := make_player(w2)
-	check(SaveGame.load_into(w2, p2, p2.clock, path), "carregar")
-	check(w2.get_block(20, 11, 20) == Blocks.ids.dirt and w2.world_seed == w.world_seed, "bloco editado volta")
-	check(p2.inv.total(Items.ids.stone) == 42 and p2.inv.total(Items.ids.iron_pickaxe) == 1, "inventário volta")
-	check(p2.hp == 37 and p2.position == p.position and p2.clock.time == 123.0, "vida, posição e hora voltam")
-	DirAccess.remove_absolute(path)
+	check(SaveGame.load_world(w2, p2, p2.clock, wp) and SaveGame.load_player(p2, pp), "carregar")
+	check(w2.get_block(20, 11, 20) == Blocks.ids.dirt and w2.world_seed == w.world_seed, "bloco editado volta, seed do mundo")
+	check(p2.inv.total(Items.ids.stone) == 42 and p2.inv.total(Items.ids.iron_pickaxe) == 1 and p2.hp == 37, "inventário e vida voltam")
+	check(p2.spawn == p.spawn and p2.clock.time == 123.0, "spawn e hora do mundo voltam")
+	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
+	SaveGame.delete(pp)
+	check(SaveGame.list(SaveGame.players_dir).is_empty(), "apagar personagem")
+	for d in [SaveGame.players_dir, SaveGame.worlds_dir]:
+		for f in DirAccess.get_files_at(d):
+			DirAccess.remove_absolute(d + f)
+	SaveGame.players_dir = saved_dirs[0]
+	SaveGame.worlds_dir = saved_dirs[1]
 	free_player(p)
 	free_player(p2)
 	w.free()
 	w2.free()
 	return true
-
 
 # Sprites da wiki: com arquivo usa o recorte/ícone original; sem arquivo cai no procedural. Não depende de rede.
 func test_wiki_sprites():
