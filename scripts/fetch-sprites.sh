@@ -12,8 +12,9 @@ while read -r host file url_name; do
 	url="https://$host/images/$url_name.png"
 	curl -fsSLI -o /dev/null "$url" 2>/dev/null || url=$(curl -fsSL "https://$host/api.php?action=query&titles=File:$url_name.png&redirects=1&prop=imageinfo&iiprop=url&format=json&formatversion=2" \
 		| python3 -c 'import sys,json; print(json.load(sys.stdin)["query"]["pages"][0]["imageinfo"][0]["url"])' 2>/dev/null || echo "$url")
-	if curl -fsSL -o "$OUT/$file.png.tmp" "$url"; then
-		mv "$OUT/$file.png.tmp" "$OUT/$file.png"
+	# A wiki responde 429 se baixar rápido demais: tenta de novo com espera.
+	if curl -fsSL --retry 6 --retry-delay 3 --retry-all-errors -o "$OUT/$file.png.tmp" "$url"; then
+		mv "$OUT/$file.png.tmp" "$OUT/$file.png"; sleep 0.4
 	else
 		rm -f "$OUT/$file.png.tmp"; echo "falhou: $file"; fail=1
 	fi

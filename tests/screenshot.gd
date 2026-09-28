@@ -2,6 +2,7 @@ extends SceneTree
 # Prints do jogo renderizado de verdade (OpenGL por software), para conferir o visual sem GPU:
 #   xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd
 # Salva textures/shot_*.png (fora do git). Cada cena: posição/olhar do jogador, hora, item na mão, inventário.
+# Só algumas cenas: acrescente `-- parte_do_nome ...` (ex.: `-- ceu noite`). "aim": "sun"|"moon" mira o astro.
 
 const SHOTS := [
 	{"name": "spawn", "look": Vector2(0, -0.15)},
@@ -17,8 +18,12 @@ const SHOTS := [
 	{"name": "noite_tochas", "time": 1100.0, "torches": true, "look": Vector2(0, -0.3), "third": true},
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
 	{"name": "chefe_fase2", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "phase2": true, "third": true},
+	{"name": "ceu_manha", "time": 25.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.12},
+	{"name": "ceu_por_do_sol", "time": 850.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.08},
+	{"name": "ceu_lua", "time": 1000.0, "look": Vector2.ZERO, "aim": "moon", "tilt": -0.1},
 ]
 
+var shots := []
 var main: Node
 var world: Node3D
 var player: Node3D
@@ -32,24 +37,26 @@ func _initialize() -> void:
 	player = main.get_node("Player")
 	root.add_child(main)
 	DirAccess.make_dir_recursive_absolute("res://textures")
+	var only := Array(OS.get_cmdline_user_args())
+	shots = SHOTS.filter(func(s): return only.is_empty() or only.any(func(o): return s.name.contains(o)))
 
 
 func _process(_delta: float) -> bool:
 	if not world.is_idle() or world.center.x < 0:
 		return false
 	if wait == 0:
-		_setup(SHOTS[shot])
+		_setup(shots[shot])
 	wait += 1
 	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
-		if SHOTS[shot].has("swing") and wait > 12:
-			player.cooldown = SHOTS[shot].swing
+		if shots[shot].has("swing") and wait > 12:
+			player.cooldown = shots[shot].swing
 		return false
 	var img := root.get_texture().get_image()
-	img.save_png("res://textures/shot_%s.png" % SHOTS[shot].name)
-	print("salvo textures/shot_%s.png" % SHOTS[shot].name)
+	img.save_png("res://textures/shot_%s.png" % shots[shot].name)
+	print("salvo textures/shot_%s.png" % shots[shot].name)
 	shot += 1
 	wait = 0
-	if shot >= SHOTS.size():
+	if shot >= shots.size():
 		quit()
 		return true
 	return false
@@ -74,7 +81,13 @@ func _setup(s: Dictionary) -> void:
 	player.rotation.y = s.look.x
 	player.pitch = s.look.y
 	player.cam.rotation.x = s.look.y
-	player.get_node("../DayNight").time = s.get("time", 300.0)
+	var clock: Node = player.get_node("../DayNight")
+	clock.time = s.get("time", 300.0)
+	if s.has("aim"):
+		var sd: Vector3 = clock.sun_dir() * (1.0 if s.aim == "sun" else -1.0)
+		player.rotation.y = atan2(-sd.x, -sd.z)
+		player.pitch = asin(sd.y) + s.get("tilt", 0.0)
+		player.cam.rotation.x = player.pitch
 	player.inventory_open = s.get("inventory", false)
 	player.inv.add(Items.ids.wood, 25)
 	player.inv.add(Items.ids.stone, 40)

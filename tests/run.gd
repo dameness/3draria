@@ -135,6 +135,14 @@ func test_day_night():
 	c.time = c.DAY_SECONDS
 	check(c.is_night() and c.clock() == "19:30", "noite começa às 19:30")
 	check(c.CYCLE == 24 * 60, "ciclo de 24 min")
+	c.time = 0
+	check(c.sun_dir().x > 0.9 and absf(c.sun_dir().y) < 0.01, "sol nasce a leste")
+	c.time = c.DAY_SECONDS / 2
+	check(c.sun_dir().y > 0.9, "sol a pino no meio do dia")
+	c.time = c.DAY_SECONDS - 0.01
+	check(c.sun_dir().x < -0.9, "sol se põe a oeste")
+	c.time = c.DAY_SECONDS + c.NIGHT_SECONDS / 2
+	check(c.sun_dir().y < -0.9, "sol sob o mundo à meia-noite (a lua fica do lado oposto)")
 	c.free()
 	return true
 
