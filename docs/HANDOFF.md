@@ -1,73 +1,102 @@
 # Contexto para continuar numa sessão nova
 
-Repo `dameness/3draria`, branch **`claude/upbeat-ramanujan-ab3kfm`** (commit e push nela; **não abra PR** sem o dono pedir).
-Jogo voxel 3D com o conteúdo e a progressão do Terraria (Godot 4.7.2, GDScript, renderer Compatibility). Uso pessoal.
-O dono joga num PC Ubuntu modesto e testa localmente; a sessão remota **não tem GPU nem tela**: valide com testes
-headless e com prints via Xvfb (e **olhe as imagens**). Respostas curtas, em português, com guia de teste no fim.
+Repo `dameness/3draria`, branch **`claude/upbeat-ramanujan-ab3kfm`** (commit e push nela; **não abra PR** sem o dono pedir; se o ambiente
+sugerir outra branch, siga o dono). Jogo voxel 3D com o conteúdo e a progressão do Terraria (Godot 4.7.2, GDScript, renderer
+Compatibility). Uso pessoal. O dono joga num PC Ubuntu modesto e testa localmente; a sessão remota **não tem GPU nem tela**: valide com
+testes headless e com prints via Xvfb (e **olhe as imagens**). Respostas curtas, em português, com guia de teste no fim.
 
-Leia antes: `CLAUDE.md` (princípios e **diretrizes do dono**), `data/CLAUDE.md`, `docs/ROADMAP.md`, `docs/VISUAL.md`, `docs/UI.md`.
+## Prompt pronto para colar numa sessão nova
+```
+Repo dameness/3draria, branch claude/upbeat-ramanujan-ab3kfm (commit e push nela; NÃO abra PR). Jogo voxel 3D em Godot 4.7.2 com o
+conteúdo do Terraria; o dono testa local num PC Ubuntu modesto, você não tem GPU: valide com testes headless e prints via xvfb, e olhe
+as imagens. Leia primeiro CLAUDE.md (diretrizes do dono), docs/HANDOFF.md (estado, pendências, armadilhas), docs/UI.md, docs/VISUAL.md
+e docs/ROADMAP.md; rode scripts/update.sh antes de tudo.
+Já feito (ver HANDOFF): bugs do playtest v8 (água que flui, nado, boneco, clarão vermelho, câmera 3ª pessoa), menu com o mundo real ao
+fundo + personagem, partículas, mineração com rachaduras, arco do golpe, braço em 1ª pessoa, slime legível.
+Falta, em ordem: 3) GUI restante do Terraria (docs/UI.md) e mais animação na GUI (o dono acha estática); 4) Tarefa 2 (Corrupção/Carmesim,
+Eater of Worlds, Brain of Cthulhu, Nightmare Pickaxe, Molten, King Slime, meteorito, Skeletron + masmorra, Wall of Flesh → F6) com números
+da wiki via scripts/wiki.py, um commit por subpasso; e as pendências menores do HANDOFF.
+Regras do dono: Terraria em 3D, não copiar Minecraft (pode se basear); GUI e jogabilidade como as do Terraria; muita animação; desempenho
+bom (manter). Ao fim de cada passo: testes verdes (.tools/godot --headless -s tests/run.gd), commit, push, e diga como rebuildar
+(git pull && scripts/update.sh && .tools/godot) e se precisa de mundo novo. Respostas curtas, em português.
+```
 
 ## Comandos
 ```sh
 scripts/update.sh                              # após git pull: Godot + sprites + cache de classes (rodar --import após novo class_name)
-.tools/godot --headless -s tests/run.gd        # testes (saída != 0 em falha)
-xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd -- spawn inventario   # prints; sem argumentos = todos; nomes filtram
-xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd                        # menu → jogo → salvar → recarregar
-xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/character_preview.gd [-- copper iron]  # personagens/armaduras
-scripts/wiki.py items|recipes|npcs "Nome"      # números oficiais (curl na API; a wiki dá 429: o script já tenta de novo)
+.tools/godot --headless -s tests/run.gd        # testes (saída != 0 em falha; ~10 s)
+xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd -- spawn minera arco   # prints em textures/shot_*.png; sem argumentos = todos (~90 s)
+xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd                        # menu → jogo → salvar → recarregar (+ prints textures/menu_*.png)
+xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/character_preview.gd -- gold big walk item:iron_broadsword   # boneco: sets, big, walk, swing, seq (golpe em 5 quadros), item:nome, name:Fulano
+scripts/wiki.py items|recipes|npcs "Nome"      # números oficiais (a wiki dá 429: o script já tenta de novo); páginas com curl na API (WebFetch é bloqueado)
 ```
 Sempre ao fim de um passo: testes verdes, commit, push (na branch acima) e um guia curto de playtest **com "como rebuildar"**
-(`git pull && scripts/update.sh && .tools/godot`) e se **precisa de mundo novo** (mudou a geração).
+(`git pull && scripts/update.sh && .tools/godot`) e se **precisa de mundo novo** (mudou `world_gen.gd`; até aqui **não precisa**: os ids novos
+de líquido entram no fim de `blocks.json` e saves antigos continuam válidos).
 
-## Feito (tudo commitado e testado)
-- **V6** céu procedural (sol, lua, estrelas, nuvens, montanhas; névoa escura em caverna, vermelha no submundo).
-- **V7** mundo: relevo com serras/terraços, lagos com praia, árvores do Terraria, capim/flores/cogumelos, água e lava,
-  oclusão ambiente por vértice; mesher 2× mais rápido; cada chunk gerado uma vez só; nado e dano de lava.
-- **V8** GUI no layout do Terraria (Tab/E abre; hotbar = 1ª fileira do inventário, criação em coluna à esquerda, equipamento
-  à direita, item preso ao cursor, lixeira, dicas por raridade), números de dano, tela azul/vermelha em água/lava.
-- Personagem chibi arredondado com contorno e armaduras por peça (na paleta do ícone); **pausa de verdade** (Esc);
-  golpe acerta no impacto da animação (arco na altura do corpo ou cone 3D); câmera balança/treme; tocha tremula.
-- `fetch-sprites.sh` respeita o 429 da wiki; `scripts/update.sh`; docs/UI.md; prints em `docs/img/antes_depois_*.png`.
+## Feito (tudo commitado, testado e enviado)
+- **V6–V8** (sessões anteriores): céu procedural, mundo (serras, lagos, árvores), GUI no layout do Terraria, personagem e armaduras por peça.
+- **Bugs do playtest v8** (`158e957`): *água* agora flui (`liquid.gd`: níveis 1–8 em ids `water_1..7`/`lava_1..7`, cai e espalha conservando
+  o volume, só reage a edições; malha com altura por nível e degraus); *jogador* vadeia até a cintura (anda/pula normal) e nada abaixo
+  disso, e junto da margem Espaço dá um pulo inteiro (sai de poça de 1 bloco e de água funda); *boneco* com cabeça menor, ombros/mangas
+  cobrindo o topo, braços com pivô no ombro (`PlayerModel`), golpe e braços balançando **para a frente** (o sinal antigo era invertido),
+  item na mão com o plano do sprite no plano do golpe, aparência por nome (`SaveGame.look_for`); *inimigo fica vermelho* ao levar golpe
+  (a sobreposição nunca era ligada: lógica de transição invertida); *"ver abaixo da terra"* = câmera de 3ª pessoa atravessando o chão
+  (raio só para trás, sem o ombro): agora raio dos olhos até o ponto da câmera + rede de segurança `lens_clear`, com teste de 1500 ângulos
+  (o código antigo falhava em 137 deles); `near` da câmera 0,02 → 0,05 (mais precisão de profundidade).
+- **Prioridade 1 — menu** (`ddeab39`): `menu.gd` com o mundo real ao fundo (World + DayNight, distância 4, dia 9× mais rápido, câmera em
+  órbita da planície de nascimento), logo 3DRARIA em 3 camadas, botões só texto que crescem no mouse, painel à direita (lista com nome/info/
+  apagar, criar), personagem escolhido de pé à esquerda (muda ao passar o mouse na lista e ao digitar nome novo), Esc volta, entra do preto.
+- **Prioridade 2** (`5899911`): `fx.gd` (partículas: poeira, lascas, faíscas, gotas, nuvem, respingo, bolhas) usadas ao minerar, ferir/matar,
+  andar, pousar, entrar na água; **mineração como o Terraria** (wiki *Pickaxe power*: dano por golpe = poder × `mine` do bloco, 100 quebra;
+  terra 2 golpes com cobre, pedra 3, grama 3; grama absorve um golpe; a picareta também fere inimigos; o golpe cai no impacto da animação)
+  com **rachaduras em 4 estágios** (`block_crack.gd`, somem após 2,5 s sem golpear); **arco do golpe** (`trail.gd`) em 1ª e 3ª pessoa;
+  **braço em 1ª pessoa** preso ao ombro (`held_item.gd`) com inércia ao girar, balanço ao andar e empurrão ao colocar bloco; **slime legível**
+  (contorno escuro, miolo, olhos, sombra) e `blue_slime` (25 de vida, 7 de dano, defesa 2, da wiki); cor das gotas por inimigo (`blood`).
 
-## Feedback do dono no playtest (v6/v7) — manter em mente sempre
-- v6: quase sem animação; Tab não abria o inventário (corrigido); faltava jogabilidade estilo Terraria; armaduras/personagem
-  pareciam Minecraft e feios (refeitos); **desempenho bom** (manter e pedir o FPS de volta).
-- v7: pause não funcionava (agora pausa a árvore); "ainda sem animações"; "luta meio estranha" (ajustei acerto e arco; **peça
-  detalhes**: acertar, recuo, velocidade, dano, IA?).
-- Quer **crafting, menus e GUI nos mesmos lugares e com a mesma interatividade do Terraria** (docs/UI.md) e **muita animação**.
+## Feedback do dono (manter em mente sempre)
+- v6: quase sem animação; Tab não abria o inventário (corrigido); faltava jogabilidade estilo Terraria; armaduras/personagem pareciam
+  Minecraft (refeitos); **desempenho bom** (manter e pedir o FPS de volta).
+- v7: pause não funcionava (corrigido); "ainda sem animações"; "luta meio estranha" (ajustei acerto e arco; **peça detalhes**).
+- v8 (último): água não se espalhava e não dava para sair pulando de 1 bloco; braços separados do corpo, cabeça grande, camiseta não cobria
+  o topo; monstro não ficava vermelho; sem animação de quebrar bloco/árvore; dava para ver abaixo da terra em certos ângulos; iluminação boa;
+  mobs "meio estranhos ainda, mas tudo bem"; GUI "um pouco estática, mas tudo bem"; **NPCs ainda não achou (não existem: roadmap)**; GUI de
+  entrada estranha (refeita). Tudo isso já foi tratado exceto GUI estática e NPCs. **Peça um playtest** dessas correções, principalmente:
+  água (cavar ao lado de um lago), sair da água, o boneco em 3ª pessoa (V), o menu, o FPS (as partículas e o fluxo são novos).
+- Regras: Terraria em 3D, nunca Minecraft; GUI e jogabilidade como as do Terraria; muita animação; desempenho bom; conteúdo é dado (JSON).
 
-## Pendente da Tarefa 1 (visual), em ordem
-1. **Menu com o mundo de verdade ao fundo** (`menu.gd`, `menu.tscn`): WorldEnvironment + `world.gd` (render distance 4) + `day_night.gd`
-   (tempo acelerado) + Camera3D orbitando devagar a planície de nascimento (128,128; sem árvores num raio de 26) e o `PlayerModel`
-   do personagem escolhido (com armadura, via um Dummy como em `tests/character_preview.gd`); logo grande com contorno;
-   botões só texto (`Ui.menu_button`); telas de personagem/mundo em painel à direita com o avatar à esquerda (`cam.h_offset`).
-   Manter `box`, `show_players`, `pick_player`, `play` (tests/menu_flow.gd usa).
-2. **Partículas e animação** (`entities.gd` tem `spawn_text`; criar `spawn_dust`/faíscas com `CPUParticles3D`): poeira na
-   cor do bloco ao minerar (média do tile do atlas), faíscas ao acertar, nuvem ao morrer, pegadas, respingo na água.
-   Arco do golpe (crescente) para toda arma de swing em 1ª e 3ª pessoa (unificar o rastro de `held_item.gd` num componente
-   com pontos em espaço global); braço em 1ª pessoa; inércia da mão ao girar; poses de 3ª pessoa já existem.
-3. **Mineração com progresso** (dureza por bloco, rachaduras, tempo por poder de picareta) — hoje quebra na hora.
-4. **Inimigos legíveis**: o slime (gel verde translúcido) some no gramado; contorno/núcleo mais escuro; idle dos olhos;
-   zumbi com a pose nova. Rever IA/knockback se o dono descrever a "luta estranha".
-5. **GUI restante** (docs/UI.md, "Pendente"): minimapa, buffs, moedas e slots de munição, acessórios/vanity/dye, baús,
-   favoritar (Alt+clique), ordenar, Shift+clique, criação em lista/martelo.
-6. Fechar: `docs/VISUAL.md` já descreve V6–V8; acrescente V8b/V9 e atualize prints.
-
-## Tarefa 2 (passo 4 do roadmap, fecha a pré-hardmode) — nada feito ainda; sempre com os números da wiki
-Corrupção e Carmesim (blocos, Shadow Orb/Crimson Heart, altares) com Eater of Worlds e Brain of Cthulhu; escamas → Nightmare
-Pickaxe → pedra infernal (65) → equipamento Molten (Hellforge, obsidiana); King Slime; meteorito; Skeletron com a masmorra;
-Wall of Flesh, que abre a F6 (hardmode). Conteúdo é **dado** (JSON em `data/base/`) lido por sistemas genéricos; IA nova = um
-`match` em `enemy.gd`; novos blocos entram **no fim** de `blocks.json` (id = posição). Um subagente de pesquisa da wiki caiu por
-limite de API: refaça a coleta (scripts/wiki.py + `curl` da API `action=parse&prop=wikitext`; WebFetch é bloqueado; respeite o 429).
-Um commit por subpasso (bioma+EoW, BoC, Nightmare/Molten, King Slime+meteorito, Skeletron+masmorra, WoF), cada um com
-testes e prints.
+## Falta, em ordem
+### 3) GUI restante (docs/UI.md, "Pendente") + mais animação
+Minimapa, buffs, moedas e slots de munição, acessórios/vanity/dye, baús, favoritar (Alt+clique), ordenar, Shift+clique, criação em lista/martelo.
+O dono acha a GUI **estática**: animar (slot que cresce/brilha ao passar o mouse, coração que pulsa com pouca vida, item pego voando até o
+slot, abrir/fechar do inventário deslizando, dica com fade, moedas girando). Estilo em `ui.gd`, layout em `hud.gd` (docs/UI.md tem as medidas).
+### 4) Tarefa 2 (fecha a pré-hardmode) — nada feito; sempre com os números da wiki
+Corrupção e Carmesim (blocos, Shadow Orb/Crimson Heart, altares) com Eater of Worlds e Brain of Cthulhu; escamas → Nightmare Pickaxe → pedra
+infernal (65) → equipamento Molten (Hellforge, obsidiana); King Slime; meteorito; Skeletron com a masmorra; Wall of Flesh, que abre a F6
+(hardmode). Conteúdo é **dado** (JSON em `data/base/`) lido por sistemas genéricos; IA nova = um `match` em `enemy.gd`; novos blocos entram **no
+fim** de `blocks.json` (id = posição). Um commit por subpasso (bioma+EoW, BoC, Nightmare/Molten, King Slime+meteorito, Skeletron+masmorra, WoF),
+cada um com testes e prints. Já existe `mine` por bloco (dureza): Ebonstone/Crimstone/Pearlstone/Hellstone ×0,5, demonita/crimtane e obsidiana
+com poder mínimo 55, meteorito 50 (wiki *Pickaxe power*). Água + lava deve formar obsidiana (hoje não reagem: `liquid.gd`, comentário `ponytail:`).
+### Pendências menores
+- Árvores: no Terraria só machado corta; hoje qualquer picareta quebra tronco (`mine` 1,5). Falta Copper Axe etc. (poder de machado).
+- Baldes (vazio/água/lava) para o dono testar líquidos; pressão em tubos em U; sons.
+- Criação de personagem com cores (hoje a aparência vem do hash do nome); dificuldade.
+- Olho demoníaco/inimigos: idle (piscar). Peça detalhes da "luta estranha" e dos "mobs meio estranhos" ao dono.
+- NPCs de vila (casas, lojas), ver docs/ROADMAP.md.
+- Se o dono ainda enxergar "abaixo da terra" **em 1ª pessoa**, peça posição/ângulo (a causa achada foi só a câmera da 3ª pessoa).
 
 ## Armadilhas e descobertas
-- **Neste Godot, chamada de função GDScript disputa uma trava entre threads** (arrays, operadores e métodos nativos não):
-  código de thread (`world_gen.gd`, `chunk_mesher.gd`) não chama função no laço quente. `WorkerThreadPool.add_task` sem
-  prioridade alta usa só ~30% das threads. Sem GPU o FPS dos prints é de CPU e não vale.
+- **Godot: `rotation.x` positivo balança braço/perna para a FRENTE** no modelo (olha para -Z); vários sinais estavam invertidos. Pivô de
+  braço = ombro. Item na mão: plano do sprite = plano do golpe (base `Basis(b.cross(RIGHT), b, RIGHT)` em `_show_held`).
+- `material_overlay` funciona no Compatibility; o problema do "clarão" era lógica (só detectava a transição de desligar).
+- Chamada de função GDScript disputa uma trava entre threads: código de thread (`world_gen.gd`, `chunk_mesher.gd`) não chama função no laço
+  quente. `WorkerThreadPool.add_task` sem prioridade alta usa só ~30% das threads. Sem GPU o FPS dos prints é de CPU e não vale.
+- Líquidos: `Blocks.liquid_kind/level/level_ids`; o fluxo grava com `world.set_block(..., false)` e acorda vizinhos; teste com
+  `world.liquid.settle(world)`; ~1 ms por geração num lago 18×18×3. Chunk não gerado conta como parede.
 - Mudou a geração (`world_gen.gd`)? Mundos salvos ficam com emendas: peça mundo novo. Save v2; `Inventory.SIZE` = 50.
 - Novo `class_name`: rode `.tools/godot --headless --import` (senão "Identifier ... not declared"; `update.sh` faz).
-- `ready` é nome reservado de Node; `PackedColorArray` não tem `filter`; `Slot` (botão com dica em BBCode) é classe interna do `hud.gd`.
-- O classificador de comandos do ambiente às vezes falha de forma transitória: tente de novo / faça edições e volte.
-- `textures/` e `assets/wiki/` ficam fora do git; `docs/img/` tem os prints de antes/depois.
+- GDScript: `var a := x * p[2]` com `p` sem tipo não infere (use `var a: float = ...`); `ready` é nome reservado de Node; `Slot` é classe interna do `hud.gd`.
+- Edições por script Python: confira a indentação (tabs) e use `assert old in s`; um `replace` que não casa passa em silêncio.
+- Prints rodam a ~8 quadros/s: partículas (0,5–0,9 s) e arco (0,17 s) precisam ser disparados 1–4 quadros antes do print (ver `tests/screenshot.gd`).
+- O classificador de comandos do ambiente às vezes falha de forma transitória: tente de novo.
+- `textures/` e `assets/wiki/` ficam fora do git; `docs/img/` tem os prints de antes/depois (V6–V8).

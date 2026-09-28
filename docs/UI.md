@@ -32,4 +32,4 @@ Referência: https://terraria.wiki.gg/wiki/Inventory. Medidas em pixels com a in
 
 ## Estado no 3draria (atualize ao mexer)
 Ver `scripts/hud.gd` e `scripts/inventory.gd`. Pendente da spec: moedas, munição em slots, acessórios/vanity/dye, minimapa,
-buffs, baús, favoritar, ordenar.
+buffs, baús, favoritar, ordenar. O dono acha a GUI estática: falta animação (hover, corações, item voando ao pegar, abrir/fechar).

@@ -32,10 +32,10 @@ Pronto quando: testes carregam items/recipes/ores de `data/base/`, validam refer
 - Asas, ganchos, acessórios (slots na GUI) e reforja.
 - NPCs de vila (casas, lojas, diálogos) e todos os biomas do Terraria (selva, neve, deserto, oceano, cogumelo...).
 - Hardmode (F6) e, por fim, o Calamity (F7) em data/calamity/.
-- Jogabilidade como a do Terraria: mineração com tempo e rachaduras por dureza, queda com dano, minimapa, buffs, moedas
-  e slots de munição, baús, favoritar/ordenar (docs/UI.md).
+- Jogabilidade como a do Terraria: mineração com tempo e rachaduras por dureza ✅, água que flui ✅; falta queda com dano, machados para
+  árvores, baldes, minimapa, buffs, moedas e slots de munição, baús, favoritar/ordenar (docs/UI.md).
 
-## Revisão gráfica e GUI (V6–V9) — V6 ✅ V7 ✅ V8 ✅ (falta playtest); V8b menu com fundo 3D e V9 partículas/arco do golpe: pendentes
+## Revisão gráfica e GUI (V6–V9) — V6 ✅ V7 ✅ V8 ✅ V8b menu com o mundo ao fundo ✅ V9 partículas/arco/braço/rachaduras ✅ (falta playtest)
 Detalhes e motivos em docs/VISUAL.md; contexto para continuar em docs/HANDOFF.md.
 
 ## F4 Sobrevivência ✅ (falta playtest)
