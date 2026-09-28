@@ -1,0 +1,6 @@
+# Godot
+.godot/
+*.import
+export_presets.cfg
+# Binário do Godot baixado por scripts/setup-godot.sh
+.tools/
