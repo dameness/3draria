@@ -393,3 +393,5 @@ com troco), Nurse cura o que falta por 1 cobre/ponto. Sem casa/moradia (fica em 
 - Poção presa ao cursor + clique esquerdo fora dos painéis bebe (feito, `player.consume(_, true)`).
 - Descrições dos itens não idênticas às do Terraria: conferir tooltip a tooltip com a wiki (`ui.gd item_tip`) — pendente.
 - FPS bom; Life Crystal e Mana Star funcionam.
+- Feito (sessão 4): Eater of Souls, Crimera, Voodoo Demon, Hellbat, Pixie e Unicorn com o sprite da wiki; Menu de Configurações no layout do Terraria (Geral/Vídeo/Controle); "Reiniciar mundo" no F9 do mundo de teste.
+- Pendente: aparência do personagem e das armaduras ("ainda estranha") — comparar com o sprite do jogador da wiki; menu principal/lista de personagens/mundos já seguem as referências do dono.

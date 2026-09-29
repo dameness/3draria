@@ -608,24 +608,54 @@ func _build_boss() -> void:
 	root.add_child(boss_bar)
 
 
-# Configurações (o botão do inventário): pausa o jogo; o que se muda vale na hora e fica em user://settings.cfg (Settings).
+# Configurações (o botão do inventário), no layout do Menu de Configurações do Terraria: categorias à esquerda, opções à direita.
+# Pausa o jogo; o que se muda vale na hora e fica em user://settings.cfg (Settings).
 func _build_pause() -> void:
 	pause = PanelContainer.new()
 	pause.set_anchors_preset(Control.PRESET_CENTER)
 	pause.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	pause.grow_vertical = Control.GROW_DIRECTION_BOTH
-	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(360, 0)
-	box.add_theme_constant_override("separation", 8)
-	box.add_child(_label("Configurações", 30, HORIZONTAL_ALIGNMENT_CENTER))
-	_setting(box, "Distância de renderização", Settings.DISTANCE.x, Settings.DISTANCE.y, 1, " chunks", func(): return world.render_distance, _set_distance)
-	_setting(box, "Volume", 0, 100, 5, "%", func(): return Settings.volume * 100.0, func(v: float): Settings.volume = v / 100.0)
-	_setting(box, "Sensibilidade do mouse", Settings.SENS.x * 100, Settings.SENS.y * 100, 5, "%", func(): return Settings.mouse_sens * 100.0, func(v: float): Settings.mouse_sens = v / 100.0)
-	for b in [["Continuar", func(): player.set_menu(false)], ["Salvar e sair", _save_and_quit]]:
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 10)
+	outer.add_child(_label("Menu de Configurações", 22, HORIZONTAL_ALIGNMENT_CENTER))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 14)
+	var cats := VBoxContainer.new()
+	cats.custom_minimum_size = Vector2(190, 0)
+	cats.add_theme_constant_override("separation", 6)
+	var pages := PanelContainer.new()
+	pages.custom_minimum_size = Vector2(400, 250)
+	var pages_box := VBoxContainer.new()
+	pages_box.add_theme_constant_override("separation", 8)
+	pages.add_child(pages_box)
+	var page_nodes := {}
+	var cat_buttons := {}
+	var show_page := func(name: String):
+		for k in page_nodes:
+			page_nodes[k].visible = k == name
+			cat_buttons[k].add_theme_color_override("font_color", Ui.GOLD if k == name else Color.WHITE)
+	for c in ["Geral", "Vídeo", "Controle"]:
+		var page := VBoxContainer.new()
+		page.add_theme_constant_override("separation", 8)
+		page.add_child(_label({"Geral": "Volume", "Vídeo": "Vídeo", "Controle": "Controle"}[c], 18, HORIZONTAL_ALIGNMENT_CENTER))
+		pages_box.add_child(page)
+		page_nodes[c] = page
+		var cb := Ui.menu_button(c)
+		cb.pressed.connect(func(): show_page.call(c))
+		cats.add_child(cb)
+		cat_buttons[c] = cb
+	_setting(page_nodes["Geral"], "Som", 0, 100, 5, "%", func(): return Settings.volume * 100.0, func(v: float): Settings.volume = v / 100.0)
+	_setting(page_nodes["Vídeo"], "Distância de renderização", Settings.DISTANCE.x, Settings.DISTANCE.y, 1, " chunks", func(): return world.render_distance, _set_distance)
+	_setting(page_nodes["Controle"], "Sensibilidade do mouse", Settings.SENS.x * 100, Settings.SENS.y * 100, 5, "%", func(): return Settings.mouse_sens * 100.0, func(v: float): Settings.mouse_sens = v / 100.0)
+	for b in [["Fechar Menu", func(): player.set_menu(false)], ["Salvar e Sair", _save_and_quit]]:
 		var btn := Ui.menu_button(b[0])
 		btn.pressed.connect(b[1])
-		box.add_child(btn)
-	pause.add_child(box)
+		cats.add_child(btn)
+	show_page.call("Geral")
+	row.add_child(cats)
+	row.add_child(pages)
+	outer.add_child(row)
+	pause.add_child(outer)
 	root.add_child(pause)
 
 

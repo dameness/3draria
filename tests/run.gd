@@ -2880,12 +2880,12 @@ func integration():
 			hud._process(0.1)
 			check(main.get_tree().paused and player.menu_open and not player.inventory_open and hud.pause.visible, "botão Configurações: pausa de verdade (a árvore para) e fecha o inventário")
 			var sliders: Array = hud.pause.find_children("*", "HSlider", true, false)
-			check(sliders.size() == 3 and sliders[0].value == world.render_distance, "Configurações: distância, volume e sensibilidade, já no valor atual")
-			sliders[0].value = 5
-			sliders[1].value = 50
+			check(sliders.size() == 3 and sliders[1].value == world.render_distance, "Configurações: som, distância e sensibilidade, já no valor atual")
+			sliders[1].value = 5
+			sliders[0].value = 50
 			sliders[2].value = 200
 			check(world.render_distance == 5 and Settings.render_distance == 5 and is_equal_approx(Settings.volume, 0.5) and is_equal_approx(Settings.mouse_sens, 2.0), "mexer nos controles aplica na hora")
-			sliders[0].value = 6
+			sliders[1].value = 6
 			Settings.volume = 1.0
 			Settings.mouse_sens = 1.0
 			var esc := InputEventAction.new()
