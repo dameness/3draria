@@ -356,6 +356,9 @@ func test_projectiles():
 	check(p.swing(Items.defs[Items.ids.enchanted_sword], eye, Vector3.RIGHT) == 0, "zumbi longe está fora do alcance da lâmina")
 	var beam: Node3D = ent.get_children().back()
 	check(beam.def.name == "enchanted_beam", "Enchanted Sword dispara o feixe dos dados")
+	beam._ready()
+	check(beam.get_children().any(func(c): return c is MeshInstance3D), "feixe da Enchanted Sword é o sprite extrudado em 3D")
+	check(beam.get_children().any(func(c): return c is CPUParticles3D and not c.local_coords), "projétil com brilho solta rastro de partículas no mundo")
 	run(beam, 1.0)
 	check(dmg_ok(45 - z1.hp, 23, 6), "feixe acerta longe com o dano da espada − defesa (%d)" % (45 - z1.hp))
 	z1.hp = 1000
@@ -370,8 +373,6 @@ func test_projectiles():
 	p.shoot(Items.defs[Items.ids.musket], eye, Vector3.RIGHT)
 	var bullet: Node3D = ent.get_children().back()
 	check(bullet.def.name == "musket_ball" and bullet.damage == 38 and p.inv.total(Items.ids.musket_ball) == 4, "Musket dispara a bala (31 + 7 de dano) e gasta 1 munição")
-	for pd in ent.projectiles.values():
-		check(not pd.get("trail", false) or pd.has("glow"), "%s: rastro usa a cor do brilho" % pd.name)
 	free_player(p)
 	w.free()
 	return true
@@ -2867,6 +2868,14 @@ func integration():
 			player._process(0)
 			var model: Node3D = player.get_node("Model")
 			check(player.cam.position.distance_to(Vector3(0, player.EYE, 0)) > 3.5 and model.visible and not hand.visible, "V: 3ª pessoa afasta a câmera e mostra o corpo")
+			player.use_len = 0.4
+			var arm_z: Array = []
+			for cd in [0.36, 0.04]:   # começo e fim do golpe
+				player.cooldown = cd
+				model._process(0.016)
+				arm_z.append(model.parts.arm_r.rotation.z)
+			player.cooldown = 0
+			check(arm_z[0] > 0.6 and arm_z[1] < -0.3, "golpe em 3ª pessoa é diagonal: braço abre à direita e termina cruzando o corpo (%s)" % [arm_z])
 			player.third_person = false
 			player._process(0)
 			check(player.cam.position == Vector3(0, player.EYE, 0) and not model.visible, "V de novo: volta à 1ª pessoa")
