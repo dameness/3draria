@@ -365,6 +365,11 @@ func test_projectiles():
 	var terra: Node3D = ent.get_children().back()
 	run(terra, 1.0)
 	check(z1.hp < 1000 and z2.hp < 45, "Terra Beam atravessa e acerta os dois zumbis")
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.musket_ball, 5)
+	p.shoot(Items.defs[Items.ids.musket], eye, Vector3.RIGHT)
+	var bullet: Node3D = ent.get_children().back()
+	check(bullet.def.name == "musket_ball" and bullet.damage == 38 and p.inv.total(Items.ids.musket_ball) == 4, "Musket dispara a bala (31 + 7 de dano) e gasta 1 munição")
 	free_player(p)
 	w.free()
 	return true
