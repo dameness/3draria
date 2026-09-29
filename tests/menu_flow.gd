@@ -98,6 +98,22 @@ func _process(_delta: float) -> bool:
 			var p: Node3D = scene.get_node("Player")
 			check(p.inv.total(Items.ids.gel) == 7 and p.inv.total(Items.ids.copper_pickaxe) == 1, "inventário voltou")
 			check(world.get_block(broken.x, broken.y, broken.z) == 0, "bloco quebrado continua quebrado")
+			scene.get_node("HUD")._save_and_quit()
+		9:   # o botão "Mundo de teste" da tela de mundos abre a arena de teste
+			check(scene.name == "Menu", "voltou ao menu")
+			scene.pick_player(SaveGame.list(SaveGame.players_dir)[0].path)
+			var button: Button = scene.box.find_children("", "Button", true, false).filter(func(b): return b.text == "Mundo de teste" and not b.is_queued_for_deletion()).front()
+			check(button != null, "a tela de mundos tem o botão Mundo de teste")
+			button.pressed.emit()
+		10:
+			var world: Node3D = scene.get_node("World")
+			if not world.is_idle() or world.center.x < 0:
+				return false
+			var p: Node3D = scene.get_node("Player")
+			check(world.test_world and scene.get_node("Entities").enemies.any(func(e): return e.display) and p.spawn.y == TestWorld.FLAT + 1, "o botão abre o mundo de teste com a vitrine")
+			check(SaveGame.list(SaveGame.worlds_dir).size() == 2 and SaveGame.test_world() == SaveGame.world_path, "o mundo de teste ficou salvo na lista (e abre o mesmo da próxima vez)")
+			p.rotation.y = 0.0
+			shot("5_teste")
 			print("fluxo de menu e save: " + ("OK" if failures == 0 else "%d falha(s)" % failures))
 			quit(1 if failures else 0)
 			return true

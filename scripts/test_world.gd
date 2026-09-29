@@ -94,7 +94,7 @@ static func build() -> void:
 			var pos := Vector3i(x, FLAT + 1, z)
 			if not taken.has(pos):
 				torches.append(pos)
-	labels.append({"pos": Vector3(CX + 0.5, FLAT + 5.2, CZ - 3.5), "text": "MUNDO DE TESTE  ·  F9: painel de atalhos", "size": 0.008})
+	labels.append({"pos": Vector3(CX + 0.5, FLAT + 4.0, CZ - 1.5), "text": "MUNDO DE TESTE  ·  F9: painel de atalhos", "size": 0.0055})
 	labels.append({"pos": Vector3(CX + 0.5, FLAT + 5.2, CHEST_Z + 0.5), "text": "BAÚS: todos os itens, por categoria", "size": 0.008})
 	labels.append({"pos": Vector3(CX + 0.5, FLAT + 5.2, BLOCK_Z - 11.5), "text": "TODOS OS BLOCOS (em ordem de id)", "size": 0.008})
 	labels.append({"pos": Vector3(CX + 0.5, FLAT + 5.2, SHOWCASE_Z - 3.5), "text": "VITRINE DE INIMIGOS (parados; ainda levam golpe)", "size": 0.008})
