@@ -3100,7 +3100,7 @@ func integration():
 			var clock: Node = main.get_node("DayNight")
 			check(world.test_world and pl.spawn.is_equal_approx(Vector3(128.5, TestWorld.FLAT + 1, 128.5)), "o jogador nasce na arena de teste")
 			var show: Array = ent.enemies.filter(func(e): return e.display)
-			var want: int = ent.defs.filter(func(d): return not d.get("boss") and d.ai != "npc").size()
+			var want: int = ent.defs.filter(func(d): return not d.get("boss") and not d.get("part") and d.ai != "npc").size()
 			check(show.size() == want and want >= 13, "vitrine com um de cada inimigo que não é chefe (%d)" % want)
 			var before: Array = show.map(func(e): return e.position)
 			for i in 30:
@@ -4184,7 +4184,7 @@ func test_wiki_review():
 	var p2 := make_player(w2)
 	var ent2: Node3D = p2.entities
 	p2.clock.time = 100.0
-	for spot in [[36, "cavern", ["black_slime", "cave_bat", "skeleton"]], [60, "underground", ["red_slime", "yellow_slime"]]]:
+	for spot in [[36, "cavern", ["black_slime", "cave_bat", "skeleton", "mother_slime", "undead_miner", "giant_worm", "giant_worm_body", "giant_worm_tail"]], [60, "underground", ["red_slime", "yellow_slime", "giant_worm", "giant_worm_body", "giant_worm_tail"]]]:
 		for x in range(104, 137):   # sala grande: o nascimento pede ao menos 6 blocos de distância do jogador
 			for z in range(104, 137):
 				w2.set_block(x, spot[0] - 1, z, Blocks.ids.stone, false)
@@ -4197,6 +4197,16 @@ func test_wiki_review():
 		for i in 60:
 			ent2.try_spawn()
 		check(ent2.biome_at(p2.position) == spot[1] and not ent2.enemies.is_empty() and ent2.enemies.all(func(e): return e.def.name in spot[2]), "%s: só nascem %s (%d)" % [spot[1], spot[2], ent2.enemies.size()])
+	for e in ent2.enemies.duplicate():
+		ent2.remove_enemy(e)
+	var gw: Node3D = ent2.spawn_at(enemy_def("giant_worm"), Vector3(120.5, 40, 120.5))
+	var gsegs: Array = ent2.enemies.filter(func(e): return e.def.get("group") == "giant_worm")
+	check(gsegs.size() == 9 and gw.follow == null and gsegs[8].def.name == "giant_worm_tail" and ent2.boss == null, "Giant Worm nasce como fila de 9 segmentos, sem virar chefe")
+	gsegs[4].hurt(500, Vector3.RIGHT, 0)
+	check(gsegs[5].def.head and gsegs[3].def.tail and ent2.boss == null, "corpo morto divide o verme comum como o chefe")
+	check(ent2.defs.any(func(d): return d.name == "devourer" and d.biome == "corruption") and ent2.defs.any(func(d): return d.name == "blood_crawler" and d.biome == "crimson"), "Devourer na corrupção, Blood Crawler e Face Monster no Carmesim")
+	for e in ent2.enemies.duplicate():
+		ent2.remove_enemy(e)
 	var sy: int = w2.surface_y(128, 128, true)
 	for x in range(118, 139):
 		for z in range(118, 139):

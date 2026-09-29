@@ -202,13 +202,18 @@ func _meteorite_near(x: int, z: int) -> bool:
 	return n >= 12
 
 
+# `biome` do dado é um nome ou uma lista de nomes.
+static func _in_biome(want, biome: String) -> bool:
+	return biome in want if want is Array else want == biome
+
+
 func try_spawn() -> void:
 	var night: bool = clock.is_night()
-	if enemies.filter(func(e): return not e.display).size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
+	if enemies.filter(func(e): return not e.display and e.follow == null).size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
 		return
 	var when := "night" if night else "day"
 	var biome := biome_at(player.position)
-	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (d.biome == biome if d.has("biome") else not biome in ["dungeon", "underworld", "underground", "cavern", "meteorite"]) \
+	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (_in_biome(d.biome, biome) if d.has("biome") else not biome in ["dungeon", "underworld", "underground", "cavern", "meteorite"]) \
 			and (world.hardmode or not d.get("hardmode", false)))
 	if options.is_empty():
 		return
@@ -218,7 +223,7 @@ func try_spawn() -> void:
 			var p := Vector3i(floori(player.position.x) + rng.randi_range(-14, 14), floori(player.position.y) + rng.randi_range(-2, 4), floori(player.position.z) + rng.randi_range(-14, 14))
 			if world.get_block(p.x, p.y, p.z) == 0 and world.get_block(p.x, p.y + 1, p.z) == 0 and (d.ai == "fly" or Blocks.solid[world.get_block(p.x, p.y - 1, p.z)]) \
 					and Vector3(p).distance_to(player.position) > 6.0:
-				spawn_enemy(d, Vector3(p.x + 0.5, p.y, p.z + 0.5))
+				spawn_at(d, Vector3(p.x + 0.5, p.y, p.z + 0.5))
 				return
 		return
 	var ang := rng.randf() * TAU
@@ -230,7 +235,7 @@ func try_spawn() -> void:
 	var sy: int = world.surface_y(x, z)
 	if d.ai != "fly" and Blocks.liquid[world.get_block(x, sy, z)]:
 		return   # não nasce no fundo do mar (nem de lago)
-	spawn_enemy(d, Vector3(x + 0.5, sy + (6 if d.ai == "fly" else 0), z + 0.5))
+	spawn_at(d, Vector3(x + 0.5, sy + (6 if d.ai == "fly" else -5 if d.has("worm") else 0), z + 0.5))   # verme: debaixo da terra
 
 
 # O Velho na entrada do dungeon: aparece à noite (até o Skeletron cair) e some ao amanhecer.
@@ -281,7 +286,7 @@ func showcase() -> void:
 	for e in enemies.duplicate():
 		if e.display:
 			remove_enemy(e)
-	var list := defs.filter(func(d): return not d.get("boss") and d.ai != "npc")
+	var list := defs.filter(func(d): return not d.get("boss") and not d.get("part") and d.ai != "npc")
 	for i in list.size():
 		var e := spawn_enemy(list[i], TestWorld.showcase_pos(i, list.size()) + Vector3.UP * (0.8 if list[i].ai == "fly" else 0.0))
 		e.display = true
@@ -465,6 +470,11 @@ func crater(cx: int, cz: int) -> void:
 	Fx.sparks(self, at, Color("#ffd060"), 30, Vector3.UP)
 	if player.position.distance_to(at) < 60.0:
 		player.shake = maxf(player.shake, 1.0)
+
+
+# Nasce um inimigo comum ou, se o dado tem `worm`, a fila inteira de segmentos.
+func spawn_at(d: Dictionary, pos: Vector3) -> Node3D:
+	return spawn_worm(d, pos) if d.has("worm") else spawn_enemy(d, pos)
 
 
 func spawn_enemy(d: Dictionary, pos: Vector3) -> Node3D:

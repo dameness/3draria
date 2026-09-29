@@ -46,6 +46,7 @@ const SHOTS := [
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "inimigos_voadores", "look": Vector2(0, -0.1), "enemies": ["eater_of_souls", "crimera", "voodoo_demon", "hellbat", "pixie", "unicorn"]},
 	{"name": "inimigos_cavernas", "look": Vector2(0, -0.1), "enemies": ["red_slime", "yellow_slime", "black_slime", "cave_bat", "skeleton"]},
+	{"name": "inimigos_biomas", "look": Vector2(0, -0.1), "enemies": ["mother_slime", "undead_miner", "blood_crawler", "face_monster", "devourer", "giant_worm"]},
 	{"name": "inimigos_submundo", "look": Vector2(0, -0.1), "enemies": ["lava_slime", "meteor_head", "demon", "hellbat"]},
 	{"name": "inimigos_masmorra", "look": Vector2(0, -0.1), "enemies": ["the_hungry", "creeper", "dark_caster", "angry_bones", "cursed_skull"]},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
