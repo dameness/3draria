@@ -7,7 +7,7 @@ const C := WorldGen.CHUNK
 const H := WorldGen.HEIGHT
 const NB: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]  # ordem do ChunkMesher
 
-@export var render_distance := 6  # em chunks; teclas + e - mudam em jogo
+@export var render_distance := 6  # em chunks; teclas [ e ] mudam em jogo
 @export var world_seed := 1337
 
 var gen: WorldGen
@@ -27,6 +27,7 @@ var hardmode := false       # Wall of Flesh derrotado: cobalto/paládio e Hallow
 var skeletron_down := false   # Skeletron derrotado: o dungeon abre para qualquer picareta
 var meteor_due := false       # cai um meteorito à meia-noite
 var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do mal); vai no save do mundo
+var map_img := Image.create(WorldGen.SIZE, WorldGen.SIZE, false, Image.FORMAT_RGBA8)   # mapa explorado (minimap.gd; alfa 0 = não visto); vai no save
 var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
 var versions := {}  # Vector2i -> nº de edições; descarta mesh de job que ficou velho
 var jobs := {}     # id da task -> resultado preenchido pela thread
@@ -153,6 +154,7 @@ func set_seed(s: int) -> void:
 	skeletron_down = false
 	hardmode = false
 	liquid = Liquid.new()
+	map_img.fill(Color(0, 0, 0, 0))
 
 
 # Primeiro y livre acima do bloco sólido mais alto da coluna (ground: sem contar tronco e folhas).
@@ -211,9 +213,9 @@ func is_idle() -> bool:
 
 func _unhandled_input(e: InputEvent) -> void:
 	if e is InputEventKey and e.pressed:
-		if e.keycode in [KEY_EQUAL, KEY_KP_ADD]:
+		if e.keycode == KEY_BRACKETRIGHT:
 			set_render_distance(render_distance + 1)
-		elif e.keycode in [KEY_MINUS, KEY_KP_SUBTRACT]:
+		elif e.keycode == KEY_BRACKETLEFT:
 			set_render_distance(render_distance - 1)
 
 

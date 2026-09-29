@@ -13,6 +13,9 @@ const SHOTS := [
 	{"name": "inventario_cheio", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "hp": 22},
 	{"name": "bau", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "chest": true},
 	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true},
+	{"name": "minimapa", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "portrait", "zoom": 1},
+	{"name": "minimapa_overlay", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "overlay"},
+	{"name": "mapa_cheio", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "full", "explore": true},
 	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "flying": true},
 	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "flying": true},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
@@ -175,6 +178,22 @@ func _setup(s: Dictionary) -> void:
 		else:
 			player.position = Vector3(at.x + 0.5, world.surface_y(at.x, at.y) + s.get("up", 0.0), at.y + 0.5)
 		print("  ", s.name, " ", g.evil, " em ", player.position)
+	if s.has("map"):   # minimapa: revela a faixa (ou o mundo todo) e escolhe o estilo
+		var mm: Minimap = main.get_node("HUD").minimap
+		if s.get("explore", false):
+			for cz in WorldGen.SIZE_CHUNKS:
+				for cx in WorldGen.SIZE_CHUNKS:
+					world.get_block(cx * WorldGen.CHUNK, 0, cz * WorldGen.CHUNK)
+			for z in WorldGen.SIZE:
+				for x in WorldGen.SIZE:
+					world.map_img.set_pixel(x, z, mm._column(x, z))
+		else:
+			for i in 60:
+				mm._reveal()
+		mm.style = {"portrait": Minimap.STYLE_PORTRAIT, "overlay": Minimap.STYLE_OVERLAY}.get(s.map, Minimap.STYLE_PORTRAIT)
+		mm.full = s.map == "full"
+		mm.zoom = s.get("zoom", 1)
+		mm._layout()
 	if s.get("crater", false):
 		var q: Vector3 = player.position + fwd_of(s.look.x) * 14.0
 		main.get_node("Entities").crater(int(q.x), int(q.z))

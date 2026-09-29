@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -253,6 +253,7 @@ func test_save():
 	w.skeletron_down = true
 	w.evil_boss_down = true
 	w.orbs_broken = 5
+	w.map_img.set_pixel(30, 40, Color("#ff8800"))
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
 	var w2: Node3D = load("res://scripts/world.gd").new()
 	w2.gen = WorldGen.new(1)
@@ -266,6 +267,7 @@ func test_save():
 		and p2.inv.fav[0] == 1, "moedas, munição, acessórios e favoritos voltam")
 	check(w2.hardmode and w2.gen.hardmode and w2.skeletron_down and w2.evil_boss_down and w2.orbs_broken == 5, "hardmode, Skeletron, chefe do mal e orbes voltam")
 	check(w2.chests.has(Vector3i(5, 6, 7)) and w2.chests[Vector3i(5, 6, 7)].item[0] == Items.ids.gold_bar, "conteúdo do baú volta")
+	check(w2.map_img.get_pixel(30, 40).is_equal_approx(Color("#ff8800")) and w2.map_img.get_pixel(31, 40).a == 0.0, "mapa explorado volta")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
 	check(SaveGame.list(SaveGame.players_dir).is_empty(), "apagar personagem")
@@ -659,6 +661,96 @@ func test_evil():
 	check(orbs == WorldGen.CHASMS, "cada abismo tem um orbe no chão, com ar em cima (%d/%d)" % [orbs, WorldGen.CHASMS])
 	var again := WorldGen.new(1337)
 	check(again.generate(c0.x, c0.y) == g.generate(c0.x, c0.y), "geração do bioma é determinística")
+	return true
+
+
+# Cores lidas de uma imagem de 8 bits por canal (a ida e volta perde até 1/255).
+func near(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.01 and absf(a.g - b.g) < 0.01 and absf(a.b - b.b) < 0.01 and absf(a.a - b.a) < 0.01
+
+
+func key(code: int) -> InputEventKey:
+	var e := InputEventKey.new()
+	e.physical_keycode = code
+	e.keycode = code
+	e.pressed = true
+	return e
+
+
+# Minimapa: imagem do mundo inteiro com origem fixa. A seta fica no centro, o mapa desliza 1:1 com o jogador (nada "teleporta"),
+# o que foi explorado continua depois de sair da faixa, e Tab/M/+/- trocam estilo, mapa cheio e zoom.
+func test_minimap():
+	var w: Node3D = load("res://scripts/world.gd").new()
+	w.gen = WorldGen.new(1)
+	for z in 16:
+		for x in 16:
+			var d := chunk(0)
+			for i in C * C * 11:
+				d[i] = Blocks.ids.stone
+			w.chunks[Vector2i(x, z)] = d
+	var p := make_player(w)
+	var colors := Blocks.tile_colors
+	Blocks.tile_colors = PackedColorArray()   # cada tile com uma cor própria, para o pixel provar de que coluna veio
+	for t in Blocks.textures.size():
+		Blocks.tile_colors.append(Color.from_hsv(fmod(t * 0.137, 1.0), 0.8, 0.9))
+	w.set_block(110, 11, 105, Blocks.ids.gold_ore)   # marcador: 1 bloco acima do chão
+	var mm := Minimap.new()
+	mm.setup(w, p)
+	mm.size = Vector2(Minimap.PORTRAIT, Minimap.PORTRAIT)
+	root.add_child(mm)
+	p.position = Vector3(100.5, 11, 100.5)
+	var s: float = Minimap.ZOOMS[mm.zoom]
+	var last_marker := Vector2.ZERO
+	var last_pos := Vector2.ZERO
+	var worst_arrow := 0.0
+	var worst_jump := 0.0
+	var started_ms := Time.get_ticks_msec()
+	for f in 200 * 9:   # 200 blocos a 6,6 blocos/s
+		p.position.z += 6.6 / 60.0
+		p.position.x += 0.5 / 60.0
+		mm._process(1.0 / 60)
+		var marker := mm.to_view(Vector2(110.5, 105.5))
+		var pos := Vector2(p.position.x, p.position.z)
+		worst_arrow = maxf(worst_arrow, (mm.to_view(pos) - mm.size / 2.0).length())
+		if f > 0:   # o marcador anda exatamente o que o jogador andou (× escala), a cada quadro
+			worst_jump = maxf(worst_jump, (marker - last_marker + (pos - last_pos) * s).length())
+		last_marker = marker
+		last_pos = pos
+	var per_frame := float(Time.get_ticks_msec() - started_ms) / (200 * 9)
+	print("minimapa: %.2f ms por quadro" % per_frame)
+	check(worst_arrow <= 1.0, "a seta fica no centro do retrato em toda a caminhada (%.2f px)" % worst_arrow)
+	check(worst_jump <= 1.5, "o mapa desliza junto do jogador sem saltos (erro máx. %.2f px por quadro: só o arredondamento a pixel inteiro)" % worst_jump)
+	check(near(w.map_img.get_pixel(110, 105), Minimap.color_of(Blocks.ids.gold_ore, 11)), "o pixel do marcador tem a cor do bloco dele")
+	check(near(w.map_img.get_pixel(111, 105), Minimap.color_of(Blocks.ids.stone, 10)) and not near(w.map_img.get_pixel(110, 105), w.map_img.get_pixel(111, 105)), "e o vizinho a cor do chão")
+	check(w.map_img.get_pixel(110, 105).a == 1.0 and w.map_img.get_pixel(240, 30).a == 0.0, "o explorado persiste depois de sair da faixa; o longe segue não visto")
+	# estilos e mapa cheio
+	mm.zoom = 1
+	mm._unhandled_input(key(KEY_TAB))
+	check(mm.style == Minimap.STYLE_OVERLAY and mm.visible and mm.anchor_bottom == 1.0 and mm.modulate.a < 1.0, "Tab: sobreposição translúcida na tela toda")
+	mm._unhandled_input(key(KEY_TAB))
+	check(mm.style == Minimap.STYLE_HIDDEN and not mm.visible, "Tab: minimapa oculto")
+	mm._process(0.0)
+	mm._unhandled_input(key(KEY_M))
+	check(mm.full and mm.visible and p.map_open and mm.modulate.a == 1.0, "M: mapa cheio aparece mesmo com o minimapa oculto e o jogador fica parado")
+	mm.size = Vector2(1280, 720)
+	var a := mm.to_view(Vector2.ZERO)
+	var b := mm.to_view(Vector2(WorldGen.SIZE, WorldGen.SIZE))
+	check(a.x > 0 and a.y >= 0 and b.x < 1280 and b.y <= 720 and absf((a.x + b.x) / 2.0 - 640.0) < 1.0, "mapa cheio mostra o mundo inteiro, centrado")
+	mm._unhandled_input(key(KEY_ESCAPE))
+	check(not mm.full and not p.map_open, "Esc fecha o mapa cheio")
+	mm._unhandled_input(key(KEY_TAB))
+	check(mm.style == Minimap.STYLE_PORTRAIT and mm.anchor_left == 1.0, "Tab: volta ao retrato no canto")
+	mm._unhandled_input(key(KEY_EQUAL))
+	mm._unhandled_input(key(KEY_EQUAL))
+	check(mm.zoom == 2, "+ dá zoom no retrato (até o máximo)")
+	mm._unhandled_input(key(KEY_MINUS))
+	mm._unhandled_input(key(KEY_MINUS))
+	mm._unhandled_input(key(KEY_MINUS))
+	check(mm.zoom == 0, "− afasta (até o mínimo)")
+	Blocks.tile_colors = colors
+	mm.free()
+	free_player(p)
+	w.free()
 	return true
 
 
@@ -1093,6 +1185,7 @@ func test_hardmode():
 	p.clock.time = 300
 	for e in ent.enemies.duplicate():
 		ent.remove_enemy(e)
+	ent.rng.seed = 5   # sorteio fixo: sem semente, ~6% das vezes só nasciam slimes
 	for i in 60:
 		ent.try_spawn()
 	check(ent.biome_at(p.position) == "hallow" and ent.enemies.any(func(e): return e.def.get("biome") == "hallow") and ent.enemies.all(func(e): return e.def.get("biome") == "hallow" or not e.def.has("biome")), "no Hallow nascem pixies/unicórnios")

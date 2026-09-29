@@ -5,7 +5,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 
 | # | Item | Status |
 |---|------|--------|
-| B1 | Minimapa "teleporta" (+ Tab/M) | ⬜ |
+| B1 | Minimapa "teleporta" (+ Tab/M) | ✅ |
 | B2 | Verme (Eater of Worlds) bugado | ⬜ |
 | B3 | Brain: fase 1 não fica translúcida; barra e nº de Creepers | ⬜ |
 | B4 | Iluminação estranha (tochas cortam na borda do chunk; mão clara em caverna) | ⬜ |
@@ -25,7 +25,7 @@ os números abaixo são medidos, não suposição.
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
-## B1 — Cursor do minimapa "teleporta"
+## B1 — Cursor do minimapa "teleporta" ✅
 
 **Hoje** (`minimap.gd:_process`): a imagem é redesenhada 2 linhas por quadro (80 linhas = 40 quadros ≈ 0,67 s). A origem (`origin`) é
 recalculada quando `row == 0`, no começo do ciclo, mas a textura só é publicada (`tex.update`) no **fim** do ciclo. Durante os 40 quadros a

@@ -7,6 +7,7 @@ extends RefCounted
 const CHUNK := 16
 const HEIGHT := 128
 const SIZE_CHUNKS := 16        # mundo finito: 16x16 chunks = 256x256 blocos
+const SIZE := SIZE_CHUNKS * CHUNK   # lado do mundo em blocos
 const UNDERWORLD_TOP := 20     # abaixo disto: submundo
 const CAVERN_TOP := 48         # abaixo disto: camada de cavernas (pedra)
 const SURFACE := 76            # altura média da superfície

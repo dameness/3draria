@@ -89,7 +89,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   menu.gd            menu inicial com o mundo real ao fundo (câmera girando, dia passando) e o personagem escolhido de pé
                      no gramado: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair
   ui.gd              tema e peças da interface do Terraria (fonte com contorno, painéis azuis, coração, dicas por raridade)
-  minimap.gd         minimapa (vista de cima, atualiza por linhas)
+  minimap.gd         mapa de exploração (256x256, origem fixa, vai no save): retrato / sobreposição / oculto (Tab), cheio (M), zoom (+/-)
   hud.gd             GUI no layout do Terraria (docs/UI.md): hotbar/inventário, criação, equipamento, vida, cursor, pausa
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  braço + item na mão (1ª pessoa): pose, inércia, balanço
   player_model.gd    boneco chibi arredondado com contorno (3ª pessoa, tecla V): poses, arma na mão, armadura por peça

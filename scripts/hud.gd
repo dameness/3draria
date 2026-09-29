@@ -376,24 +376,9 @@ func _build_equipment() -> void:
 
 func _build_life() -> void:
 	minimap = Minimap.new()
-	minimap.anchor_left = 1.0
-	minimap.anchor_right = 1.0
-	minimap.offset_left = -Minimap.SIZE * 2 - 14
-	minimap.offset_right = -14
-	minimap.offset_top = 74
-	minimap.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	root.add_child(minimap)
+	root.move_child(minimap, 0)   # a sobreposição (Tab) fica atrás da interface
 	minimap.setup(world, player)
-	var frame := Panel.new()   # moldura do minimapa
-	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
-	frame.offset_left = -3
-	frame.offset_top = -3
-	frame.offset_right = 3
-	frame.offset_bottom = 3
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var fs := Ui.box(Color.TRANSPARENT, Ui.EDGE, 3, 4)
-	frame.add_theme_stylebox_override("panel", fs)
-	minimap.add_child(frame)
 	var box := VBoxContainer.new()
 	life_box = box
 	box.anchor_left = 1.0
@@ -768,6 +753,6 @@ func _process(delta: float) -> void:
 	flash.color = Color(0.9, 0.05, 0.05, clampf((player.iframes - (player.IFRAMES - 0.3)) / 0.3, 0.0, 1.0) * 0.3)
 	note_label.text = player.message if now < player.message_until else ""
 	var p: Vector3 = player.position
-	debug_label.text = "FPS %d  |  distância %d chunks (+/-)  |  %s%s  |  %s  |  %s  |  pos %d %d %d" % [
+	debug_label.text = "FPS %d  |  distância %d chunks ([ ])  |  %s%s  |  %s  |  %s  |  pos %d %d %d" % [
 		Engine.get_frames_per_second(), world.render_distance, clock.clock(), " (noite)" if clock.is_night() else "",
 		("voo (F)" if player.flying else "andando (F voa)"), "3ª pessoa (V)" if player.third_person else "1ª pessoa (V)", p.x, p.y, p.z]

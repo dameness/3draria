@@ -33,7 +33,7 @@ Referência: https://terraria.wiki.gg/wiki/Inventory. Medidas em pixels com a in
 ## Estado no 3draria (atualize ao mexer)
 Ver `scripts/hud.gd`, `scripts/minimap.gd` e `scripts/inventory.gd`. Feito: hotbar/inventário, criação, equipamento (3 armaduras + 5 acessórios com
 bônus por dados: `"accessory": {speed, jump, regen, defense}`), moedas (slots que sobem 100→1 e giram), munição (4 slots, usados antes do inventário),
-minimapa (vista de cima, 80x80 blocos), lixeira, Ordenar, Alt+clique favorita (★), Shift+clique (veste ou manda ao baú), baús (botão direito;
+minimapa (mapa de exploração do mundo inteiro; Tab troca retrato/sobreposição/oculto, M mapa cheio, +/- zoom; salvo no mundo), lixeira, Ordenar, Alt+clique favorita (★), Shift+clique (veste ou manda ao baú), baús (botão direito;
 40 slots; tesouro sorteado na 1ª abertura; só quebra vazio). Animação: slots crescem/pulam, item voa até o slot, painéis deslizam, corações batem,
 dicas com fade, cursor balança.
 Pendente: buffs (não há buffs no jogo), vanity/dye, criação com martelo/lista completa estilo Terraria, lojas de NPC.

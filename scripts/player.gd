@@ -2,7 +2,7 @@ extends Node3D
 # Jogador em 1ª pessoa com colisão AABB contra os voxels (VoxelBody).
 # WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce), V troca 1ª/3ª pessoa.
 # Segurar o botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira); direito coloca bloco.
-# 1-0 ou roda escolhem o slot; Tab (ou E) abre inventário/criação; F5 salva (também salva ao fechar); F8 dá o kit de teste.
+# 1-0 ou roda escolhem o slot; E abre inventário/criação; Tab/M/+/- são do minimapa (minimap.gd); F5 salva (também salva ao fechar); F8 dá o kit de teste.
 # Esc fecha o inventário; sem nada aberto, abre o menu (Continuar / Salvar e sair).
 
 const HALF := 0.3        # meia largura da caixa
@@ -40,6 +40,8 @@ var hit_wall := false         # o último passo bateu numa parede (usado para sa
 var depth := 0.0              # blocos de líquido acima dos pés
 var swimming := false         # mais fundo que SWIM_DEPTH
 var flying := false
+var map_open := false         # mapa cheio (M) aberto: o jogador fica parado (minimap.gd liga e desliga)
+var death := Vector3.INF      # onde morreu por último (o mapa marca)
 var inv := Inventory.new()
 var slot := 0                 # slot da hotbar na mão
 var inventory_open := false
@@ -116,7 +118,7 @@ func set_menu(open: bool) -> void:
 
 func _unhandled_input(e: InputEvent) -> void:
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode in [KEY_TAB, KEY_E] and not menu_open:
+	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_E and not menu_open and not map_open:
 		inventory_open = not inventory_open
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if inventory_open else Input.MOUSE_MODE_CAPTURED
 	elif inventory_open:
@@ -125,7 +127,7 @@ func _unhandled_input(e: InputEvent) -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	elif e.is_action_pressed("ui_cancel"):
 		set_menu(not menu_open)
-	elif menu_open:
+	elif menu_open or map_open:
 		pass
 	elif e is InputEventMouseMotion and captured:
 		rotation.y -= e.relative.x * 0.003
@@ -156,11 +158,11 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func _physics_process(delta: float) -> void:
-	var k := func(key): return 1.0 if Input.is_physical_key_pressed(key) else 0.0
+	var k := func(key): return 1.0 if Input.is_physical_key_pressed(key) and not map_open else 0.0   # com o mapa cheio aberto fica parado
 	var wish := Vector3(k.call(KEY_D) - k.call(KEY_A), 0, k.call(KEY_S) - k.call(KEY_W)).rotated(Vector3.UP, rotation.y)
 	if flying:
 		wish.y = k.call(KEY_SPACE) - k.call(KEY_C)
-	step(delta, wish.normalized(), Input.is_physical_key_pressed(KEY_SPACE), Input.is_physical_key_pressed(KEY_SHIFT))
+	step(delta, wish.normalized(), k.call(KEY_SPACE) > 0.0, k.call(KEY_SHIFT) > 0.0)
 	tick(delta)
 
 
@@ -178,7 +180,7 @@ func _process(delta: float) -> void:
 		crack.show_at(mine_pos, mine_damage / 100.0)
 	else:
 		crack.visible = false
-	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not inventory_open and not menu_open \
+	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not inventory_open and not menu_open and not map_open \
 			and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and cooldown <= 0:
 		use_item()
 
@@ -364,6 +366,7 @@ func hurt(damage: int, dir: Vector3) -> int:
 	velocity.y = 5.0
 	if hp <= 0:
 		hp = MAX_HP
+		death = position
 		position = spawn
 		velocity = Vector3.ZERO
 		knock = Vector3.ZERO

@@ -137,7 +137,8 @@ static func save_world(world, player, clock, path: String) -> Error:
 	for k in world.edited:
 		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
 	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed,
-		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode})
+		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
+		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD)})
 
 
 static func _chests_out(chests: Dictionary) -> Dictionary:
@@ -163,6 +164,9 @@ static func load_world(world, player, clock, path: String) -> bool:
 	world.skeletron_down = data.get("skeletron_down", false)
 	world.hardmode = data.get("hardmode", false)
 	world.gen.hardmode = world.hardmode
+	if data.has("map"):   # mapa explorado (saves antigos começam sem mapa)
+		var bytes := WorldGen.SIZE * WorldGen.SIZE * 4
+		world.map_img.set_data(WorldGen.SIZE, WorldGen.SIZE, false, Image.FORMAT_RGBA8, data.map.decompress(bytes, FileAccess.COMPRESSION_ZSTD))
 	for p in data.get("chests", {}):
 		var c: Dictionary = data.chests[p]
 		var box := {"item": PackedInt32Array(), "count": PackedInt32Array(c.count)}
