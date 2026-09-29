@@ -252,5 +252,10 @@
 	"lesser_mana_potion": {"wiki": "Lesser_Mana_Potion", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
 	"wand_of_sparking": {"wiki": "Wand_of_Sparking", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
 	"space_gun": {"wiki": "Space_Gun", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
-	"vilethorn": {"wiki": "Vilethorn", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]}
+	"vilethorn": {"wiki": "Vilethorn", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
+	"cloud": {"wiki": "Cloud_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#f6f9ff", "#e6effc", "#d6e4f6", "#ffffff"]},
+	"cloud_item": {"wiki": "Cloud"},
+	"sunplate": {"wiki": "Sunplate_Block_(placed)", "crop": [16, 16], "pattern": "bricks", "colors": ["#e8c050", "#d8ac3c", "#f0cc68"], "top_colors": ["#a07820"]},
+	"sunplate_item": {"wiki": "Sunplate_Block"},
+	"lucky_horseshoe": {"wiki": "Lucky_Horseshoe", "pattern": "blob", "colors": ["#d8d8e0", "#8a8a98", "#ffffff"]}
 }

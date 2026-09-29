@@ -23,6 +23,9 @@ const DUNGEON_W := 6
 const DUNGEON_D := 5
 const DUNGEON_Y := 30          # chão do 1º andar
 const DUNGEON_FLOORS := 2
+const SKY_BASE := 110          # de y = 110 para cima é céu: só há as ilhas flutuantes; a luz do céu e surface_y ignoram isso (a terra embaixo não escurece)
+const SKY_ISLANDS := 3         # mundo pequeno: 3 ilhas (wiki Floating Island), cada uma com uma casa e um Skyware Chest
+const SKY_R := 9               # raio de uma ilha
 const CHASMS := 6              # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
 const CHASM_DEPTH := 38
 const CENTER := Vector2(SIZE_CHUNKS * CHUNK / 2.0, SIZE_CHUNKS * CHUNK / 2.0)   # nascimento: planície
@@ -63,6 +66,8 @@ var dungeon_x := 0                # canto (x, z) do dungeon, do lado oposto ao b
 var dungeon_z := 0
 var dungeon_entrance := Vector3i.ZERO   # torre de entrada (centro, altura da superfície)
 var test_world := false           # mundo de teste: generate carimba a arena (test_world.gd)
+var sky_islands: Array[Vector3i] = []   # (x, y da superfície, z) do centro de cada ilha
+var sky_chests: Array[Vector3i] = []     # o baú de cada ilha (mesmo índice)
 var hardmode := false             # Wall of Flesh derrotado: minérios novos e o Hallow entram na geração (world.start_hardmode converte o que já existe)
 var hm_ores: Array = []           # ores.json com "hardmode": true (um por grupo, escolhido pela seed)
 var hallow_center := Vector2.ZERO
@@ -115,6 +120,16 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	EVIL_STONE = Blocks.ids.ebonstone if evil == "corruption" else Blocks.ids.crimstone
 	EVIL_GRASS = Blocks.ids.corrupt_grass if evil == "corruption" else Blocks.ids.crimson_grass
 	ORB = Blocks.ids.shadow_orb if evil == "corruption" else Blocks.ids.crimson_heart
+	var sr := RandomNumberGenerator.new()   # ilhas flutuantes: posição só da seed, longe do nascimento e umas das outras
+	sr.seed = hash([seed, "sky"])
+	for k in SKY_ISLANDS:
+		for attempt in 60:
+			var c := Vector2(sr.randi_range(SKY_R + 4, SIZE - SKY_R - 5), sr.randi_range(SKY_R + 4, SIZE - SKY_R - 5))
+			if c.distance_to(CENTER) > 45.0 and sky_islands.all(func(o): return c.distance_to(Vector2(o.x, o.z)) > 55.0):
+				var y := SKY_BASE + 8 + sr.randi_range(0, 4)
+				sky_islands.append(Vector3i(int(c.x), y, int(c.y)))
+				sky_chests.append(Vector3i(int(c.x), y + 1, int(c.y) - 1))   # no chão da casa, ao norte
+				break
 	for k in CHASMS:
 		var c := evil_center + Vector2.from_angle(TAU * k / CHASMS + er.randf_range(-0.15, 0.15)) * er.randf_range(13.0, 19.0)
 		chasm_centers.append(Vector2i(c))
@@ -231,11 +246,47 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_chest(d, rng)
 	rng.seed = hash([seed, cx, cz, "crystal"])
 	_crystal(d, rng)
+	_sky(d, cx, cz)
 	if hardmode:
 		hardmode_pass(d, cx, cz)
 	if test_world:
 		TestWorld.stamp(d, cx, cz)
 	return d
+
+
+# Ilhas flutuantes (wiki Floating Island): um disco de terra com grama em cima, nuvens embaixo, e no meio uma casinha de sunplate com um Skyware Chest.
+# Só toca nos chunks que a ilha alcança.
+func _sky(d: PackedByteArray, cx: int, cz: int) -> void:
+	for n in sky_islands.size():
+		var isl := sky_islands[n]
+		if absi(isl.x - cx * CHUNK - CHUNK / 2) > SKY_R + CHUNK / 2 or absi(isl.z - cz * CHUNK - CHUNK / 2) > SKY_R + CHUNK / 2:
+			continue
+		for z in CHUNK:
+			for x in CHUNK:
+				var dx := cx * CHUNK + x - isl.x
+				var dz := cz * CHUNK + z - isl.z
+				var u := 1.0 - Vector2(dx, dz).length() / SKY_R
+				if u <= 0.0:
+					continue
+				var top := isl.y if maxi(absi(dx), absi(dz)) <= 3 else isl.y - int((1.0 - u) * 3.0)   # o centro é plano (a casa); a borda desce
+				var bottom := top - 1 - int(u * 6.0)
+				for y in range(bottom, top + 1):
+					_write(d, cx, cz, isl.x + dx, y, isl.z + dz, Blocks.ids.cloud if y <= bottom + 1 else GRASS if y == top else DIRT)
+		# a casa: paredes de sunplate (5x5, 3 de altura) com uma porta de 1x2 ao sul, teto, o baú ao norte e uma tocha
+		var base := isl.y + 1
+		for dz in range(-2, 3):
+			for dx in range(-2, 3):
+				var wall := maxi(absi(dx), absi(dz)) == 2
+				for y in range(base - 1, base + 4):
+					var door := dx == 0 and dz == 2 and y in [base, base + 1]
+					var solid := y == base - 1 or y == base + 3 or (wall and not door)   # piso, teto e paredes
+					if solid:
+						_write(d, cx, cz, isl.x + dx, y, isl.z + dz, Blocks.ids.sunplate)
+					elif y >= base:
+						_write(d, cx, cz, isl.x + dx, y, isl.z + dz, AIR)
+		var chest := sky_chests[n]
+		_write(d, cx, cz, chest.x, chest.y, chest.z, CHEST)
+		_write(d, cx, cz, isl.x + 1, base, isl.z + 1, Blocks.ids.torch)
 
 
 func hallow_weight(wx: int, wz: int) -> float:
@@ -550,3 +601,11 @@ func _put(d: PackedByteArray, cx: int, cz: int, x: int, y: int, z: int, id: int,
 	var i := lx + lz * CHUNK + y * CHUNK * CHUNK
 	if d[i] == AIR or (over and d[i] == LEAVES):
 		d[i] = id
+
+
+# Escreve um bloco (sobrescrevendo o que houver) se cair dentro deste chunk.
+func _write(d: PackedByteArray, cx: int, cz: int, x: int, y: int, z: int, id: int) -> void:
+	var lx := x - cx * CHUNK
+	var lz := z - cz * CHUNK
+	if lx >= 0 and lx < CHUNK and lz >= 0 and lz < CHUNK and y >= 0 and y < HEIGHT:
+		d[lx + lz * CHUNK + y * CHUNK * CHUNK] = id

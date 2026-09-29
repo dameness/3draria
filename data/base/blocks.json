@@ -62,5 +62,7 @@
 	{"name": "pearlstone", "mine": 0.5, "icon": "pearlstone_item", "tiles": {"all": "pearlstone"}},
 	{"name": "hallowed_grass", "grass": true, "mine": 2, "drop": "dirt", "tiles": {"top": "hallowed_grass_top", "side": "hallowed_grass_side", "bottom": "dirt"}},
 	{"name": "sapling", "solid": false, "shape": "plant", "breakable": false, "tiles": {"all": "sapling"}},
-	{"name": "life_crystal", "mine": 10, "solid": false, "shape": "crystal", "light": 5, "item": false, "drop": "life_crystal", "tiles": {"all": "life_crystal"}}
+	{"name": "life_crystal", "mine": 10, "solid": false, "shape": "crystal", "light": 5, "item": false, "drop": "life_crystal", "tiles": {"all": "life_crystal"}},
+	{"name": "cloud", "mine": 2, "icon": "cloud_item", "tiles": {"all": "cloud"}},
+	{"name": "sunplate", "mine": 1, "icon": "sunplate_item", "tiles": {"all": "sunplate"}}
 ]

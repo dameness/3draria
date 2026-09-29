@@ -123,7 +123,7 @@ static func stamp(d: PackedByteArray, cx: int, cz: int) -> void:
 			if not ARENA.has_point(Vector2i(cx * c + x, cz * c + z)):
 				continue
 			var i := x + z * c
-			for y in range(FLAT + 1, WorldGen.HEIGHT):
+			for y in range(FLAT + 1, WorldGen.SKY_BASE):   # (do céu para cima ficam as ilhas flutuantes)
 				d[i + y * layer] = 0
 			for y in range(FLAT - 5, FLAT):
 				if d[i + y * layer] == 0 or Blocks.liquid[d[i + y * layer]] == 1:

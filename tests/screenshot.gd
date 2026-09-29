@@ -35,6 +35,9 @@ const SHOTS := [
 	{"name": "dungeon_fora", "dungeon": "out", "look": Vector2(0, -0.25), "creative": true, "time": 1100.0},
 	{"name": "dungeon_sala", "dungeon": "in", "look": Vector2(-PI / 2, -0.05), "creative": true, "time": 300.0},
 	{"name": "skeletron", "look": Vector2(0, 0.2), "boss": "skeletron", "time": 1100.0, "item": "terra_blade"},
+	{"name": "ilha_ceu", "sky": "top", "look": Vector2(0, -0.08), "creative": true},
+	{"name": "ilha_ceu_baixo", "sky": "below", "look": Vector2(0, 0.35), "creative": true},
+	{"name": "ilha_ceu_bau", "sky": "top", "look": Vector2(0, -0.2), "creative": true, "inventory": true, "sky_chest": true},
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
@@ -206,6 +209,13 @@ func _setup(s: Dictionary) -> void:
 			for dy in range(1, 5):
 				world.set_block(x + s.breach - 1, best.y - dy, best.z, 0)
 			world.liquid.settle(world, s.get("flow", 10))
+	if s.has("sky"):   # a 1ª ilha flutuante: de cima, diante da porta da casa, ou do chão olhando para ela
+		var isl: Vector3i = world.gen.sky_islands[0]
+		if s.sky == "top":
+			player.position = Vector3(isl.x + 0.5, isl.y + 1.0, isl.z + 9.5)
+		else:
+			player.position = Vector3(isl.x + 0.5, world.surface_y(isl.x, isl.z + 30), isl.z + 30.5)
+		print("  ", s.name, " ilha em ", isl)
 	if s.get("hell", false):
 		player.position = Vector3(player.spawn.x, 9.0, player.spawn.z)
 	if s.get("hardmode", false):
@@ -353,6 +363,8 @@ func _setup(s: Dictionary) -> void:
 	player.mana = s.get("mana", player.max_mana)
 	player.max_hp = s.get("max_hp", 100)
 	player.hp = s.get("hp", player.max_hp)
+	if s.get("sky_chest", false):
+		main.get_node("HUD").open_chest(world.chest_at(world.gen.sky_chests[0]))
 	if s.get("chest", false):
 		var c: Dictionary = world.chest_at(Vector3i(1, 40, 3))
 		main.get_node("HUD").open_chest(c)

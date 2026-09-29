@@ -694,7 +694,7 @@ func _build_test() -> void:
 				world.chests.erase(k.pos)
 			player.say("baús reabastecidos")]])
 	var trips := []
-	for t in [["Nascimento", "spawn"], ["Submundo", "underworld"], ["Dungeon", "dungeon"], ["Bioma do mal", "evil"], ["Hallow", "hallow"]]:
+	for t in [["Nascimento", "spawn"], ["Submundo", "underworld"], ["Dungeon", "dungeon"], ["Bioma do mal", "evil"], ["Hallow", "hallow"], ["Ilha no céu", "sky"]]:
 		trips.append([t[0], func():
 			ent.goto(t[1])
 			player.set_inventory(false)])

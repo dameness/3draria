@@ -246,7 +246,7 @@ func clear_enemies() -> void:
 	boss = null
 
 
-# Viagem do painel: spawn, underworld, dungeon, evil (bioma do mal), hallow. Cai no chão do lugar.
+# Viagem do painel: spawn, underworld, dungeon, evil (bioma do mal), hallow, sky (ilha flutuante). Cai no chão do lugar.
 func goto(where: String) -> void:
 	var p: Vector3 = player.spawn
 	var g: WorldGen = world.gen
@@ -257,6 +257,9 @@ func goto(where: String) -> void:
 			p = Vector3(g.dungeon_entrance.x + 0.5, world.surface_y(g.dungeon_entrance.x, g.dungeon_entrance.z + 3, true), g.dungeon_entrance.z + 3.5)
 		"evil":
 			p = Vector3(g.evil_center.x, world.surface_y(int(g.evil_center.x), int(g.evil_center.y), true), g.evil_center.y)
+		"sky":   # a 1ª ilha flutuante, diante da porta da casa
+			var isl := g.sky_islands[0]
+			p = Vector3(isl.x + 0.5, isl.y + 1.0, isl.z + 3.5)
 		"hallow":
 			p = Vector3(g.hallow_center.x, world.surface_y(int(g.hallow_center.x), int(g.hallow_center.y), true), g.hallow_center.y)
 	Fx.puff(self, player.position + Vector3.UP, Color("#a8e8f8"), 12)

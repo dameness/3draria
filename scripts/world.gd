@@ -182,7 +182,7 @@ func chest_at(p: Vector3i) -> Dictionary:
 	if not chests.has(p):
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash([world_seed, p.x, p.y, p.z])
-		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest(Loot.layer_of(p.y), rng)
+		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest(Loot.layer_of(p.y), rng, gen.sky_chests.find(p) if gen else -1)   # ilhas: cada uma com o próximo item principal
 	if k != -1:
 		chests[p].title = TestWorld.chests[k].title   # o painel mostra o nome da categoria (não vai no save: sai da posição)
 	return chests[p]
@@ -215,9 +215,10 @@ func set_seed(s: int, test := false) -> void:
 	saplings.clear()
 
 
-# Primeiro y livre acima do bloco sólido mais alto da coluna (ground: sem contar tronco e folhas).
-func surface_y(x: int, z: int, ground := false) -> int:
-	for y in range(H - 1, -1, -1):
+# Primeiro y livre acima do bloco sólido mais alto da coluna (ground: sem contar tronco e folhas). Ignora o céu (a partir de SKY_BASE, só há ilhas
+# flutuantes): para achar o chão de uma ilha, passe top = H - 1.
+func surface_y(x: int, z: int, ground := false, top := WorldGen.SKY_BASE - 1) -> int:
+	for y in range(top, -1, -1):
 		var b := get_block(x, y, z)
 		if Blocks.solid[b] and not (ground and Blocks.clear[b]):
 			return y + 1

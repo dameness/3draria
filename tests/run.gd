@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1226,7 +1226,7 @@ var census_cache := {}
 func world_census() -> Dictionary:
 	if census_cache.is_empty():
 		var gen := WorldGen.new(4242)
-		var r := {"crystals": 0, "bad_crystals": 0, "chests": {"underground": 0, "cavern": 0, "lava": 0}, "bad_chests": 0}
+		var r := {"crystals": 0, "bad_crystals": 0, "chests": {"underground": 0, "cavern": 0, "lava": 0, "sky": 0}, "bad_chests": 0}
 		for cz in WorldGen.SIZE_CHUNKS:
 			for cx in WorldGen.SIZE_CHUNKS:
 				var d := gen.generate(cx, cz)
@@ -1238,7 +1238,7 @@ func world_census() -> Dictionary:
 						r.bad_crystals += int(y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE - 14 or not (below == gen.STONE or below == gen.DIRT or below == Blocks.ids.dungeon_brick))
 					elif d[i] == Blocks.ids.chest:
 						r.chests[Loot.layer_of(y)] += 1
-						r.bad_chests += int(y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE - 14 or not (below == gen.STONE or below == gen.DIRT or below == Blocks.ids.dungeon_brick))
+						r.bad_chests += int(Loot.layer_of(y) != "sky" and (y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE - 14 or not (below == gen.STONE or below == gen.DIRT or below == Blocks.ids.dungeon_brick)))
 		census_cache = r
 	return census_cache
 
@@ -3592,3 +3592,71 @@ func world_orbs(ent: Node3D, orb: int, drops: Dictionary) -> void:
 		if n.get("item") != null:
 			drops[Items.names[n.item]] = drops.get(Items.names[n.item], 0) + 1
 			n.queue_free()
+
+
+# Ilhas flutuantes (wiki Floating Island): 3 por mundo pequeno, acima de SKY_BASE, longe do nascimento e umas das outras, cada uma com a casa de sunplate e um
+# Skyware Chest (os itens principais saem na ordem); a terra embaixo não escurece e surface_y ignora o céu.
+func test_sky():
+	for sd in [1, 2, 3, 4242, 99]:
+		var g := WorldGen.new(sd)
+		var ok := g.sky_islands.size() == WorldGen.SKY_ISLANDS and g.sky_chests.size() == g.sky_islands.size()
+		for i in g.sky_islands.size():
+			var a := g.sky_islands[i]
+			ok = ok and a.y >= WorldGen.SKY_BASE + 8 and a.x > WorldGen.SKY_R and a.x < WorldGen.SIZE - WorldGen.SKY_R and a.z > WorldGen.SKY_R and a.z < WorldGen.SIZE - WorldGen.SKY_R \
+				and Vector2(a.x, a.z).distance_to(WorldGen.CENTER) > 45.0 and g.sky_chests[i] == Vector3i(a.x, a.y + 1, a.z - 1)
+			for j in i:
+				ok = ok and Vector2(a.x, a.z).distance_to(Vector2(g.sky_islands[j].x, g.sky_islands[j].z)) > 55.0
+		check(ok, "seed %d: 3 ilhas no céu, dentro do mundo, longe do nascimento e umas das outras" % sd)
+	var w := dungeon_world(4242)
+	var g: WorldGen = w.gen
+	var isl := g.sky_islands[0]
+	var chest := g.sky_chests[0]
+	var grass: int = Blocks.ids.grass
+	check(w.get_block(isl.x + 3, isl.y, isl.z + 3) == grass and w.get_block(isl.x, isl.y, isl.z) == Blocks.ids.sunplate and w.get_block(chest.x, chest.y, chest.z) == Blocks.ids.chest, "a ilha tem grama, o piso da casa de sunplate e o baú")
+	check(w.get_block(isl.x + 2, isl.y + 1, isl.z) == Blocks.ids.sunplate and w.get_block(isl.x, isl.y + 1, isl.z) == 0 and w.get_block(isl.x, isl.y + 1, isl.z + 2) == 0 and w.get_block(isl.x, isl.y + 2, isl.z + 2) == 0 \
+		and w.get_block(isl.x, isl.y + 4, isl.z) == Blocks.ids.sunplate, "a casa: paredes, ar dentro, porta de 1x2 ao sul e teto")
+	var clouds := 0
+	for dx in range(-8, 9):
+		for y in range(isl.y - 8, isl.y - 3):
+			clouds += int(w.get_block(isl.x + dx, y, isl.z) == Blocks.ids.cloud)
+	check(clouds > 4 and Blocks.solid[Blocks.ids.cloud] == 1 and Items.ids.has("cloud") and Items.ids.has("sunplate"), "nuvens sob a ilha, e cloud/sunplate são blocos e itens")
+	# a terra embaixo: surface_y ignora o céu (senão o dia some e a luz escurece); com top = H - 1 acha a ilha
+	var edge_x: int = isl.x + 6
+	check(w.surface_y(edge_x, isl.z) < WorldGen.SKY_BASE and w.surface_y(edge_x, isl.z, false, WorldGen.HEIGHT - 1) > WorldGen.SKY_BASE, "surface_y não vê a ilha (a menos que se peça); com top = H - 1 vê")
+	# loot: cada ilha dá o próximo item principal (balão, ferradura, balão...) + nuvens; a camada é "sky"
+	check(Loot.layer_of(chest.y) == "sky" and Loot.layer_of(WorldGen.SKY_BASE - 1) != "sky", "a altura das ilhas é a camada sky")
+	var first: Dictionary = w.chest_at(g.sky_chests[0])
+	var second: Dictionary = w.chest_at(g.sky_chests[1])
+	var third: Dictionary = w.chest_at(g.sky_chests[2])
+	check(first.item[0] == Items.ids.shiny_red_balloon and second.item[0] == Items.ids.lucky_horseshoe and third.item[0] == Items.ids.shiny_red_balloon, "baús de ilha: os principais saem na ordem (Shiny Red Balloon, Lucky Horseshoe, ...)")
+	check(Array(first.item).has(Items.ids.cloud) and first.count[Array(first.item).find(Items.ids.cloud)] >= 50, "…com 50-100 nuvens")
+	var wings := 0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2
+	for i in 2000:
+		wings += int(Array(Loot.chest("sky", rng).item).has(Items.ids.fledgling_wings))
+	check(absf(wings / 2000.0 - 0.25) < 0.04, "Fledgling Wings em ~1/4 dos baús de ilha (%.2f)" % (wings / 2000.0))
+	w.free()
+	# a luz do céu não escurece a terra embaixo da ilha
+	var n := Blocks.textures.size()
+	var d := chunk(0)
+	for i in C * C * 61:
+		d[i] = Blocks.ids.stone
+	var open_sky := face_light(ChunkMesher.build(d, [d, d, d, d], n), Vector3i(8, 60, 8), Vector3.UP)
+	for z in range(3, 13):
+		for x in range(3, 13):
+			d[x + z * C + 115 * C * C] = Blocks.ids.cloud
+	var under := face_light(ChunkMesher.build(d, [d, d, d, d], n), Vector3i(8, 60, 8), Vector3.UP)
+	check(open_sky.r > 0.9 and absf(under.r - open_sky.r) < 0.01, "chão sob uma ilha continua a céu aberto (%.2f contra %.2f)" % [under.r, open_sky.r])
+	# Lucky Horseshoe anula a queda
+	var fw := floor_world()
+	var p := make_player(fw)
+	p.inv.acc[0] = Items.ids.lucky_horseshoe
+	p.position = Vector3(24.5, 11.0 + 30.0, 24.5)
+	p.last_pos = p.position
+	for i in 300:
+		p.step(1.0 / 60, Vector3.ZERO, false)
+	check(p.hp == float(p.max_hp) and p.on_floor and Ui.item_tip(Items.ids.lucky_horseshoe).contains("queda"), "Lucky Horseshoe: caiu 30 blocos e não levou dano")
+	free_player(p)
+	fw.free()
+	return true

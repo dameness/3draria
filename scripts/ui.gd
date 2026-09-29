@@ -137,6 +137,7 @@ static func item_tip(id: int) -> String:
 		if a.has("regen"): lines.append("Regeneração de vida mais rápida")
 		if a.has("wings"): lines.append("Permite voar e planar (%.2f s de voo)" % a.wings.time)
 		if a.has("double_jump"): lines.append("Permite pular de novo no ar")
+		if a.has("no_fall"): lines.append("Anula o dano de queda")
 		if a.has("max_mana"): lines.append("+%d de mana máxima" % a.max_mana)
 		if a.has("panic"): lines.append("Ao levar dano, dobra a velocidade por 8 s")
 		if a.has("defense"): lines.append("+%d de defesa" % a.defense)

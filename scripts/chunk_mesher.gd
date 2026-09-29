@@ -218,7 +218,7 @@ static func _light(p: PackedByteArray, hts: PackedInt32Array, lights: Array, x: 
 		var clear := Blocks.clear
 		ground = 0
 		var canopy := 0
-		for yy in range(H - 1, -1, -1):
+		for yy in range(WorldGen.SKY_BASE - 1, -1, -1):   # o céu (ilhas flutuantes) não faz sombra na terra
 			var b := p[col + (yy + 1) * PP]
 			if solid[b]:
 				if canopy == 0:

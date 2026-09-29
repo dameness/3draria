@@ -412,7 +412,7 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 func _land() -> void:
 	var tiles := int((fall_top - position.y) / TILE)   # a wiki mede em tiles inteiros
 	fall_top = position.y
-	if tiles > FALL_SAFE and depth == 0.0 and inv.wings().is_empty() and not creative:
+	if tiles > FALL_SAFE and depth == 0.0 and inv.wings().is_empty() and not inv.has_acc("no_fall") and not creative:
 		var taken := hurt((tiles - FALL_SAFE) * 10, Vector3.ZERO, false)
 		if taken > 0:
 			say("queda de %d tiles" % tiles)

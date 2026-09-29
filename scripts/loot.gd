@@ -11,18 +11,19 @@ static func load_pack(dir := "res://data/base") -> void:
 
 # Camada do baú pela altura: perto do submundo ("lava"), cavernas ou subsolo.
 static func layer_of(y: int) -> String:
-	return "lava" if y < WorldGen.UNDERWORLD_TOP + 12 else "cavern" if y < WorldGen.CAVERN_TOP else "underground"
+	return "sky" if y >= WorldGen.SKY_BASE else "lava" if y < WorldGen.UNDERWORLD_TOP + 12 else "cavern" if y < WorldGen.CAVERN_TOP else "underground"
 
 
 # Conteúdo de um baú de 40 slots, sorteado com rng. O principal vem sempre.
-static func chest(layer: String, rng: RandomNumberGenerator) -> Dictionary:
+# `nth` >= 0: é o baú de ilha número nth (Skyware Chest: as primeiras ilhas dão cada item principal na ordem, como na wiki); senão o principal é sorteado.
+static func chest(layer: String, rng: RandomNumberGenerator, nth := -1) -> Dictionary:
 	var t: Dictionary = tables[layer]
 	var c := {"item": PackedInt32Array(), "count": PackedInt32Array()}
 	c.item.resize(40)
 	c.item.fill(-1)
 	c.count.resize(40)
 	var main: Array = t.main
-	c.item[0] = Items.ids[main[rng.randi() % main.size()]]
+	c.item[0] = Items.ids[main[nth % main.size() if nth >= 0 else rng.randi() % main.size()]]
 	c.count[0] = 1
 	var k := 1
 	for e in t.common:
