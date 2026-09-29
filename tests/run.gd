@@ -2898,6 +2898,43 @@ func integration():
 			hud.open_npc("nurse")
 			hud.npc_buttons.get_child(0).pressed.emit()
 			check(player.hp == player.max_hp and player.inv.coin_value() == 2500 - 60, "Nurse: cura o que falta por 60 de cobre (hp %s/%s, moedas %d)" % [player.hp, player.max_hp, player.inv.coin_value()])
+			# Guia: dicas do momento e o modo Criação (o item no espaço e o que dá para criar com ele)
+			player.inv.item.fill(-1)
+			player.inv.count.fill(0)
+			hud.stations = {}
+			var tips: Array = hud._guide_tips()
+			check(tips[0].contains("árvore") and tips.size() > hud.TIPS.size(), "Guia: sem madeira, a 1ª dica manda cortar árvore")
+			player.inv.add(Items.ids.wood, 10)
+			check(hud._guide_tips()[0].contains("Bancada"), "…com 10 de madeira, fazer a bancada")
+			player.inv.add(Items.ids.iron_bar, 5)
+			check(hud._guide_tips().any(func(t): return t.contains("Bigorna")), "…com 5 barras de ferro, a Bigorna")
+			hud.tip_index = 0
+			hud.guide_craft = false
+			hud.open_npc("guide")
+			var first: String = hud.npc_text.text
+			hud.npc_buttons.get_child(0).pressed.emit()   # Ajuda: a próxima dica
+			check(hud.npc_text.text != first and hud.npc_text.text.begins_with("Guia:") and not hud.guide_box.visible, "Guia: Ajuda passa para outra dica")
+			hud.npc_buttons.get_child(1).pressed.emit()   # Criação
+			check(hud.guide_box.visible and hud.guide_list.get_child_count() == 0, "Guia: Criação mostra o espaço vazio")
+			player.inv.cursor_id = Items.ids.iron_bar
+			player.inv.cursor_count = 3
+			var put := InputEventMouseButton.new()
+			put.button_index = MOUSE_BUTTON_LEFT
+			put.pressed = true
+			hud.guide_slot.gui_input.emit(put)
+			var uses := Crafting.uses_of(Items.ids.iron_bar)
+			check(hud.guide_id == Items.ids.iron_bar and hud.guide_count == 3 and player.inv.cursor_id == -1 and hud.guide_list.get_child_count() == uses.size() and uses.size() >= 8, "Guia: com barra de ferro no espaço, lista as %d receitas que a usam" % uses.size())
+			check(uses.all(func(r): return r.needs.has(Items.ids.iron_bar)) and Crafting.uses_of(Items.ids.dirt).is_empty(), "…só as que têm o item como ingrediente")
+			hud.guide_slot.gui_input.emit(put)   # clicar de novo devolve o item à mão
+			check(hud.guide_id == -1 and player.inv.cursor_id == Items.ids.iron_bar and player.inv.cursor_count == 3 and hud.guide_list.get_child_count() == 0, "Guia: clicar no espaço devolve o item à mão")
+			player.inv.cursor_id = Items.ids.dirt
+			player.inv.cursor_count = 2
+			hud.guide_slot.gui_input.emit(put)
+			check(hud.guide_list.get_child_count() == 1, "Guia: item sem receita → 'não sei criar nada com isso'")
+			player.set_inventory(false)
+			hud._process(0.0)
+			check(hud.guide_id == -1 and player.inv.total(Items.ids.dirt) == 2, "Guia: fechar devolve o item do espaço ao inventário")
+			hud.guide_craft = false
 			player.set_inventory(false)
 			hud._process(0.0)
 			check(not hud.npc_panel.visible, "fechar o inventário fecha a conversa")

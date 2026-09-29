@@ -53,6 +53,7 @@ const SHOTS := [
 	{"name": "pocoes_inv", "inventory": true, "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "cloud_in_a_bottle", "life_crystal"], "buffs": ["ironskin", "potion_sickness"], "gear": true, "max_hp": 260},
 	{"name": "magia", "look": Vector2(0.4, -0.2), "give": ["wand_of_sparking", "space_gun", "vilethorn", "mana_potion", "mana_crystal"], "item": "wand_of_sparking", "max_mana": 100, "mana": 70, "shoot": "spark"},
 	{"name": "guia", "look": Vector2(0, -0.1), "npc": "guide", "third": false},
+	{"name": "guia_criacao", "look": Vector2(0, -0.1), "npc": "guide", "guide_item": "iron_bar", "inventory": true},
 	{"name": "loja", "look": Vector2(0, -0.1), "npc": "merchant", "inventory": true},
 	{"name": "criativo", "look": Vector2(0.4, -0.3), "up": 6.0},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
@@ -367,7 +368,12 @@ func _setup(s: Dictionary) -> void:
 		ne.set_physics_process(false)
 		player.inv.coin = PackedInt32Array([50, 30, 1, 0])
 		player.set_inventory(true)
-		main.get_node("HUD").open_npc(s.npc)
+		var hud_n: CanvasLayer = main.get_node("HUD")
+		hud_n.guide_craft = s.has("guide_item")
+		if s.has("guide_item"):
+			hud_n.guide_id = Items.ids[s.guide_item]
+			hud_n.guide_count = 5
+		hud_n.open_npc(s.npc)
 	var side := fwd.cross(Vector3.UP)
 	var i := 0
 	for n in s.get("enemies", []):

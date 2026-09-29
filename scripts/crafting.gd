@@ -52,6 +52,11 @@ static func craft_to_cursor(r: Dictionary, inv: Inventory, stations: Dictionary)
 	return true
 
 
+# Receitas que usam o item id como ingrediente (o Guia > Criação lista estas).
+static func uses_of(id: int) -> Array:
+	return recipes.filter(func(r): return r.needs.has(id))
+
+
 # Blocos de estação num cubo em volta de pos. Retorna {bloco: true}.
 static func stations_near(world, pos: Vector3) -> Dictionary:
 	var found := {}

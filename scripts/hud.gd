@@ -34,6 +34,12 @@ var hearts_shown := 0                 # corações visíveis (a vida máxima sob
 var npc_panel: PanelContainer
 var npc_kind := ""                    # quem está falando (guide, merchant, nurse); vazio = ninguém
 var npc_text: Label
+var guide_box: VBoxContainer           # Guia > Criação: um espaço para o item e a lista do que dá para criar com ele
+var guide_slot: Slot
+var guide_list: VBoxContainer
+var guide_id := -1                     # item no espaço do Guia (volta ao inventário ao fechar)
+var guide_count := 0
+var guide_craft := false              # o Guia está no modo Criação (senão, nas dicas)
 var test_panel: PanelContainer         # painel de atalhos do mundo de teste (F9)
 var test_open := false
 var test_footer: Label
@@ -743,9 +749,124 @@ func _build_npc() -> void:
 	npc_buttons.add_theme_constant_override("h_separation", 8)
 	npc_buttons.add_theme_constant_override("v_separation", 6)
 	box.add_child(npc_buttons)
+	guide_box = VBoxContainer.new()
+	guide_box.visible = false
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	guide_slot = _slot()
+	guide_slot.tooltip_text = "Clique com um item na mão para pô-lo aqui; clique de novo para pegá-lo de volta."
+	guide_slot.gui_input.connect(func(e: InputEvent):
+		if _pressed(e, MOUSE_BUTTON_LEFT):
+			last_click = Engine.get_process_frames()
+			_guide_swap())
+	row.add_child(guide_slot)
+	var hint := _label("← ponha um item aqui e eu digo o que dá para criar com ele", 14)
+	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(hint)
+	guide_box.add_child(row)
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(500, 150)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	guide_list = VBoxContainer.new()
+	guide_list.add_theme_constant_override("separation", 3)
+	scroll.add_child(guide_list)
+	guide_box.add_child(scroll)
+	box.add_child(guide_box)
 	npc_panel.add_child(box)
 	npc_panel.visible = false
 	root.add_child(npc_panel)
+
+
+# Dicas do Guia (a ajuda dele, wiki Guide): primeiro as que valem para o que o jogador tem e já fez, na ordem do jogo; depois as gerais.
+# O botão Ajuda passa para a próxima.
+func _guide_tips() -> Array:
+	var inv: Inventory = player.inv
+	var count := func(n: String) -> int: return inv.total(Items.ids[n])
+	var near := func(n: String) -> bool: return stations.has(Blocks.ids[n])
+	var ore := Items.names.any(func(n): return n.ends_with("_ore") and inv.total(Items.ids[n]) > 0)
+	var tips := []
+	if count.call("wood") < 10 and count.call("workbench") == 0 and not near.call("workbench"):
+		tips.append("Corte uma árvore com o machado (botão esquerdo, na base do tronco) para juntar madeira; 10 de madeira fazem uma Bancada de trabalho.")
+	if count.call("wood") >= 10 and count.call("workbench") == 0 and not near.call("workbench"):
+		tips.append("Você já tem madeira para uma Bancada de trabalho: ela aparece na criação, à esquerda. Coloque-a no chão: muita coisa só se cria perto dela.")
+	if count.call("gel") > 0 and count.call("torch") == 0:
+		tips.append("Gel e madeira fazem tochas. Elas iluminam as cavernas.")
+	if count.call("stone") >= 20 and count.call("furnace") == 0 and not near.call("furnace"):
+		tips.append("Uma Fornalha (20 de pedra, 4 de madeira e 3 tochas, feita na bancada) derrete minérios em barras.")
+	if ore and not near.call("furnace"):
+		tips.append("Minério só vira barra na Fornalha; as barras viram ferramentas, armas e armaduras na Bigorna.")
+	if count.call("iron_bar") + count.call("lead_bar") >= 5 and count.call("anvil") + count.call("lead_anvil") == 0 and not near.call("anvil"):
+		tips.append("5 barras de ferro fazem uma Bigorna (na bancada). Nela saem picaretas, machados, martelos, espadas, arcos e armaduras.")
+	if player.max_hp < 140:
+		tips.append("Ache Life Crystals nas cavernas: cada um dá +20 de vida máxima.")
+	if not world.evil_boss_down:
+		tips.append("Shadow Orbs e Crimson Hearts só quebram com martelo; a cada 3 quebrados um chefe acorda.")
+	if count.call("lens") >= 6:
+		tips.append("6 lentes num Altar Demoníaco fazem o Suspicious Looking Eye, que chama o Eye of Cthulhu à noite.")
+	if clock.is_night():
+		tips.append("À noite caem Fallen Stars: 5 delas fazem um Mana Crystal (+20 de mana).")
+	if world.evil_boss_down and not world.skeletron_down:
+		tips.append("Um meteorito caiu à meia-noite: a barra dele faz a armadura Meteor. O Velho do dungeon, à noite, chama o Skeletron.")
+	if world.skeletron_down and not world.hardmode:
+		tips.append("Com o dungeon aberto, jogue a Guide Voodoo Doll na lava do submundo para chamar o Wall of Flesh: ele abre o hardmode.")
+	if world.hardmode:
+		tips.append("O mundo mudou: cobalto e paládio brotaram na pedra e o Hallow se espalha. Há monstros novos à solta.")
+	return tips + TIPS
+
+
+func _guide_swap() -> void:
+	var inv: Inventory = player.inv
+	var t := inv.cursor_id
+	var c := inv.cursor_count
+	inv.cursor_id = guide_id
+	inv.cursor_count = guide_count
+	guide_id = t
+	guide_count = c
+	inv.version += 1
+	_guide_refresh()
+
+
+# Devolve o item do espaço do Guia ao inventário (o que não couber cai no chão).
+func _guide_return() -> void:
+	if guide_id == -1:
+		return
+	var left: int = player.inv.add(guide_id, guide_count)
+	if left > 0:
+		player.entities.spawn_drop(guide_id, left, player.position + Vector3.UP)
+	guide_id = -1
+	guide_count = 0
+	_guide_refresh()
+
+
+# O item do espaço e a lista de receitas que o usam: ícone do resultado e "quantidade nome — ingredientes (estação)".
+func _guide_refresh() -> void:
+	_fill(guide_slot, guide_id, guide_count)
+	for c in guide_list.get_children():
+		guide_list.remove_child(c)
+		c.queue_free()
+	if guide_id == -1:
+		return
+	var uses := Crafting.uses_of(guide_id)
+	if uses.is_empty():
+		guide_list.add_child(_label("Não sei criar nada com isso.", 15))
+	for r in uses:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var ic := TextureRect.new()
+		ic.texture = _icon(r.result)
+		ic.custom_minimum_size = Vector2(28, 28)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		row.add_child(ic)
+		var needs := []
+		for id in r.needs:
+			needs.append("%d %s" % [r.needs[id], Items.label(id).capitalize()])
+		var at := " — em: %s" % Blocks.ids.keys()[r.station].capitalize() if r.station != -1 else ""
+		var l := _label("%s%s: %s%s" % ["%d " % r.count if r.count > 1 else "", Items.label(r.result).capitalize(), ", ".join(needs), at], 15)
+		l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(l)
+		guide_list.add_child(row)
 
 
 func _npc_button(text: String, action: Callable) -> void:
@@ -766,11 +887,22 @@ func open_npc(kind: String) -> void:
 	for c in npc_buttons.get_children():
 		npc_buttons.remove_child(c)
 		c.queue_free()
+	guide_box.visible = false
 	match kind:
 		"guide":
-			npc_text.text = "Guia: \"%s\"" % TIPS[tip_index % TIPS.size()]
+			if guide_craft:
+				guide_box.visible = true
+				npc_text.text = "Guia: \"Pondo um item no espaço, mostro o que dá para criar com ele.\""
+				_guide_refresh()
+			else:
+				var tips := _guide_tips()
+				npc_text.text = "Guia: \"%s\"" % tips[tip_index % tips.size()]
 			_npc_button("Ajuda", func():
+				guide_craft = false
 				tip_index += 1
+				open_npc("guide"))
+			_npc_button("Criação", func():
+				guide_craft = true
 				open_npc("guide"))
 		"merchant":
 			npc_text.text = "Comerciante: \"Boa escolha! O que vai levar?\""
@@ -959,6 +1091,7 @@ func _process(delta: float) -> void:
 	if not player.inventory_open:
 		npc_kind = ""
 		test_open = false
+		_guide_return()
 	npc_panel.visible = open and npc_kind != ""
 	var show_test: bool = player.inventory_open and test_open and world.test_world
 	if show_test and not test_panel.visible:   # ao abrir, os botões de estado leem o valor atual
