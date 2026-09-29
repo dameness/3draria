@@ -357,8 +357,10 @@ com troco), Nurse cura o que falta por 1 cobre/ponto. Sem casa/moradia (fica em 
   do baú usa `take_stack` (= apanhar do chão). Teste `test_coins_ammo` (inclui save).
 - **Fallen Star**: o `Fallen_Star.png` da wiki é um GIF; agora `Fallen_Star_(old)` (PNG estático) + estrela procedural (`star` em atlas.gd) de reserva; `wiki_image` confere a assinatura PNG
   (GIF/truncado/vazio → procedural) e o `fetch-sprites.sh` não grava o que não é PNG. Prints `estrela`, `estrela_chao`.
-- **"Subsolo bugado" do verme**: reproduzido como voo criativo com a câmera dentro do bloco (dava para ver o mundo através da terra, faces de trás não existem). Agora a tela escurece
-  (`hud.dark`, atrás do minimapa). Se o dono ainda vir isso **fora do criativo**, pedir posição/ângulo. Prints `dentro_terra*`.
+- **"Subsolo bugado" do verme** — **causa raiz achada**: `get_block` gera na hora, na thread principal, o chunk que ainda não existe (o spawn do chefe, `surface_y`, o spawn de monstros
+  fazem isso perto do jogador) e, se esse chunk já estava na fila de geração, o job era pulado e o chunk ficava em `pending` **para sempre** sem mesh: um buraco no chão onde se vê o corte da
+  terra e o subsolo dos vizinhos (e o mundo nunca ficava "ocioso" nos prints). Agora `_chunk_ready` avisa quem esperava (`test_sync_gen`); antes só se curava ao mudar de chunk. Além
+  disso, o voo criativo com a câmera **dentro do bloco** (faces de trás não existem: via-se o mundo através da terra) agora escurece a tela (`hud.dark`, atrás do minimapa; prints `dentro_terra*`).
 - **Guia**: dicas do momento (`_guide_tips`, na ordem do jogo) e modo **Criação** (espaço para o item + lista de `Crafting.uses_of`). **Moradia** (`housing.gd`): cômodo fechado por blocos e portas
   (busca em 3D, 12–400 blocos de ar) com tocha, bancada e cadeira; botão direito na cadeira diz o que falta; Guide/Merchant/Nurse se mudam sozinhos (`Entities._homes`, `world.homes` no save),
   voltam ao nascimento se a casa for desfeita. Blocos `chair`, `door` (sólida) e `door_open` (painel fino; botão direito abre/fecha os 2 blocos), receitas da wiki (4 e 6 de madeira).
@@ -375,7 +377,7 @@ com troco), Nurse cura o que falta por 1 cobre/ponto. Sem casa/moradia (fica em 
 - **Boneco mais adulto** (cabeça 0,78 → 0,68, olhos menores, ombros mais largos); a tela de criação de personagem não recarrega mais ao escolher cor.
 
 **Perguntas ao dono (padrão marcado):** (1) Fledgling Wings em 1/4 dos baús de ilha em vez de 1/40: ok? (2) o "Mundo de teste" tem seed fixa 1337 (Corrupção ou Carmesim depende dela): quer uma segunda seed?
-(3) desligar hardmode não desfaz o terreno: precisa de "restaurar"? (4) o que exatamente estava "bugado" no verme (posição/ângulo se ainda acontecer fora do criativo)?
+(3) desligar hardmode não desfaz o terreno: precisa de "restaurar"? (4) o "subsolo bugado" do verme sumiu? (se ainda acontecer, posição/ângulo do print).
 
 ## Depois
 
