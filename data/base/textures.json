@@ -309,5 +309,9 @@
 	"bomb": {"wiki": "Bomb", "pattern": "blob", "colors": ["#4a4a52", "#2a2a30", "#c8c8d0"]},
 	"dynamite": {"wiki": "Dynamite", "pattern": "blob", "colors": ["#c83a3a", "#8a1a1a", "#f0e0a0"]},
 	"flintlock_pistol": {"wiki": "Flintlock_Pistol", "pattern": "bow", "colors": ["#6e4b2a", "#8a8a92"], "top_colors": ["#6e4b2a"]},
+	"book_of_skulls": {"wiki": "Book_of_Skulls", "pattern": "blob", "colors": ["#c8c0a0", "#6a5a3a", "#f0f0e0"]},
+	"skeletron_hand": {"wiki": "Skeletron_Hand", "pattern": "blob", "colors": ["#e0dccc", "#a09c88", "#ffffff"]},
+	"wooden_boomerang": {"wiki": "Wooden_Boomerang", "pattern": "sword", "colors": ["#c08a4a", "#8a5a2a"], "top_colors": ["#6e4b2a"]},
+	"mining_helmet": {"wiki": "Mining_Helmet"},
 	"logo": {"wiki": "Terraria_Steam_Library_logo"}
 }

@@ -11,6 +11,7 @@ var crit := Combat.CRIT
 var entities: Node3D
 var age := 0.0
 var hit: Array[Node3D] = []
+var returning := false   # bumerangue: já está voltando
 
 
 func _ready() -> void:
@@ -102,10 +103,33 @@ func _bomb(delta: float) -> void:
 		queue_free()
 
 
+# Bumerangue: voa `def.out` s (ou até bater num bloco), volta para o jogador e some ao alcançá-lo; cada inimigo apanha na ida e na volta.
+func _boomerang(delta: float) -> void:
+	var p: Node3D = entities.player
+	var back: Vector3 = p.position + Vector3.UP - position
+	if not returning and (age >= def.out or Blocks.solid[entities.world.get_block(floori(position.x + velocity.x * delta), floori(position.y), floori(position.z + velocity.z * delta))]):
+		returning = true
+		hit.clear()
+	if returning:
+		if back.length() < 0.8 or age > def.life:
+			queue_free()
+			return
+		velocity = back.normalized() * velocity.length()
+	position += velocity * delta
+	rotation.y += delta * 20.0
+	for e in entities.enemies.duplicate():
+		if not e in hit and VoxelBody.touches(position - Vector3.UP * 0.2, 0.3, 0.4, e.position, e.half, e.tall):
+			hit.append(e)
+			e.hurt(Combat.vary(damage, entities.rng), velocity, knockback, Combat.is_crit(entities.rng, crit))
+
+
 func _physics_process(delta: float) -> void:
 	age += delta
 	if def.has("fuse"):
 		_bomb(delta)
+		return
+	if def.has("out"):
+		_boomerang(delta)
 		return
 	velocity.y -= def.get("gravity", 0.0) * delta
 	var next := position + velocity * delta

@@ -4296,6 +4296,38 @@ func test_wiki_review():
 	check(shops.demolitionist == [["bomb", 300], ["dynamite", 2000]] and shops.arms_dealer[0] == ["musket_ball", 7], "lojas: Bomb 3 de prata, Dynamite 20, Musket Ball 7 de cobre")
 	free_player(tp)
 	tw.free()
+	# --- bumerangue, Book of Skulls, Skeletron Hand, Mining Helmet
+	var mw := floor_world()
+	var mp := make_player(mw)
+	var ment: Node3D = mp.entities
+	var boom: Dictionary = Items.defs[Items.ids.wooden_boomerang]
+	var target: Node3D = ment.spawn_enemy(ment.def_named("zombie"), Vector3(24.5, 11, 28.0))
+	target.hp = 9999
+	mp.throw_boomerang(boom, Vector3(0, 0, 1))
+	mp.throw_boomerang(boom, Vector3(0, 0, 1))
+	var flying: Array = ment.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "wooden_boomerang")
+	check(flying.size() == 1, "só um bumerangue no ar por vez")
+	var b: Node3D = flying[0]
+	var hits := 0
+	var hp_prev: int = target.hp
+	var turned := false
+	for i in 60 * 3:
+		if not is_instance_valid(b) or b.is_queued_for_deletion():
+			break
+		b._physics_process(1.0 / 60)
+		if target.hp < hp_prev:
+			hits += 1
+			hp_prev = target.hp
+		turned = turned or b.returning
+	check(hits == 2 and turned and b.is_queued_for_deletion() and mp.inv.total(Items.ids.wooden_boomerang) == 0, "o bumerangue fere na ida e na volta, volta para a mão e não se gasta (%d acertos)" % hits)
+	mp.mana = 50.0
+	mp.cast(Items.defs[Items.ids.book_of_skulls], Vector3(0, 0, 1))
+	check(is_equal_approx(mp.mana, 32.0) and ment.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "skull_shot"), "Book of Skulls: 18 de mana e uma caveira")
+	check(Items.defs[Items.ids.skeletron_hand].hook.range > Items.defs[Items.ids.grappling_hook].hook.range and Items.defs[Items.ids.mining_helmet].light, "Skeletron Hand é um gancho de maior alcance; Mining Helmet dá luz")
+	var skel: Array = enemy_def("skeletron").final_drops.filter(func(d): return d.get("pick") == "boss")
+	check(skel.size() == 3 and skel.any(func(d): return d.item == "book_of_skulls") and skel.any(func(d): return d.item == "skeletron_hand"), "Skeletron solta um de: Skeletron Hand, Book of Skulls ou nada")
+	free_player(mp)
+	mw.free()
 	# --- bomba e dinamite (wiki Bomb, Dynamite)
 	var bw := floor_world()
 	var bp := make_player(bw)

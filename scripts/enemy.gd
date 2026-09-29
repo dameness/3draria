@@ -549,8 +549,16 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false) -> int:
 			entities.boss_hearts(position)   # o chefe inteiro caiu (o último segmento, se for grupo)
 		if def.has("group") and entities.group_count(def.group) <= 1:   # o último segmento solta o prêmio do chefe
 			entities.boss_down(def.group)
-			for d in entities.final_drops(def.group):
-				if rng.randf() < d.chance:
+			var chosen := {}   # também aqui "pick" sorteia um só de cada grupo (item "" = nada)
+			for entry in entities.final_drops(def.group):
+				var d: Dictionary = entry
+				if d.has("pick"):
+					if chosen.has(d.pick):
+						continue
+					var group: Array = entities.final_drops(def.group).filter(func(x): return x.get("pick") == d.pick)
+					d = group[rng.randi() % group.size()]
+					chosen[d.pick] = true
+				if d.item != "" and rng.randf() < d.chance:
 					entities.spawn_drop(entities.drop_id(d.item), rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
 		var picked := {}   # drops com "pick": só um item de cada grupo cai (as 3 peças do Ninja: sai uma)
 		for entry in def.drops:

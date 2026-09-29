@@ -175,5 +175,9 @@
 	{"name": "shackle", "icon": "shackle", "stack": 1, "rarity": 1, "accessory": {"defense": 1}},
 	{"name": "bomb", "tip": "Uma pequena explosão que destrói a maioria dos blocos","icon": "bomb", "damage": 100, "use_time": 0.417, "knockback": 8, "throw": "bomb", "consumable": true, "rarity": 0, "sprite_angle": 45},
 	{"name": "dynamite", "tip": "Uma grande explosão que destrói a maioria dos blocos","icon": "dynamite", "damage": 250, "use_time": 0.667, "knockback": 10, "throw": "dynamite", "consumable": true, "rarity": 1, "sprite_angle": 45},
-	{"name": "flintlock_pistol", "icon": "flintlock_pistol", "damage": 13, "use_time": 0.267, "ammo": "bullet", "shoot_speed": 22.5, "knockback": 1, "crit": 0.1, "stack": 1, "rarity": 1, "sprite_angle": 0}
+	{"name": "flintlock_pistol", "icon": "flintlock_pistol", "damage": 13, "use_time": 0.267, "ammo": "bullet", "shoot_speed": 22.5, "knockback": 1, "crit": 0.1, "stack": 1, "rarity": 1, "sprite_angle": 0},
+	{"name": "book_of_skulls", "tip": "Dispara uma caveira","icon": "book_of_skulls", "damage": 29, "cost": 18, "use_time": 0.533, "shoot": "skull_shot", "shoot_speed": 17, "knockback": 3.5, "stack": 1, "rarity": 2, "sprite_angle": 45},
+	{"name": "skeletron_hand", "tip": "Aperte E para lançar o gancho","icon": "skeletron_hand", "hook": {"range": 15.94, "launch": 37.5, "pull": 24.75}, "stack": 1, "rarity": 2},
+	{"name": "wooden_boomerang", "icon": "wooden_boomerang", "damage": 10, "use_time": 0.333, "boomerang": "wooden_boomerang", "shoot_speed": 15, "knockback": 5, "stack": 1, "rarity": 1},
+	{"name": "mining_helmet", "tip": "Emite luz quando vestido","icon": "mining_helmet", "armor": "head", "defense": 2, "stack": 1, "rarity": 1, "light": true}
 ]

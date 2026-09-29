@@ -774,7 +774,7 @@ const TIPS := ["Bem-vindo! Use o machado nas árvores para juntar madeira e faç
 	"Quebre 3 Shadow Orbs ou Crimson Hearts com um martelo para despertar um chefe.", "Fallen Stars caem à noite; 5 delas fazem um Mana Crystal.",
 	"Segure Shift para escolher a ferramenta certa sozinho.", "Poções de cura deixam a Doença da poção por 1 minuto."]
 const SHOPS := {   # preços em cobre (wiki)
-	"merchant": [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5], ["anvil", 5000]],
+	"merchant": [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5], ["anvil", 5000], ["mining_helmet", 40000]],
 	"demolitionist": [["bomb", 300], ["dynamite", 2000]],
 	"arms_dealer": [["musket_ball", 7], ["flintlock_pistol", 50000]],
 }

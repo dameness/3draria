@@ -382,7 +382,8 @@ func tick(delta: float) -> void:
 		if recall_left <= 0.0:
 			_teleport_home()
 	_breathe(delta)
-	var shine := buff_sum("shine") > 0.0   # Brilho: luz forte de 10 blocos (como uma tocha); Coruja: raio maior e fraco; juntas vale a mais forte
+	var helm: bool = inv.equip[0] != -1 and Items.defs[inv.equip[0]].get("light", false)   # Mining Helmet: luz como a de uma tocha
+	var shine := buff_sum("shine") > 0.0 or helm   # Brilho: luz forte de 10 blocos (como uma tocha); Coruja: raio maior e fraco; juntas vale a mais forte
 	var owl := buff_sum("owl") > 0.0
 	if spelunker:
 		spelunker.visible = buff_sum("spelunker") > 0.0
@@ -918,6 +919,9 @@ func use_item() -> void:
 	if d.has("throw"):
 		throw_item(id, d, -cam.global_basis.z)
 		return
+	if d.has("boomerang"):
+		throw_boomerang(d, -cam.global_basis.z)
+		return
 	if d.has("cost"):
 		cast(d)
 		return
@@ -1013,6 +1017,14 @@ func summon(d: Dictionary) -> void:
 		var b: Node3D = entities.spawn_boss(d.summon)
 		inv.take_one(slot)
 		say("%s despertou!" % Items.title(b.def.name))
+
+
+# Bumerangue (wiki): vai, volta e ferve cada inimigo na ida e na volta; só um no ar por vez, e o item não se gasta.
+func throw_boomerang(d: Dictionary, forward: Vector3) -> void:
+	if entities.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == d.boomerang and not n.is_queued_for_deletion()):
+		return
+	entities.spawn_projectile(d.boomerang, position + Vector3.UP * EYE + forward * 0.5, forward, d.shoot_speed, d.damage, d.knockback, d.get("crit", Combat.CRIT))
+	Sfx.play(entities, "swing", position + Vector3.UP, -8.0, 1.3)
 
 
 # Bomba e dinamite: joga um projétil com pavio (projectiles.json) em arco e gasta um.
