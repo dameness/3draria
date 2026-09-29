@@ -52,6 +52,7 @@ const SHOTS := [
 	{"name": "pocoes", "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "ironskin_potion", "regeneration_potion", "swiftness_potion", "mining_potion", "archery_potion", "recall_potion", "magic_mirror"], "buffs": ["ironskin", "regeneration", "swiftness", "potion_sickness"], "hp": 60},
 	{"name": "pocoes_inv", "inventory": true, "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "cloud_in_a_bottle", "life_crystal"], "buffs": ["ironskin", "potion_sickness"], "gear": true, "max_hp": 260},
 	{"name": "magia", "look": Vector2(0.4, -0.2), "give": ["wand_of_sparking", "space_gun", "vilethorn", "mana_potion", "mana_crystal"], "item": "wand_of_sparking", "max_mana": 100, "mana": 70, "shoot": "spark"},
+	{"name": "nuvem_sangue", "look": Vector2(0, -0.2), "item": "crimson_rod", "enemies": ["zombie"], "cloud": true, "max_mana": 100},
 	{"name": "guia", "look": Vector2(0, -0.1), "npc": "guide", "third": false},
 	{"name": "guia_criacao", "look": Vector2(0, -0.1), "npc": "guide", "guide_item": "iron_bar", "inventory": true},
 	{"name": "loja", "look": Vector2(0, -0.1), "npc": "merchant", "inventory": true},
@@ -396,6 +397,9 @@ func _setup(s: Dictionary) -> void:
 			e.hurt(1, Vector3.ZERO, 0)
 			e.flash = 99.0
 		i += 1
+	if s.get("cloud", false):   # a Crimson Rod já lançou a nuvem sobre o inimigo da frente
+		var z: Node3D = ent.enemies[0]
+		ent.spawn_cloud(z.position + Vector3(0, 3.2, 0), 12)
 	if s.get("worm", false):
 		var w: Node3D = ent.spawn_worm(ent.def_named("eater_of_worlds"), player.position + fwd * 10 + Vector3.UP * 1.0)
 		for e in ent.enemies:

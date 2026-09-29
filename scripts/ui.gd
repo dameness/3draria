@@ -137,6 +137,8 @@ static func item_tip(id: int) -> String:
 		if a.has("regen"): lines.append("Regeneração de vida mais rápida")
 		if a.has("wings"): lines.append("Permite voar e planar (%.2f s de voo)" % a.wings.time)
 		if a.has("double_jump"): lines.append("Permite pular de novo no ar")
+		if a.has("max_mana"): lines.append("+%d de mana máxima" % a.max_mana)
+		if a.has("panic"): lines.append("Ao levar dano, dobra a velocidade por 8 s")
 		if a.has("defense"): lines.append("+%d de defesa" % a.defense)
 		lines.append("Acessório")
 	if d.has("heal"):
@@ -164,6 +166,8 @@ static func item_tip(id: int) -> String:
 		lines.append("Invoca um chefe (só à noite)" if d.get("night", false) else "Invoca um chefe")
 	if d.has("set"):
 		lines.append("Conjunto: %s" % str(d.set))
+		for w in Items.sets.get(d.set, {}).get("free_cost", []):
+			lines.append("Conjunto completo: %s sem custo de mana" % Items.label(w).capitalize())
 	if Items.places[id] != -1:
 		lines.append("Pode ser colocado")
 	_tips[id] = "\n".join(lines)

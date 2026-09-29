@@ -1166,7 +1166,7 @@ func _process(delta: float) -> void:
 	life_label.text = "Vida: %d/%d" % [ceili(hp), player.max_hp]
 	for k in stars.size():   # cada estrela é 20 de mana; a última cheia pisca quando a mana chega ao máximo
 		var f := clampf((player.mana - k * 20.0) / 20.0, 0.0, 1.0)
-		stars[k].visible = k * 20 < player.max_mana
+		stars[k].visible = k * 20 < player.mana_cap()
 		stars[k].modulate = Color(0.45, 0.65, 1.0, 0.3 + 0.7 * f) if f > 0.0 else Color(0.25, 0.3, 0.45, 0.5)
 		stars[k].scale = Vector2.ONE * (0.75 + 0.25 * f)
 	defense_label.text = "Defesa: %d" % player.defense()

@@ -8,6 +8,6 @@
 	"gold": {"pieces": ["gold_helmet", "gold_chainmail", "gold_greaves"], "defense": 3},
 	"platinum": {"pieces": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"], "defense": 4},
 	"molten": {"pieces": ["molten_helmet", "molten_breastplate", "molten_greaves"], "defense": 0},
-	"meteor": {"pieces": ["meteor_helmet", "meteor_suit", "meteor_leggings"], "defense": 0},
+	"meteor": {"pieces": ["meteor_helmet", "meteor_suit", "meteor_leggings"], "defense": 0, "free_cost": ["space_gun"]},
 	"ninja": {"pieces": ["ninja_hood", "ninja_shirt", "ninja_pants"], "defense": 0}
 }

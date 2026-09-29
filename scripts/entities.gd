@@ -20,6 +20,10 @@ var enemies: Array[Node3D] = []
 var boss: Node3D = null
 var meteor: Node3D = null    # bola de fogo em queda
 var old_man: Node3D = null   # guarda do dungeon: à noite, até o Skeletron cair, espera na entrada
+var cloud: Node3D = null    # nuvem da Crimson Rod (uma por vez): chove sangue enquanto durar
+var cloud_left := 0.0
+var cloud_next := 0.0
+var cloud_damage := 0
 var boss_max := 0           # vida total do chefe ao nascer (a de todos os segmentos, se for verme)
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
@@ -58,6 +62,23 @@ func _physics_process(delta: float) -> void:
 			meteor.queue_free()
 			meteor = null
 			crater(int(at.x), int(at.z))
+	if cloud:
+		cloud_left -= delta
+		cloud_next -= delta
+		if cloud_left <= 0.0:
+			cloud.queue_free()
+			cloud = null
+		elif cloud_next <= 0.0:
+			cloud_next = 0.2
+			# a chuva é estreita (na wiki, uma coluna de 2-3 tiles): em 3D uma gota cai sobre um inimigo debaixo da nuvem (a menos de 1,5 bloco); sem ninguém, cai à toa
+			var under := enemies.filter(func(e): return not e.display and e.def.ai != "npc" and e.position.y < cloud.position.y and Vector2(e.position.x - cloud.position.x, e.position.z - cloud.position.z).length() < 1.5)
+			var x := rng.randf_range(-0.6, 0.6)
+			var z := rng.randf_range(-0.6, 0.6)
+			if not under.is_empty():
+				var e: Node3D = under[rng.randi() % under.size()]
+				x = e.position.x - cloud.position.x + rng.randf_range(-0.1, 0.1)
+				z = e.position.z - cloud.position.z + rng.randf_range(-0.1, 0.1)
+			spawn_projectile("blood_drop", cloud.position + Vector3(x, -0.5, z), Vector3.DOWN, 6.0, cloud_damage, 0.0)
 	spawn_timer -= delta
 	if spawn_timer <= 0:
 		spawn_timer = 1.0
@@ -447,8 +468,14 @@ func orb_broken(id: int, at := Vector3.ZERO) -> void:
 	if world.orbs_broken == 1 or rng.randf() < 0.2:
 		spawn_drop(Items.ids[gun], 1, at + Vector3(0, 0.3, 0))
 		spawn_drop(Items.ids.musket_ball, 100, at + Vector3(0.3, 0.3, 0))
-	if id == Blocks.ids.shadow_orb and rng.randf() < 0.2:
-		spawn_drop(Items.ids.vilethorn, 1, at + Vector3(-0.3, 0.3, 0))
+	if id == Blocks.ids.shadow_orb:   # cada orbe: 20% de cada um dos itens do bioma
+		for n in ["vilethorn", "band_of_starpower"]:
+			if rng.randf() < 0.2:
+				spawn_drop(Items.ids[n], 1, at + Vector3(rng.randf_range(-0.4, 0.4), 0.3, rng.randf_range(-0.4, 0.4)))
+	else:
+		for n in ["crimson_rod", "the_rotted_fork", "panic_necklace"]:
+			if rng.randf() < 0.2:
+				spawn_drop(Items.ids[n], 1, at + Vector3(rng.randf_range(-0.4, 0.4), 0.3, rng.randf_range(-0.4, 0.4)))
 	if world.orbs_broken % 3 != 0:
 		player.say("você sente uma presença maligna (%d/3)" % (world.orbs_broken % 3))
 	elif boss == null:
@@ -505,6 +532,34 @@ func spawn_drop(item: int, count: int, pos: Vector3) -> Node3D:
 	d.position = pos
 	add_child(d)
 	return d
+
+
+# Nuvem de sangue da Crimson Rod em `at`: dura 5 min ou até a próxima nuvem; a cada 0,2 s solta uma gota que cai e fere o primeiro inimigo embaixo.
+func spawn_cloud(at: Vector3, damage: int) -> void:
+	if cloud:
+		cloud.queue_free()
+	cloud = Node3D.new()
+	cloud.position = at
+	for k in 5:   # cinco bolas achatadas, vermelho-acinzentado
+		var puff := MeshInstance3D.new()
+		var sphere := SphereMesh.new()
+		sphere.radius = 0.7 - 0.08 * absi(k - 2)
+		sphere.height = sphere.radius * 1.5
+		var mat := StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = Color("#8a3a44").lerp(Color("#5a3038"), k % 2 * 0.5)
+		sphere.material = mat
+		puff.mesh = sphere
+		puff.position = Vector3((k - 2) * 0.55, 0.1 * (k % 2), sin(k * 2.0) * 0.4)
+		cloud.add_child(puff)
+	add_child(cloud)
+	var tw := cloud.create_tween().set_loops()   # balança devagar
+	tw.tween_property(cloud, "scale", Vector3(1.06, 0.94, 1.06), 1.0).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(cloud, "scale", Vector3(0.95, 1.05, 0.95), 1.0).set_trans(Tween.TRANS_SINE)
+	cloud_left = 300.0
+	cloud_next = 0.3
+	cloud_damage = damage
+	Fx.puff(self, at, Color("#a04a54"), 10)
 
 
 func spawn_projectile(name: String, from: Vector3, dir: Vector3, speed: float, damage: int, knockback: float, crit := Combat.CRIT) -> Node3D:

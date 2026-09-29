@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -3497,3 +3497,98 @@ func test_light_potions():
 	free_player(p)
 	w.free()
 	return true
+
+
+# Itens das orbes e do conjunto Meteor: Space Gun sem mana com o conjunto, Band of Starpower (+40 de mana), Panic Necklace (dobra a velocidade por 8 s),
+# The Rotted Fork (estocada com onda) e Crimson Rod (nuvem que chove sangue).
+func test_orb_items():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var dt := 1.0 / 60
+	var gun: Dictionary = Items.defs[Items.ids.space_gun]
+	p.inv.equip = PackedInt32Array([Items.ids.meteor_helmet, Items.ids.meteor_suit, -1])
+	check(not p.inv.free_cast(Items.ids.space_gun), "sem o conjunto completo o Space Gun gasta mana")
+	p.inv.equip = PackedInt32Array([Items.ids.meteor_helmet, Items.ids.meteor_suit, Items.ids.meteor_leggings])
+	check(p.inv.free_cast(Items.ids.space_gun) and not p.inv.free_cast(Items.ids.wand_of_sparking) and not p.inv.free_cast(Items.ids.vilethorn), "conjunto Meteor completo: só o Space Gun fica sem custo")
+	p.mana = 20.0
+	p.cast(gun, Vector3.RIGHT)
+	check(p.mana == 20.0 and ent.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "space_laser"), "o Space Gun dispara sem gastar mana com o conjunto")
+	p.cast(Items.defs[Items.ids.wand_of_sparking], Vector3.RIGHT)
+	check(p.mana == 18.0, "a Wand of Sparking continua gastando (2)")
+	check(Ui.item_tip(Items.ids.meteor_suit).contains("Space Gun sem custo de mana"), "a dica do conjunto avisa")
+	p.inv.equip = PackedInt32Array([-1, -1, -1])
+	# Band of Starpower: +40 de mana máxima enquanto vestida
+	p.inv.acc[0] = Items.ids.band_of_starpower
+	check(p.mana_cap() == 60 and Ui.item_tip(Items.ids.band_of_starpower).contains("+40 de mana"), "Band of Starpower soma 40 à mana máxima")
+	p.mana = 20.0
+	p.mana_use = 9.0
+	for i in 600:
+		p.tick(dt)
+	check(p.mana > 40.0 and p.mana <= 60.0, "a mana regenera até o novo máximo (%.1f)" % p.mana)
+	p.inv.acc[0] = -1
+	p.tick(dt)
+	check(p.mana <= 20.001 and p.mana_cap() == 20, "tirar a banda devolve o máximo e a mana volta a caber")
+	# Panic Necklace
+	p.inv.acc[0] = Items.ids.panic_necklace
+	p.iframes = 0.0
+	p.hurt(5, Vector3.RIGHT)
+	check(p.has_buff("panic") and absf(p.buffs.panic - 8.0) < 0.1 and is_equal_approx(p.buff_sum("speed"), 1.0), "Panic Necklace: levar dano dá o buff de +100% de velocidade por 8 s")
+	p.inv.acc[0] = -1
+	p.buffs.clear()
+	p.iframes = 0.0
+	p.hurt(5, Vector3.RIGHT)
+	check(not p.has_buff("panic"), "sem o colar não há pânico")
+	# The Rotted Fork: estocada com dano da wiki e uma onda que sai da ponta
+	var fork: Dictionary = Items.defs[Items.ids.the_rotted_fork]
+	check(fork.damage == 17 and fork.knockback == 5 and absf(fork.use_time - 31.0 / 60.0) < 0.001 and fork.use_style == "thrust" and fork.shoot == "fork_wave", "The Rotted Fork: 17 de dano, use 31, recuo 5, estocada com onda")
+	var z: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(27.5, 11.0, 24.5))
+	z._ready()
+	p.position = Vector3(24.5, 11.0, 24.5)
+	var hits: int = p.swing(fork, p.position + Vector3.UP * p.EYE, Vector3.RIGHT)
+	check(hits == 1 and z.hp < z.def.life and ent.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "fork_wave"), "a estocada acerta o que está na frente e solta a onda")
+	ent.remove_enemy(z)
+	# Crimson Rod: 30 de mana, uma nuvem no ponto da mira, chove sangue; a segunda substitui a primeira
+	var rod: Dictionary = Items.defs[Items.ids.crimson_rod]
+	check(rod.damage == 12 and rod.cost == 30 and absf(rod.use_time - 24.0 / 60.0) < 0.05, "Crimson Rod: 12 de dano, 30 de mana, use 24 (wiki)")
+	p.max_mana = 100
+	p.mana = 100.0
+	p.mana_use = 0.0
+	p.cast(rod, Vector3(1, -0.02, 0).normalized())
+	check(p.mana == 70.0 and ent.cloud != null and ent.cloud.position.x > 25.0 and ent.cloud.position.y > 12.0, "a nuvem nasce na mira, acima do chão, e custa 30 de mana")
+	var first: Node3D = ent.cloud
+	var target: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(ent.cloud.position.x, 11.0, ent.cloud.position.z))
+	target._ready()
+	var hp0: int = target.hp
+	target.set_physics_process(false)
+	for i in int(4.0 / dt):
+		ent._physics_process(dt)
+		for pr in ent.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "blood_drop"):
+			pr._physics_process(dt)
+	check(target.hp < hp0 - 20, "as gotas de sangue caem e ferem quem está embaixo (%d de dano em 4 s)" % (hp0 - target.hp))
+	p.cast(rod, Vector3(0, 0.3, 1).normalized())
+	check(ent.cloud != first and ent.get_children().filter(func(n): return n == first and not n.is_queued_for_deletion()).is_empty(), "uma nuvem por vez: a nova troca a antiga")
+	ent.cloud_left = 0.01
+	ent._physics_process(dt)
+	check(ent.cloud == null, "a nuvem some no fim do tempo")
+	# das orbes
+	var drops := {}
+	ent.rng.seed = 3
+	for i in 300:
+		for orb in [Blocks.ids.shadow_orb, Blocks.ids.crimson_heart]:
+			world_orbs(ent, orb, drops)
+	check(drops.has("band_of_starpower") and drops.has("vilethorn") and drops.has("crimson_rod") and drops.has("the_rotted_fork") and drops.has("panic_necklace"), "as orbes soltam Vilethorn/Band (Shadow Orb) e Rod/Fork/Colar (Crimson Heart): %s" % str(drops))
+	free_player(p)
+	w.free()
+	return true
+
+
+func world_orbs(ent: Node3D, orb: int, drops: Dictionary) -> void:
+	var before := ent.get_children().size()
+	ent.world.orbs_broken = 1   # a 1ª orbe é a especial da arma; aqui contamos só os itens do bioma (a cada 3ª acorda chefe: pula)
+	ent.boss = null
+	ent.orb_broken(orb, Vector3(24.5, 12.0, 24.5))
+	for n in ent.get_children().slice(before):
+		if n.get("item") != null:
+			drops[Items.names[n.item]] = drops.get(Items.names[n.item], 0) + 1
+			n.queue_free()

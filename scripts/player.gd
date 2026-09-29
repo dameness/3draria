@@ -79,7 +79,7 @@ var message_until := 0
 var hp := float(MAX_HP)
 var max_hp := MAX_HP
 var mana := 20.0
-var max_mana := 20
+var max_mana := 20            # mana máxima de base (Mana Crystals); a Band of Starpower soma por cima (mana_cap)
 var mana_use := 0.0           # segundos desde a última magia (usando mana a regeneração cai a 5%)
 var buffs := {}               # nome (buffs.json) -> segundos que faltam
 var recall_left := 0.0        # Magic Mirror / Recall Potion: segundos até o teleporte para casa
@@ -336,8 +336,9 @@ func tick(delta: float) -> void:
 	mana_use += delta
 	# regeneração de mana da wiki: (máx/3 + 1) × (2 parado) × (mana/máx × 0,5 + 0,5) × (0,05 usando mana), ÷ 2 por segundo
 	var still := 2.0 if Vector2(velocity.x, velocity.z).length() < 0.1 else 1.0
-	var rate := (max_mana / 3.0 + 1.0) * still * (mana / max_mana * 0.5 + 0.5) * (0.05 if mana_use < 0.5 else 1.0)
-	mana = minf(mana + rate / 2.0 * delta, max_mana)
+	var cap := mana_cap()
+	var rate := (cap / 3.0 + 1.0) * still * (mana / cap * 0.5 + 0.5) * (0.05 if mana_use < 0.5 else 1.0)
+	mana = minf(mana + rate / 2.0 * delta, cap)
 	since_hit += delta
 	if since_hit > REGEN_DELAY:
 		hp = minf(hp + delta * (1.0 + inv.acc_sum("regen") + buff_sum("regen")), max_hp)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
@@ -524,6 +525,8 @@ func hurt(damage: int, dir: Vector3, bounce := true) -> int:   # bounce = false:
 	iframes = IFRAMES
 	since_hit = 0.0
 	shake = 1.0
+	if inv.has_acc("panic"):   # Panic Necklace: ao levar dano, 8 s com o dobro da velocidade
+		add_buff("panic", 8.0)
 	Sfx.play(entities, "hurt", position + Vector3.UP, 0.0)
 	if bounce:
 		knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
@@ -543,6 +546,11 @@ func die() -> void:
 	breath = BREATH
 	fall_top = position.y
 	say("você morreu")
+
+
+# Mana máxima de verdade: a de base mais o que os acessórios dão (Band of Starpower +40).
+func mana_cap() -> int:
+	return max_mana + int(inv.acc_sum("max_mana"))
 
 
 func defense() -> int:
@@ -600,10 +608,10 @@ func consume(i: int) -> bool:
 			say("a mana máxima já é %d" % MAX_MANA_CAP)
 			return false
 		max_mana = mini(max_mana + int(d.mana_max), MAX_MANA_CAP)
-		mana = minf(mana + d.mana_max, max_mana)
+		mana = minf(mana + d.mana_max, mana_cap())
 		say("mana máxima: %d" % max_mana)
 	if d.has("mana"):
-		mana = minf(mana + d.mana, max_mana)
+		mana = minf(mana + d.mana, mana_cap())
 	if d.has("buff"):
 		add_buff(d.buff, d.buff_time)
 	if d.has("recall"):
@@ -640,7 +648,7 @@ func quick_mana() -> void:
 		var id: int = inv.item[i]
 		if id == -1 or not Items.defs[id].has("mana"):
 			continue
-		if best == -1 or (Items.defs[id].mana >= max_mana - mana and Items.defs[id].mana < Items.defs[inv.item[best]].mana):
+		if best == -1 or (Items.defs[id].mana >= mana_cap() - mana and Items.defs[id].mana < Items.defs[inv.item[best]].mana):
 			best = i
 	if best == -1:
 		say("sem poção de mana")
@@ -649,16 +657,26 @@ func quick_mana() -> void:
 
 
 # Magia (wiki Mana): gasta `cost`; sem mana suficiente ainda dá para usar, com 60% de penalidade de velocidade (o ciclo ×1,6).
-func cast(d: Dictionary) -> void:
-	if mana >= d.cost:
-		mana -= d.cost
+func cast(d: Dictionary, aim := Vector3.ZERO) -> void:   # aim: a direção (os testes passam; em jogo é a da câmera)
+	var cost: float = 0.0 if inv.free_cast(Items.ids[d.name]) else float(d.cost)   # conjunto Meteor: Space Gun sem mana
+	if mana >= cost:
+		mana -= cost
 	else:
 		mana = 0.0
 		cooldown *= 1.6
 		use_len = cooldown
 	mana_use = 0.0
-	var forward := -cam.global_basis.z
-	entities.spawn_projectile(d.shoot, eye() + forward * 0.6, forward, d.shoot_speed, d.damage, d.get("knockback", 0.0), d.get("crit", Combat.CRIT))
+	var forward := aim if aim != Vector3.ZERO else -cam.global_basis.z
+	var from := position + Vector3.UP * EYE
+	if d.has("cloud"):   # Crimson Rod: uma nuvem no ponto da mira (para antes de um bloco) que chove sangue; uma por vez
+		var hit: Dictionary = world.raycast(from, forward, d.cloud)
+		var at: Vector3 = from + forward * d.cloud if hit.is_empty() else Vector3(hit.pos) + Vector3.ONE * 0.5 + Vector3(hit.normal) * 0.8
+		at.y += 2.5
+		while Blocks.solid[world.get_block(floori(at.x), floori(at.y), floori(at.z))] and at.y > from.y - 3.0:
+			at.y -= 0.5
+		entities.spawn_cloud(at, d.damage)
+	else:
+		entities.spawn_projectile(d.shoot, from + forward * 0.6, forward, d.shoot_speed, d.damage, d.get("knockback", 0.0), d.get("crit", Combat.CRIT))
 	Sfx.play(entities, "bow", position + Vector3.UP, -8.0, 1.6)
 
 

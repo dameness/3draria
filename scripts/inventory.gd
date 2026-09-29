@@ -388,6 +388,14 @@ func click_acc(k: int) -> void:
 	version += 1
 
 
+# O conjunto de armadura completo vestido zera o custo de mana desta arma (Meteor: Space Gun)?
+func free_cast(id: int) -> bool:
+	for s in Items.sets.values():
+		if id in s.free_cost and s.pieces.all(func(p): return p in equip):
+			return true
+	return false
+
+
 # Soma um atributo dos acessórios vestidos (ex.: "speed", "jump", "defense").
 func acc_sum(stat: String) -> float:
 	var t := 0.0
