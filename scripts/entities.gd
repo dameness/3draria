@@ -107,7 +107,7 @@ func _town() -> void:
 		if world.npcs.has(n) and player.position.distance_to(where) <= 60.0 and not enemies.any(func(e): return e.def.name == n):
 			spawn_enemy(def_named(n), where)
 			if (n == "merchant" or n == "nurse") and not world.test_world and not world.homes.has(n):
-				player.say("%s chegou!" % n.capitalize())
+				player.say("%s chegou!" % Items.title(n))
 		i += 1
 
 
@@ -131,12 +131,12 @@ func _homes() -> void:
 			var h: Vector3i = world.homes[n]
 			if Vector2(h.x + 0.5 - player.position.x, h.z + 0.5 - player.position.z).length() < Housing.SEARCH and not Housing.check(world, h).valid:
 				world.homes.erase(n)   # a casa foi desfeita: volta a ficar perto do nascimento
-				player.say("%s ficou sem casa" % n.capitalize())
+				player.say("%s ficou sem casa" % Items.title(n))
 		if not world.homes.has(n):
 			var f := Housing.find(world, player.position, world.homes.values())
 			if not f.is_empty():
 				world.homes[n] = f.home
-				player.say("%s se mudou para a casa!" % n.capitalize())
+				player.say("%s se mudou para a casa!" % Items.title(n))
 		for e in enemies:   # quem já está no mundo vai para o lugar dele
 			if e.def.name == n and e.position.distance_to(_npc_spot(n, 0)) > 4.0 and world.homes.has(n):
 				e.position = _npc_spot(n, 0)
@@ -270,7 +270,7 @@ func test_boss(n: String) -> void:
 	if d.ai == "wall":
 		goto("underworld")
 	spawn_boss(n)
-	player.say("%s despertou!" % n.replace("_", " "))
+	player.say("%s despertou!" % Items.title(n))
 
 
 # Tira todos os inimigos que não são habitantes nem vitrine (chefes e servos incluídos).
@@ -520,7 +520,7 @@ func orb_broken(id: int, at := Vector3.ZERO) -> void:
 		var n := "eater_of_worlds" if id == Blocks.ids.shadow_orb else "brain_of_cthulhu"
 		if defs.any(func(d): return d.name == n):
 			spawn_boss(n)
-			player.say("%s despertou!" % n.replace("_", " "))
+			player.say("%s despertou!" % Items.title(n))
 
 
 # Número de dano flutuante, como no Terraria: aparece com um salto, sobe e some. Laranja nos inimigos, vermelho no jogador; crítico (wiki:

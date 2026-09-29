@@ -973,7 +973,7 @@ func summon(d: Dictionary) -> void:
 	else:
 		var b: Node3D = entities.spawn_boss(d.summon)
 		inv.take_one(slot)
-		say("%s despertou!" % b.def.name.replace("_", " "))
+		say("%s despertou!" % Items.title(b.def.name))
 
 
 func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:

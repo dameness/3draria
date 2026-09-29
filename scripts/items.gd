@@ -92,6 +92,14 @@ static func label(id: int) -> String:
 	return names[id].replace("_", " ")
 
 
+# Título como na wiki: "brain_of_cthulhu" → "Brain of Cthulhu" (preposições e artigos ficam minúsculos, menos na 1ª palavra).
+static func title(s: String) -> String:
+	var out := []
+	for w in s.replace("_", " ").split(" ", false):
+		out.append(w if out.size() > 0 and w in ["of", "the", "in", "a", "an", "and", "for", "to", "on"] else w.capitalize())
+	return " ".join(out)
+
+
 static func rarity_color(id: int) -> Color:
 	return rarity_colors.get(int(defs[id].get("rarity", 0)), Color.WHITE)
 

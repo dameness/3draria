@@ -121,7 +121,7 @@ static func item_tip(id: int) -> String:
 	if _tips.has(id):
 		return _tips[id]
 	var d: Dictionary = Items.defs[id]
-	var lines := ["[color=#%s]%s[/color]" % [Items.rarity_color(id).to_html(false), Items.label(id).capitalize()]]
+	var lines := ["[color=#%s]%s[/color]" % [Items.rarity_color(id).to_html(false), Items.title(Items.label(id))]]
 	# Ordem do balão do Terraria: dano, crítico, velocidade, recuo, defesa, poderes, cura/mana, texto do item, consumível, duração, material.
 	if d.get("damage", 0) > 0:
 		var kind := "à distância" if d.has("ammo") or d.has("ammo_class") else "mágico" if d.has("cost") else "corpo a corpo"
@@ -153,7 +153,7 @@ static func item_tip(id: int) -> String:
 		if s.get("defense", 0) > 0:
 			lines.append("Bônus do conjunto: %d de defesa" % s.defense)
 		for w in s.get("free_cost", []):
-			lines.append("Bônus do conjunto: %s sem custo de mana" % Items.label(w).capitalize())
+			lines.append("Bônus do conjunto: %s sem custo de mana" % Items.title(Items.label(w)))
 	if d.has("tip"):
 		lines.append(d.tip)
 	if d.get("consumable", false) or d.has("ammo_class"):

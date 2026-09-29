@@ -715,7 +715,7 @@ func _build_test() -> void:
 				world.start_hardmode(), func(): return "Hardmode: %s" % ("ligado" if world.hardmode else "desligado")]])
 	var bosses := []
 	for n in ent.boss_names():
-		bosses.append([n.replace("_", " ").capitalize(), func():
+		bosses.append([Items.title(n), func():
 			ent.test_boss(n)
 			player.set_inventory(false)])
 	_test_row(box, "Chefes", bosses)
@@ -908,9 +908,9 @@ func _guide_refresh() -> void:
 		row.add_child(ic)
 		var needs := []
 		for id in r.needs:
-			needs.append("%d %s" % [r.needs[id], Items.label(id).capitalize()])
-		var at := " — em: %s" % Blocks.ids.keys()[r.station].capitalize() if r.station != -1 else ""
-		var l := _label("%s%s: %s%s" % ["%d " % r.count if r.count > 1 else "", Items.label(r.result).capitalize(), ", ".join(needs), at], 15)
+			needs.append("%d %s" % [r.needs[id], Items.title(Items.label(id))])
+		var at := " — em: %s" % Items.title(Blocks.ids.keys()[r.station]) if r.station != -1 else ""
+		var l := _label("%s%s: %s%s" % ["%d " % r.count if r.count > 1 else "", Items.title(Items.label(r.result)), ", ".join(needs), at], 15)
 		l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(l)
 		guide_list.add_child(row)
@@ -955,7 +955,7 @@ func open_npc(kind: String) -> void:
 			npc_text.text = "Comerciante: \"Boa escolha! O que vai levar?\""
 			for g in SHOP:
 				var id: int = Items.ids[g[0]]
-				_npc_button("%s (%s)" % [Items.label(id).capitalize(), _price(g[1])], func():
+				_npc_button("%s (%s)" % [Items.title(Items.label(id)), _price(g[1])], func():
 					if player.inv.pay(g[1]):
 						player.inv.add(id, 1)
 						Sfx.play(player.entities, "coin", player.position, -6.0)
@@ -1215,7 +1215,7 @@ func _process(delta: float) -> void:
 	if id != shown_held:  # o nome do item aparece um instante, na cor da raridade
 		shown_held = id
 		item_until = now + 2200
-		item_label.text = Items.label(id).capitalize() if id != -1 else ""
+		item_label.text = Items.title(Items.label(id)) if id != -1 else ""
 		item_label.add_theme_color_override("font_color", Items.rarity_color(id) if id != -1 else Color.WHITE)
 	item_label.visible = open_t < 0.5
 	item_label.modulate.a = clampf((item_until - now) / 500.0, 0.0, 1.0)
@@ -1225,7 +1225,7 @@ func _process(delta: float) -> void:
 		var life: int = player.entities.boss_life()
 		boss_bar.max_value = player.entities.boss_max
 		boss_bar.value = life
-		boss_bar.get_node("Name").text = "%s  %d/%d" % [player.entities.group_of(boss).replace("_", " ").capitalize(), life, player.entities.boss_max]
+		boss_bar.get_node("Name").text = "%s  %d/%d" % [Items.title(player.entities.group_of(boss)), life, player.entities.boss_max]
 	var inv: Inventory = player.inv
 	var changed: bool = inv.version != shown_version
 	if changed or player.slot != shown_slot or Engine.get_process_frames() % 30 == 0:
