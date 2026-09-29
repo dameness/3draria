@@ -235,6 +235,7 @@ func _process(delta: float) -> void:
 		match st:
 			"swing":   # de cima para trás, por cima da cabeça, até à frente e para baixo; o corpo gira junto
 				parts.arm_r.rotation.x = lerpf(rest, 3.3, use / 0.1) if use < 0.1 else lerpf(3.3, 0.35, ease((use - 0.1) / 0.9, 0.4))
+				parts.arm_r.rotation.z = lerpf(0.12, 0.9, use / 0.1) if use < 0.1 else lerpf(0.9, -0.6, ease((use - 0.1) / 0.9, 0.4))   # em diagonal como na 1ª pessoa: da direita/alto para a esquerda/baixo
 				target_twist = lerpf(-0.3, 0.3, ease(use, 0.5))
 			"thrust":   # estocada para a frente, com o corpo indo junto
 				parts.arm_r.rotation.x = lerpf(0.5, 1.55, sin(PI * use))

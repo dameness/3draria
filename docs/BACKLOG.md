@@ -10,7 +10,7 @@ Testes verdes (`tests/run.gd`, `tests/menu_flow.gd`). Não precisa de mundo novo
 
 ## Agora (nesta ordem)
 1. **Personagem e armaduras "estranhos"** (dono). Comparar com o sprite do jogador da wiki; perguntar o que incomoda (proporção, cabeça, cores, volume das peças).
-2. **Projéteis:** rastro de partículas nos feixes e no laser; depois o projétil 3D (o dono pediu por último). **Golpe em 3ª pessoa** com o mesmo arco diagonal.
+2. **Projéteis:** o projétil 3D (o dono pediu por último; rastro de partículas e golpe diagonal em 3ª pessoa já feitos).
 3. **Inimigos:** revisão dos modelos além dos que já usam sprite (slimes, olhos, esqueleto, zumbi, chefes); nomes/comportamentos conferidos com a wiki.
 
 - Efeitos de armadura da wiki ainda sem código (por isso sem texto na dica): Molten (+7% dano/velocidade/crítico corpo a corpo), Meteor (+9% dano mágico), Ninja (+3% crítico); bônus de conjunto de Molten/Ninja.
