@@ -23,6 +23,7 @@ const NAME := 0.0045            # tamanho do texto dos letreiros (blocos por pix
 static var chests: Array = []   # [{pos: Vector3i, title, item: PackedInt32Array, count: PackedInt32Array}]
 static var blocks: Array = []   # [{pos: Vector3i, id}] os blocos no chão
 static var torches: Array = []  # Vector3i
+static var houses: Array = []   # [{pos: Vector3i, id}] as duas casas de demonstração (uma válida, outra sem cadeira); id 0 = ar
 static var labels: Array = []   # [{pos: Vector3, text, size}]
 static var chest_at_pos := {}   # Vector3i -> índice em chests
 
@@ -54,6 +55,7 @@ static func build() -> void:
 	chests.clear()
 	blocks.clear()
 	torches.clear()
+	houses.clear()
 	labels.clear()
 	chest_at_pos.clear()
 	var by_cat := {}
@@ -89,15 +91,39 @@ static func build() -> void:
 		taken[Vector3i(pos.x, FLAT + 1, pos.z)] = true
 		labels.append({"pos": Vector3(pos.x + 0.5, FLAT + 2.1 + 0.5 * (n % 2), pos.z + 0.5), "text": Blocks.ids.keys()[id], "size": NAME})
 		n += 1
+	_house(CX + 20, CZ + 2, true)
+	_house(CX + 30, CZ + 2, false)
+	for h in houses:
+		taken[Vector3i(h.pos.x, FLAT + 1, h.pos.z)] = true
 	for x in range(CX - 40, CX + 41, 9):   # tochas de 9 em 9 (nunca no nascimento): a luz de 10 blocos se emenda
 		for z in range(CZ - 27, CZ + 38, 9):
 			var pos := Vector3i(x, FLAT + 1, z)
 			if not taken.has(pos):
 				torches.append(pos)
+	labels.append({"pos": Vector3(CX + 23.5, FLAT + 6.0, CZ + 4.5), "text": "CASA VÁLIDA: o Guide se muda para cá", "size": 0.005})
+	labels.append({"pos": Vector3(CX + 33.5, FLAT + 6.0, CZ + 4.5), "text": "CASA SEM CADEIRA: botão direito na cadeira diz o que falta", "size": 0.005})
 	labels.append({"pos": Vector3(CX + 0.5, FLAT + 4.0, CZ - 1.5), "text": "MUNDO DE TESTE  ·  F9: painel de atalhos", "size": 0.0055})
 	labels.append({"pos": Vector3(CX + 0.5, FLAT + 5.2, CHEST_Z + 0.5), "text": "BAÚS: todos os itens, por categoria", "size": 0.008})
 	labels.append({"pos": Vector3(CX + 0.5, FLAT + 5.2, BLOCK_Z - 11.5), "text": "TODOS OS BLOCOS (em ordem de id)", "size": 0.008})
 	labels.append({"pos": Vector3(CX + 0.5, FLAT + 5.2, SHOWCASE_Z - 3.5), "text": "VITRINE DE INIMIGOS (parados; ainda levam golpe)", "size": 0.008})
+
+
+# Casa de demonstração com o canto (x0, z0): 7 x 7 de fora, 5 de ar por 3 de altura, piso e paredes de tijolo de sunplate, porta ao sul, tocha e bancada; com
+# a cadeira, ela é uma moradia válida (housing.gd).
+static func _house(x0: int, z0: int, with_chair: bool) -> void:
+	var walls: int = Blocks.ids.sunplate
+	for dz in 7:
+		for dx in 7:
+			for y in range(FLAT, FLAT + 5):
+				var edge := dx == 0 or dx == 6 or dz == 0 or dz == 6
+				var b := 0
+				if y == FLAT or y == FLAT + 4 or (edge and y < FLAT + 4):   # piso, teto e paredes
+					b = walls
+				if dx == 3 and dz == 6 and y in [FLAT + 1, FLAT + 2]:   # porta de 2 blocos ao sul
+					b = Blocks.door_closed
+				houses.append({"pos": Vector3i(x0 + dx, y, z0 + dz), "id": b})
+	for e in [[Vector3i(x0 + 1, FLAT + 1, z0 + 1), Blocks.ids.torch], [Vector3i(x0 + 5, FLAT + 1, z0 + 1), Blocks.ids.workbench]] + ([[Vector3i(x0 + 3, FLAT + 1, z0 + 2), Blocks.ids.chair]] if with_chair else []):
+		houses.append({"pos": e[0], "id": e[1]})
 
 
 # Posição da vitrine i (de n): fileira reta atrás do nascimento.
@@ -133,6 +159,8 @@ static func stamp(d: PackedByteArray, cx: int, cz: int) -> void:
 		_put(d, cx, cz, k.pos, Blocks.ids.chest)
 	for b in blocks:
 		_put(d, cx, cz, b.pos, b.id)
+	for h in houses:
+		_put(d, cx, cz, h.pos, h.id)
 	for t in torches:
 		_put(d, cx, cz, t, Blocks.ids.torch)
 

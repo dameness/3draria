@@ -810,6 +810,8 @@ func _guide_tips() -> Array:
 		tips.append("Ache Life Crystals nas cavernas: cada um dá +20 de vida máxima.")
 	if not world.evil_boss_down:
 		tips.append("Shadow Orbs e Crimson Hearts só quebram com martelo; a cada 3 quebrados um chefe acorda.")
+	if count.call("chair") + count.call("door") > 0 or near.call("workbench"):
+		tips.append("Habitantes moram em casas: um cômodo fechado (paredes, teto e porta) com tocha, bancada e cadeira. Botão direito na cadeira diz o que falta; eles se mudam sozinhos.")
 	if count.call("lens") >= 6:
 		tips.append("6 lentes num Altar Demoníaco fazem o Suspicious Looking Eye, que chama o Eye of Cthulhu à noite.")
 	if clock.is_night():

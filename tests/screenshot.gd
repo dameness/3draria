@@ -86,6 +86,7 @@ const SHOTS := [
 	{"name": "teste_blocos", "testworld": true, "from": Vector3(0, 7, -9), "look": Vector2(0, -0.6), "creative": true},
 	{"name": "teste_vitrine", "testworld": true, "from": Vector3(0, 0, 7), "look": Vector2(PI, -0.05)},
 	{"name": "teste_npcs", "testworld": true, "look": Vector2(-2.0, -0.1), "npcs": true},
+	{"name": "teste_casas", "testworld": true, "from": Vector3(27, 0, 17), "look": Vector2(0.15, -0.05), "npcs": true},
 	{"name": "teste_painel", "testworld": true, "look": Vector2(0, -0.12), "inventory": true, "test_panel": true},
 	{"name": "teste_bau", "testworld": true, "look": Vector2(0, -0.12), "inventory": true, "test_chest": 0},
 	{"name": "teste_noite", "testworld": true, "time": 1100.0, "look": Vector2(0, -0.12)},

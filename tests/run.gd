@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -266,6 +266,7 @@ func test_save():
 	w.orbs_broken = 5
 	w.map_img.set_pixel(30, 40, Color("#ff8800"))
 	w.saplings[Vector3i(9, 11, 9)] = 42.0
+	w.homes["guide"] = Vector3i(22, 12, 22)
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
 	var w2: Node3D = load("res://scripts/world.gd").new()
 	w2.gen = WorldGen.new(1)
@@ -282,6 +283,7 @@ func test_save():
 	check(w2.chests.has(Vector3i(5, 6, 7)) and w2.chests[Vector3i(5, 6, 7)].item[0] == Items.ids.gold_bar, "conteúdo do baú volta")
 	check(w2.map_img.get_pixel(30, 40).is_equal_approx(Color("#ff8800")) and w2.map_img.get_pixel(31, 40).a == 0.0, "mapa explorado volta")
 	check(w2.saplings.get(Vector3i(9, 11, 9)) == 42.0, "mudas plantadas voltam")
+	check(w2.homes.get("guide") == Vector3i(22, 12, 22), "a casa dos habitantes volta")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
 	check(SaveGame.list(SaveGame.players_dir).is_empty(), "apagar personagem")
@@ -3218,6 +3220,12 @@ func test_testworld():
 	for b in TestWorld.blocks:
 		used[Vector2i(b.pos.x, b.pos.z)] = true
 		check(w.get_block(b.pos.x, b.pos.y, b.pos.z) == b.id, "bloco no chão: " + Blocks.ids.keys()[b.id])
+	var house_ids := {}
+	for h in TestWorld.houses:   # (o último valor de cada posição vale: a tocha, a bancada e a cadeira vêm depois do ar)
+		house_ids[h.pos] = h.id
+		used[Vector2i(h.pos.x, h.pos.z)] = true
+	for pos in house_ids:
+		check(w.get_block(pos.x, pos.y, pos.z) == house_ids[pos], "casa de demonstração no lugar %s" % str(pos))
 	for t in TestWorld.torches:
 		used[Vector2i(t.x, t.z)] = true
 		check(w.get_block(t.x, t.y, t.z) == Blocks.ids.torch, "tocha no lugar")
@@ -3659,4 +3667,104 @@ func test_sky():
 	check(p.hp == float(p.max_hp) and p.on_floor and Ui.item_tip(Items.ids.lucky_horseshoe).contains("queda"), "Lucky Horseshoe: caiu 30 blocos e não levou dano")
 	free_player(p)
 	fw.free()
+	return true
+
+
+# Moradia (wiki Housing, em 3D): cômodo fechado com tocha, bancada e cadeira; o Guide se muda sozinho, a casa desfeita o deixa sem teto; portas abrem e fecham.
+func test_housing():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	# o bloco: cômodo de 4 x 3 x 2 (paredes de pedra, teto, porta de 2 blocos no lado oeste); o piso do mundo de teste fica em y = 11
+	var stone: int = Blocks.ids.stone
+	for x in range(20, 26):
+		for z in range(20, 25):
+			for y in range(11, 14):
+				var wall := x == 20 or x == 25 or z == 20 or z == 24 or y == 13
+				w.set_block(x, y, z, stone if wall else 0)
+	w.set_block(20, 11, 22, Blocks.door_closed)
+	w.set_block(20, 12, 22, Blocks.door_closed)
+	w.set_block(21, 11, 21, Blocks.ids.torch)
+	w.set_block(24, 11, 23, Blocks.ids.workbench)
+	w.set_block(22, 11, 22, Blocks.ids.chair)
+	var home := Vector3i(22, 12, 22)
+	var r := Housing.check(w, home)
+	check(r.valid and r.cells.size() == 4 * 3 * 2 - 2 and r.light and r.table and r.chair, "casa completa é válida (%d blocos de ar; %s)" % [r.cells.size(), r.reason])
+	check(Housing.report(w, Vector3i(22, 11, 22)).contains("Casa válida"), "a cadeira responde que a casa vale")
+	# faltas: uma de cada vez
+	w.set_block(21, 11, 21, 0)
+	check(not Housing.check(w, home).valid and Housing.check(w, home).reason.contains("luz"), "sem tocha: falta luz")
+	w.set_block(21, 11, 21, Blocks.ids.torch)
+	w.set_block(24, 11, 23, 0)
+	check(Housing.check(w, home).reason.contains("mesa"), "sem bancada: falta mesa")
+	w.set_block(24, 11, 23, Blocks.ids.workbench)
+	w.set_block(22, 11, 22, 0)
+	check(Housing.check(w, home).reason.contains("cadeira"), "sem cadeira: falta cadeira")
+	w.set_block(22, 11, 22, Blocks.ids.chair)
+	w.set_block(23, 13, 22, 0)   # buraco no teto
+	check(Housing.check(w, home).reason.contains("fechada"), "buraco no teto: não está fechada")
+	w.set_block(23, 13, 22, stone)
+	# porta aberta continua sendo parede; sem porta, o vão deixa o ar escapar
+	p.toggle_door(Vector3i(20, 11, 22))
+	check(w.get_block(20, 11, 22) == Blocks.door_open and w.get_block(20, 12, 22) == Blocks.door_open and not Blocks.solid[Blocks.door_open] and Housing.check(w, home).valid, "abrir a porta abre os 2 blocos e a casa continua válida")
+	p.toggle_door(Vector3i(20, 12, 22))
+	check(w.get_block(20, 11, 22) == Blocks.door_closed and w.get_block(20, 12, 22) == Blocks.door_closed and Blocks.solid[Blocks.door_closed] == 1, "fechar de novo")
+	w.set_block(20, 11, 22, 0)
+	w.set_block(20, 12, 22, 0)
+	check(Housing.check(w, home).reason.contains("fechada"), "sem a porta o cômodo escapa")
+	w.set_block(20, 11, 22, Blocks.door_closed)
+	w.set_block(20, 12, 22, Blocks.door_closed)
+	# pequena demais: cômodo 2 x 2 x 2 (8 blocos)
+	for x in range(30, 34):
+		for z in range(30, 34):
+			for y in range(11, 14):
+				w.set_block(x, y, z, stone if x in [30, 33] or z in [30, 33] or y == 13 else 0)
+	w.set_block(31, 11, 31, Blocks.ids.torch)
+	check(Housing.check(w, Vector3i(32, 12, 32)).reason.contains("pequena"), "2 x 2 x 2 é pequena demais")
+	# achar casas: só com cadeira, dentro do raio, e que não estejam ocupadas
+	var f := Housing.find(w, Vector3(24.5, 11.0, 24.5), [])
+	check(not f.is_empty() and f.home == home, "find acha a casa pela cadeira")
+	check(Housing.find(w, Vector3(24.5, 11.0, 24.5), [Vector3i(21, 12, 21)]).is_empty(), "casa ocupada (um morador dentro) não serve")
+	check(Housing.find(w, Vector3(24.5, 11.0, 24.5 + 40.5), []).is_empty(), "longe demais: não acha")
+	# habitantes: o Guide se muda; a Nurse (sem 2ª casa) fica no nascimento; desfazer a casa o deixa sem teto
+	p.spawn = Vector3(40.5, 11.0, 40.5)
+	p.position = Vector3(28.5, 11.0, 28.5)
+	p.max_hp = 120
+	w.npcs["guide"] = true
+	for i in 3:
+		ent._town()
+	check(w.homes.get("guide") == home and p.message.contains("Guide se mudou"), "o Guide se muda para a casa válida")
+	var guide: Node3D = ent.enemies.filter(func(e): return e.def.name == "guide")[0]
+	check(guide.position.distance_to(Vector3(22.5, 12.1, 22.5)) < 0.1, "…e vai para o lugar dele (em cima da cadeira)")
+	check(not w.homes.has("nurse") and ent.enemies.any(func(e): return e.def.name == "nurse" and e.position.distance_to(p.spawn) < 8.0), "a Nurse não tem casa livre e fica perto do nascimento")
+	w.set_block(23, 13, 22, 0)   # o teto some
+	for i in 3:
+		ent._town()
+	check(not w.homes.has("guide") and p.message.contains("ficou sem casa"), "casa desfeita: o Guide fica sem casa")
+	w.set_block(23, 13, 22, stone)
+	for i in 3:
+		ent._town()
+	check(w.homes.get("guide") == home, "consertada, ele volta a se mudar")
+	# Guia: a casa aparece nas dicas
+	# interação: botão direito na porta e na cadeira (sem habitantes na mira)
+	var lonely := make_player(floor_world())
+	lonely.world.set_block(20, 11, 22, Blocks.door_closed)
+	lonely.target = {"pos": Vector3i(20, 11, 22), "normal": Vector3i.UP}
+	lonely.interact()
+	check(lonely.world.get_block(20, 11, 22) == Blocks.door_open, "botão direito abre a porta")
+	lonely.world.set_block(22, 11, 22, Blocks.ids.chair)
+	lonely.target = {"pos": Vector3i(22, 11, 22), "normal": Vector3i.UP}
+	lonely.interact()
+	check(lonely.message.contains("Casa") or lonely.message.contains("casa") or lonely.message.contains("Cadeira"), "botão direito na cadeira responde sobre a casa: %s" % lonely.message)
+	lonely.world.free()
+	free_player(lonely)
+	# a porta aberta desenha um painel fino e some a colisão
+	var d := chunk(0)
+	d[8 + 8 * C + 20 * C * C] = Blocks.door_open
+	var a := ChunkMesher.build(d, [d, d, d, d], Blocks.textures.size())
+	check(faces(a) == 6 and not Blocks.solid[Blocks.door_open] and Items.drop[Blocks.door_open] == Items.ids.door and not Items.ids.has("door_open"), "porta aberta: 6 faces do painel, sem colisão, solta a porta e não é item")
+	# receitas
+	check(Crafting.recipes.any(func(r): return r.result == Items.ids.chair and r.needs == {Items.ids.wood: 4}) and Crafting.recipes.any(func(r): return r.result == Items.ids.door and r.needs == {Items.ids.wood: 6}), "cadeira 4 de madeira, porta 6 (wiki)")
+	free_player(p)
+	w.free()
 	return true

@@ -31,6 +31,8 @@ static var icons: Array[String] = []       # id -> textura do ícone do item-blo
 static var drop_names: Array[String] = []  # id -> item que dropa ("" = nada); Items resolve
 static var tiles := PackedInt32Array()     # id * FACES + face -> índice no atlas
 static var tile_colors := PackedColorArray()   # índice no atlas -> cor média do tile (poeira ao minerar); world.gd preenche
+static var door_closed := -1                # ids da porta (fechada, sólida; aberta, painel fino sem colisão): as duas contam como parede na moradia (housing.gd)
+static var door_open := -1
 static var textures := {}                  # nome -> spec, na ordem do atlas
 
 
@@ -97,6 +99,8 @@ static func load_pack(dir := "res://data/base") -> void:
 			assert(n == "" or tile_index.has(n), "textura desconhecida: " + n)
 			tiles.append(tile_index.get(n, 0))
 	sapling = ids.get("sapling", -1)
+	door_closed = ids.get("door", -1)
+	door_open = ids.get("door_open", -1)
 	for b in list:
 		station_as.append(ids[b.get("station_as", b.name)])
 		if b.has("station_also"):

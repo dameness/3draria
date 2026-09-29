@@ -257,5 +257,10 @@
 	"cloud_item": {"wiki": "Cloud"},
 	"sunplate": {"wiki": "Sunplate_Block_(placed)", "crop": [16, 16], "pattern": "bricks", "colors": ["#e8c050", "#d8ac3c", "#f0cc68"], "top_colors": ["#a07820"]},
 	"sunplate_item": {"wiki": "Sunplate_Block"},
+	"chair_top": {"pattern": "planks", "colors": ["#6e4e2c", "#5a3e22", "#84603a"]},
+	"chair_side": {"pattern": "planks", "colors": ["#b08050", "#8a653c", "#c89a66"]},
+	"chair_item": {"wiki": "Wooden_Chair"},
+	"door": {"pattern": "planks", "colors": ["#94683c", "#7a5230", "#a87a4a"]},
+	"door_item": {"wiki": "Wooden_Door"},
 	"lucky_horseshoe": {"wiki": "Lucky_Horseshoe", "pattern": "blob", "colors": ["#d8d8e0", "#8a8a98", "#ffffff"]}
 }

@@ -907,9 +907,25 @@ func interact() -> void:
 	var npc: Node3D = entities.npc_aimed(REACH)
 	if npc:
 		entities.talk(npc)
-	elif not target.is_empty() and world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
+	elif target.is_empty():
+		return
+	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
 		set_inventory(true)   # o baú abre o inventário com o painel do baú
 		get_parent().get_node("HUD").open_chest(world.chest_at(target.pos))
+	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) in [Blocks.door_closed, Blocks.door_open]:
+		toggle_door(target.pos)
+	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chair:
+		say(Housing.report(world, target.pos))   # a cadeira diz se a casa vale
+
+
+# Abre ou fecha a porta em p (e a que está em cima ou embaixo, para o vão de 2 blocos). A aberta não tem colisão; as duas são parede na moradia.
+func toggle_door(p: Vector3i) -> void:
+	var to: int = Blocks.door_open if world.get_block(p.x, p.y, p.z) == Blocks.door_closed else Blocks.door_closed
+	for dy in [0, 1, -1]:
+		var q := p + Vector3i(0, dy, 0)
+		if dy == 0 or world.get_block(q.x, q.y, q.z) in [Blocks.door_closed, Blocks.door_open]:
+			world.set_block(q.x, q.y, q.z, to)
+	Sfx.play(entities, "place", Vector3(p) + Vector3.ONE * 0.5, -4.0, 0.8 if to == Blocks.door_open else 1.1)
 
 
 func place_block() -> void:

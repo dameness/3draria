@@ -27,6 +27,7 @@ var cloud_damage := 0
 var boss_max := 0           # vida total do chefe ao nascer (a de todos os segmentos, se for verme)
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
+var town_tick := 0
 
 
 func _ready() -> void:
@@ -97,17 +98,48 @@ func _town() -> void:
 	for n in want:
 		if want[n]:
 			world.npcs[n] = true
-	if player.position.distance_to(player.spawn) > 60.0:
-		return
+	town_tick += 1
+	if town_tick % 3 == 0:
+		_homes()
 	var i := 0
 	for n in ["guide", "merchant", "nurse"]:
-		if world.npcs.has(n) and not enemies.any(func(e): return e.def.name == n):
-			var x: float = player.spawn.x + 3.0 + i * 2.0
-			var z: float = player.spawn.z + 3.0
-			var e := spawn_enemy(def_named(n), Vector3(x, world.surface_y(int(x), int(z), true) + 0.1, z))
-			if (n == "merchant" or n == "nurse") and not world.test_world:
+		var where := _npc_spot(n, i)
+		if world.npcs.has(n) and player.position.distance_to(where) <= 60.0 and not enemies.any(func(e): return e.def.name == n):
+			spawn_enemy(def_named(n), where)
+			if (n == "merchant" or n == "nurse") and not world.test_world and not world.homes.has(n):
 				player.say("%s chegou!" % n.capitalize())
 		i += 1
+
+
+# Onde o habitante n (o i-ésimo da lista) fica: na casa, se tem, senão perto do nascimento.
+func _npc_spot(n: String, i: int) -> Vector3:
+	if world.homes.has(n):
+		var h: Vector3i = world.homes[n]
+		return Vector3(h.x + 0.5, h.y + 0.1, h.z + 0.5)
+	var x: float = player.spawn.x + 3.0 + i * 2.0
+	var z: float = player.spawn.z + 3.0
+	return Vector3(x, world.surface_y(int(x), int(z), true) + 0.1, z)
+
+
+# Moradia (housing.gd): quem já tem casa confere se ela ainda vale (só perto do jogador: longe os chunks nem estão gerados); quem não tem procura uma casa
+# válida e livre em volta do jogador e se muda para ela.
+func _homes() -> void:
+	for n in ["guide", "merchant", "nurse"]:
+		if not world.npcs.has(n):
+			continue
+		if world.homes.has(n):
+			var h: Vector3i = world.homes[n]
+			if Vector2(h.x + 0.5 - player.position.x, h.z + 0.5 - player.position.z).length() < Housing.SEARCH and not Housing.check(world, h).valid:
+				world.homes.erase(n)   # a casa foi desfeita: volta a ficar perto do nascimento
+				player.say("%s ficou sem casa" % n.capitalize())
+		if not world.homes.has(n):
+			var f := Housing.find(world, player.position, world.homes.values())
+			if not f.is_empty():
+				world.homes[n] = f.home
+				player.say("%s se mudou para a casa!" % n.capitalize())
+		for e in enemies:   # quem já está no mundo vai para o lugar dele
+			if e.def.name == n and e.position.distance_to(_npc_spot(n, 0)) > 4.0 and world.homes.has(n):
+				e.position = _npc_spot(n, 0)
 
 
 # Estrela cadente (wiki Fallen Star): à noite cai perto do jogador, de vez em quando; ao amanhecer as que sobraram somem.

@@ -64,5 +64,8 @@
 	{"name": "sapling", "solid": false, "shape": "plant", "breakable": false, "tiles": {"all": "sapling"}},
 	{"name": "life_crystal", "mine": 10, "solid": false, "shape": "crystal", "light": 5, "item": false, "drop": "life_crystal", "tiles": {"all": "life_crystal"}},
 	{"name": "cloud", "mine": 2, "icon": "cloud_item", "tiles": {"all": "cloud"}},
-	{"name": "sunplate", "mine": 1, "icon": "sunplate_item", "tiles": {"all": "sunplate"}}
+	{"name": "sunplate", "mine": 1, "icon": "sunplate_item", "tiles": {"all": "sunplate"}},
+	{"name": "chair", "mine": 3, "icon": "chair_item", "tiles": {"top": "chair_top", "side": "chair_side", "bottom": "chair_top"}},
+	{"name": "door", "mine": 3, "icon": "door_item", "tiles": {"all": "door"}},
+	{"name": "door_open", "mine": 3, "solid": false, "shape": "door", "item": false, "drop": "door", "tiles": {"all": "door"}}
 ]

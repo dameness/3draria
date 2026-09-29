@@ -109,5 +109,7 @@
 	{"result": "tungsten_hammer", "needs": {"tungsten_bar": 8, "wood": 3}, "station": "anvil"},
 	{"result": "gold_hammer", "needs": {"gold_bar": 8, "wood": 3}, "station": "anvil"},
 	{"result": "platinum_hammer", "needs": {"platinum_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "chair", "needs": {"wood": 4}, "station": "workbench"},
+	{"result": "door", "count": 1, "needs": {"wood": 6}, "station": "workbench"},
 	{"result": "mana_crystal", "needs": {"fallen_star": 5}}
 ]
