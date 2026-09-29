@@ -409,8 +409,21 @@ func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 
 
 # Invocador de chefe (ex.: Suspicious Looking Eye): só à noite e com um chefe por vez.
+# Há lava a até r blocos dos pés?
+func _lava_near(r: int) -> bool:
+	var p := Vector3i(position.floor())
+	for y in range(p.y - r, p.y + r + 1):
+		for z in range(p.z - r, p.z + r + 1):
+			for x in range(p.x - r, p.x + r + 1):
+				if Blocks.liquid_kind[world.get_block(x, y, z)] == Blocks.ids.lava and Blocks.liquid[world.get_block(x, y, z)]:
+					return true
+	return false
+
+
 func summon(d: Dictionary) -> void:
-	if d.get("night", false) and not clock.is_night():
+	if d.get("underworld", false) and not (position.y < WorldGen.UNDERWORLD_TOP and _lava_near(3)):
+		say("jogue a boneca na lava, no submundo")
+	elif d.get("night", false) and not clock.is_night():
 		say("nada acontece... (só à noite)")
 	elif entities.boss:
 		say("já há um chefe")

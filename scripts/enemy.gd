@@ -125,6 +125,8 @@ func think(delta: float) -> void:
 			king_slime(delta, to, flat)
 		"skeletron":
 			skeletron(delta, to)
+		"wall":
+			wall(delta, flat)
 		"npc":
 			velocity.x = 0.0
 			velocity.z = 0.0
@@ -280,6 +282,27 @@ func skeletron(delta: float, to: Vector3) -> void:
 		mode = "dash"
 		timer = 0.8
 		velocity = to.normalized() * 15.0
+
+
+# Wall of Flesh: coluna gigante que atravessa o submundo atrás do jogador (mais rápida quanto menos vida tem), com dois olhos que
+# atiram lasers e uma boca que solta The Hungry. Vai embora se o jogador se afasta demais.
+func wall(delta: float, flat: Vector3) -> void:
+	var p: Node3D = entities.player
+	position.y = 0.0
+	velocity = flat * lerpf(6.0, def.speed, clampf(float(hp) / def.life, 0.0, 1.0))
+	timer -= delta
+	summoned_timer -= delta
+	var right := flat.cross(Vector3.UP)
+	if timer <= 0.0:
+		timer = 2.4
+		for side in [-1, 1]:
+			var eye: Vector3 = position + Vector3.UP * tall * 0.66 + right * side * 3.2 + flat * 1.8
+			entities.spawn_projectile("eye_laser", eye, (p.position + Vector3.UP * p.EYE - eye).normalized(), 16.0, 25, 0.0)
+	if summoned_timer <= 0.0 and entities.enemies.filter(func(e): return e.def.name == def.minion).size() < 6:
+		summoned_timer = 5.0
+		entities.spawn_enemy(entities.def_named(def.minion), position + Vector3.UP * tall * 0.3 + flat * 3.0)
+	if position.distance_to(p.position) > 150.0:
+		entities.remove_enemy(self)
 
 
 func _teleport(p: Node3D, dist: float) -> void:

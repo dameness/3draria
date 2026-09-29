@@ -21,6 +21,8 @@ const SHOTS := [
 	{"name": "dungeon_fora", "dungeon": "out", "look": Vector2(0, -0.25), "flying": true, "time": 1100.0},
 	{"name": "dungeon_sala", "dungeon": "in", "look": Vector2(-PI / 2, -0.05), "flying": true, "time": 300.0},
 	{"name": "skeletron", "look": Vector2(0, 0.2), "boss": "skeletron", "time": 1100.0, "item": "terra_blade"},
+	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "flying": true, "time": 300.0},
+	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
@@ -149,6 +151,13 @@ func _setup(s: Dictionary) -> void:
 			for dy in range(1, 5):
 				world.set_block(x + s.breach - 1, best.y - dy, best.z, 0)
 			world.liquid.settle(world, s.get("flow", 10))
+	if s.get("hell", false):
+		player.position = Vector3(player.spawn.x, 9.0, player.spawn.z)
+	if s.get("hardmode", false):
+		world.start_hardmode()
+	if s.get("hallow", false):
+		var hc := Vector2i(world.gen.hallow_center)
+		player.position = Vector3(hc.x + 0.5, world.surface_y(hc.x, hc.y) + s.get("up", 0.0), hc.y + 0.5)
 	if s.has("dungeon"):
 		var g: WorldGen = world.gen
 		var e := g.dungeon_entrance
@@ -248,6 +257,8 @@ func _setup(s: Dictionary) -> void:
 	if s.has("boss"):
 		var b: Node3D = ent.spawn_boss(s.boss)
 		b.position = player.position + fwd * 12 + Vector3.UP * (0.2 if b.def.ai == "king_slime" else 5.0)
+		if b.def.ai == "wall":
+			b.position = Vector3(player.position.x, 0.0, player.position.z) + fwd * 20
 		var k := 0
 		for e in ent.enemies:
 			e.set_physics_process(false)

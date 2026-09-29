@@ -60,6 +60,14 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 		return
 	var r: float = def.get("size", 0.2) * 0.35
+	if def.get("hostile", false):   # laser do chefe: fere o jogador
+		var p: Node3D = entities.player
+		if VoxelBody.touches(next - Vector3.UP * r, r, r * 2, p.position, p.HALF, p.TALL):
+			p.hurt(damage, velocity)
+			queue_free()
+			return
+		position = next
+		return
 	for e in entities.enemies.duplicate():
 		if not e in hit and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
 			hit.append(e)

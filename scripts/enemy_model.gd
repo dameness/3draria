@@ -3,6 +3,7 @@ class_name EnemyModel
 #   eye      esfera com veias, íris, pupila e tentáculos (Olho de Cthulhu, olho demoníaco, servos);
 #            set_phase(2) troca a íris por uma boca com dentes.
 #   slime    gelatina translúcida com núcleo; achata/estica com a velocidade vertical.
+#   wall     coluna de carne (Wall of Flesh): olhos, boca com dentes e veias; a frente é -Z.
 #   skull    caveira (Cursed Skull; "big" = Skeletron, com brilho vermelho nas órbitas)   hand  mão de osso (Skeletron).
 #   brain    cérebro rosado com dobras, olhos e tentáculos (Brain of Cthulhu).
 #   worm     segmento de verme (esfera com anéis; cabeça com mandíbula, rabo mais fino), centrado na origem; enemy.gd gira inteiro.
@@ -27,6 +28,8 @@ static func build(def: Dictionary) -> Node3D:
 			_brain(root, size, Color(def.color))
 		"skull":
 			_skull(root, size[0], def)
+		"wall":
+			_wall(root, size)
 		"hand":
 			_hand(root, size[0], Color(def.color))
 		"humanoid":
@@ -129,6 +132,41 @@ static func _eye(root: Node3D, r: float, def: Dictionary) -> void:
 		var t := _part(pivot, CylinderMesh.new(), Vector3(r * 0.12, r * 1.2, r * 0.12), Color("#b0202a"), Vector3(cos(a) * r * 0.45, sin(a) * r * 0.45, r * 1.3))
 		t.rotation.x = PI / 2
 		t.name = "Tendril%d" % i
+
+
+# Wall of Flesh: coluna de carne (largura x altura), olhos com veias na parte de cima, boca com dentes embaixo e veias escuras.
+static func _wall(root: Node3D, size: Array) -> void:
+	var w: float = size[0]
+	var h: float = size[1]
+	var pulse := Node3D.new()
+	pulse.name = "Pulse"
+	root.add_child(pulse)
+	var flesh := _mat(Color("#b83a4a"))
+	flesh.roughness = 0.35
+	flesh.rim_enabled = true
+	flesh.rim = 0.5
+	_part(pulse, BoxMesh.new(), Vector3(w, h, w * 0.3), Color("#b83a4a"), Vector3(0, h / 2.0, 0), flesh)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 113
+	for i in 14:   # lóbulos e bolhas na superfície
+		_part(pulse, SphereMesh.new(), Vector3.ONE * w * rng.randf_range(0.14, 0.3), Color("#c84a5a").darkened(rng.randf_range(0.0, 0.3)),
+			Vector3(rng.randf_range(-0.45, 0.45) * w, rng.randf_range(0.05, 0.95) * h, -w * 0.13), flesh)
+	var vein := _mat(Color("#5a0a18"))
+	for i in 7:
+		var v := _part(pulse, CylinderMesh.new(), Vector3(w * 0.03, h * rng.randf_range(0.3, 0.6), w * 0.03), Color("#5a0a18"), Vector3(rng.randf_range(-0.45, 0.45) * w, rng.randf_range(0.2, 0.8) * h, -w * 0.16), vein)
+		v.rotation.z = rng.randf_range(-0.3, 0.3)
+	for side in [-1, 1]:   # olhos
+		var ball := _mat(Color.WHITE)
+		ball.albedo_texture = _veins(113 + side)
+		_part(pulse, SphereMesh.new(), Vector3.ONE * w * 0.27, Color.WHITE, Vector3(side * w * 0.24, h * 0.66, -w * 0.2), ball)
+		_part(pulse, SphereMesh.new(), Vector3(w * 0.13, w * 0.13, w * 0.06), Color("#b01820"), Vector3(side * w * 0.24, h * 0.66, -w * 0.33))
+		_part(pulse, SphereMesh.new(), Vector3(w * 0.06, w * 0.06, w * 0.04), Color("#0a0a10"), Vector3(side * w * 0.24, h * 0.66, -w * 0.36))
+	var mouth := _mat(Color("#3a0810"))
+	_part(pulse, BoxMesh.new(), Vector3(w * 0.7, h * 0.16, w * 0.06), Color("#3a0810"), Vector3(0, h * 0.3, -w * 0.16), mouth)
+	for i in 12:
+		var x := (i - 5.5) * w * 0.055
+		_part(pulse, BoxMesh.new(), Vector3(w * 0.03, h * 0.05, w * 0.03), Color("#f4ecd8"), Vector3(x, h * 0.36, -w * 0.19))
+		_part(pulse, BoxMesh.new(), Vector3(w * 0.03, h * 0.05, w * 0.03), Color("#f4ecd8"), Vector3(x, h * 0.24, -w * 0.19))
 
 
 # Caveira centrada na origem, de frente para -Z: crânio, mandíbula com dentes, órbitas escuras (com brilho se "big") e nariz.
@@ -289,6 +327,9 @@ static func animate(model: Node3D, enemy: Node3D, target: Vector3, t: float) -> 
 		for i in 5:
 			var ten: Node3D = look.get_node("Tendril%d" % i)
 			ten.rotation.y = sin(t * 6.0 + i) * 0.25
+	var pulse := model.get_node_or_null("Pulse")
+	if pulse:   # a carne pulsa
+		pulse.scale = Vector3(1.0 + sin(t * 2.2) * 0.015, 1.0 + sin(t * 1.7) * 0.01, 1.0 + sin(t * 2.6) * 0.06)
 	var squash := model.get_node_or_null("Squash")
 	if squash:   # estica com o pulo e balança parada, como gelatina
 		var k := clampf(enemy.velocity.y / 10.0, -0.3, 0.35) + sin(t * 4.0 + enemy.get_instance_id() % 7) * 0.04

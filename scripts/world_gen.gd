@@ -60,6 +60,11 @@ var chasm_heights := PackedInt32Array()   # altura da superfície em cada abismo
 var dungeon_x := 0                # canto (x, z) do dungeon, do lado oposto ao bioma do mal
 var dungeon_z := 0
 var dungeon_entrance := Vector3i.ZERO   # torre de entrada (centro, altura da superfície)
+var hardmode := false             # Wall of Flesh derrotado: minérios novos e o Hallow entram na geração (world.start_hardmode converte o que já existe)
+var hm_ores: Array = []           # ores.json com "hardmode": true (um por grupo, escolhido pela seed)
+var hallow_center := Vector2.ZERO
+var HALLOW_GRASS: int
+var PEARLSTONE: int
 var BRICK: int
 var TORCH: int
 var EVIL_STONE: int
@@ -110,6 +115,9 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 		var c := evil_center + Vector2.from_angle(TAU * k / CHASMS + er.randf_range(-0.15, 0.15)) * er.randf_range(13.0, 19.0)
 		chasm_centers.append(Vector2i(c))
 		chasm_heights.append(surface_height(int(c.x), int(c.y)))
+	HALLOW_GRASS = Blocks.ids.hallowed_grass
+	PEARLSTONE = Blocks.ids.pearlstone
+	hallow_center = CENTER + Vector2(0, -72.0 if evil_center.y > CENTER.y else 72.0)   # entre o mal e o dungeon, nunca em cima de um
 	BRICK = Blocks.ids.dungeon_brick
 	TORCH = Blocks.ids.torch
 	dungeon_x = 6 if evil_center.x > CENTER.x else SIZE_CHUNKS * CHUNK - 6 - DUNGEON_W * DUNGEON_CELL - 1
@@ -124,12 +132,14 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 			continue
 		o.block = Blocks.ids[o.block]
 		o.in = o.get("in", ["stone", "dirt"]).map(func(n): return Blocks.ids[n])
+		var target: Array = hm_ores if o.get("hardmode", false) else ores
 		if o.has("group"):
 			groups.get_or_add(o.group, []).append(o)
 		else:
-			ores.append(o)
+			target.append(o)
 	for g in groups:
-		ores.append(groups[g][hash([seed, g]) % groups[g].size()])
+		var pick: Dictionary = groups[g][hash([seed, g]) % groups[g].size()]
+		(hm_ores if pick.get("hardmode", false) else ores).append(pick)
 
 
 # Colinas largas + serras (cristas de ruído onde a máscara de montanha é alta) + terraços de 5 blocos, como as
@@ -215,7 +225,42 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_altar(d, rng)
 	rng.seed = hash([seed, cx, cz, "chest"])
 	_chest(d, rng)
+	if hardmode:
+		hardmode_pass(d, cx, cz)
 	return d
+
+
+func hallow_weight(wx: int, wz: int) -> float:
+	var dist := Vector2(wx, wz).distance_to(hallow_center)
+	if dist > EVIL_RADIUS + 8.0:
+		return 0.0
+	return clampf((EVIL_RADIUS - dist + rock_noise.get_noise_2d(wx + 500, wz) * 8.0) / 4.0, 0.0, 1.0)
+
+
+# Hardmode: veios de cobalto/paládio na pedra e o Hallow (grama e pedra) num disco do outro lado do mundo. Determinístico por chunk:
+# vale tanto na geração quanto para converter (world.start_hardmode) o que já estava gerado.
+func hardmode_pass(d: PackedByteArray, cx: int, cz: int) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed, cx, cz, "hardmode"])
+	_ores(d, rng, hm_ores)
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(hallow_center) > EVIL_RADIUS + 8.0 + CHUNK:
+		return
+	var layer := CHUNK * CHUNK
+	for z in CHUNK:
+		for x in CHUNK:
+			if hallow_weight(ox + x, oz + z) < 0.5:
+				continue
+			var i := x + z * CHUNK
+			var top := HEIGHT - 1
+			while top > 0 and (d[i + top * layer] == AIR or Blocks.shape[d[i + top * layer]] != "" or d[i + top * layer] == LEAVES or d[i + top * layer] == WOOD):
+				top -= 1
+			if d[i + top * layer] == GRASS:
+				d[i + top * layer] = HALLOW_GRASS
+			for y in range(UNDERWORLD_TOP + 8, top + 1):
+				if d[i + y * layer] == STONE:
+					d[i + y * layer] = PEARLSTONE
 
 
 func in_dungeon(x: int, y: int, z: int) -> bool:
@@ -386,8 +431,8 @@ func _chest(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
 
 
 # Veios por passeio aleatório; só trocam os blocos de "in" (padrão: pedra e terra) e ficam dentro do chunk.
-func _ores(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
-	for o in ores:
+func _ores(d: PackedByteArray, rng: RandomNumberGenerator, list := ores) -> void:
+	for o in list:
 		for v in int(o.veins):
 			var p := Vector3i(rng.randi() % CHUNK, rng.randi_range(o.min_y, o.max_y), rng.randi() % CHUNK)
 			for s in int(o.size):

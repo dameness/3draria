@@ -56,5 +56,9 @@
 	{"name": "obsidian", "power": 55, "icon": "obsidian_item", "tiles": {"all": "obsidian"}},
 	{"name": "hellforge", "mine": 4, "station_also": ["furnace"], "icon": "hellforge_item", "tiles": {"top": "hellforge_top", "side": "hellforge_front", "bottom": "hellforge_top"}},
 	{"name": "meteorite", "power": 50, "light": 4, "icon": "meteorite_item", "tiles": {"all": "meteorite"}},
-	{"name": "dungeon_brick", "mine": 0.5, "guard": 65, "icon": "dungeon_brick_item", "tiles": {"all": "dungeon_brick"}}
+	{"name": "dungeon_brick", "mine": 0.5, "guard": 65, "icon": "dungeon_brick_item", "tiles": {"all": "dungeon_brick"}},
+	{"name": "cobalt_ore", "mine": 0.5, "power": 100, "icon": "cobalt_ore_item", "tiles": {"all": "cobalt_ore"}},
+	{"name": "palladium_ore", "mine": 0.5, "power": 100, "icon": "palladium_ore_item", "tiles": {"all": "palladium_ore"}},
+	{"name": "pearlstone", "mine": 0.5, "icon": "pearlstone_item", "tiles": {"all": "pearlstone"}},
+	{"name": "hallowed_grass", "mine": 2, "drop": "dirt", "tiles": {"top": "hallowed_grass_top", "side": "hallowed_grass_side", "bottom": "dirt"}}
 ]

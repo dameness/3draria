@@ -9,5 +9,7 @@
 	{"block": "platinum_ore", "group": "t4", "min_y": 20, "max_y": 48, "veins": 3, "size": 5},
 	{"block": "demonite_ore", "evil": "corruption", "min_y": 20, "max_y": 32, "veins": 1, "size": 4},
 	{"block": "hellstone", "in": ["ash"], "min_y": 1, "max_y": 14, "veins": 4, "size": 8},
-	{"block": "crimtane_ore", "evil": "crimson", "min_y": 20, "max_y": 32, "veins": 1, "size": 4}
+	{"block": "crimtane_ore", "evil": "crimson", "min_y": 20, "max_y": 32, "veins": 1, "size": 4},
+	{"block": "cobalt_ore", "group": "hm1", "hardmode": true, "min_y": 22, "max_y": 48, "veins": 4, "size": 6},
+	{"block": "palladium_ore", "group": "hm1", "hardmode": true, "min_y": 22, "max_y": 48, "veins": 4, "size": 6}
 ]

@@ -115,7 +115,7 @@ static func save_world(world, player, clock, path: String) -> Error:
 	for k in world.edited:
 		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
 	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed,
-		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down})
+		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode})
 
 
 static func _chests_out(chests: Dictionary) -> Dictionary:
@@ -139,6 +139,8 @@ static func load_world(world, player, clock, path: String) -> bool:
 	world.evil_boss_down = data.get("evil_down", false)
 	world.meteor_due = data.get("meteor_due", false)
 	world.skeletron_down = data.get("skeletron_down", false)
+	world.hardmode = data.get("hardmode", false)
+	world.gen.hardmode = world.hardmode
 	for p in data.get("chests", {}):
 		var c: Dictionary = data.chests[p]
 		var box := {"item": PackedInt32Array(), "count": PackedInt32Array(c.count)}

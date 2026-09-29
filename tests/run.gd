@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -245,6 +245,10 @@ func test_save():
 	p.inv.fav[0] = 1
 	w.chest_at(Vector3i(5, 6, 7)).item[0] = Items.ids.gold_bar
 	p.clock.time = 123.0
+	w.hardmode = true
+	w.skeletron_down = true
+	w.evil_boss_down = true
+	w.orbs_broken = 5
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
 	var w2: Node3D = load("res://scripts/world.gd").new()
 	w2.gen = WorldGen.new(1)
@@ -256,6 +260,7 @@ func test_save():
 	check(p2.spawn == p.spawn and p2.clock.time == 123.0, "spawn e hora do mundo voltam")
 	check(p2.inv.coin[2] == 3 and p2.inv.ammo[1] == Items.ids.wooden_arrow and p2.inv.ammo_count[1] == 77 and p2.inv.acc[2] == Items.ids.hermes_boots \
 		and p2.inv.fav[0] == 1, "moedas, munição, acessórios e favoritos voltam")
+	check(w2.hardmode and w2.gen.hardmode and w2.skeletron_down and w2.evil_boss_down and w2.orbs_broken == 5, "hardmode, Skeletron, chefe do mal e orbes voltam")
 	check(w2.chests.has(Vector3i(5, 6, 7)) and w2.chests[Vector3i(5, 6, 7)].item[0] == Items.ids.gold_bar, "conteúdo do baú volta")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
@@ -1004,6 +1009,101 @@ func test_skeletron():
 	check(e2.old_man == null, "com o Skeletron derrotado o Velho não volta")
 	free_player(dp)
 	dw.free()
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_hardmode():
+	var w := dungeon_world(1)
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	p.inv.add(Items.ids.guide_voodoo_doll, 2)
+	p.slot = p.inv.item.find(Items.ids.guide_voodoo_doll)
+	p.position = Vector3(30.5, 60, 30.5)
+	p.use_item()
+	check(ent.boss == null and p.message.contains("submundo"), "a boneca só funciona no submundo")
+	var g: WorldGen = w.gen
+	p.position = Vector3(100.5, 6, 100.5)   # submundo, com lava por perto
+	w.set_block(101, 5, 100, Blocks.ids.lava)
+	p.message = ""
+	p.use_item()
+	var wall: Node3D = ent.boss
+	check(wall != null and wall.def.name == "wall_of_flesh" and wall.position.y == 0.0 and wall.position.distance_to(p.position) > 40.0 and p.inv.total(Items.ids.guide_voodoo_doll) == 1, "boneca na lava chama o Wall of Flesh, longe e no chão do submundo")
+	check(wall.hp == 8000 and ent.boss_max == 8000 and wall.hurt(100, Vector3.RIGHT, 9) == 100 - 6 and wall.velocity.length() < 10.0, "8000 de vida, defesa 12, imune a knockback")
+	var start := wall.position.distance_to(p.position)
+	for i in 60 * 6:
+		wall._physics_process(1.0 / 60)
+	var lasers: int = ent.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "eye_laser").size()
+	var hungry: int = ent.enemies.filter(func(e): return e.def.name == "the_hungry").size()
+	check(wall.position.distance_to(p.position) < start - 8.0 and lasers >= 2 and hungry >= 1 and hungry <= 6, "avança, atira lasers (%d) e solta The Hungry (%d)" % [lasers, hungry])
+	var slow: float = wall.velocity.length()
+	wall.hp = 800
+	wall.think(1.0 / 60)
+	check(wall.velocity.length() > slow + 1.0, "quanto menos vida, mais rápido")
+	# laser fere o jogador
+	var laser: Node3D = ent.spawn_projectile("eye_laser", p.position + Vector3(0, 1, 0) + Vector3(-3, 0, 0), Vector3.RIGHT, 16.0, 25, 0.0)
+	p.hp = 100
+	p.iframes = 0
+	for i in 60:
+		laser._physics_process(1.0 / 60)
+	check(p.hp < 100, "o laser do chefe fere o jogador")
+	# hardmode: converte o que já existe
+	var before: Array[Vector2i] = []
+	var hc := Vector2i(floori(g.hallow_center.x / C), floori(g.hallow_center.y / C))
+	for dz in range(-2, 3):
+		for dx in range(-2, 3):
+			w.get_block((hc.x + dx) * C, 30, (hc.y + dz) * C)   # gera os chunks em volta do Hallow
+	var ores_before := 0
+	for k in w.chunks:
+		for id in [Blocks.ids.cobalt_ore, Blocks.ids.palladium_ore, Blocks.ids.pearlstone, Blocks.ids.hallowed_grass]:
+			ores_before += w.chunks[k].count(id)
+	var normal_chunk: PackedByteArray = w.chunks[hc].duplicate()
+	check(ores_before == 0 and not w.hardmode, "antes do hardmode não há minério novo nem Hallow")
+	wall.hurt(99999, Vector3.RIGHT, 0)
+	var gold := 0
+	for n in ent.get_children():
+		if n.get("item") == Items.ids.gold_coin:
+			gold += n.count
+	check(w.hardmode and g.hardmode and ent.boss == null and gold == 8, "Wall of Flesh morto: hardmode ligado e 8 de ouro")
+	var cobalt := 0
+	var pearl := 0
+	var grass := 0
+	for k in w.chunks:
+		cobalt += w.chunks[k].count(Blocks.ids.cobalt_ore) + w.chunks[k].count(Blocks.ids.palladium_ore)
+		pearl += w.chunks[k].count(Blocks.ids.pearlstone)
+		grass += w.chunks[k].count(Blocks.ids.hallowed_grass)
+	check(cobalt > 20 and pearl > 300 and grass > 100, "chunks já gerados foram convertidos (minério %d, pearlstone %d, grama %d)" % [cobalt, pearl, grass])
+	var fresh := WorldGen.new(1)
+	fresh.hardmode = true
+	check(fresh.generate(hc.x, hc.y) == w.chunks[hc] and normal_chunk != w.chunks[hc], "converter = gerar já no hardmode (mesmo resultado)")
+	var pair := 0
+	for sd in 10:
+		var gn := WorldGen.new(sd)
+		pair += 1 if gn.hm_ores.size() == 1 and gn.ores.all(func(o): return not (o.block in [Blocks.ids.cobalt_ore, Blocks.ids.palladium_ore])) else 0
+	check(pair == 10, "cada mundo tem só um dos minérios do hardmode")
+	check(Items.pick_power[Items.ids.molten_pickaxe] >= Blocks.power[Blocks.ids.cobalt_ore] and Items.pick_power[Items.ids.cobalt_pickaxe] == 110 \
+		and Items.pick_power[Items.ids.palladium_pickaxe] == 130 and Items.pick_power[Items.ids.nightmare_pickaxe] < Blocks.power[Blocks.ids.cobalt_ore], "cobalto pede a Molten (100); Cobalt 110 e Palladium 130")
+	# inimigos do hardmode só nascem no Hallow e só depois dele
+	p.position = Vector3(g.hallow_center.x, 90, g.hallow_center.y)
+	p.clock.time = 300
+	for e in ent.enemies.duplicate():
+		ent.remove_enemy(e)
+	for i in 60:
+		ent.try_spawn()
+	check(ent.biome_at(p.position) == "hallow" and ent.enemies.any(func(e): return e.def.get("biome") == "hallow") and ent.enemies.all(func(e): return e.def.get("biome") == "hallow" or not e.def.has("biome")), "no Hallow nascem pixies/unicórnios")
+	w.hardmode = false
+	for e in ent.enemies.duplicate():
+		ent.remove_enemy(e)
+	for i in 60:
+		ent.try_spawn()
+	check(ent.enemies.all(func(e): return not e.def.get("hardmode", false)), "antes do hardmode nada dele nasce")
+	p.position = Vector3(100.5, 12, 100.5)
+	for e in ent.enemies.duplicate():
+		ent.remove_enemy(e)
+	for i in 60:
+		ent.try_spawn()
+	check(ent.biome_at(p.position) == "underworld" and ent.enemies.any(func(e): return e.def.name in ["voodoo_demon", "hellbat"]) and ent.enemies.all(func(e): return e.def.get("biome") == "underworld"), "no submundo nascem demônios voodoo e hellbats")
 	free_player(p)
 	w.free()
 	return true

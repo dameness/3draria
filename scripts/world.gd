@@ -23,6 +23,7 @@ var need_gen: Array[Vector2i] = []  # chunks a gerar para os pending (o mais per
 var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
 var chests := {}    # Vector3i -> {item: PackedInt32Array, count: PackedInt32Array}; só os baús já abertos (os outros ainda não têm conteúdo)
 var evil_boss_down := false   # Eater of Worlds / Brain já derrotado: libera o meteorito e, depois, o Wall of Flesh vale
+var hardmode := false       # Wall of Flesh derrotado: cobalto/paládio e Hallow (start_hardmode)
 var skeletron_down := false   # Skeletron derrotado: o dungeon abre para qualquer picareta
 var meteor_due := false       # cai um meteorito à meia-noite
 var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do mal); vai no save do mundo
@@ -104,6 +105,17 @@ func liquid_at(p: Vector3) -> int:
 	return 0
 
 
+# Começa o hardmode: liga na geração (chunks novos) e converte os já gerados (mesmo passe determinístico). Os chunks convertidos
+# passam a contar como editados para o save guardá-los.
+func start_hardmode() -> void:
+	hardmode = true
+	gen.hardmode = true
+	for k in chunks.keys():
+		gen.hardmode_pass(chunks[k], k.x, k.y)
+		edited[k] = true
+		_rebuild(k)
+
+
 # Conteúdo do baú em p; na primeira vez sorteia o tesouro (determinístico pela seed e posição): acessório, flechas, tochas, minério.
 func chest_at(p: Vector3i) -> Dictionary:
 	if not chests.has(p):
@@ -139,6 +151,7 @@ func set_seed(s: int) -> void:
 	evil_boss_down = false
 	meteor_due = false
 	skeletron_down = false
+	hardmode = false
 	liquid = Liquid.new()
 
 

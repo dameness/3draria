@@ -94,5 +94,12 @@
 	{"name": "ninja_hood", "icon": "ninja_hood", "armor": "head", "defense": 2, "stack": 1, "rarity": 1, "set": "ninja"},
 	{"name": "ninja_shirt", "icon": "ninja_shirt", "armor": "body", "defense": 4, "stack": 1, "rarity": 1, "set": "ninja"},
 	{"name": "ninja_pants", "icon": "ninja_pants", "armor": "legs", "defense": 3, "stack": 1, "rarity": 1, "set": "ninja"},
-	{"name": "slime_crown", "icon": "slime_crown", "rarity": 1, "summon": "king_slime", "use_time": 0.75, "stack": 20}
+	{"name": "slime_crown", "icon": "slime_crown", "rarity": 1, "summon": "king_slime", "use_time": 0.75, "stack": 20},
+	{"name": "cobalt_bar", "icon": "cobalt_bar", "rarity": 3},
+	{"name": "palladium_bar", "icon": "palladium_bar", "rarity": 3},
+	{"name": "cobalt_pickaxe", "icon": "cobalt_pickaxe", "pick_power": 110, "damage": 10, "use_time": 0.417, "reach": 2.2, "knockback": 5, "stack": 1, "rarity": 4},
+	{"name": "palladium_pickaxe", "icon": "palladium_pickaxe", "pick_power": 130, "damage": 12, "use_time": 0.417, "reach": 2.2, "knockback": 5, "stack": 1, "rarity": 4},
+	{"name": "cobalt_sword", "icon": "cobalt_sword", "damage": 40, "use_time": 0.317, "reach": 2.7, "knockback": 5, "stack": 1, "rarity": 4},
+	{"name": "palladium_sword", "icon": "palladium_sword", "damage": 49, "use_time": 0.367, "reach": 2.7, "knockback": 5.5, "stack": 1, "rarity": 4},
+	{"name": "guide_voodoo_doll", "icon": "guide_voodoo_doll", "rarity": 0, "stack": 1, "summon": "wall_of_flesh", "underworld": true, "use_time": 0.75}
 ]

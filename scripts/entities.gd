@@ -67,24 +67,34 @@ func _physics_process(delta: float) -> void:
 			remove_enemy(e)
 
 
+# Bioma sob os pés de pos: dungeon, underworld (submundo), o mal do mundo (corruption/crimson), hallow (só no hardmode) ou "".
+func biome_at(pos: Vector3) -> String:
+	var x := floori(pos.x)
+	var z := floori(pos.z)
+	if world.gen.in_dungeon(x, floori(pos.y), z):
+		return "dungeon"
+	if pos.y < WorldGen.UNDERWORLD_TOP:
+		return "underworld"
+	if world.gen.evil_weight(x, z) >= 0.5:
+		return world.gen.evil
+	return "hallow" if world.hardmode and world.gen.hallow_weight(x, z) >= 0.5 else ""
+
+
 func try_spawn() -> void:
 	var night: bool = clock.is_night()
 	if enemies.size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
 		return
 	var when := "night" if night else "day"
-	var px := floori(player.position.x)
-	var pz := floori(player.position.z)
-	var evil: String = world.gen.evil if world.gen.evil_weight(px, pz) >= 0.5 else ""
-	if world.gen.in_dungeon(px, floori(player.position.y), pz):
-		evil = "dungeon"
-	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (d.biome == evil if d.has("biome") else evil != "dungeon"))
+	var biome := biome_at(player.position)
+	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (d.biome == biome if d.has("biome") else not biome in ["dungeon", "underworld"]) \
+			and (world.hardmode or not d.get("hardmode", false)))
 	if options.is_empty():
 		return
 	var d: Dictionary = options[rng.randi() % options.size()]
-	if evil == "dungeon":   # dentro do dungeon: numa sala perto do jogador (chão com dois blocos de ar em cima)
+	if biome in ["dungeon", "underworld"]:   # sem superfície: numa sala/caverna perto do jogador (voadores em qualquer ar, os outros com chão)
 		for attempt in 12:
-			var p := Vector3i(px + rng.randi_range(-9, 9), floori(player.position.y) + rng.randi_range(-2, 2), pz + rng.randi_range(-9, 9))
-			if world.get_block(p.x, p.y, p.z) == 0 and world.get_block(p.x, p.y + 1, p.z) == 0 and Blocks.solid[world.get_block(p.x, p.y - 1, p.z)] \
+			var p := Vector3i(floori(player.position.x) + rng.randi_range(-14, 14), floori(player.position.y) + rng.randi_range(-2, 4), floori(player.position.z) + rng.randi_range(-14, 14))
+			if world.get_block(p.x, p.y, p.z) == 0 and world.get_block(p.x, p.y + 1, p.z) == 0 and (d.ai == "fly" or Blocks.solid[world.get_block(p.x, p.y - 1, p.z)]) \
 					and Vector3(p).distance_to(player.position) > 6.0:
 				spawn_enemy(d, Vector3(p.x + 0.5, p.y, p.z + 0.5))
 				return
@@ -145,6 +155,9 @@ func boss_down(group: String) -> void:
 	if group in ["eater_of_worlds", "brain_of_cthulhu"] and not world.evil_boss_down:
 		world.evil_boss_down = true
 		world.meteor_due = true
+	elif group == "wall_of_flesh" and not world.hardmode:
+		world.start_hardmode()
+		player.say("o mundo foi abençoado: hardmode! (cobalto, paládio e o Hallow)")
 	elif group == "skeletron" and not world.skeletron_down:
 		world.skeletron_down = true
 		player.say("o dungeon está aberto!")
@@ -237,6 +250,9 @@ func spawn_boss(n: String) -> Node3D:
 			var h := spawn_enemy(def_named("skeletron_hand"), boss.position + Vector3(i * 4 - 2, -1, 0))
 			h.follow = boss
 			h.angle = PI * i
+	elif d.ai == "wall":   # nasce longe, no chão do submundo, do lado de onde a boneca foi jogada
+		var at := player.position + Vector3(cos(ang), 0, sin(ang)) * 45.0
+		boss = spawn_enemy(d, Vector3(clampf(at.x, 8.0, 248.0), 0.0, clampf(at.z, 8.0, 248.0)))
 	elif d.has("worm"):
 		boss = spawn_worm(d, player.position + Vector3(cos(ang) * 22, 2, sin(ang) * 22))
 	else:

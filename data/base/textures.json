@@ -186,5 +186,20 @@
 	"ninja_pants": {"wiki": "Ninja_Pants", "pattern": "blob", "colors": ["#2a2a34", "#1a1a22", "#5a5a6a"]},
 	"slime_crown": {"wiki": "Slime_Crown", "pattern": "blob", "colors": ["#f0c030", "#b08810", "#4a7ae8"]},
 	"dungeon_brick": {"wiki": "Blue_Brick_(placed)", "crop": [16, 16], "pattern": "bricks", "colors": ["#3a4a9a", "#33428a", "#4658aa"], "top_colors": ["#1c2452"]},
-	"dungeon_brick_item": {"wiki": "Blue_Brick"}
+	"dungeon_brick_item": {"wiki": "Blue_Brick"},
+	"cobalt_ore": {"wiki": "Cobalt_Ore_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#7d7d7d", "#707070", "#8a8a8a"], "top_colors": ["#3a6ad8", "#2a4aa8"]},
+	"cobalt_ore_item": {"wiki": "Cobalt_Ore"},
+	"palladium_ore": {"wiki": "Palladium_Ore_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#7d7d7d", "#707070", "#8a8a8a"], "top_colors": ["#e8823a", "#b85a1a"]},
+	"palladium_ore_item": {"wiki": "Palladium_Ore"},
+	"pearlstone": {"wiki": "Pearlstone_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#c8c0d8", "#b8b0cc", "#d8d0e8", "#a8a0bc"]},
+	"pearlstone_item": {"wiki": "Pearlstone_Block"},
+	"hallowed_grass_top": {"pattern": "noise", "colors": ["#7ae8d8", "#5ad8c8", "#a0f0e0", "#e8a8f0"]},
+	"hallowed_grass_side": {"pattern": "grass_side", "colors": ["#7a5230", "#6b4728", "#86603a", "#5e3d22"], "top_colors": ["#7ae8d8", "#5ad8c8", "#e8a8f0"]},
+	"cobalt_bar": {"wiki": "Cobalt_Bar", "pattern": "bar", "colors": ["#3a6ad8", "#2a4aa8", "#ffffff"]},
+	"palladium_bar": {"wiki": "Palladium_Bar", "pattern": "bar", "colors": ["#e8823a", "#b85a1a", "#ffffff"]},
+	"cobalt_pickaxe": {"wiki": "Cobalt_Pickaxe", "pattern": "pickaxe", "colors": ["#3a6ad8", "#2a4aa8"], "top_colors": ["#6e4b2a"]},
+	"palladium_pickaxe": {"wiki": "Palladium_Pickaxe", "pattern": "pickaxe", "colors": ["#e8823a", "#b85a1a"], "top_colors": ["#6e4b2a"]},
+	"cobalt_sword": {"wiki": "Cobalt_Sword", "pattern": "sword", "colors": ["#3a6ad8", "#2a4aa8"], "top_colors": ["#6e4b2a"]},
+	"palladium_sword": {"wiki": "Palladium_Sword", "pattern": "sword", "colors": ["#e8823a", "#b85a1a"], "top_colors": ["#6e4b2a"]},
+	"guide_voodoo_doll": {"wiki": "Guide_Voodoo_Doll", "pattern": "blob", "colors": ["#c0703a", "#8a4a20", "#e8c060"]}
 }
