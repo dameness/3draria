@@ -118,6 +118,7 @@ assets/wiki/         sprites baixados da wiki (fora do git)
 ```
 
 ## Documentação do projeto
+**O que falta: `docs/BACKLOG.md` (leia primeiro, é curto).** Referências visuais do dono: `docs/referencias/`. Histórico: `docs/REVISAO.md`, `docs/HANDOFF.md` (prompt pronto p/ sessão nova).
 Este arquivo: até 200 linhas. Cada pasta pode ter o próprio CLAUDE.md (até 50 linhas) com detalhes daquela seção,
 ex.: `data/CLAUDE.md` (formato dos JSON e das texturas).
 

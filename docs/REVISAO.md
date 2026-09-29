@@ -1,3 +1,5 @@
+> Histórico das revisões. O que falta agora está em `docs/BACKLOG.md`.
+
 # Revisão pré-hardmode — mapa (etapa 1) e execução (etapa 2)
 
 Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (código) → **Wiki** (números) → **Plano** (passos pequenos) →
