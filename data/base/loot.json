@@ -140,7 +140,7 @@
 			},
 			{
 				"items": [
-					"lesser_healing_potion"
+					"healing_potion"
 				],
 				"min": 3,
 				"max": 5,
@@ -231,7 +231,7 @@
 			},
 			{
 				"items": [
-					"lesser_healing_potion"
+					"healing_potion"
 				],
 				"min": 3,
 				"max": 5,
@@ -375,6 +375,93 @@
 				],
 				"min": 10,
 				"max": 29,
+				"chance": 0.5
+			}
+		]
+	},
+	"surface": {
+		"main": [
+			"spear",
+			"aglet",
+			"wand_of_sparking"
+		],
+		"common": [
+			{
+				"items": [
+					"copper_bar",
+					"tin_bar"
+				],
+				"min": 3,
+				"max": 10,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"iron_bar",
+					"lead_bar"
+				],
+				"min": 3,
+				"max": 10,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"wooden_arrow"
+				],
+				"min": 25,
+				"max": 50,
+				"chance": 0.667
+			},
+			{
+				"items": [
+					"lesser_healing_potion"
+				],
+				"min": 3,
+				"max": 5,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"recall_potion"
+				],
+				"min": 3,
+				"max": 5,
+				"chance": 0.667
+			},
+			{
+				"items": [
+					"ironskin_potion",
+					"shine_potion",
+					"night_owl_potion",
+					"swiftness_potion",
+					"mining_potion"
+				],
+				"min": 1,
+				"max": 2,
+				"chance": 0.667
+			},
+			{
+				"items": [
+					"torch"
+				],
+				"min": 10,
+				"max": 20,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"silver_coin"
+				],
+				"min": 10,
+				"max": 29,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"wood"
+				],
+				"min": 50,
+				"max": 99,
 				"chance": 0.5
 			}
 		]

@@ -480,18 +480,18 @@ func _altar(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
 				return
 
 
-# Baú de tesouro no chão de uma caverna, numa das camadas (subsolo, cavernas, perto do submundo); o conteúdo sai de World.chest_at (Loot) na
+# Baú de tesouro no chão, numa das camadas (superfície, subsolo, cavernas, perto do submundo); o conteúdo sai de World.chest_at (Loot) na
 # primeira vez que abre.
 func _chest(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
 	if rng.randf() > 0.3:
 		return
-	var band: Array = [[CAVERN_TOP + 1, SURFACE - 14], [UNDERWORLD_TOP + 12, CAVERN_TOP], [UNDERWORLD_TOP + 2, UNDERWORLD_TOP + 11]][rng.randi() % 3]
+	var band: Array = [[CAVERN_TOP + 1, SURFACE - 14], [UNDERWORLD_TOP + 12, CAVERN_TOP], [UNDERWORLD_TOP + 2, UNDERWORLD_TOP + 11], [SURFACE - 13, SURFACE + 8]][rng.randi() % 4]
 	for attempt in 8:
 		var x := rng.randi_range(1, CHUNK - 2)
 		var z := rng.randi_range(1, CHUNK - 2)
 		for y in range(band[1], band[0] - 1, -1):
 			var i := x + z * CHUNK + y * CHUNK * CHUNK
-			if d[i] == AIR and d[i + CHUNK * CHUNK] == AIR and (d[i - CHUNK * CHUNK] == STONE or d[i - CHUNK * CHUNK] == DIRT):
+			if d[i] == AIR and d[i + CHUNK * CHUNK] == AIR and (d[i - CHUNK * CHUNK] == STONE or d[i - CHUNK * CHUNK] == DIRT or d[i - CHUNK * CHUNK] == GRASS):
 				d[i] = CHEST
 				return
 

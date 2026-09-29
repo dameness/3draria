@@ -298,5 +298,9 @@
 	"wood_helmet": {"wiki": "Wood_Helmet"},
 	"wood_breastplate": {"wiki": "Wood_Breastplate"},
 	"wood_greaves": {"wiki": "Wood_Greaves"},
+	"spear": {"wiki": "Spear", "pattern": "sword", "colors": ["#c8c8d0", "#9a9aa4"], "top_colors": ["#6e4b2a"]},
+	"bone_sword": {"wiki": "Bone_Sword", "pattern": "sword", "colors": ["#e8e4d0", "#b8b4a0"], "top_colors": ["#6e4b2a"]},
+	"aglet": {"wiki": "Aglet", "pattern": "blob", "colors": ["#c8c8d0", "#7a7a84", "#ffffff"]},
+	"shackle": {"wiki": "Shackle", "pattern": "blob", "colors": ["#8a8a92", "#5a5a62", "#c8c8d0"]},
 	"logo": {"wiki": "Terraria_Steam_Library_logo"}
 }

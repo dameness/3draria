@@ -773,7 +773,7 @@ func _test_row(box: Control, title: String, buttons: Array) -> void:
 const TIPS := ["Bem-vindo! Use o machado nas árvores para juntar madeira e faça uma bancada de trabalho.", "Ache Life Crystals nas cavernas: cada um dá +20 de vida máxima.",
 	"Quebre 3 Shadow Orbs ou Crimson Hearts com um martelo para despertar um chefe.", "Fallen Stars caem à noite; 5 delas fazem um Mana Crystal.",
 	"Segure Shift para escolher a ferramenta certa sozinho.", "Poções de cura deixam a Doença da poção por 1 minuto."]
-const SHOP := [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5]]   # preços em cobre (wiki Merchant)
+const SHOP := [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5], ["anvil", 5000]]   # preços em cobre (wiki Merchant)
 
 
 # Painel de conversa (abaixo do inventário, no meio): nome, fala e botões do que o habitante faz. Fecha com o inventário.
@@ -1283,6 +1283,9 @@ func _process(delta: float) -> void:
 	tint.color = Color(0.08, 0.28, 0.7, 0.4) if wet == Blocks.ids.water else Color(1.0, 0.3, 0.05, 0.55) if wet == Blocks.ids.lava else Color.TRANSPARENT
 	flash.color = Color(0.9, 0.05, 0.05, clampf((player.iframes - (player.IFRAMES - 0.3)) / 0.3, 0.0, 1.0) * 0.3)
 	note_label.text = player.message if now < player.message_until else ""
+	if player.dead > 0.0:   # wiki Death: espera de 10 s
+		flash.color = Color(0.0, 0.0, 0.0, 0.55)
+		note_label.text = "Você foi derrotado... %d" % ceili(player.dead)
 	var p: Vector3 = player.position
 	var aimed := ""
 	if world.test_world and not player.target.is_empty():

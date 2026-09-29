@@ -36,6 +36,7 @@ const MAX_HP_CAP := 400      # 20 Life Crystals de 20 (wiki)
 const MAX_MANA_CAP := 200    # 10 Mana Crystals de 20 além dos 20 iniciais (wiki Mana)
 const SICKNESS := 60.0       # Doença da poção depois de uma cura (wiki)
 const AIR_JUMP := 0.87       # Cloud in a Bottle: o pulo extra tem ~75% da altura do primeiro (0,87² da velocidade)
+const RESPAWN := 10.0     # espera depois de morrer (wiki Death, Classic: 10 s)
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
 const TILE := 0.6              # 1 tile do Terraria em blocos (a escala do jogo: jogador de 3 tiles = 1,8)
 const FALL_SAFE := 25          # queda segura em tiles (≈ 15 blocos); acima, 10 de dano por tile a mais (wiki Fall damage); asas anulam
@@ -94,6 +95,7 @@ var air_jump_ready := false   # o pulo extra do Cloud in a Bottle ainda não foi
 var jump_was := false         # Espaço estava apertado no passo anterior (o pulo extra pede um aperto novo)
 var use_len := 0.25           # duração do uso em andamento (a animação da mão usa)
 var iframes := 0.0
+var dead := 0.0               # segundos que faltam da espera depois de morrer (parado, invencível, no ponto de nascimento)
 var since_hit := 99.0
 var cooldown := 0.0
 var spawn := Vector3.ZERO
@@ -257,6 +259,9 @@ func look(rel: Vector2) -> void:
 
 func _physics_process(delta: float) -> void:
 	var k := func(key): return 1.0 if Input.is_physical_key_pressed(key) and not map_open else 0.0   # com o mapa cheio aberto fica parado
+	if dead > 0.0:   # esperando: sem controle
+		dead -= delta
+		return
 	var wish := Vector3(k.call(KEY_D) - k.call(KEY_A), 0, k.call(KEY_S) - k.call(KEY_W)).rotated(Vector3.UP, rotation.y)
 	if creative:
 		wish.y = k.call(KEY_SPACE) - k.call(KEY_C)
@@ -299,7 +304,7 @@ func _process(delta: float) -> void:
 	else:
 		crack.visible = false
 	_update_rope()
-	var free := not (inventory_open or menu_open or map_open)   # mãos livres: sem painel na frente
+	var free := not (inventory_open or menu_open or map_open or dead > 0.0)   # mãos livres: sem painel na frente
 	auto_pick(free and Input.is_physical_key_pressed(KEY_SHIFT))
 	if not free:
 		attack_held = false
@@ -664,7 +669,7 @@ func say(text: String) -> void:
 
 # Dano como no Terraria (modo normal): dano − defesa/2 (armadura + bônus de conjunto), mínimo 1.
 func hurt(damage: int, dir: Vector3, bounce := true) -> int:   # bounce = false: dano sem empurrão (queda)
-	if iframes > 0 or creative:
+	if iframes > 0 or creative or dead > 0.0:
 		return 0
 	var taken := maxi(1, damage - ceili(defense() / 2.0))
 	hp -= taken
@@ -705,6 +710,7 @@ func die() -> void:
 				entities.spawn_drop(Items.ids[Inventory.COINS[k]], lost, position + Vector3.UP * 0.5)
 		inv.version += 1
 	hp = max_hp
+	dead = RESPAWN
 	death = position
 	position = spawn
 	velocity = Vector3.ZERO

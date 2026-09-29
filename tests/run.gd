@@ -1263,7 +1263,7 @@ var census_cache := {}
 func world_census() -> Dictionary:
 	if census_cache.is_empty():
 		var gen := WorldGen.new(4242)
-		var r := {"crystals": 0, "bad_crystals": 0, "chests": {"underground": 0, "cavern": 0, "lava": 0, "sky": 0}, "bad_chests": 0}
+		var r := {"crystals": 0, "bad_crystals": 0, "chests": {"surface": 0, "underground": 0, "cavern": 0, "lava": 0, "sky": 0}, "bad_chests": 0}
 		for cz in WorldGen.SIZE_CHUNKS:
 			for cx in WorldGen.SIZE_CHUNKS:
 				var d := gen.generate(cx, cz)
@@ -1275,7 +1275,7 @@ func world_census() -> Dictionary:
 						r.bad_crystals += int(y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE - 14 or not (below == gen.STONE or below == gen.DIRT or below == Blocks.ids.dungeon_brick))
 					elif d[i] == Blocks.ids.chest:
 						r.chests[Loot.layer_of(y)] += 1
-						r.bad_chests += int(Loot.layer_of(y) != "sky" and (y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE - 14 or not (below == gen.STONE or below == gen.DIRT or below == Blocks.ids.dungeon_brick)))
+						r.bad_chests += int(Loot.layer_of(y) != "sky" and (y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE + 9 or not (below == gen.STONE or below == gen.DIRT or below == gen.GRASS or below == Blocks.ids.dungeon_brick)))
 		census_cache = r
 	return census_cache
 
@@ -1324,7 +1324,7 @@ func test_life_crystal():
 # Loot dos baús (wiki Gold Chest): 1 item principal + comuns sorteados por camada (data/base/loot.json), conjuntos que não vêm juntos, quantidades
 # dentro da faixa, determinístico por seed e posição; o mundo gera baús nas três camadas.
 func test_loot():
-	for layer in ["underground", "cavern", "lava"]:
+	for layer in ["surface", "underground", "cavern", "lava"]:
 		var t: Dictionary = Loot.tables[layer]
 		var ok: bool = t.main.all(func(n): return Items.ids.has(n))
 		for e in t.common:
@@ -1405,9 +1405,9 @@ func test_loot():
 	w4.free()
 	# geração: baús no chão das três camadas
 	var cs: Dictionary = world_census()
-	var total: int = cs.chests.underground + cs.chests.cavern + cs.chests.lava
+	var total: int = cs.chests.surface + cs.chests.underground + cs.chests.cavern + cs.chests.lava
 	print("baús: %s (%d, fora do lugar %d)" % [str(cs.chests), total, cs.bad_chests])
-	check(cs.chests.underground >= 5 and cs.chests.cavern >= 5 and cs.chests.lava >= 5 and total >= 40 and total <= 90 and cs.bad_chests == 0, "baús nas 3 camadas, em cima de pedra, fora do submundo e da superfície")
+	check(cs.chests.surface >= 3 and cs.chests.underground >= 1 and cs.chests.cavern >= 5 and cs.chests.lava >= 5 and total >= 40 and total <= 90 and cs.bad_chests == 0, "baús nas 4 camadas (superfície, subsolo, cavernas, lava), em cima de chão e fora do submundo")
 	return true
 
 
@@ -4225,6 +4225,22 @@ func test_wiki_review():
 	for m in dmg:
 		var id: int = Items.ids[m + "_shortsword"]
 		check(Items.defs[id].damage == dmg[m] and roundi(Items.defs[id].use_time * 60) == frames[m] and Crafting.recipes.any(func(r): return r.result == id and r.station == Blocks.ids.anvil), "%s shortsword: dano %d, use time %d, receita na bigorna" % [m, dmg[m], frames[m]])
+	# morte: espera de 10 s (wiki Death), parado e invencível
+	var wp := make_player(floor_world())
+	wp.die()
+	check(is_equal_approx(wp.dead, 10.0) and wp.hurt(50, Vector3.RIGHT) == 0, "morrer: 10 s de espera, invencível")
+	wp._physics_process(4.0)
+	check(is_equal_approx(wp.dead, 6.0), "a espera corre")
+	wp.dead = 0.0
+	check(wp.hurt(5, Vector3.RIGHT) > 0, "passada a espera volta a levar dano")
+	wp.world.free()
+	free_player(wp)
+	# itens de baú de superfície e drops de inimigos
+	check(Loot.tables.surface.main.all(func(n): return Items.ids.has(n)) and Loot.layer_of(WorldGen.SURFACE) == "surface" and Loot.layer_of(WorldGen.SURFACE - 14) == "underground", "baús de superfície: camada pela altura")
+	check(Items.defs[Items.ids.spear].damage == 8 and Items.defs[Items.ids.spear].knockback == 6.5 and Items.defs[Items.ids.bone_sword].damage == 19 and Items.defs[Items.ids.aglet].accessory.speed == 0.05 and Items.defs[Items.ids.shackle].accessory.defense == 1, "Spear, Bone Sword, Aglet e Shackle com os números da wiki")
+	check(enemy_def("zombie").drops.any(func(d): return d.item == "shackle" and d.chance == 0.02) and enemy_def("skeleton").drops.any(func(d): return d.item == "bone_sword"), "Zombie solta Shackle (2%), Skeleton Bone Sword")
+	var cavern_heal: bool = Loot.tables.cavern.common.any(func(e): return e.items == ["healing_potion"])
+	check(cavern_heal and not Loot.tables.cavern.common.any(func(e): return e.items == ["lesser_healing_potion"]), "baú de caverna dá Healing Potion (não a Lesser)")
 	var wood: Dictionary = Items.sets.wood
 	check(wood.pieces.size() == 3 and wood.defense == 1 and Items.defs[wood.pieces[0]].defense + Items.defs[wood.pieces[1]].defense + Items.defs[wood.pieces[2]].defense == 2, "conjunto de madeira: 1+1+0 de defesa e +1 do conjunto")
 	return true

@@ -9,9 +9,9 @@ static func load_pack(dir := "res://data/base") -> void:
 	tables = Blocks.read(dir + "/loot.json")
 
 
-# Camada do baú pela altura: perto do submundo ("lava"), cavernas ou subsolo.
+# Camada do baú pela altura: superfície, subsolo, cavernas ou perto do submundo ("lava"); ilhas do céu à parte.
 static func layer_of(y: int) -> String:
-	return "sky" if y >= WorldGen.SKY_BASE else "lava" if y < WorldGen.UNDERWORLD_TOP + 12 else "cavern" if y < WorldGen.CAVERN_TOP else "underground"
+	return "sky" if y >= WorldGen.SKY_BASE else "surface" if y > WorldGen.SURFACE - 14 else "lava" if y < WorldGen.UNDERWORLD_TOP + 12 else "cavern" if y < WorldGen.CAVERN_TOP else "underground"
 
 
 # Conteúdo de um baú de 40 slots, sorteado com rng. O principal vem sempre.

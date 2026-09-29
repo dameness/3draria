@@ -169,7 +169,7 @@ func eye_of_cthulhu(delta: float, to: Vector3) -> void:
 				entities.spawn_enemy(entities.def_named(def.minion), position + Vector3.DOWN)
 			if timer <= 0:
 				mode = "dash"
-				dashes = 3 if phase == 1 else 5
+				dashes = 3
 				timer = 0
 		"dash":
 			if timer <= 0:
