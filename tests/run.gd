@@ -870,7 +870,10 @@ func test_brain():
 	var ent: Node3D = p.entities
 	var brain: Node3D = ent.spawn_boss("brain_of_cthulhu")
 	var creepers: Array = ent.enemies.filter(func(e): return e.def.name == "creeper")
-	check(creepers.size() == 12 and ent.boss == brain and ent.boss_max == 1250 + 12 * 100, "o cérebro nasce com 12 Creepers (barra soma tudo)")
+	check(creepers.size() == 20 and ent.boss == brain and ent.boss_max == 1250 + 20 * 100, "o cérebro nasce com 20 Creepers (barra soma tudo)")
+	brain._ready()   # monta o modelo (fora da árvore ele ainda não existe)
+	var parts: Array = brain.model.find_children("", "MeshInstance3D", true, false)
+	check(parts.size() > 10 and parts.all(func(m): return m.material_override.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA and m.material_override.albedo_color.a < 1.0), "fase 1: cérebro translúcido (alpha no material, o Compatibility ignora transparency)")
 	check(brain.hurt(500, Vector3.RIGHT, 0) == 0 and brain.hp == 1250, "fase 1: imune enquanto houver Creepers")
 	var far := 0.0
 	for i in 60 * 4:
@@ -879,12 +882,14 @@ func test_brain():
 	for c in creepers:
 		far = maxf(far, c.position.distance_to(brain.position))
 	check(far < 14.0, "os Creepers orbitam o cérebro (%.1f)" % far)
-	check(creepers[0].hurt(1000, Vector3.RIGHT, 0) == 1000 - 5 and creepers.size() == 12, "Creeper: defesa 10")
+	check(creepers[0].hurt(1000, Vector3.RIGHT, 0) == 1000 - 5 and creepers.size() == 20, "Creeper: defesa 10")
 	var tissue := ent.get_children().filter(func(n): return n.get("item") == Items.ids.tissue_sample).size()
 	for c in creepers.slice(1):
 		c.hurt(1000, Vector3.RIGHT, 0)
 	brain.think(1.0 / 60)
 	check(brain.phase == 2 and brain.hurt(100, Vector3.RIGHT, 0) == 100 - 7, "sem Creepers: fase 2, vulnerável (defesa 14)")
+	check(parts.all(func(m): return m.material_override.albedo_color.a == 1.0 and m.material_override.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED), "fase 2: cérebro sólido")
+	check(ent.boss_max == 1250, "fase 2: a barra passa a contar só o cérebro (%d)" % ent.boss_max)
 	var moved := 0.0
 	var last: Vector3 = brain.position
 	for i in 60 * 6:

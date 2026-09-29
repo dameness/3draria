@@ -178,11 +178,15 @@ func eye_of_cthulhu(delta: float, to: Vector3) -> void:
 			velocity *= 1.0 - delta * 0.8
 
 
+# Fase 1 do cérebro (imune): modelo translúcido. O alpha vai no material porque o renderer Compatibility ignora MeshInstance3D.transparency.
 func set_ghost(on: bool) -> void:
 	if model == null:
 		return
 	for m in model.find_children("", "MeshInstance3D", true, false):
-		m.transparency = 0.5 if on else 0.0
+		var mat := m.material_override as StandardMaterial3D
+		if mat:
+			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if on else BaseMaterial3D.TRANSPARENCY_DISABLED
+			mat.albedo_color.a = 0.5 if on else 1.0
 
 
 # Brain of Cthulhu. Fase 1: translúcido e imune, teleporta em volta do jogador enquanto os Creepers atacam; quando o último
@@ -194,6 +198,7 @@ func brain(delta: float, to: Vector3) -> void:
 		phase = 2
 		mode = "wait"
 		timer = 1.0
+		entities.boss_max = entities.boss_life()   # a barra passa a contar só o cérebro
 		set_ghost(false)
 		Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 30)
 		p.say("o Brain of Cthulhu está furioso!")

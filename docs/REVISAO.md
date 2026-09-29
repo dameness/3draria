@@ -7,7 +7,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 |---|------|--------|
 | B1 | Minimapa "teleporta" (+ Tab/M) | ✅ |
 | B2 | Verme (Eater of Worlds) bugado | ✅ |
-| B3 | Brain: fase 1 não fica translúcida; barra e nº de Creepers | ⬜ |
+| B3 | Brain: fase 1 não fica translúcida; barra e nº de Creepers | ✅ |
 | B4 | Iluminação estranha (tochas cortam na borda do chunk; mão clara em caverna) | ⬜ |
 | 1 | Árvore cai inteira (madeira por bloco, acorn, muda) | ⬜ |
 | 2 | Binds do Terraria (Esc, Settings, botão esquerdo coloca, Shift, H/J/B) | ⬜ |
@@ -80,7 +80,7 @@ tem cone; a cabeça, sob o chão, sai, descreve arco balístico e volta a escava
 superfície, cabeça 65 e rabo 220/def 8. Velocidade da cabeça **15 blocos/s** (wiki ≈ 22,5; abaixo por causa da mira em 3D — só dado em
 `enemies.json`). Vile Spit e "foge se o jogador morre" ficam para depois.
 
-## B3 — Brain of Cthulhu
+## B3 — Brain of Cthulhu ✅
 
 - **Fase 1 não parece translúcida** (`enemy.gd:set_ghost`): usa `MeshInstance3D.transparency`, que o renderer Compatibility ignora.
   **Medido** (esfera vermelha sobre fundo branco, xvfb): `transparency = 0.5` → (1, 0, 0) opaco; alpha no material → (1, 0.5, 0.5).
