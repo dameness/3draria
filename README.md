@@ -11,5 +11,6 @@ scripts/update.sh           # Godot + sprites da wiki (1ª vez ~2 min; depois na
 Rode `scripts/update.sh` **sempre depois de um `git pull`** (script novo precisa do cache de classes). Sem sprites o jogo
 funciona igual (texturas procedurais); se a wiki responder 429, rode de novo mais tarde: continua de onde parou.
 Testes: `.tools/godot --headless -s tests/run.gd`. Se um passo mudar a geração do mundo, crie um mundo novo.
+Para testar tudo sem grindar: menu → Um jogador → personagem → **Mundo de teste** (baús com todos os itens, todos os blocos, NPCs, inimigos; **F9** abre o painel de atalhos).
 
 Detalhes do projeto em `CLAUDE.md`; roteiro em `docs/ROADMAP.md`; visual em `docs/VISUAL.md`; GUI em `docs/UI.md`.

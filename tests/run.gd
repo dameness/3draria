@@ -3197,7 +3197,7 @@ func test_testworld():
 	check(TestWorld.category(Items.ids.terra_blade) == "Armas" and TestWorld.category(Items.ids.iron_pickaxe) == "Ferramentas" and TestWorld.category(Items.ids.gold_helmet) == "Armaduras" \
 		and TestWorld.category(Items.ids.hermes_boots) == "Acessórios" and TestWorld.category(Items.ids.mana_potion) == "Poções e consumíveis" and TestWorld.category(Items.ids.wooden_arrow) == "Moedas e munição" \
 		and TestWorld.category(Items.ids.gold_coin) == "Moedas e munição" and TestWorld.category(Items.ids.slime_crown) == "Chefes e invocadores" and TestWorld.category(Items.ids.iron_ore) == "Blocos e minérios" \
-		and TestWorld.category(Items.ids.gold_bar) == "Materiais e barras", "categorias de exemplo")
+		and TestWorld.category(Items.ids.gold_bar) == "Materiais e barras" and TestWorld.category(Items.ids.grappling_hook) == "Ferramentas" and TestWorld.category(Items.ids.crimson_rod) == "Armas", "categorias de exemplo")
 	var placed := {}
 	for b in TestWorld.blocks:
 		placed[b.id] = true

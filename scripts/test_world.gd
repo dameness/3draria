@@ -41,7 +41,7 @@ static func category(id: int) -> String:
 		return "Chefes e invocadores"
 	if d.get("consumable", false) or d.has("heal") or d.has("buff") or d.has("recall") or d.has("life") or d.has("mana") or d.has("mana_max"):
 		return "Poções e consumíveis"
-	if Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or Items.hammer_power[id] > 0 or d.has("bucket"):
+	if Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or Items.hammer_power[id] > 0 or d.has("bucket") or d.has("hook"):
 		return "Ferramentas"
 	if d.get("damage", 0) > 0:
 		return "Armas"
