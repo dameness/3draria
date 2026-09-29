@@ -190,6 +190,17 @@ static func _plate_tex() -> ImageTexture:
 	return _plate
 
 
+# Material que brilha (lava do Molten/Meteor, olhos do elmo): sem sombreado, com contorno.
+static func _glow_mat(c: Color) -> StandardMaterial3D:
+	var key := ["glow", c]
+	if not _mats.has(key):
+		var m: StandardMaterial3D = _mat(c).duplicate()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = c.lightened(0.15)
+		_mats[key] = m
+	return _mats[key]
+
+
 # Material da armadura: placa × cor, repetida pelo tamanho da peça (placas de ~17 cm).
 static func _plate_mat(c: Color, uv: Vector3) -> StandardMaterial3D:
 	var key := [c, uv]
@@ -359,21 +370,25 @@ func _show_held(id: int) -> void:
 
 # Cores da peça tiradas do sprite: média da metade mais clara dos pixels (o contorno escuro do Terraria deixaria tudo
 # apagado), a do quarto seguinte e a dos mais escuros (sem o preto do contorno).
-func _colors(id: int) -> Array:
+func _colors(id: int, split := false) -> Array:
 	var img: Image = player.entities.icon(id).get_image()
 	img.convert(Image.FORMAT_RGBA8)
 	var px: Array[Color] = []
+	var glow: Array[Color] = []
 	for y in img.get_height():
 		for x in img.get_width():
 			var c := img.get_pixel(x, y)
 			if c.a > 0.5:
-				px.append(c)
+				if split and c.s > 0.55 and c.v > 0.3:
+					glow.append(c)
+				else:
+					px.append(c)
 	if px.is_empty():
-		return [Color.GRAY, Color.DIM_GRAY, Color.DARK_GRAY]
+		return [Color.GRAY, Color.DIM_GRAY, Color.DARK_GRAY, Color.ORANGE]
 	px.sort_custom(func(a, b): return a.get_luminance() > b.get_luminance())
 	var n := px.size()
 	var dark := px.slice(n * 3 / 4).filter(func(c): return c.get_luminance() > 0.06)
-	return [_avg(px.slice(0, maxi(1, n / 2))), _avg(px.slice(n / 2, maxi(n / 2 + 1, n * 3 / 4))), _avg(dark if not dark.is_empty() else px.slice(n * 3 / 4))]
+	return [_avg(px.slice(0, maxi(1, n / 2))), _avg(px.slice(n / 2, maxi(n / 2 + 1, n * 3 / 4))), _avg(dark if not dark.is_empty() else px.slice(n * 3 / 4)), _avg(glow) if not glow.is_empty() else Color(0.9, 0.9, 0.95)]
 
 
 static func _avg(list: Array) -> Color:
@@ -395,7 +410,8 @@ func _dress() -> void:
 		var id: int = worn[k]
 		if id == -1:
 			continue
-		var pal := _colors(id)
+		var look: String = Items.defs[id].get("set", "")
+		var pal := _colors(id, look in ["molten", "meteor"])
 		var c := [pal[0], pal[0].lightened(0.28), pal[1]]   # principal, brilho, sombra/detalhe (contraste alto como o sprite)
 		var list := []
 		var add := func(parent: String, mesh: Mesh, col: Color, pos: Vector3, size := Vector3.ONE, rot := Vector3.ZERO):
@@ -403,6 +419,19 @@ func _dress() -> void:
 			var box := mesh.get_aabb().size * size
 			mi.material_override = _plate_mat(col, Vector3(snappedf(PI * maxf(box.x, box.z) / 0.17, 1.0), maxf(1.0, snappedf(box.y / 0.17, 1.0)), 1.0))
 			list.append(mi)
+		var glow := func(parent: String, mesh: Mesh, pos: Vector3, size := Vector3.ONE, rot := Vector3.ZERO):
+			var mi := _part(parts[parent], mesh, pal[3], pos, size, rot)
+			mi.material_override = _glow_mat(pal[3])
+			list.append(mi)
+		var flat := func(parent: String, mesh: Mesh, col: Color, pos: Vector3, size := Vector3.ONE, rot := Vector3.ZERO):   # tecido: sem placas
+			list.append(_part(parts[parent], mesh, col, pos, size, rot))
+		if look != "":
+			_look(Inventory.ARMOR[k], look, add, glow, flat, c)
+			if Inventory.ARMOR[k] == "head":
+				for n in hair_nodes:
+					n.visible = false
+			shells[Inventory.ARMOR[k]] = list
+			continue
 		match Inventory.ARMOR[k]:
 			"head":
 				add.call("head", _sphere(), c[0], Vector3(0, 0.42, 0.03), Vector3(0.72, 0.46, 0.7))          # calota (deixa o rosto aberto)
@@ -432,3 +461,92 @@ func _dress() -> void:
 	if worn[0] == -1:
 		for n in hair_nodes:
 			n.visible = true
+
+
+# Conjuntos com formato próprio (wiki): Molten = elmo de rosto fechado com fendas e crista de fogo, mangas até as luvas, peito e
+# botas com brasa; Meteor = elmo com espinhos de lava e ombreiras espetadas; Ninja = capuz de pano com faixa e fresta dos olhos,
+# camisa cruzada por faixas, ataduras nas botas. c = [principal, brilho, sombra]; `glow` usa a cor viva do ícone (pal[3]).
+func _look(slot: String, look: String, add: Callable, glow: Callable, flat: Callable, c: Array) -> void:
+	var cone := _cone(0.07, 0.3)
+	var box := BoxMesh.new()
+	if look == "ninja":   # pano escuro com faixas claras
+		c = [c[2].lightened(0.25), c[0].lightened(0.3), c[2].darkened(0.3)]
+	match [look, slot]:
+		["molten", "head"]:
+			add.call("head", _sphere(), c[0], Vector3(0, 0.3, 0.03), Vector3(0.74, 0.7, 0.72))          # elmo fechado
+			add.call("head", _sphere(), c[1], Vector3(0, 0.28, -0.26), Vector3(0.52, 0.52, 0.18))          # placa do rosto (Homem de Ferro)
+			add.call("head", _sphere(), c[2], Vector3(0, 0.08, -0.22), Vector3(0.38, 0.2, 0.22))         # queixo
+			add.call("head", _capsule(0.03, 0.34), c[2], Vector3(0, 0.44, -0.3), Vector3(1, 1, 1), Vector3(0, 0, PI / 2))   # sobrancelha
+			for side in [-1, 1]:
+				glow.call("head", _sphere(), Vector3(side * 0.1, 0.34, -0.36), Vector3(0.15, 0.045, 0.04), Vector3(0, 0, side * -0.25))   # fendas dos olhos
+			for i in 3:   # crista de fogo para trás
+				glow.call("head", _cone(0.12, 0.6 - i * 0.1), Vector3(0, 0.66 - i * 0.03, 0.08 + i * 0.13), Vector3.ONE, Vector3(0.7 + i * 0.3, 0, 0))
+		["molten", "body"]:
+			add.call("upper", _capsule(0.168, 0.58), c[0], Vector3(0, 0.28, 0), Vector3(1.4, 1.0, 1.0))
+			add.call("upper", _sphere(), c[1], Vector3(0, 0.47, 0), Vector3(0.58, 0.24, 0.34))
+			add.call("upper", _sphere(), c[2], Vector3(0, 0.04, 0), Vector3(0.5, 0.1, 0.34))
+			glow.call("upper", box, Vector3(0, 0.32, -0.165), Vector3(0.11, 0.11, 0.05), Vector3(0, 0, PI / 4))   # núcleo de brasa no peito
+			glow.call("upper", box, Vector3(0, 0.04, -0.165), Vector3(0.12, 0.05, 0.04))                          # fivela
+			for side in [-1, 1]:
+				var a := "arm_l" if side < 0 else "arm_r"
+				add.call(a, _sphere(), c[1], Vector3(side * 0.03, 0.0, 0), Vector3(0.34, 0.27, 0.33))       # ombreira
+				add.call(a, _capsule(0.113, 0.64), c[0], Vector3(0, -0.26, 0))                               # manga: o braço inteiro
+				add.call(a, _sphere(), c[2], Vector3(0, -0.3, 0), Vector3(0.26, 0.11, 0.26))                 # cotovelo
+				glow.call(a, _sphere(), Vector3(0, -0.3, 0), Vector3(0.235, 0.05, 0.235))                    # brasa no cotovelo
+				add.call(a, _sphere(), c[2], Vector3(0, -0.56, 0), Vector3(0.23, 0.23, 0.23))                # luva
+		["molten", "legs"]:
+			for side in [-1, 1]:
+				var p := "leg_l" if side < 0 else "leg_r"
+				add.call(p, _capsule(0.12, 0.62), c[0], Vector3(0, -0.33, 0))
+				add.call(p, _sphere(), c[1], Vector3(0, -0.36, -0.1), Vector3(0.17, 0.17, 0.11))
+				glow.call(p, _sphere(), Vector3(0, -0.36, -0.15), Vector3(0.07, 0.07, 0.03))               # brasa no joelho
+				add.call(p, _sphere(), c[2], Vector3(0, -0.67, -0.04), Vector3(0.25, 0.17, 0.37))           # bota
+				glow.call(p, _sphere(), Vector3(0, -0.58, 0), Vector3(0.265, 0.05, 0.265))                  # brasa no tornozelo
+		["meteor", "head"]:
+			add.call("head", _sphere(), c[0], Vector3(0, 0.3, 0.03), Vector3(0.74, 0.68, 0.72))
+			add.call("head", _capsule(0.03, 0.56), c[2], Vector3(0, 0.44, -0.3), Vector3(1, 1, 1), Vector3(0, 0, PI / 2))   # borda do elmo
+			glow.call("head", _sphere(), Vector3(0, 0.33, -0.33), Vector3(0.44, 0.09, 0.05))              # visor de lava
+			for s in [[-0.22, 0.62, 0.0, -0.6, 0.3], [0.0, 0.7, 0.05, 0.0, 0.5], [0.22, 0.62, 0.0, 0.6, 0.3], [-0.1, 0.6, 0.22, -0.3, 0.9], [0.12, 0.58, 0.24, 0.35, 1.0]]:
+				glow.call("head", cone, Vector3(s[0], s[1], s[2]), Vector3.ONE, Vector3(s[4], 0, s[3]))   # espinhos de lava
+		["meteor", "body"]:
+			add.call("upper", _capsule(0.168, 0.58), c[0], Vector3(0, 0.28, 0), Vector3(1.4, 1.0, 1.0))
+			add.call("upper", _sphere(), c[2], Vector3(0, 0.04, 0), Vector3(0.5, 0.1, 0.34))
+			glow.call("upper", box, Vector3(0, 0.34, -0.165), Vector3(0.12, 0.16, 0.05), Vector3(0, 0, PI / 4))   # gema de lava
+			glow.call("upper", _sphere(), Vector3(0, 0.47, 0), Vector3(0.6, 0.1, 0.34))                   # gola de lava
+			for side in [-1, 1]:
+				var a := "arm_l" if side < 0 else "arm_r"
+				add.call(a, _sphere(), c[1], Vector3(side * 0.03, 0.0, 0), Vector3(0.34, 0.27, 0.33))
+				glow.call(a, cone, Vector3(side * 0.16, 0.14, 0), Vector3.ONE, Vector3(0, 0, -side * 1.1))   # espinho da ombreira
+				add.call(a, _capsule(0.115, 0.32), c[0], Vector3(0, -0.13, 0))
+		["meteor", "legs"]:
+			for side in [-1, 1]:
+				var p := "leg_l" if side < 0 else "leg_r"
+				add.call(p, _capsule(0.118, 0.6), c[0], Vector3(0, -0.33, 0))
+				glow.call(p, _sphere(), Vector3(0, -0.36, -0.12), Vector3(0.1, 0.1, 0.05))
+				add.call(p, _sphere(), c[2], Vector3(0, -0.67, -0.04), Vector3(0.24, 0.17, 0.36))
+				glow.call(p, _sphere(), Vector3(0, -0.6, 0), Vector3(0.26, 0.04, 0.26))                     # borda de lava da bota
+		["ninja", "head"]:
+			flat.call("head", _sphere(), c[0], Vector3(0, 0.3, 0.03), Vector3(0.72, 0.68, 0.7))           # capuz
+			flat.call("head", _sphere(), skin, Vector3(0, 0.3, -0.25), Vector3(0.52, 0.17, 0.2))         # fresta dos olhos
+			for side in [-1, 1]:
+				flat.call("head", _sphere(), Color.WHITE, Vector3(side * 0.11, 0.3, -0.345), Vector3(0.1, 0.09, 0.03))
+				flat.call("head", _sphere(), Color("#10131c"), Vector3(side * 0.11, 0.3, -0.365), Vector3(0.05, 0.07, 0.02))
+			flat.call("head", _capsule(0.03, 0.66), c[1], Vector3(0, 0.44, -0.02), Vector3(1, 1, 1), Vector3(0, 0, PI / 2))   # faixa da testa
+			flat.call("head", _capsule(0.05, 0.3), c[2], Vector3(0.05, 0.28, 0.4), Vector3(1, 1, 1), Vector3(0.9, 0, 0.3))   # nó do capuz
+		["ninja", "body"]:
+			flat.call("upper", _capsule(0.168, 0.58), c[0], Vector3(0, 0.28, 0), Vector3(1.4, 1.0, 1.0))
+			flat.call("upper", _sphere(), c[2], Vector3(0, 0.04, 0), Vector3(0.5, 0.1, 0.34))
+			flat.call("upper", _sphere(), c[0], Vector3(0, 0.46, 0), Vector3(0.56, 0.23, 0.32))     # ombros
+			for r in [0.7, -0.7]:
+				flat.call("upper", box, c[1], Vector3(0, 0.3, -0.16), Vector3(0.05, 0.4, 0.03), Vector3(0, 0, r))   # faixas cruzadas
+			for side in [-1, 1]:
+				var a := "arm_l" if side < 0 else "arm_r"
+				flat.call(a, _sphere(), c[0], Vector3.ZERO, Vector3(0.21, 0.21, 0.21))
+				flat.call(a, _capsule(0.103, 0.36), c[0], Vector3(0, -0.15, 0))                               # manga
+				flat.call(a, _capsule(0.105, 0.05), c[1], Vector3(0, -0.34, 0))                               # atadura do punho
+		["ninja", "legs"]:
+			for side in [-1, 1]:
+				var p := "leg_l" if side < 0 else "leg_r"
+				flat.call(p, _capsule(0.118, 0.62), c[0], Vector3(0, -0.33, 0))
+				flat.call(p, _sphere(), c[2], Vector3(0, -0.67, -0.04), Vector3(0.24, 0.17, 0.36))
+				flat.call(p, _capsule(0.125, 0.06), c[1], Vector3(0, -0.55, 0))                               # atadura do tornozelo

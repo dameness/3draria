@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -4022,4 +4022,38 @@ func test_sync_gen():
 	w.get_block(k.x * C + C, 5, k.y * C)   # o vizinho é gerado na hora, por get_block
 	check(w._has_data(k) and w.meshable.has(k), "gerar o vizinho por get_block libera o chunk para a mesh (%s)" % str(w.meshable))
 	w.free()
+	return true
+
+
+# Conjuntos com formato próprio (Molten/Meteor/Ninja) vestem as 3 peças e a cor de destaque sai do laranja do ícone, não da paleta base.
+class ArmorDummy extends Node3D:
+	var velocity := Vector3.ZERO
+	var pitch := 0.0
+	var cooldown := 0.0
+	var inv := Inventory.new()
+	var atlas: Texture2D
+	var entities: Object = self
+	func held() -> int:
+		return -1
+	func icon(id: int) -> Texture2D:
+		return Items.icon_texture(id, atlas)
+
+
+func test_armor_looks():
+	var d := ArmorDummy.new()
+	d.atlas = ImageTexture.create_from_image(Atlas.build(Blocks.textures))
+	var m: Node3D = load("res://scripts/player_model.gd").new()
+	m.player = d
+	d.add_child(m)
+	m._build()
+	for set in ["molten", "meteor", "ninja"]:
+		var ids := PackedInt32Array([Items.ids["%s_helmet" % set if set != "meteor" else "meteor_helmet"] if set != "ninja" else Items.ids.ninja_hood, 0, 0])
+		ids[1] = Items.ids["molten_breastplate" if set == "molten" else "meteor_suit" if set == "meteor" else "ninja_shirt"]
+		ids[2] = Items.ids["molten_greaves" if set == "molten" else "meteor_leggings" if set == "meteor" else "ninja_pants"]
+		m.worn = ids
+		m._dress()
+		check(m.shells.size() == 3 and m.shells.head.size() > 3, "%s: vestiu as 3 peças com formas próprias" % set)
+	var pal: Array = m._colors(Items.ids.molten_helmet, true)
+	check(pal[3].r > 0.8 and pal[3].b < 0.35 and pal[0].s < 0.4, "molten: destaque laranja separado do metal cinza-oliva (%s / %s)" % [pal[3], pal[0]])
+	d.free()
 	return true

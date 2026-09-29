@@ -9,7 +9,7 @@ Testes verdes (`tests/run.gd`, `tests/menu_flow.gd`). Não precisa de mundo novo
 - Ao concluir um item, apague-o daqui (não arquive aqui; o histórico é o `git log`).
 
 ## Agora (nesta ordem)
-1. **Personagem e armaduras** (2 passadas feitas: rosto aberto, ombreiras grandes, braços grossos; armadura com textura de placas pixeladas × cor do ícone). Falta o dono dizer o que ainda incomoda (proporção da cabeça, cores, volume); conferir Molten/Ninja/Meteor contra o sprite da wiki.
+1. **Personagem e armaduras** (2 passadas feitas: rosto aberto, ombreiras grandes, braços grossos; armadura com textura de placas pixeladas × cor do ícone). Falta o dono dizer o que ainda incomoda (proporção da cabeça, cores, volume). Molten, Meteor e Ninja com formato próprio já feitos.
 2. **Inimigos:** revisão dos modelos além dos que já usam sprite (slimes, olhos, esqueleto, zumbi, chefes); nomes/comportamentos conferidos com a wiki.
 
 - Projétil 3D só onde o sprite é pixel art pequeno (`"solid": true` em projectiles.json: Enchanted e Rotted Fork); Terra Beam (crescente 297x520), laser e espinho seguem billboard.

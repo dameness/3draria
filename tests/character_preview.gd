@@ -6,6 +6,7 @@ extends SceneTree
 # swing (meio do golpe), seq (o golpe em 5 quadros, de lado), item:nome (item na mão), none (sem armadura),
 # name:Fulano (aparência tirada do nome, como no jogo).
 
+const SPECIAL := {"molten": ["molten_helmet", "molten_breastplate", "molten_greaves"], "meteor": ["meteor_helmet", "meteor_suit", "meteor_leggings"], "ninja": ["ninja_hood", "ninja_shirt", "ninja_pants"]}
 const SETS := ["none", "copper", "iron", "gold", "platinum"]
 
 
@@ -66,7 +67,7 @@ func _initialize() -> void:
 			d.item = item
 			if names[i] != "none":
 				for k in 3:
-					d.inv.equip[k] = Items.ids["%s_%s" % [names[i], ["helmet", "chainmail", "greaves"][k]]]
+					d.inv.equip[k] = Items.ids[SPECIAL[names[i]][k] if SPECIAL.has(names[i]) else "%s_%s" % [names[i], ["helmet", "chainmail", "greaves"][k]]]
 			var m: Node3D = load("res://scripts/player_model.gd").new()
 			m.player = d
 			if who != "":   # mesma aparência que o jogo dá a um personagem com este nome
