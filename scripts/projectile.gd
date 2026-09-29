@@ -107,6 +107,11 @@ func _physics_process(delta: float) -> void:
 			return
 		position = next
 		return
+	for n in entities.get_children():   # projétil do jogador destrói esfera de conjurador
+		if n != self and n.get("def") is Dictionary and n.def.get("destroy", false) and n.position.distance_to(next) < r + n.def.size * 0.5:
+			entities.pop_sphere(n)
+			queue_free()
+			return
 	for e in entities.enemies.duplicate():
 		if not e in hit and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
 			hit.append(e)

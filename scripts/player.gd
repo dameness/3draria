@@ -979,6 +979,9 @@ func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 	var hits := melee_targets(eye, forward, d.reach)
 	for e in hits:
 		e.hurt(Combat.vary(d.damage, entities.rng), forward, d.knockback, Combat.is_crit(entities.rng))
+	for n in entities.get_children():   # esferas dos conjuradores se destroem com um golpe (wiki)
+		if n.get("def") is Dictionary and n.def.get("destroy", false) and eye.distance_to(n.position) <= d.reach + 0.5 and forward.dot((n.position - eye).normalized()) > 0.5:
+			entities.pop_sphere(n)
 	if d.has("shoot"):
 		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, d.damage, d.knockback)
 	return hits.size()

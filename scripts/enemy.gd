@@ -338,7 +338,7 @@ func wall(delta: float, flat: Vector3) -> void:
 
 # Conjurador (wiki Caster AI: Dark Caster, Tim, Fire Imp): parado; 2,5 s depois de nascer e a cada 10,8 s teleporta para um ponto livre perto do jogador e
 # solta 3 esferas (def.shoot) com 1,67 s entre elas; levar um golpe cancela os tiros e adia o teleporte para 4,2 s.
-# ponytail: as esferas atravessam blocos e o jogador não consegue destruí-las (na wiki um golpe as destrói).
+# As esferas atravessam blocos e um golpe ou projétil do jogador as destrói.
 func caster(delta: float) -> void:
 	velocity.x = 0.0
 	velocity.z = 0.0

@@ -924,6 +924,13 @@ func _npc_button(text: String, action: Callable) -> void:
 	npc_buttons.add_child(b)
 
 
+# Preço da cura (wiki Nurse): 1 de cobre por ponto de vida que falta × o maior avanço do mundo (Olho de Cthulhu 3, Eater/Brain 10, Skeletron 25, Hardmode 60).
+# ponytail: sem o ajuste de felicidade (75%-150%) nem cobrança por debuff.
+func nurse_cost() -> int:
+	var mod := 60 if world.hardmode else 25 if world.skeletron_down else 10 if world.evil_boss_down else 3 if world.eoc_down else 1
+	return maxi(ceili(player.max_hp - player.hp), 0) * mod
+
+
 func _price(copper: int) -> String:
 	return ("%dp" % (copper / 100)) + (" %dc" % (copper % 100) if copper % 100 else "") if copper >= 100 else "%dc" % copper
 
@@ -962,7 +969,7 @@ func open_npc(kind: String) -> void:
 					else:
 						player.say("faltam moedas"))
 		"nurse":
-			var cost := maxi(ceili(player.max_hp - player.hp), 0)
+			var cost := nurse_cost()
 			npc_text.text = "Enfermeira: \"%s\"" % ("Você está bem!" if cost == 0 else "Posso curar você por %s." % _price(cost))
 			if cost > 0:
 				_npc_button("Curar (%s)" % _price(cost), func():

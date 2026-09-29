@@ -671,6 +671,12 @@ func spawn_cloud(at: Vector3, damage: int) -> void:
 	Fx.puff(self, at, Color("#a04a54"), 10)
 
 
+# Esfera de conjurador destruída (golpe ou projétil do jogador).
+func pop_sphere(n: Node3D) -> void:
+	Fx.sparks(self, n.position, Color(n.def.glow), 8, Vector3.UP)
+	n.queue_free()
+
+
 func spawn_projectile(name: String, from: Vector3, dir: Vector3, speed: float, damage: int, knockback: float, crit := Combat.CRIT) -> Node3D:
 	var a: Node3D = Projectile.new()
 	a.def = projectiles[name]

@@ -2188,9 +2188,10 @@ func test_skeletron():
 	head.think(1.0 / 60)
 	var sk: Array = skulls.call()
 	check(sk.size() == 1 and sk[0].def.homing > 0.0, "abaixo de 75% o Skeletron solta uma caveira teleguiada")
+	sk[0].position = p.position + Vector3(20, 0, 0)
 	sk[0].velocity = Vector3(0, 0, 8)
 	var before: float = sk[0].velocity.angle_to(p.position + Vector3.UP - sk[0].position)
-	sk[0]._physics_process(0.2)
+	sk[0]._physics_process(0.05)
 	check(sk[0].velocity.angle_to(p.position + Vector3.UP - sk[0].position) < before, "a caveira gira para o jogador")
 	for c in sk:
 		c.free()
@@ -2975,6 +2976,19 @@ func integration():
 			hud.open_npc("nurse")
 			hud.npc_buttons.get_child(0).pressed.emit()
 			check(player.hp == player.max_hp and player.inv.coin_value() == 2500 - 60, "Nurse: cura o que falta por 60 de cobre (hp %s/%s, moedas %d)" % [player.hp, player.max_hp, player.inv.coin_value()])
+			player.hp = 40.0
+			world.eoc_down = true
+			check(hud.nurse_cost() == 180, "Nurse depois do Olho de Cthulhu: 3x (180 de cobre por 60 de vida)")
+			world.evil_boss_down = true
+			world.skeletron_down = true
+			check(hud.nurse_cost() == 1500, "…Skeletron: 25x")
+			world.hardmode = true
+			check(hud.nurse_cost() == 3600, "…Hardmode: 60x")
+			world.eoc_down = false
+			world.evil_boss_down = false
+			world.skeletron_down = false
+			world.hardmode = false
+			player.hp = player.max_hp
 			# Guia: dicas do momento e o modo Criação (o item no espaço e o que dá para criar com ele)
 			player.inv.item.fill(-1)
 			player.inv.count.fill(0)
@@ -4250,6 +4264,14 @@ func test_wiki_review():
 	for i in 60 * 6:
 		dc._physics_process(1.0 / 60)
 	check(spheres.call() + (3 - dc.shots) >= 3 and dc.shots == 0 and dc.position.distance_to(first) < 0.1, "solta as 3 esferas (uma a cada 1,67 s) e fica no lugar")
+	var ball: Node3D = cent.spawn_projectile("water_sphere", cp.position + Vector3(0, 1.6, 3), Vector3.LEFT, 1.0, 20, 0.0)
+	ball.position = cp.position + Vector3(0, 1.6, 1.5)
+	cp.swing(Items.defs[Items.ids.copper_shortsword], cp.position + Vector3(0, 1.6, 0), Vector3(0, 0, 1))
+	check(ball.is_queued_for_deletion(), "um golpe destrói a esfera do conjurador")
+	var arrow_ball: Node3D = cent.spawn_projectile("water_sphere", cp.position + Vector3(0, 3, 8), Vector3.ZERO, 0.0, 20, 0.0)
+	var shot: Node3D = cent.spawn_projectile("musket_ball", cp.position + Vector3(0, 3, 6), Vector3(0, 0, 1), 20.0, 5, 0.0)
+	shot._physics_process(0.1)
+	check(arrow_ball.is_queued_for_deletion() and shot.is_queued_for_deletion(), "um projétil do jogador também destrói a esfera")
 	dc.timer = 0.0
 	for i in 5:
 		dc._physics_process(1.0 / 60)
