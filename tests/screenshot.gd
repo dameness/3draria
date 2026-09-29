@@ -69,6 +69,7 @@ const SHOTS := [
 	{"name": "agua", "find": "water", "find_y": 66, "at": Vector3(0, 2.3, 0), "look": Vector2(PI / 2, 0.1), "creative": true},
 	{"name": "escoa", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "creative": true, "breach": 8, "flow": 14},
 	{"name": "escoa_depois", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "creative": true, "breach": 8, "flow": 60},
+	{"name": "afogando", "find": "water", "find_y": 66, "at": Vector3(0, 2.3, 0), "look": Vector2(PI / 2, 0.1), "breath": 9.0},
 	{"name": "submundo", "find": "lava", "find_y": 4, "at": Vector3(6, 6, 0), "look": Vector2(PI / 2, -0.25), "creative": true},
 	{"name": "teste_spawn", "testworld": true, "look": Vector2(0, -0.12)},
 	{"name": "teste_baus", "testworld": true, "from": Vector3(0, 0, -2), "look": Vector2(0, -0.05)},
@@ -337,6 +338,7 @@ func _setup(s: Dictionary) -> void:
 	if s.get("wings", false):
 		player.inv.acc[0] = Items.ids.fledgling_wings
 		player.flight_left = 0.2   # a barra de voo aparece
+	player.breath = s.get("breath", player.BREATH)
 	player.max_mana = s.get("max_mana", 20)
 	player.mana = s.get("mana", player.max_mana)
 	player.max_hp = s.get("max_hp", 100)

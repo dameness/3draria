@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -3356,5 +3356,98 @@ func test_coins_ammo():
 	SaveGame.players_dir = saved_dirs[0]
 	free_player(p)
 	free_player(p2)
+	w.free()
+	return true
+
+
+# Queda e afogamento (wiki Fall damage / Breath meter): 25 tiles (15 blocos) de queda segura, depois 10 de dano por tile; asas e água anulam; sem ar,
+# 23 s de fôlego e depois 17 de vida por segundo, direto.
+func test_fall_drown():
+	var w := floor_world()
+	var p := make_player(w)
+	var dt := 1.0 / 60
+	var fall := func(blocks: float) -> int:   # solta de `blocks` acima do chão (y = 11) e devolve a vida perdida
+		p.hp = float(p.max_hp)
+		p.iframes = 0.0
+		p.position = Vector3(24.5, 11.0 + blocks, 24.5)
+		p.velocity = Vector3.ZERO
+		p.last_pos = p.position
+		var hp0: float = p.hp
+		for i in 240:
+			p.step(dt, Vector3.ZERO, false)
+			p.tick(dt)
+		return int(hp0 - p.hp)
+	check(fall.call(10.0) == 0 and fall.call(14.5) == 0, "queda de até 15 blocos (25 tiles) não machuca")
+	check(fall.call(15.9) == 10 and fall.call(18.3) == 50, "26 tiles = 10 de dano; 30 tiles = 50 (10 por tile acima de 25)")
+	p.inv.equip[0] = Items.ids.iron_helmet
+	check(fall.call(18.3) == 50 - ceili(p.defense() / 2.0), "a defesa reduz o dano da queda")
+	p.inv.equip[0] = -1
+	p.inv.acc[0] = Items.ids.fledgling_wings
+	check(fall.call(30.0) == 0, "asas anulam o dano de queda")
+	p.inv.acc[0] = -1
+	# o Cloud in a Bottle no meio do ar: o pulo extra recomeça a queda
+	p.inv.acc[1] = Items.ids.cloud_in_a_bottle
+	p.air_jump_ready = true   # (em jogo o pulo de chão ou a água liberam; aqui já começa no ar)
+	p.hp = float(p.max_hp)
+	p.position = Vector3(24.5, 11.0 + 18.3, 24.5)
+	p.velocity = Vector3.ZERO
+	p.last_pos = p.position
+	var lost := 0
+	for i in 240:
+		p.step(dt, Vector3.ZERO, i == 60 or i == 61)   # aperta Espaço no ar, depois de cair ~14 blocos
+		p.tick(dt)
+	check(p.hp == float(p.max_hp), "o pulo extra no ar zera a queda (perdeu %.0f)" % (p.max_hp - p.hp))
+	p.inv.acc[1] = -1
+	# cair na água não machuca
+	for y in range(11, 20):
+		for dz in range(-2, 3):
+			for dx in range(-2, 3):
+				w.set_block(24 + dx, y, 24 + dz, Blocks.ids.water)
+	check(fall.call(25.0) == 0, "cair na água não machuca")
+	# teletransporte no meio da queda não conta
+	p.position = Vector3(24.5, 11.0 + 30.0, 24.5)
+	p.velocity = Vector3.ZERO
+	p.step(dt, Vector3.ZERO, false)
+	p.position = Vector3(30.5, 11.0, 30.5)
+	p.hp = float(p.max_hp)
+	p.iframes = 0.0
+	for i in 60:
+		p.step(dt, Vector3.ZERO, false)
+	check(p.hp == float(p.max_hp), "teletransporte zera a queda")
+	# modo criativo: nada
+	p.creative = true
+	p.position = Vector3(24.5, 60.0, 24.5)
+	p.step(dt, Vector3.ZERO, false)
+	p.creative = false
+	p.position = Vector3(24.5, 11.0, 24.5)
+	for i in 30:
+		p.step(dt, Vector3.ZERO, false)
+	check(p.hp == float(p.max_hp), "sair do modo criativo não conta como queda")
+	# fôlego e afogamento
+	p.position = Vector3(24.5, 11.0, 24.5)   # dentro da piscina de 9 blocos
+	p.velocity = Vector3.ZERO
+	p.hp = float(p.max_hp)
+	p.breath = p.BREATH
+	for i in int(10.0 / dt):
+		p.step(dt, Vector3.ZERO, false)
+		p.tick(dt)
+	check(absf(p.breath - (p.BREATH - 10.0)) < 0.2 and p.hp == float(p.max_hp), "10 s debaixo d'água: o fôlego cai 10 s e não machuca (%.1f)" % p.breath)
+	for i in int(14.0 / dt):
+		p.step(dt, Vector3.ZERO, false)
+		p.tick(dt)
+	check(p.breath == 0.0 and p.hp < p.max_hp and absf((p.max_hp - p.hp) - p.DROWN * (14.0 - (p.BREATH - 10.0))) < 6.0, "sem fôlego afoga a 17 de vida por segundo (perdeu %.0f)" % (p.max_hp - p.hp))
+	p.position = Vector3(24.5, 25.0, 24.5)   # sai da água: respira de novo em ~1 s
+	p.velocity = Vector3.ZERO
+	for i in int(1.5 / dt):
+		p.tick(dt)
+	check(p.breath == p.BREATH, "fora da água o fôlego volta cheio em ~1 s")
+	p.hp = 5.0   # morre afogado
+	p.position = Vector3(24.5, 11.0, 24.5)
+	p.breath = 0.0
+	p.spawn = Vector3(40.5, 11.0, 40.5)
+	for i in 120:
+		p.tick(dt)
+	check(p.hp == float(p.max_hp) and p.position.distance_to(p.spawn) < 0.01 and p.breath == p.BREATH, "afogar até o fim é morte: volta ao spawn com tudo cheio")
+	free_player(p)
 	w.free()
 	return true

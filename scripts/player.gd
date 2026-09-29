@@ -35,6 +35,11 @@ const MAX_MANA_CAP := 200    # 10 Mana Crystals de 20 além dos 20 iniciais (wik
 const SICKNESS := 60.0       # Doença da poção depois de uma cura (wiki)
 const AIR_JUMP := 0.87       # Cloud in a Bottle: o pulo extra tem ~75% da altura do primeiro (0,87² da velocidade)
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
+const TILE := 0.6              # 1 tile do Terraria em blocos (a escala do jogo: jogador de 3 tiles = 1,8)
+const FALL_SAFE := 25          # queda segura em tiles (≈ 15 blocos); acima, 10 de dano por tile a mais (wiki Fall damage); asas anulam
+const BREATH := 23.3           # fôlego debaixo d'água: 200 de fôlego a 1 a cada 7 quadros (wiki Breath meter)
+const BREATH_REFILL := 21.0    # fôlego por segundo ao respirar: 3 de 200 por quadro, cheio em ~1,1 s
+const DROWN := 17.14           # vida por segundo sem fôlego: 2 a cada 7 quadros, direto (sem defesa; wiki Drowning)
 const REGEN_DELAY := 5.0
 const MINE_DECAY := 2.5        # sem golpear o bloco por este tempo, as rachaduras somem
 const TPP_DISTANCE := 4.0      # câmera em 3ª pessoa: distância atrás da cabeça
@@ -100,6 +105,10 @@ var last_depth := 0.0
 var bubble_timer := 0.0
 var was_on_floor := false
 var fall_speed := 0.0
+var fall_top := 0.0           # altura de onde a queda atual começou (o último instante com velocidade vertical >= 0)
+var last_pos := Vector3.ZERO  # posição do passo anterior (um salto grande = teletransporte: a queda recomeça)
+var breath := BREATH          # segundos de fôlego que restam (só cai com a cabeça na água)
+var drown_text := 0.0         # tempo até o próximo número de dano do afogamento
 var crack: BlockCrack
 @onready var cam: Camera3D = $Camera
 var highlight: MeshInstance3D
@@ -311,6 +320,7 @@ func tick(delta: float) -> void:
 			Fx.sparks(entities, position + Vector3(0, 1.0, 0), Color("#a8e8f8"), 2, Vector3.UP)
 		if recall_left <= 0.0:
 			_teleport_home()
+	_breathe(delta)
 	mana_use += delta
 	# regeneração de mana da wiki: (máx/3 + 1) × (2 parado) × (mana/máx × 0,5 + 0,5) × (0,05 usando mana), ÷ 2 por segundo
 	var still := 2.0 if Vector2(velocity.x, velocity.z).length() < 0.1 else 1.0
@@ -327,9 +337,13 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 	if creative:
 		velocity = Vector3.ZERO
 		position += wish * FLY * boots * delta  # atravessa blocos
+		fall_top = position.y
+		last_pos = position
 		return
 	depth = liquid_depth()
 	var kind := liquid_kind_below()
+	if velocity.y >= 0.0 or depth > 0.0 or position.distance_to(last_pos) > 4.0:   # sobe, está na água ou foi teletransportado: a queda recomeça daqui (wiki: zera com a velocidade vertical)
+		fall_top = position.y
 	swimming = depth > SWIM_DEPTH
 	var slow := 0.55 if swimming else 0.75 if depth > 0.0 else 1.0
 	velocity.x = wish.x * speed * slow + knock.x
@@ -375,7 +389,41 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 	hit_wall = hit.x != 0 or hit.z != 0
 	if hit.y != 0:
 		velocity.y = 0.0
+	if on_floor:
+		_land()
+	last_pos = position
 	_effects(delta)
+
+
+# Pousou: caiu mais que a queda segura (25 tiles) em terra firme e sem asas? 10 de dano por tile a mais, como o dano comum (defesa reduz, dá invencibilidade).
+func _land() -> void:
+	var tiles := int((fall_top - position.y) / TILE)   # a wiki mede em tiles inteiros
+	fall_top = position.y
+	if tiles > FALL_SAFE and depth == 0.0 and inv.wings().is_empty() and not creative:
+		var taken := hurt((tiles - FALL_SAFE) * 10, Vector3.ZERO, false)
+		if taken > 0:
+			say("queda de %d tiles" % tiles)
+
+
+# Fôlego (wiki Breath meter/Drowning): com a cabeça na água gasta 1 s por segundo; a 0 afoga (17 de vida por segundo, direto); fora da água volta rápido.
+func _breathe(delta: float) -> void:
+	var under: bool = not creative and world.liquid_at(position + Vector3.UP * (EYE + 0.05)) == Blocks.ids.water
+	if not under:
+		breath = minf(breath + BREATH_REFILL * delta, BREATH)
+		drown_text = 0.0
+		return
+	breath = maxf(breath - delta, 0.0)
+	if breath > 0.0:
+		return
+	hp -= DROWN * delta
+	since_hit = 0.0
+	drown_text -= delta
+	if drown_text <= 0.0 and entities:
+		drown_text = 0.5
+		entities.spawn_text(position + Vector3.UP * (TALL + 0.4), str(int(DROWN * 0.5)), Color("#ff5058"))
+		Sfx.play(entities, "hurt", position + Vector3.UP, -4.0)
+	if hp <= 0.0:
+		die()
 
 
 # Partículas do movimento: poeira dos passos e do pouso (na cor do chão), respingo ao entrar ou sair da água e bolhas nadando.
@@ -454,7 +502,7 @@ func say(text: String) -> void:
 
 
 # Dano como no Terraria (modo normal): dano − defesa/2 (armadura + bônus de conjunto), mínimo 1.
-func hurt(damage: int, dir: Vector3) -> int:
+func hurt(damage: int, dir: Vector3, bounce := true) -> int:   # bounce = false: dano sem empurrão (queda)
 	if iframes > 0 or creative:
 		return 0
 	var taken := maxi(1, damage - ceili(defense() / 2.0))
@@ -465,16 +513,24 @@ func hurt(damage: int, dir: Vector3) -> int:
 	since_hit = 0.0
 	shake = 1.0
 	Sfx.play(entities, "hurt", position + Vector3.UP, 0.0)
-	knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
-	velocity.y = 5.0
+	if bounce:
+		knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
+		velocity.y = 5.0
 	if hp <= 0:
-		hp = max_hp
-		death = position
-		position = spawn
-		velocity = Vector3.ZERO
-		knock = Vector3.ZERO
-		say("você morreu")
+		die()
 	return taken
+
+
+# Morreu: volta ao spawn com a vida cheia (o mapa marca onde foi).
+func die() -> void:
+	hp = max_hp
+	death = position
+	position = spawn
+	velocity = Vector3.ZERO
+	knock = Vector3.ZERO
+	breath = BREATH
+	fall_top = position.y
+	say("você morreu")
 
 
 func defense() -> int:

@@ -57,6 +57,7 @@ var debug_label: Label
 var cross: Label
 var creative_label: Label
 var flight_bar: ProgressBar
+var breath_label: Label               # bolhas de ar (10) sob a mira, só quando o fôlego não está cheio
 var craft_root: Control
 var craft_list: VBoxContainer
 var craft_info: HBoxContainer
@@ -182,6 +183,14 @@ func _ready() -> void:
 	flight_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flight_bar.add_theme_stylebox_override("fill", Ui.box(Color("#9ad0ff"), Ui.EDGE, 1, 3))
 	root.add_child(flight_bar)
+	breath_label = _label("", 30, HORIZONTAL_ALIGNMENT_CENTER)
+	breath_label.set_anchors_preset(Control.PRESET_CENTER)
+	breath_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	breath_label.offset_top = 40
+	breath_label.add_theme_color_override("font_color", Color("#9ad8ff"))
+	breath_label.add_theme_constant_override("outline_size", 4)
+	breath_label.add_theme_color_override("font_outline_color", Color("#0a2a5a"))
+	root.add_child(breath_label)
 	debug_label = _label("", 12)
 	debug_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	debug_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -1101,6 +1110,11 @@ func _process(delta: float) -> void:
 	test_footer.visible = world.test_world and root.visible
 	cross.visible = not (open or player.menu_open or player.map_open)   # com o mouse solto a mira não faz sentido
 	creative_label.visible = player.creative
+	breath_label.visible = player.breath < player.BREATH - 0.05
+	if breath_label.visible:   # uma bolha por 10% do fôlego; a última treme quando está acabando
+		var bubbles := ceili(player.breath / player.BREATH * 10.0)
+		breath_label.text = "○".repeat(10 - bubbles).insert(0, "●".repeat(bubbles))
+		breath_label.modulate = Color(1, 1, 1, 1) if player.breath > 3.0 else Color(1, 0.6, 0.6, 0.6 + 0.4 * sin(spin * 12.0))
 	var wings: Dictionary = player.inv.wings()
 	flight_bar.visible = not wings.is_empty() and not player.creative and player.flight_left < wings.time - 0.001
 	if flight_bar.visible:
