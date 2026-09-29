@@ -6,6 +6,8 @@ extends Node3D
 const C := WorldGen.CHUNK
 const H := WorldGen.HEIGHT
 const NB: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]  # ordem do ChunkMesher
+const GROW_MIN := 120.0   # a muda vira árvore depois de 2 a 5 minutos (a wiki: tempo aleatório, sem número)
+const GROW_MAX := 300.0
 const DIAG: Array[Vector2i] = [Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]   # vizinhos de canto: só fontes de luz
 
 @export var render_distance := 6  # em chunks; teclas [ e ] mudam em jogo
@@ -28,6 +30,7 @@ var hardmode := false       # Wall of Flesh derrotado: cobalto/paládio e Hallow
 var skeletron_down := false   # Skeletron derrotado: o dungeon abre para qualquer picareta
 var meteor_due := false       # cai um meteorito à meia-noite
 var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do mal); vai no save do mundo
+var saplings := {}   # Vector3i -> segundos até crescer; só as plantadas (vai no save)
 var map_img := Image.create(WorldGen.SIZE, WorldGen.SIZE, false, Image.FORMAT_RGBA8)   # mapa explorado (minimap.gd; alfa 0 = não visto); vai no save
 var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
 var versions := {}  # Vector2i -> nº de edições; descarta mesh de job que ficou velho
@@ -85,6 +88,10 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 	if y + 1 < H and Blocks.shape[chunks[c][lx + lz * C + (y + 1) * C * C]] == "plant" and not Blocks.solid[id]:
 		chunks[c][lx + lz * C + (y + 1) * C * C] = 0  # planta sem chão some
 	edited[c] = true
+	if id == Blocks.sapling:
+		saplings[Vector3i(x, y, z)] = randf_range(GROW_MIN, GROW_MAX)
+	elif not saplings.is_empty():
+		saplings.erase(Vector3i(x, y, z))
 	if wake:
 		liquid.wake(x, y, z)
 	_rebuild(c)
@@ -98,6 +105,35 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 				var k := c + Vector2i(dx, dz)
 				if (dx != 0 or dz != 0) and in_world(k) and _lit_side(lx, dx, reach) and _lit_side(lz, dz, reach):
 					_rebuild(k)
+
+
+# A muda em p vira árvore se há grama embaixo e espaço livre em volta (2 blocos de cada lado, 12 de altura); senão tenta de novo em 1 min.
+# A árvore sai de WorldGen.tree com uma semente da posição (a mesma muda dá a mesma árvore).
+func grow_sapling(p: Vector3i) -> bool:
+	var room := Blocks.grassy[get_block(p.x, p.y - 1, p.z)] == 1
+	for dy in range(0, 13):
+		for dz in range(-2, 3):
+			for dx in range(-2, 3):
+				var b := get_block(p.x + dx, p.y + dy, p.z + dz)
+				room = room and (b == 0 or Blocks.shape[b] == "plant")   # (a própria muda é uma planta)
+	if not room:
+		saplings[p] = 60.0
+		return false
+	saplings.erase(p)
+	set_block(p.x, p.y, p.z, 0)
+	var side := PackedInt32Array()
+	for d in WorldGen.DIRS4:
+		side.append(surface_y(p.x + d.x, p.z + d.y, true) - 1)
+	var h := absi(hash([world_seed, p.x, p.z]))
+	for cz in range(floori((p.z - 6) / float(C)), floori((p.z + 6) / float(C)) + 1):
+		for cx in range(floori((p.x - 6) / float(C)), floori((p.x + 6) / float(C)) + 1):
+			var k := Vector2i(cx, cz)
+			if in_world(k):
+				get_block(cx * C, 0, cz * C)   # garante o chunk
+				gen.tree(chunks[k], cx, cz, p.x, p.z, p.y - 1, side, h)
+				edited[k] = true
+				_rebuild(k)
+	return true
 
 
 # A luz de raio `reach` de um bloco na posição local l (0..15) chega ao chunk vizinho na direção d (−1, 0 ou 1)?
@@ -168,6 +204,7 @@ func set_seed(s: int) -> void:
 	hardmode = false
 	liquid = Liquid.new()
 	map_img.fill(Color(0, 0, 0, 0))
+	saplings.clear()
 
 
 # Primeiro y livre acima do bloco sólido mais alto da coluna (ground: sem contar tronco e folhas).
@@ -234,6 +271,10 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	liquid.step(self, delta)
+	for p in saplings.keys():
+		saplings[p] -= delta
+		if saplings[p] <= 0.0:
+			grow_sapling(p)
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return

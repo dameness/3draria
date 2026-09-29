@@ -505,7 +505,8 @@ func break_target() -> void:
 	var face := Vector3(p) + Vector3.ONE * 0.5 + normal * 0.5
 	var color := Blocks.color_of(b)
 	var hard := Blocks.mine[b] <= 1.0   # pedra e minério soltam faíscas
-	var damage := power * Blocks.mine[b]
+	var tree: bool = b == Blocks.ids.wood and Timber.is_tree(world, p)   # árvore: 100 de vida por tile e ⌊poder × 24%⌋ por golpe (wiki Axe power)
+	var damage: float = floori(power * Timber.HIT) if tree else power * Blocks.mine[b]
 	if b == Blocks.ids.grass and mine_damage + damage >= 100.0:
 		world.set_block(p.x, p.y, p.z, Blocks.ids.dirt)
 		Fx.dust(entities, face, color, 6, normal)
@@ -516,7 +517,15 @@ func break_target() -> void:
 		Sfx.play(entities, "stone" if Blocks.mine[b] <= 1.0 else "dig", face)
 		if hard:
 			Fx.sparks(entities, face, Color("#ffe27a"), 2, normal)
+		if tree:
+			Timber.rustle(entities, world, p)
 		shake = maxf(shake, 0.15)
+		return
+	if tree:   # o tile quebrou: cai ele e tudo o que está em cima (na base, a árvore inteira)
+		Timber.fell(entities, p, power, position)
+		mine_damage = 0.0
+		mine_pos = Vector3i(-1, -1, -1)
+		shake = maxf(shake, 0.3)
 		return
 	world.set_block(p.x, p.y, p.z, 0)
 	world.chests.erase(p)
@@ -544,6 +553,9 @@ func place_target() -> void:
 		get_parent().get_node("HUD").open_chest(world.chest_at(target.pos))
 		return
 	if target.is_empty() or held() == -1 or Items.places[held()] == -1:
+		return
+	if Items.places[held()] == Blocks.sapling and not (target.normal == Vector3i.UP and Blocks.grassy[world.get_block(target.pos.x, target.pos.y, target.pos.z)] == 1):
+		say("a muda só pega em cima da grama")
 		return
 	var p: Vector3i = target.pos + target.normal
 	var lo := Vector3i((position + LO).floor())

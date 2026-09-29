@@ -1,6 +1,6 @@
 [
 	{"name": "air", "solid": false},
-	{"name": "grass", "mine": 2, "drop": "dirt", "tiles": {"top": "grass_top", "side": "grass_side", "bottom": "dirt"}},
+	{"name": "grass", "grass": true, "mine": 2, "drop": "dirt", "tiles": {"top": "grass_top", "side": "grass_side", "bottom": "dirt"}},
 	{"name": "dirt", "mine": 2, "tiles": {"all": "dirt"}, "icon": "dirt_item"},
 	{"name": "stone", "tiles": {"all": "stone"}, "icon": "stone_item"},
 	{"name": "ash", "mine": 2, "tiles": {"all": "ash"}, "icon": "ash_item"},
@@ -47,9 +47,9 @@
 	{"name": "lava_7", "solid": false, "shape": "liquid", "liquid": "lava", "level": 7, "breakable": false, "glow": true, "tiles": {"all": "lava"}},
 	{"name": "chest", "mine": 4, "icon": "chest", "tiles": {"top": "chest_top", "side": "chest_side", "bottom": "chest_top"}},
 	{"name": "ebonstone", "mine": 0.5, "icon": "ebonstone_item", "tiles": {"all": "ebonstone"}},
-	{"name": "corrupt_grass", "mine": 2, "drop": "dirt", "tiles": {"top": "corrupt_grass_top", "side": "corrupt_grass_side", "bottom": "dirt"}},
+	{"name": "corrupt_grass", "grass": true, "mine": 2, "drop": "dirt", "tiles": {"top": "corrupt_grass_top", "side": "corrupt_grass_side", "bottom": "dirt"}},
 	{"name": "crimstone", "mine": 0.5, "icon": "crimstone_item", "tiles": {"all": "crimstone"}},
-	{"name": "crimson_grass", "mine": 2, "drop": "dirt", "tiles": {"top": "crimson_grass_top", "side": "crimson_grass_side", "bottom": "dirt"}},
+	{"name": "crimson_grass", "grass": true, "mine": 2, "drop": "dirt", "tiles": {"top": "crimson_grass_top", "side": "crimson_grass_side", "bottom": "dirt"}},
 	{"name": "shadow_orb", "mine": 1, "glow": true, "icon": "shadow_orb_item", "tiles": {"all": "shadow_orb"}},
 	{"name": "crimson_heart", "mine": 1, "glow": true, "icon": "crimson_heart_item", "tiles": {"all": "crimson_heart"}},
 	{"name": "crimtane_ore", "power": 55, "icon": "crimtane_ore_item", "tiles": {"all": "crimtane_ore"}},
@@ -60,5 +60,6 @@
 	{"name": "cobalt_ore", "mine": 0.5, "power": 100, "icon": "cobalt_ore_item", "tiles": {"all": "cobalt_ore"}},
 	{"name": "palladium_ore", "mine": 0.5, "power": 100, "icon": "palladium_ore_item", "tiles": {"all": "palladium_ore"}},
 	{"name": "pearlstone", "mine": 0.5, "icon": "pearlstone_item", "tiles": {"all": "pearlstone"}},
-	{"name": "hallowed_grass", "mine": 2, "drop": "dirt", "tiles": {"top": "hallowed_grass_top", "side": "hallowed_grass_side", "bottom": "dirt"}}
+	{"name": "hallowed_grass", "grass": true, "mine": 2, "drop": "dirt", "tiles": {"top": "hallowed_grass_top", "side": "hallowed_grass_side", "bottom": "dirt"}},
+	{"name": "sapling", "solid": false, "shape": "plant", "breakable": false, "tiles": {"all": "sapling"}}
 ]

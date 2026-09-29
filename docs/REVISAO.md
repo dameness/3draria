@@ -9,7 +9,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | B2 | Verme (Eater of Worlds) bugado | ✅ |
 | B3 | Brain: fase 1 não fica translúcida; barra e nº de Creepers | ✅ |
 | B4 | Iluminação estranha (tochas cortam na borda do chunk; mão clara em caverna) | ✅ |
-| 1 | Árvore cai inteira (madeira por bloco, acorn, muda) | ⬜ |
+| 1 | Árvore cai inteira (madeira por bloco, acorn, muda) | ✅ |
 | 2 | Binds do Terraria (Esc, Settings, botão esquerdo coloca, Shift, H/J/B) | ⬜ |
 | 3 | Ataque: use time, autoswing só onde a wiki diz, mira exata, tool speed | ⬜ |
 | 4 | Danos da wiki (variância, crítico, defesa, recuo) + martelos | ⬜ |
@@ -110,7 +110,7 @@ passa os 4 diagonais só como **fontes de luz** (o mesher usa os 8); (c) `day_ni
 
 ---------------------------------------------------------------------------------------------------------------------------------
 
-## 1 — Árvore: quebrar a base derruba tudo
+## 1 — Árvore: quebrar a base derruba tudo ✅
 
 **Ponto do dono:** base derruba tronco + copa; madeira por bloco do tronco; acorn/semente.
 **Hoje:** `player.gd:break_target`: cada bloco de tronco (`wood`, `axe: true`, `mine 1,5`) leva 2 golpes com o machado de cobre e cada
@@ -134,6 +134,12 @@ espaço livre (9-20 de altura, 2 blocos de cada lado); sob o tronco o chão é i
 **Teste/print:** `test_tree`: cortar a base derruba tronco+raízes+galhos+folhas (nada flutua, árvore vizinha intacta); meio do tronco
 derruba só o de cima; 13 golpes com machado de cobre na base; média de madeira ≈ 1,47/tile em 2000 árvores; muda cresce. Prints
 `arvore_cai` (meio da queda) e `arvore_toco`.
+**Feito** (`timber.gd`, `world.gd:grow_sapling`, `WorldGen.tree`): dano ⌊poder × 0,24⌋ contra 100 por tile só em madeira **de árvore** (o topo da coluna
+encosta em folhas; madeira colocada segue `mine 1,5`); ao quebrar, `Timber.fell` tira tronco+galhos+raízes (base) e as folhas que não ficam presas a
+outra madeira (BFS: sem folha flutuando, árvore vizinha intacta), tomba o pedaço (malha do próprio mesher, 1,2 s, para longe do jogador),
+solta madeira (1 por tile, 2 com chance (2·poder+175)/525) e acorn (1/2 por tufo — número meu, a wiki não dá). `acorn` coloca `sapling`
+só em grama (bloco `grass: true`); a muda cresce em 2-5 min com 5x5x12 livres e sai com a semente da posição. Mudas vão no save do mundo.
+Funciona em mundos antigos (o tronco é o `wood` de sempre).
 
 ## 2 — Binds do Terraria
 

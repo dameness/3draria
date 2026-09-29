@@ -19,6 +19,10 @@ const SHOTS := [
 	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "flying": true},
 	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "flying": true},
 	{"name": "verme_vivo", "look": Vector2(0, 0.3), "worm_sim": true, "time": 300.0},
+	{"name": "arvore", "tree": true, "item": "copper_axe"},
+	{"name": "arvore_cai", "tree": true, "fell": 15, "item": "copper_axe"},
+	{"name": "muda", "sapling": true, "item": "acorn", "look": Vector2(0, -0.6)},
+	{"name": "muda_cresce", "sapling": true, "grow": true, "item": "acorn", "look": Vector2(0, 0.35)},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
 	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
 	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},
@@ -61,6 +65,7 @@ var world: Node3D
 var player: Node3D
 var shot := 0
 var wait := 0
+var tree_base := Vector3i.ZERO
 
 
 func _initialize() -> void:
@@ -82,6 +87,9 @@ func _process(_delta: float) -> bool:
 	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.cooldown = shots[shot].swing
+		if shots[shot].get("fell", -1) == wait:   # derruba a árvore de longe: o print sai no meio da queda
+			var right := Vector3(cos(player.rotation.y), 0, -sin(player.rotation.y))   # tomba para a direita da câmera: dá para ver de lado
+			Timber.fell(main.get_node("Entities"), tree_base, 35, Vector3(tree_base.x + 0.5, 0, tree_base.z + 0.5) - right * 10.0)
 		if shots[shot].get("mine_late", false) and wait == 16:   # mais um golpe pouco antes do print: rachaduras e poeira no ar
 			player.break_target()
 		if shots[shot].get("hurt_late", false) and wait == 18:
@@ -133,6 +141,7 @@ func _process(_delta: float) -> bool:
 
 
 func _setup(s: Dictionary) -> void:
+	s = s.duplicate()   # SHOTS é constante: a cena pode acertar o olhar (ex.: árvore)
 	player.flying = s.has("up") or s.has("cave") or s.get("flying", false)
 	player.position = player.spawn + Vector3.UP * s.get("up", 0.0)
 	if s.has("find"):  # junto do bloco pedido (água, lava) mais perto do meio do mundo
@@ -179,6 +188,34 @@ func _setup(s: Dictionary) -> void:
 		else:
 			player.position = Vector3(at.x + 0.5, world.surface_y(at.x, at.y) + s.get("up", 0.0), at.y + 0.5)
 		print("  ", s.name, " ", g.evil, " em ", player.position)
+	if s.get("tree", false):   # a árvore mais perto do nascimento, com o jogador a 8 blocos dela olhando para o tronco
+		var bd := 1 << 40
+		for z in range(70, 190):
+			for x in range(70, 190):
+				var sy: int = world.surface_y(x, z, true)
+				var d := (x - 128) * (x - 128) + (z - 128) * (z - 128)
+				if d < bd and world.get_block(x, sy, z) == Blocks.ids.wood and Timber.is_tree(world, Vector3i(x, sy, z)):
+					bd = d
+					tree_base = Vector3i(x, sy, z)
+		var away := (Vector3(128.5, 0, 128.5) - Vector3(tree_base.x + 0.5, 0, tree_base.z + 0.5)).normalized()
+		var at := Vector3(tree_base.x + 0.5, 0, tree_base.z + 0.5) + away * 8.0
+		player.position = Vector3(at.x, world.surface_y(int(at.x), int(at.z), true), at.z)
+		var to: Vector3 = Vector3(tree_base.x + 0.5, tree_base.y + 4.0, tree_base.z + 0.5) - player.eye()
+		s.look = Vector2(atan2(-to.x, -to.z), asin(to.y / to.length()))
+		print("  árvore em ", tree_base, " (jogador ", player.position.snapped(Vector3.ONE * 0.1), ")")
+	if s.has("sapling"):   # uma muda 4 blocos à frente, na grama
+		var f := Vector3(-sin(s.look.x), 0, -cos(s.look.x))
+		var q: Vector3 = player.position + f * 4.0
+		var gy: int = world.surface_y(int(q.x), int(q.z), true)
+		world.set_block(int(q.x), gy, int(q.z), Blocks.sapling)
+		tree_base = Vector3i(int(q.x), gy, int(q.z))
+		if s.get("grow", false):
+			for dy in range(0, 14):
+				for dz in range(-2, 3):
+					for dx in range(-2, 3):
+						if world.get_block(tree_base.x + dx, tree_base.y + dy, tree_base.z + dz) != Blocks.sapling:
+							world.set_block(tree_base.x + dx, tree_base.y + dy, tree_base.z + dz, 0)   # abre espaço
+			print("  cresceu: ", world.grow_sapling(tree_base))
 	if s.has("map"):   # minimapa: revela a faixa (ou o mundo todo) e escolhe o estilo
 		var mm: Minimap = main.get_node("HUD").minimap
 		if s.get("explore", false):

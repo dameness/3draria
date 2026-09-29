@@ -212,5 +212,7 @@
 	"platinum_axe": {"wiki": "Platinum_Axe", "pattern": "pickaxe", "colors": ["#a8e8e0", "#808088"], "top_colors": ["#6e4b2a"]},
 	"empty_bucket": {"wiki": "Empty_Bucket", "pattern": "blob", "colors": ["#a8a8b8", "#70708a", "#e0e0f0"]},
 	"water_bucket": {"wiki": "Water_Bucket", "pattern": "blob", "colors": ["#3a78d8", "#2a5aa8", "#a8d4ff"]},
-	"lava_bucket": {"wiki": "Lava_Bucket", "pattern": "blob", "colors": ["#ff5a1a", "#c02a06", "#ffd050"]}
+	"lava_bucket": {"wiki": "Lava_Bucket", "pattern": "blob", "colors": ["#ff5a1a", "#c02a06", "#ffd050"]},
+	"sapling": {"pattern": "sapling", "colors": ["#3a9a2a", "#4cc03a", "#2a7a22"], "top_colors": ["#7d5733"]},
+	"acorn": {"wiki": "Acorn", "pattern": "blob", "colors": ["#b8843a", "#7a4a1a", "#e0b868"]}
 }

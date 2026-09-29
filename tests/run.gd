@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -254,6 +254,7 @@ func test_save():
 	w.evil_boss_down = true
 	w.orbs_broken = 5
 	w.map_img.set_pixel(30, 40, Color("#ff8800"))
+	w.saplings[Vector3i(9, 11, 9)] = 42.0
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
 	var w2: Node3D = load("res://scripts/world.gd").new()
 	w2.gen = WorldGen.new(1)
@@ -268,6 +269,7 @@ func test_save():
 	check(w2.hardmode and w2.gen.hardmode and w2.skeletron_down and w2.evil_boss_down and w2.orbs_broken == 5, "hardmode, Skeletron, chefe do mal e orbes voltam")
 	check(w2.chests.has(Vector3i(5, 6, 7)) and w2.chests[Vector3i(5, 6, 7)].item[0] == Items.ids.gold_bar, "conteúdo do baú volta")
 	check(w2.map_img.get_pixel(30, 40).is_equal_approx(Color("#ff8800")) and w2.map_img.get_pixel(31, 40).a == 0.0, "mapa explorado volta")
+	check(w2.saplings.get(Vector3i(9, 11, 9)) == 42.0, "mudas plantadas voltam")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
 	check(SaveGame.list(SaveGame.players_dir).is_empty(), "apagar personagem")
@@ -778,6 +780,142 @@ func test_minimap():
 	check(mm.zoom == 0, "− afasta (até o mínimo)")
 	Blocks.tile_colors = colors
 	mm.free()
+	free_player(p)
+	w.free()
+	return true
+
+
+# Planta uma árvore de verdade (WorldGen.tree) com o tronco em (x, z) sobre o chão de pedra do floor_world (chão em y = 10).
+func grow_tree(w: Node3D, x: int, z: int, seed_: int) -> void:
+	for dz in [-1, 0, 1]:
+		for dx in [-1, 0, 1]:
+			var k := Vector2i(x / C + dx, z / C + dz)
+			if w.chunks.has(k):
+				w.gen.tree(w.chunks[k], k.x, k.y, x, z, 10, PackedInt32Array([10, 10, 10, 10]), seed_)
+
+
+func count_in(w: Node3D, id: int, lo: Vector3i, hi: Vector3i) -> int:
+	var n := 0
+	for y in range(lo.y, hi.y + 1):
+		for z in range(lo.z, hi.z + 1):
+			for x in range(lo.x, hi.x + 1):
+				n += int(w.get_block(x, y, z) == id)
+	return n
+
+
+# Folhas que ficaram sem madeira a até 4 passos de folha (flutuando).
+func floating_leaves(w: Node3D, lo: Vector3i, hi: Vector3i) -> int:
+	var seen := {}
+	var queue := []
+	for y in range(lo.y, hi.y + 1):
+		for z in range(lo.z, hi.z + 1):
+			for x in range(lo.x, hi.x + 1):
+				if w.get_block(x, y, z) == Blocks.ids.wood:
+					seen[Vector3i(x, y, z)] = 0
+					queue.append(Vector3i(x, y, z))
+	var i := 0
+	while i < queue.size():
+		var q: Vector3i = queue[i]
+		i += 1
+		if seen[q] >= 4:
+			continue
+		for n in Timber.N6:
+			var r: Vector3i = q + n
+			if not seen.has(r) and w.get_block(r.x, r.y, r.z) == Blocks.ids.leaves:
+				seen[r] = seen[q] + 1
+				queue.append(r)
+	return count_in(w, Blocks.ids.leaves, lo, hi) - (seen.size() - count_in(w, Blocks.ids.wood, lo, hi))
+
+
+func test_tree():
+	var lo := Vector3i(14, 11, 14)
+	var hi := Vector3i(38, 40, 34)
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	p.position = Vector3(2.5, 11, 2.5)   # longe: a árvore cai para o lado oposto
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	grow_tree(w, 24, 24, 4242)
+	var base := Vector3i(24, 11, 24)
+	var logs0 := count_in(w, Blocks.ids.wood, lo, hi)
+	var leaves0 := count_in(w, Blocks.ids.leaves, lo, hi)
+	check(Timber.is_tree(w, base) and Timber.is_tree(w, Vector3i(24, 14, 24)), "o tronco de uma árvore gerada é árvore (base e meio)")
+	check(logs0 >= 8 and leaves0 > 30, "árvore gerada: tronco %d e folhas %d" % [logs0, leaves0])
+	w.set_block(36, 11, 30, Blocks.ids.wood)
+	w.set_block(36, 12, 30, Blocks.ids.wood)
+	check(not Timber.is_tree(w, Vector3i(36, 11, 30)), "madeira colocada, sem folhas, não é árvore")
+	# base: derruba tudo (tronco, raízes, galhos e copa); nada fica flutuando
+	var cut := Timber.fell(ent, base, 35, p.position, rng)
+	check(cut.logs == logs0 and cut.leaves == leaves0, "cortar a base derruba a árvore inteira (%d de madeira, %d de folhas)" % [cut.logs, cut.leaves])
+	check(count_in(w, Blocks.ids.wood, lo, Vector3i(34, 40, 34)) == 0 and count_in(w, Blocks.ids.leaves, lo, hi) == 0, "…e não sobra tronco nem folha")
+	var dropped := 0
+	var acorn_drops := 0
+	for n in ent.get_children():
+		dropped += n.count if n.get("item") == Items.ids.wood else 0
+		acorn_drops += n.count if n.get("item") == Items.ids.acorn else 0
+	check(dropped == cut.wood and cut.wood >= cut.logs and cut.wood <= 2 * cut.logs and acorn_drops == cut.acorns, "madeira por tile (1 a 2: %d de %d tiles) e acorns (%d)" % [cut.wood, cut.logs, cut.acorns])
+	# meio do tronco: só o que está acima cai; o toco fica
+	grow_tree(w, 24, 24, 4242)
+	Timber.fell(ent, Vector3i(24, 15, 24), 35, p.position, rng)
+	check(count_in(w, Blocks.ids.wood, lo, Vector3i(34, 12, 34)) >= 4 and w.get_block(24, 14, 24) == Blocks.ids.wood and w.get_block(24, 15, 24) == 0, "cortar o meio deixa o toco (o de baixo) e derruba o de cima")
+	check(count_in(w, Blocks.ids.leaves, lo, hi) == 0 and count_in(w, Blocks.ids.wood, Vector3i(14, 16, 14), hi) == 0, "…com a copa (nada flutua)")
+	w.set_block(24, 14, 24, 0)
+	for y in range(11, 14):
+		w.set_block(24, y, 24, 0)
+	# árvore vizinha de copa encostada: a que fica não perde o tronco nem fica com folha solta
+	grow_tree(w, 24, 24, 4242)
+	grow_tree(w, 29, 24, 777)
+	var b_logs := count_in(w, Blocks.ids.wood, Vector3i(27, 11, 14), hi)
+	var b_leaves := count_in(w, Blocks.ids.leaves, lo, hi)
+	Timber.fell(ent, base, 35, p.position, rng)
+	check(count_in(w, Blocks.ids.wood, Vector3i(28, 11, 14), Vector3i(38, 40, 34)) >= b_logs - 4 and count_in(w, Blocks.ids.leaves, lo, hi) > 20, "a árvore vizinha continua de pé")
+	check(floating_leaves(w, lo, hi) == 0, "nenhuma folha flutua depois (%d de %d)" % [count_in(w, Blocks.ids.leaves, lo, hi), b_leaves])
+	Timber.fell(ent, Vector3i(29, 11, 24), 35, p.position, rng)   # some com a vizinha para os próximos testes
+	# golpes: 100 de vida por tile e ⌊poder × 24%⌋ por golpe (cobre 35 → 8 → 13 golpes; ferro 45 → 10 → 10)
+	for kind in [["copper_axe", 13], ["iron_axe", 10]]:
+		grow_tree(w, 24, 24, 4242)
+		p.inv = Inventory.new()
+		p.inv.add(Items.ids[kind[0]], 1)
+		p.slot = 0
+		p.target = {"pos": base, "normal": Vector3i.UP}
+		for hit in kind[1] - 1:
+			p.break_target()
+		check(w.get_block(24, 11, 24) == Blocks.ids.wood, "%s: com %d golpes a árvore ainda está de pé" % [kind[0], kind[1] - 1])
+		p.break_target()
+		check(w.get_block(24, 11, 24) == 0 and count_in(w, Blocks.ids.leaves, lo, hi) == 0, "%s: o golpe %d derruba a árvore" % [kind[0], kind[1]])
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.copper_axe, 1)
+	p.target = {"pos": Vector3i(36, 11, 30), "normal": Vector3i.UP}
+	p.break_target()
+	p.break_target()
+	check(w.get_block(36, 11, 30) == 0 and w.get_block(36, 12, 30) == Blocks.ids.wood, "madeira colocada: 2 golpes por bloco, sem derrubar o de cima")
+	# rendimento (wiki): 1 por tile, chance (2·poder + 175)/525 de virar 2
+	var total := 0
+	for i in 30000:
+		total += Timber.yield_wood(1, 35, rng)
+	check(absf(float(total) / 30000.0 - (1.0 + (2.0 * 35 + 175.0) / 525.0)) < 0.015, "madeira média por tile com o machado de cobre ≈ 1,47 (%.3f)" % (float(total) / 30000.0))
+	total = 0
+	for i in 30000:
+		total += Timber.yield_wood(1, 0, rng)
+	check(absf(float(total) / 30000.0 - 4.0 / 3.0) < 0.015, "sem machado a chance é 1/3 (%.3f)" % (float(total) / 30000.0))
+	check(Timber.patches([Vector3i(0, 0, 0), Vector3i(1, 0, 0), Vector3i(5, 5, 5)]) == 2, "tufos de folhas = pedaços ligados")
+	# muda: acorn em grama, cresce com espaço e vira a árvore da semente da posição
+	check(Items.places[Items.ids.acorn] == Blocks.sapling and Blocks.sapling > 0, "o acorn coloca a muda")
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.acorn, 3)
+	p.slot = 0
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}   # pedra
+	p.place_target()
+	check(w.get_block(24, 11, 24) == 0 and p.inv.total(Items.ids.acorn) == 3, "muda não pega em pedra")
+	w.set_block(24, 10, 24, Blocks.ids.grass)
+	p.place_target()
+	check(w.get_block(24, 11, 24) == Blocks.sapling and p.inv.total(Items.ids.acorn) == 2 and w.saplings.has(base), "muda pega na grama e gasta o acorn")
+	w.set_block(24, 14, 24, Blocks.ids.stone)   # sem espaço em cima: não cresce e tenta de novo depois
+	check(not w.grow_sapling(base) and w.saplings[base] == 60.0 and w.get_block(24, 11, 24) == Blocks.sapling, "sem espaço livre a muda espera")
+	w.set_block(24, 14, 24, 0)
+	check(w.grow_sapling(base) and Timber.is_tree(w, base) and not w.saplings.has(base), "com espaço a muda vira árvore")
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
 	free_player(p)
 	w.free()
 	return true

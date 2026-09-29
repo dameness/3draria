@@ -2,7 +2,7 @@ class_name Atlas
 # Gera o atlas de texturas 16x16 (uma fileira de tiles) a partir de textures.json.
 # Padrões: noise, grass_side, stripes, rings, ore, planks, bricks (blocos);
 # bar, pickaxe, sword, bow, arrow, blob, torch (ícones, fundo transparente);
-# tuft, flower, mushroom (plantas do mundo, fundo transparente); liquid (ondas suaves, paleta do escuro ao claro).
+# tuft, flower, mushroom, sapling (plantas do mundo, fundo transparente); liquid (ondas suaves, paleta do escuro ao claro).
 
 const TILE := 16
 
@@ -147,6 +147,14 @@ static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 				for k in b[1]:
 					var x: int = b[0] + (dx if k > b[1] * 0.6 else 0)
 					set_px.call(x, 15 - k, cols[2] if k < 3 else cols[0] if k < b[1] - 2 else cols[1])
+		"sapling":   # muda: caule fino e uma folhagem redonda no topo
+			for y in range(9, 16):
+				set_px.call(7, y, top[0])
+				set_px.call(8, y, top[0])
+			for dy in range(-4, 5):
+				for dx in range(-4, 5):
+					if dx * dx + dy * dy <= 17:
+						set_px.call(7 + dx, 5 + dy, pick.call(cols))
 		"flower":
 			for y in range(7, 16):
 				set_px.call(7, y, top[0])  # haste

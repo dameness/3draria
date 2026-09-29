@@ -112,5 +112,6 @@
 	{"name": "platinum_axe", "icon": "platinum_axe", "axe_power": 60, "damage": 8, "use_time": 0.417, "reach": 2.2, "knockback": 4.5, "stack": 1},
 	{"name": "empty_bucket", "icon": "empty_bucket", "stack": 1, "bucket": "empty", "use_time": 0.25},
 	{"name": "water_bucket", "icon": "water_bucket", "stack": 1, "bucket": "water", "use_time": 0.25},
-	{"name": "lava_bucket", "icon": "lava_bucket", "stack": 1, "bucket": "lava", "use_time": 0.25, "rarity": 1}
+	{"name": "lava_bucket", "icon": "lava_bucket", "stack": 1, "bucket": "lava", "use_time": 0.25, "rarity": 1},
+	{"name": "acorn", "icon": "acorn", "places": "sapling", "use_time": 0.25}
 ]

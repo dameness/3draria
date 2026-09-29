@@ -20,6 +20,8 @@ static var level_ids := {}                 # id do líquido cheio -> PackedInt32
 static var soft := PackedByteArray()       # id -> 1 se a mira atravessa e colocar bloco substitui (plantas, líquidos)
 static var clear := PackedByteArray()      # id -> 1 se a luz do céu passa (tronco e folhas: a copa só sombreia de leve)
 static var glow := PackedByteArray()       # id -> 1 se brilha sozinho (lava)
+static var grassy := PackedByteArray()     # id -> 1 se é grama (a muda só pega em cima dela)
+static var sapling := -1                   # id da muda de árvore (world.gd cresce)
 static var light := PackedInt32Array()     # id -> raio de luz em blocos (0 = não ilumina)
 static var station_as := PackedInt32Array() # id -> bloco de estação que ele equivale (bigorna de chumbo = bigorna)
 static var station_also := {}                 # id -> ids de outras estações que ele também é (a forja infernal também é fornalha)
@@ -50,6 +52,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	level_ids.clear()
 	soft.clear()
 	glow.clear()
+	grassy.clear()
 	clear.clear()
 	light.clear()
 	drop_names.clear()
@@ -77,6 +80,7 @@ static func load_pack(dir := "res://data/base") -> void:
 			level_ids[liquid_kind[-1]] = by_level
 		soft.append(1 if shape[-1] in ["plant", "liquid"] else 0)
 		glow.append(1 if b.get("glow", false) else 0)
+		grassy.append(1 if b.get("grass", false) else 0)
 		clear.append(1 if b.get("clear", false) else 0)
 		light.append(b.get("light", 0))
 		icons.append(b.get("icon", ""))
@@ -86,6 +90,7 @@ static func load_pack(dir := "res://data/base") -> void:
 		for n in [side, side, t.get("top", side), t.get("bottom", side), side, side]:
 			assert(n == "" or tile_index.has(n), "textura desconhecida: " + n)
 			tiles.append(tile_index.get(n, 0))
+	sapling = ids.get("sapling", -1)
 	for b in list:
 		station_as.append(ids[b.get("station_as", b.name)])
 		if b.has("station_also"):

@@ -29,12 +29,13 @@ translúcida à parte, `"glow": true` = brilha sozinho, como a lava). Líquido f
 `water`/`lava` são o nível 8 (cheio) e `water_1..7`/`lava_1..7` (`"liquid": "water", "level": n`) os níveis parciais; a altura da
 superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 níveis, no fim da lista.
 `light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
+`grass: true`: é grama (a muda de árvore só pega em cima dela).
 `clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral). Plantas e líquidos são
 `breakable: false`: não viram item.
 
 ## items.json (itens que não são bloco)
-`{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?}`.
+`{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
 `ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
 `sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
 flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glow, trail, particles} (cores).

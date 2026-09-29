@@ -40,7 +40,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	var tile_index := Blocks.textures.keys()
 	for it in Blocks.read(dir + "/items.json"):
 		assert(tile_index.has(it.icon), "ícone desconhecido: " + it.icon)
-		_add(it, tile_index.find(it.icon), -1)
+		_add(it, tile_index.find(it.icon), ids_of_block(it.get("places", "")))
 	for d in defs:
 		assert(not d.has("ammo") or defs.any(func(x): return x.get("ammo_class") == d.ammo), "munição sem itens: " + str(d.get("ammo")))
 	var set_data: Dictionary = Blocks.read(dir + "/armor_sets.json")
@@ -49,6 +49,10 @@ static func load_pack(dir := "res://data/base") -> void:
 	for n in Blocks.drop_names:
 		assert(n == "" or ids.has(n), "drop desconhecido: " + n)
 		drop.append(ids.get(n, -1))
+
+
+static func ids_of_block(name: String) -> int:
+	return Blocks.ids[name] if name != "" else -1
 
 
 static func _add(def: Dictionary, ic: int, pl: int) -> void:

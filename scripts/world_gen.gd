@@ -476,21 +476,22 @@ func _trees(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) 
 			var by := hs[ix + iz * W]
 			if (h & 0xff) / 255.0 > forest or by > HEIGHT - 24 or _top(hs, ix + iz * W, W) != TOP_GRASS:
 				continue
-			_tree(d, hs, W, cx, cz, wx, wz, ix, iz, h)
+			tree(d, cx, cz, wx, wz, by, PackedInt32Array([hs[ix + 1 + iz * W], hs[ix - 1 + iz * W], hs[ix + (iz + 1) * W], hs[ix + (iz - 1) * W]]), h)
 
 
-func _tree(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int, wx: int, wz: int, ix: int, iz: int, h: int) -> void:
+# Uma árvore com o tronco em (wx, wz) sobre o chão de altura `by`, escrita no chunk (cx, cz) (só o que cai nele e está livre). `side` = altura do chão
+# ao lado nas direções de DIRS4 (raiz onde é igual a `by`). Tudo sai de `h`: a mesma semente dá a mesma árvore (a muda de world.gd usa isto também).
+func tree(d: PackedByteArray, cx: int, cz: int, wx: int, wz: int, by: int, side: PackedInt32Array, h: int) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = h
-	var by := hs[ix + iz * W]
 	var th := rng.randi_range(8, 13)
 	var rx := rng.randf_range(2.7, 3.5)
 	var ry := rng.randf_range(2.0, 2.7)
 	for k in range(1, th + 1):
 		_put(d, cx, cz, wx, by + k, wz, WOOD, true)
-	for dir in DIRS4:   # raízes
-		if rng.randf() < 0.5 and hs[ix + dir.x + (iz + dir.y) * W] == by:
-			_put(d, cx, cz, wx + dir.x, by + 1, wz + dir.y, WOOD, true)
+	for i in 4:   # raízes
+		if rng.randf() < 0.5 and side[i] == by:
+			_put(d, cx, cz, wx + DIRS4[i].x, by + 1, wz + DIRS4[i].y, WOOD, true)
 	for n in rng.randi_range(0, 2):   # galhos com um tufo de folhas na ponta
 		var dir := DIRS4[rng.randi() % 4]
 		var y := by + rng.randi_range(th / 2, th - 2)
