@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -632,7 +632,8 @@ func test_gui_extras():
 	var inv := Inventory.new()
 	inv.add(Items.ids.copper_coin, 250)
 	check(inv.coin[0] == 50 and inv.coin[1] == 2 and inv.total(Items.ids.copper_coin) == 0 and inv.coin_value() == 250, "moedas vão para os slots e sobem de tipo a cada 100")
-	inv.add(Items.ids.wooden_arrow, 10)
+	inv.item[3] = Items.ids.wooden_arrow   # flechas num slot comum (apanhadas vão para os slots de munição: ver test_coins_ammo)
+	inv.count[3] = 10
 	inv.ammo[0] = Items.ids.unholy_arrow
 	inv.ammo_count[0] = 1
 	check(inv.take_ammo("arrow") == Items.ids.unholy_arrow and inv.ammo[0] == -1, "slot de munição é usado antes do inventário")
@@ -3191,5 +3192,104 @@ func test_testworld():
 			DirAccess.remove_absolute(d + f)
 	SaveGame.players_dir = saved_dirs[0]
 	SaveGame.worlds_dir = saved_dirs[1]
+	w.free()
+	return true
+
+
+# Moedas e munição como no Terraria: apanhadas vão para os slots próprios (moeda sobe de tipo, munição junta na pilha ou usa um slot vazio), mas também podem
+# ficar em qualquer slot do inventário e de baús, e as moedas soltas nos slots comuns contam para comprar.
+func test_coins_ammo():
+	var inv := Inventory.new()
+	inv.add(Items.ids.wooden_arrow, 50)
+	inv.add(Items.ids.wooden_arrow, 30)
+	inv.add(Items.ids.unholy_arrow, 5)
+	check(inv.ammo[0] == Items.ids.wooden_arrow and inv.ammo_count[0] == 80 and inv.ammo[1] == Items.ids.unholy_arrow and inv.ammo_count[1] == 5 and inv.item.find(Items.ids.wooden_arrow) == -1, "munição apanhada junta no slot de munição e usa um vazio para outra")
+	inv.add(Items.ids.musket_ball, 20)
+	inv.add(Items.ids.wooden_arrow, Items.stack[Items.ids.wooden_arrow])   # a pilha do slot enche; o resto usa o slot vazio que sobrou
+	check(inv.ammo_count[0] == Items.stack[Items.ids.wooden_arrow] and inv.ammo[2] == Items.ids.musket_ball and inv.ammo[3] == Items.ids.wooden_arrow and inv.ammo_count[3] == 80 \
+		and inv.total(Items.ids.wooden_arrow) == Items.stack[Items.ids.wooden_arrow] + 80, "pilha cheia: o resto usa outro slot de munição e total() conta todos")
+	inv.add(Items.ids.wooden_arrow, Items.stack[Items.ids.wooden_arrow] * 2)   # todos os slots de munição ocupados: o resto cai no inventário comum
+	check(inv.ammo_count[3] == Items.stack[Items.ids.wooden_arrow] and inv.item.has(Items.ids.wooden_arrow) and inv.total(Items.ids.wooden_arrow) == 80 + Items.stack[Items.ids.wooden_arrow] * 3, "…e depois disso a munição cai no inventário comum sem perder nenhuma")
+	inv.ammo[2] = Items.ids.unholy_arrow
+	inv.ammo_count[2] = 1
+	inv.add(Items.ids.musket_ball, 40)
+	check(inv.total(Items.ids.musket_ball) == 40 and inv.item.has(Items.ids.musket_ball), "sem slot de munição livre a munição cai no inventário comum")
+	# munição num slot comum e num baú: mover à mão funciona e atirar acha a munição em qualquer lugar
+	var inv2 := Inventory.new()
+	inv2.item[7] = Items.ids.musket_ball
+	inv2.count[7] = 12
+	check(inv2.take_ammo("bullet") == Items.ids.musket_ball and inv2.count[7] == 11, "munição no slot comum também é usada")
+	var chest := {"item": PackedInt32Array(), "count": PackedInt32Array()}
+	chest.item.resize(40)
+	chest.item.fill(-1)
+	chest.count.resize(40)
+	inv2.click(7)
+	inv2.click(3, chest.item, chest.count)
+	check(chest.item[3] == Items.ids.musket_ball and chest.count[3] == 11 and inv2.cursor_id == -1, "munição guarda no baú")
+	# moedas: o slot de moeda entrega a pilha para a mão, que vai a qualquer slot ou baú
+	var c := Inventory.new()
+	c.add(Items.ids.silver_coin, 30)
+	c.click_coin(1)
+	check(c.cursor_id == Items.ids.silver_coin and c.cursor_count == 30 and c.coin[1] == 0, "clicar no slot de moeda leva a pilha para a mão")
+	c.click(12)
+	check(c.item[12] == Items.ids.silver_coin and c.count[12] == 30 and c.coin_value() == 3000, "…e soltar num slot comum guarda a moeda lá (e ela conta como dinheiro)")
+	c.click(12)
+	c.click_coin(0)
+	check(c.cursor_id == Items.ids.silver_coin and c.coin[1] == 0, "slot de moeda de outro tipo recusa")
+	c.click_coin(1)
+	c.cursor_id = Items.ids.copper_coin
+	c.cursor_count = 150
+	c.click_coin(0)
+	check(c.cursor_id == -1 and c.coin[0] == 50 and c.coin[1] == 31, "guardar 150 de cobre sobe de tipo (100 = 1 de prata)")
+	c.click_coin(1)
+	c.click(20, chest.item, chest.count)
+	check(chest.item[20] == Items.ids.silver_coin and chest.count[20] == 31, "moedas guardam no baú")
+	# pagar com moedas em slots comuns: conta o total e devolve o troco nos slots de moeda
+	var pay := Inventory.new()
+	pay.item[5] = Items.ids.gold_coin
+	pay.count[5] = 2
+	pay.item[6] = Items.ids.copper_coin
+	pay.count[6] = 30
+	pay.add(Items.ids.silver_coin, 20)
+	check(pay.coin_value() == 20000 + 30 + 2000, "moedas dos slots comuns e dos slots de moeda somam (%d)" % pay.coin_value())
+	check(pay.pay(15000) and pay.coin_value() == 7030 and pay.item[5] == -1 and pay.item[6] == -1 and pay.coin[1] == 70 and pay.coin[2] == 0 and pay.coin[0] == 30, "pagar 1,5 de ouro: sobra o troco, tudo nos slots de moeda")
+	check(not pay.pay(7031) and pay.coin_value() == 7030, "sem saldo recusa e não mexe nas moedas")
+	# Shift+clique do baú para o inventário: moeda e munição vão para os slots próprios, o resto para os comuns
+	var sh := Inventory.new()
+	var box := {"item": PackedInt32Array([Items.ids.gold_coin, Items.ids.wooden_arrow, Items.ids.iron_ore]), "count": PackedInt32Array([3, 40, 20])}
+	for k in 3:
+		check(sh.take_stack(box.item, box.count, k), "Shift+clique do baú leva a pilha %d" % k)
+	check(sh.coin[2] == 3 and sh.ammo[0] == Items.ids.wooden_arrow and sh.ammo_count[0] == 40 and sh.total(Items.ids.iron_ore) == 20 and box.item == PackedInt32Array([-1, -1, -1]), "…moeda nos slots de moeda, flecha no de munição, minério no inventário")
+	var full := Inventory.new()
+	full.item.fill(Items.ids.dirt)
+	full.count.fill(1)
+	var one := {"item": PackedInt32Array([Items.ids.iron_ore]), "count": PackedInt32Array([5])}
+	check(not full.take_stack(one.item, one.count, 0) and one.count[0] == 5, "inventário cheio: nada se perde no baú")
+	# ordenar e salvar com moedas/munição em slots comuns
+	var srt := Inventory.new()
+	srt.item[11] = Items.ids.gold_coin
+	srt.count[11] = 5
+	srt.item[13] = Items.ids.musket_ball
+	srt.count[13] = 9
+	srt.sort_items()
+	check(srt.total(Items.ids.gold_coin) == 5 and srt.total(Items.ids.musket_ball) == 9 and srt.coin_value() == 50000, "ordenar não perde moeda nem munição")
+	var saved_dirs := [SaveGame.players_dir, SaveGame.worlds_dir]
+	SaveGame.players_dir = "user://test_players/"
+	DirAccess.make_dir_recursive_absolute(SaveGame.players_dir)
+	var path := SaveGame.create_player("Moedas")
+	var w := floor_world()
+	var p := make_player(w)
+	p.inv.item[22] = Items.ids.silver_coin
+	p.inv.count[22] = 40
+	p.inv.item[23] = Items.ids.musket_ball
+	p.inv.count[23] = 60
+	SaveGame.save_player(p, path)
+	var p2 := make_player(w)
+	SaveGame.load_player(p2, path)
+	check(p2.inv.item[22] == Items.ids.silver_coin and p2.inv.count[22] == 40 and p2.inv.item[23] == Items.ids.musket_ball and p2.inv.count[23] == 60 and p2.inv.coin_value() == 4000, "moedas e munição em slots comuns voltam do save")
+	SaveGame.delete(path)
+	SaveGame.players_dir = saved_dirs[0]
+	free_player(p)
+	free_player(p2)
 	w.free()
 	return true

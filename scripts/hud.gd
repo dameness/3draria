@@ -480,7 +480,11 @@ func _build_side() -> void:
 		box.size = Vector2(SLOT, SLOT)
 		box.pivot_offset = box.size / 2.0
 		box.add_theme_stylebox_override("panel", Ui.box(Ui.BLUE.darkened(0.15)))
-		box.mouse_filter = Control.MOUSE_FILTER_PASS
+		box.mouse_filter = Control.MOUSE_FILTER_STOP   # clicável: pega a pilha de moedas para a mão ou guarda uma moeda do mesmo tipo
+		box.gui_input.connect(func(e: InputEvent):
+			if _pressed(e, MOUSE_BUTTON_LEFT):
+				last_click = Engine.get_process_frames()
+				player.inv.click_coin(r))
 		var ic := TextureRect.new()
 		ic.name = "Icon"
 		ic.position = Vector2(6, 6)
@@ -543,7 +547,7 @@ func _build_chest() -> void:
 			if _pressed(e, MOUSE_BUTTON_LEFT):
 				last_click = Engine.get_process_frames()
 				if e.shift_pressed and inv.cursor_id == -1:
-					Inventory.move_stack(chest.item, chest.count, i, inv.item, inv.count)
+					inv.take_stack(chest.item, chest.count, i)
 					inv.version += 1
 				else:
 					inv.click(i, chest.item, chest.count)

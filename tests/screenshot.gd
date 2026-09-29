@@ -11,6 +11,7 @@ const SHOTS := [
 	{"name": "noite", "time": 1100.0, "look": Vector2(2.0, -0.1), "item": "enchanted_sword"},
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
 	{"name": "inventario_cheio", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "hp": 22},
+	{"name": "inventario_moedas", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "loose": true},
 	{"name": "bau", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "chest": true},
 	{"name": "config", "look": Vector2(0, -0.2), "settings": true},
 	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true},
@@ -312,6 +313,15 @@ func _setup(s: Dictionary) -> void:
 		player.inv.add(Items.ids.torch, 40)
 		player.inv.add(Items.ids.gold_bar, 12)
 		player.inv.fav[3] = 1
+	if s.get("loose", false):   # moedas e munição soltas em slots comuns (como no Terraria) e uma pilha na mão
+		player.inv.item[12] = Items.ids.silver_coin
+		player.inv.count[12] = 40
+		player.inv.item[13] = Items.ids.gold_coin
+		player.inv.count[13] = 3
+		player.inv.item[14] = Items.ids.musket_ball
+		player.inv.count[14] = 99
+		player.inv.cursor_id = Items.ids.copper_coin
+		player.inv.cursor_count = 55
 	for n in s.get("give", []):
 		player.inv.add(Items.ids[n], 3 if n != "magic_mirror" and n != "cloud_in_a_bottle" else 1)
 	player.buffs.clear()

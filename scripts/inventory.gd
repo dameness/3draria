@@ -8,6 +8,7 @@ const ARMOR := ["head", "body", "legs"]   # slots de equipamento
 const ACC := 5                            # slots de acessório
 const AMMO := 4                           # slots de munição (usados antes do inventário)
 const COINS := ["copper_coin", "silver_coin", "gold_coin", "platinum_coin"]   # 100 de um valem 1 do próximo
+const COIN_VALUE := [1, 100, 10000, 1000000]   # em cobre
 
 var item := PackedInt32Array()    # -1 = vazio
 var count := PackedInt32Array()
@@ -31,7 +32,7 @@ func _init() -> void:
 	fav.resize(SIZE)
 
 
-# Empilha onde já existe e depois usa slots vazios. Retorna quanto não coube.
+# Empilha onde já existe e depois usa slots vazios (moeda vai para os slots de moeda, munição primeiro para os de munição). Retorna quanto não coube.
 func add(id: int, n: int) -> int:
 	var c := coin_kind(id)
 	if c != -1:   # moeda vai direto para os slots de moeda e sobe de tipo a cada 100
@@ -41,6 +42,15 @@ func add(id: int, n: int) -> int:
 			coin[k] %= 100
 		version += 1
 		return 0
+	if Items.defs[id].has("ammo_class"):   # munição: primeiro os slots de munição (junta na pilha ou usa um vazio), o resto vai para o inventário
+		for pass_empty in [false, true]:
+			for k in AMMO:
+				if n > 0 and (ammo[k] == id or (pass_empty and ammo[k] == -1)):
+					var moved := mini(Items.stack[id] - (ammo_count[k] if ammo[k] == id else 0), n)
+					if moved > 0:
+						ammo[k] = id
+						ammo_count[k] += moved
+						n -= moved
 	for pass_empty in [false, true]:
 		for i in SIZE:
 			if n == 0:
@@ -61,10 +71,13 @@ func total(id: int) -> int:
 	for i in SIZE:
 		if item[i] == id:
 			t += count[i]
+	for k in AMMO:   # a munição dos slots próprios também conta (como no Terraria)
+		if ammo[k] == id:
+			t += ammo_count[k]
 	return t
 
 
-# Tira n unidades; só chame depois de conferir total().
+# Tira n unidades (do fim do inventário para o começo, depois dos slots de munição); só chame depois de conferir total().
 func remove(id: int, n: int) -> void:
 	for i in range(SIZE - 1, -1, -1):
 		if item[i] == id and n > 0:
@@ -73,6 +86,13 @@ func remove(id: int, n: int) -> void:
 			n -= taken
 			if count[i] == 0:
 				item[i] = -1
+	for k in AMMO:
+		if ammo[k] == id and n > 0:
+			var taken := mini(ammo_count[k], n)
+			ammo_count[k] -= taken
+			n -= taken
+			if ammo_count[k] == 0:
+				ammo[k] = -1
 	version += 1
 
 
@@ -264,12 +284,16 @@ func defense() -> int:
 
 # 0-3 se o item é uma moeda (cobre a platina), senão -1.
 static func coin_kind(id: int) -> int:
-	return COINS.find(Items.names[id])
+	return COINS.find(Items.names[id]) if id != -1 else -1
 
 
-# Valor total das moedas em cobre.
+# Valor total das moedas em cobre: as dos slots de moeda e as que estiverem em slots comuns do inventário (como no Terraria).
 func coin_value() -> int:
-	return coin[0] + coin[1] * 100 + coin[2] * 10000 + coin[3] * 1000000
+	var v := coin[0] + coin[1] * 100 + coin[2] * 10000 + coin[3] * 1000000
+	for i in SIZE:
+		if item[i] != -1 and coin_kind(item[i]) != -1:
+			v += count[i] * COIN_VALUE[coin_kind(item[i])]
+	return v
 
 
 # Paga `copper` de cobre com as moedas (o troco volta em moedas maiores). false = não tem.
@@ -278,6 +302,10 @@ func pay(copper: int) -> bool:
 	if total < copper:
 		return false
 	total -= copper
+	for i in SIZE:   # ponytail: pagar recolhe as moedas dos slots comuns e devolve tudo (o troco também) nos slots de moeda; o Terraria mexe só nas necessárias
+		if item[i] != -1 and coin_kind(item[i]) != -1:
+			item[i] = -1
+			count[i] = 0
 	for k in 4:
 		coin[k] = total % 100 if k < 3 else total
 		total /= 100
@@ -321,6 +349,32 @@ func click_ammo(k: int) -> void:
 		ammo_count[k] = cursor_count
 		cursor_count = t
 	version += 1
+
+
+# Clique no slot de moeda k (cobre, prata, ouro, platina): mão vazia leva a pilha inteira; com uma moeda do mesmo tipo na mão, guarda (100 sobem de tipo).
+func click_coin(k: int) -> void:
+	if cursor_id == -1 and coin[k] > 0:
+		cursor_id = Items.ids[COINS[k]]
+		cursor_count = coin[k]
+		coin[k] = 0
+	elif cursor_id != -1 and coin_kind(cursor_id) == k:
+		add(cursor_id, cursor_count)
+		cursor_id = -1
+		cursor_count = 0
+	version += 1
+
+
+# Shift+clique no slot i de um baú (it/ct): manda a pilha para o inventário como se fosse apanhada do chão (moeda vai para os slots de moeda,
+# munição para os de munição, o resto empilha e usa vazios). Retorna false se nada coube.
+func take_stack(it: PackedInt32Array, ct: PackedInt32Array, i: int) -> bool:
+	if it[i] == -1:
+		return false
+	var left := add(it[i], ct[i])
+	var moved := left < ct[i]
+	ct[i] = left
+	if left == 0:
+		it[i] = -1
+	return moved
 
 
 # Clique no acessório k: só aceita item com "accessory" nos dados; troca com o que estava vestido.
