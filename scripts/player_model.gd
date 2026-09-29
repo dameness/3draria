@@ -8,7 +8,7 @@ extends Node3D
 const HeldItem := preload("res://scripts/held_item.gd")
 const OUTLINE := 0.014            # espessura do contorno em blocos
 const SPHERE_SEGMENTS := 14
-const HEAD := 0.78                # escala da cabeça (o boneco tem ~1,85 de altura com o cabelo)
+const HEAD := 0.68                # escala da cabeça (o boneco tem ~1,8 de altura com o cabelo): proporção mais adulta que a do chibi
 
 @export var player: Node3D           # jogador, inimigo humanoide ou boneco do menu (lê velocity, pitch, held(), cooldown, inv, entities)
 var skin := Color("#f0b890")
@@ -64,7 +64,7 @@ func _build() -> void:
 		_part(leg, _sphere(), pants, Vector3(0, -0.02, 0), Vector3(0.24, 0.22, 0.24))   # quadril
 		_part(leg, _sphere(), Color("#5a3a2a"), Vector3(0, -0.67, -0.035), Vector3(0.21, 0.16, 0.34))   # bota (a sola toca o chão)
 	_part(upper, _capsule(0.15, 0.56), shirt, Vector3(0, 0.28, 0), Vector3(1.4, 1.0, 0.98))    # camiseta
-	_part(upper, _sphere(), shirt, Vector3(0, 0.46, 0), Vector3(0.5, 0.2, 0.28))               # ombros: a camiseta cobre a parte de cima
+	_part(upper, _sphere(), shirt, Vector3(0, 0.46, 0), Vector3(0.54, 0.21, 0.29))              # ombros (mais largos: a camiseta cobre a parte de cima)
 	_part(upper, _sphere(), pants, Vector3(0, 0.04, 0), Vector3(0.4, 0.15, 0.28))               # cós da calça
 	_part(upper, _capsule(0.055, 0.15), skin, Vector3(0, 0.57, 0), Vector3(1, 1, 1), Vector3.ZERO, false)   # pescoço
 	var head := _pivot(upper, "head", Vector3(0, 0.56, 0))
@@ -75,9 +75,9 @@ func _build() -> void:
 		eye.position = Vector3(side * 0.115, 0.3, -0.265)
 		head.add_child(eye)
 		eyes.append(eye)
-		_part(eye, _sphere(), Color.WHITE, Vector3.ZERO, Vector3(0.115, 0.15, 0.06), Vector3.ZERO, false)
-		_part(eye, _sphere(), Color("#3a68c0"), Vector3(side * -0.006, -0.008, -0.026), Vector3(0.07, 0.1, 0.04), Vector3.ZERO, false)
-		_part(eye, _sphere(), Color("#10131c"), Vector3(side * -0.006, -0.008, -0.04), Vector3(0.036, 0.06, 0.03), Vector3.ZERO, false)
+		_part(eye, _sphere(), Color.WHITE, Vector3.ZERO, Vector3(0.1, 0.12, 0.06), Vector3.ZERO, false)   # olhos menores e mais sérios que os do desenho animado
+		_part(eye, _sphere(), Color("#3a68c0"), Vector3(side * -0.005, -0.006, -0.026), Vector3(0.056, 0.082, 0.04), Vector3.ZERO, false)
+		_part(eye, _sphere(), Color("#10131c"), Vector3(side * -0.005, -0.006, -0.04), Vector3(0.03, 0.05, 0.03), Vector3.ZERO, false)
 		_part(head, _capsule(0.012, 0.09), hair.darkened(0.15), Vector3(side * 0.115, 0.42, -0.262), Vector3(1, 1, 1), Vector3(0, 0, PI / 2 + side * 0.15), false)   # sobrancelha
 	_part(head, _sphere(), skin.darkened(0.08), Vector3(0, 0.24, -0.29), Vector3(0.06, 0.05, 0.05), Vector3.ZERO, false)   # nariz
 	_part(head, _sphere(), skin.darkened(0.08), Vector3(-0.29, 0.28, 0), Vector3(0.05, 0.11, 0.09), Vector3.ZERO, false)   # orelhas

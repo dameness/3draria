@@ -387,18 +387,23 @@ func _swatches(label: String, key: String, colors: Array) -> void:
 	l.text = label
 	l.custom_minimum_size = Vector2(70, 0)
 	row.add_child(l)
+	var buttons: Array[Button] = []
+	var paint := func():   # a moldura dourada fica na amostra escolhida (sem refazer a tela inteira)
+		for k in buttons.size():
+			var sb := Ui.box(Color(colors[k]), Ui.GOLD if Color(colors[k]).is_equal_approx(new_look[key]) else Ui.EDGE, 3, 4)
+			for st in ["normal", "hover", "pressed"]:
+				buttons[k].add_theme_stylebox_override(st, sb)
 	for c in colors:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(28, 28)
 		b.focus_mode = Control.FOCUS_NONE
-		var sb := Ui.box(Color(c), Ui.GOLD if Color(c).is_equal_approx(new_look[key]) else Ui.EDGE, 3, 4)
-		for st in ["normal", "hover", "pressed"]:
-			b.add_theme_stylebox_override(st, sb)
 		b.pressed.connect(func():
 			new_look[key] = Color(c)
-			show_players()
+			paint.call()
 			_show_avatar("?", [], new_look))
+		buttons.append(b)
 		row.add_child(b)
+	paint.call()
 	box.add_child(row)
 
 

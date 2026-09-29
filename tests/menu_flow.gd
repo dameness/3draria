@@ -62,7 +62,10 @@ func _process(_delta: float) -> bool:
 			scene.show_players()
 		1:
 			shot("2a_novo")   # a tela de criação, com as amostras de cor
-			scene.new_look["shirt"] = Color(SaveGame.SHIRTS[2])
+			var swatches: Array = scene.box.find_children("", "Button", true, false).filter(func(b): return b.custom_minimum_size == Vector2(28, 28))
+			var third: Button = swatches[SaveGame.SKINS.size() + SaveGame.HAIRS.size() + 2]   # a 3ª amostra de camisa
+			third.pressed.emit()
+			check(scene.new_look.shirt == Color(SaveGame.SHIRTS[2]) and is_instance_valid(third) and not third.is_queued_for_deletion(), "escolher uma cor não refaz a tela (a amostra continua a mesma)")
 			type_name("Ana")
 		2:
 			shot("2_personagens")
