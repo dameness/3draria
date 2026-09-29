@@ -218,6 +218,8 @@ func try_spawn() -> void:
 	if options.is_empty():
 		return
 	var d: Dictionary = options[rng.randi() % options.size()]
+	if rng.randf() > d.get("rare", 1.0):   # raro: só nasce em parte das vezes que é sorteado
+		return
 	if biome in ["dungeon", "underworld", "underground", "cavern"]:   # sem superfície: numa sala/caverna perto do jogador (voadores em qualquer ar, os outros com chão)
 		for attempt in 12:
 			var p := Vector3i(floori(player.position.x) + rng.randi_range(-14, 14), floori(player.position.y) + rng.randi_range(-2, 4), floori(player.position.z) + rng.randi_range(-14, 14))

@@ -90,12 +90,17 @@ func _physics_process(delta: float) -> void:
 	velocity.y -= def.get("gravity", 0.0) * delta
 	var next := position + velocity * delta
 	var b: Vector3i = Vector3i(next.floor())
-	if age > def.get("life", 5.0) or Blocks.solid[entities.world.get_block(b.x, b.y, b.z)]:
+	if age > def.get("life", 5.0) or (Blocks.solid[entities.world.get_block(b.x, b.y, b.z)] and not def.get("ghost", false)):
 		queue_free()
 		return
 	var r: float = def.get("size", 0.2) * 0.35
 	if def.get("hostile", false):   # laser do chefe: fere o jogador
 		var p: Node3D = entities.player
+		if def.has("homing"):   # teleguiado: gira até `homing` rad/s para o jogador
+			var want: Vector3 = p.position + Vector3.UP - position
+			var turn := minf(velocity.angle_to(want), def.homing * delta)
+			if turn > 0.0001 and velocity.cross(want).length() > 0.0001:
+				velocity = velocity.rotated(velocity.cross(want).normalized(), turn)
 		if VoxelBody.touches(next - Vector3.UP * r, r, r * 2, p.position, p.HALF, p.TALL):
 			p.hurt(Combat.vary(damage, entities.rng), velocity)
 			queue_free()

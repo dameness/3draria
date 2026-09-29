@@ -2181,6 +2181,20 @@ func test_skeletron():
 	for h in hands:
 		far = maxf(far, h.position.distance_to(head.position))
 	check(far < 14.0, "as mãos giram em volta da cabeça (%.1f)" % far)
+	var skulls := func() -> Array: return ent.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "skull_bolt")
+	check(skulls.call().is_empty(), "com as mãos vivas e a vida cheia não há caveiras")
+	head.hp = int(head.def.life * 0.7)   # abaixo de 75%: caveiras teleguiadas
+	head.skull_timer = 0.0
+	head.think(1.0 / 60)
+	var sk: Array = skulls.call()
+	check(sk.size() == 1 and sk[0].def.homing > 0.0, "abaixo de 75% o Skeletron solta uma caveira teleguiada")
+	sk[0].velocity = Vector3(0, 0, 8)
+	var before: float = sk[0].velocity.angle_to(p.position + Vector3.UP - sk[0].position)
+	sk[0]._physics_process(0.2)
+	check(sk[0].velocity.angle_to(p.position + Vector3.UP - sk[0].position) < before, "a caveira gira para o jogador")
+	for c in sk:
+		c.free()
+	head.hp = head.def.life
 	head.spin_timer = 0.0   # wiki: depois de ~13 s de mãos, gira ~6,7 s (dano +30%, defesa −10) e volta, em ciclo
 	head.think(1.0 / 60)
 	check(head.phase == 2 and head.damage == 42 and head.defense == 0 and head.hurt(50, Vector3.RIGHT, 0) == 50, "girando: dano 32 × 1,3 = 42 e defesa 0")
@@ -4184,7 +4198,7 @@ func test_wiki_review():
 	var p2 := make_player(w2)
 	var ent2: Node3D = p2.entities
 	p2.clock.time = 100.0
-	for spot in [[36, "cavern", ["black_slime", "cave_bat", "skeleton", "mother_slime", "undead_miner", "giant_worm", "giant_worm_body", "giant_worm_tail"]], [60, "underground", ["red_slime", "yellow_slime", "giant_worm", "giant_worm_body", "giant_worm_tail"]]]:
+	for spot in [[36, "cavern", ["black_slime", "cave_bat", "skeleton", "mother_slime", "undead_miner", "tim", "giant_worm", "giant_worm_body", "giant_worm_tail"]], [60, "underground", ["red_slime", "yellow_slime", "giant_worm", "giant_worm_body", "giant_worm_tail"]]]:
 		for x in range(104, 137):   # sala grande: o nascimento pede ao menos 6 blocos de distância do jogador
 			for z in range(104, 137):
 				w2.set_block(x, spot[0] - 1, z, Blocks.ids.stone, false)
@@ -4219,6 +4233,31 @@ func test_wiki_review():
 	check(ent2.biome_at(p2.position) == "meteorite" and not ent2.enemies.is_empty() and ent2.enemies.all(func(e): return e.def.name == "meteor_head"), "perto de uma cratera só nascem Meteor Heads")
 	free_player(p2)
 	w2.free()
+	# --- conjurador (wiki Caster AI): teleporta aos 2,5 s, solta 3 esferas com 1,67 s entre elas; golpe cancela
+	var cw := floor_world()
+	var cp := make_player(cw)
+	var cent: Node3D = cp.entities
+	var dc: Node3D = cent.spawn_enemy(cent.def_named("dark_caster"), Vector3(40.5, 11, 24.5))
+	var spheres := func() -> int: return cent.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "water_sphere").size()
+	var start: Vector3 = dc.position
+	for i in 60 * 2:
+		dc._physics_process(1.0 / 60)
+	check(dc.position.distance_to(start) < 0.1 and spheres.call() == 0, "o conjurador espera 2,5 s parado")
+	for i in 60 * 1:
+		dc._physics_process(1.0 / 60)
+	check(dc.position.distance_to(start) > 1.0 and dc.shots == 3 and dc.position.distance_to(cp.position) < 14.0, "teleporta para perto do jogador e arma 3 esferas")
+	var first: Vector3 = dc.position
+	for i in 60 * 6:
+		dc._physics_process(1.0 / 60)
+	check(spheres.call() + (3 - dc.shots) >= 3 and dc.shots == 0 and dc.position.distance_to(first) < 0.1, "solta as 3 esferas (uma a cada 1,67 s) e fica no lugar")
+	dc.timer = 0.0
+	for i in 5:
+		dc._physics_process(1.0 / 60)
+	dc.hurt(1, Vector3.RIGHT, 0)
+	check(dc.shots == 0 and is_equal_approx(dc.timer, 4.17), "levar um golpe cancela os tiros e adia o teleporte para 4,17 s")
+	check(cent.def_named("fire_imp").shoot.projectile == "burning_sphere" and cent.projectiles.water_sphere.ghost and cent.def_named("tim").rare == 0.1, "Fire Imp, Tim (raro) e esferas que atravessam blocos")
+	free_player(cp)
+	cw.free()
 	# --- dados conferidos com a wiki
 	var eow := enemy_def("eater_of_worlds")
 	check(eow.worm.segments == 67 and eow.life == 150 and enemy_def("eater_of_worlds_body").life == 150 and enemy_def("eater_of_worlds_tail").life == 150, "Eater of Worlds: 67 segmentos de 150 de vida")

@@ -19,7 +19,7 @@ Testes verdes (`tests/run.gd`, `tests/menu_flow.gd`). Não precisa de mundo novo
 ## Divergências pré-Hardmode com a wiki (revisão de 29/09/2026; o que já foi corrigido está no `git log`)
 Conferido contra a wiki: itens (dano, use time, poder, raridade), receitas, inimigos (vida/dano/defesa/recuo/moedas), drops de chefes, loot de baú, armaduras, regeneração, morte.
 Tudo abaixo ainda diverge; em ordem de impacto na progressão:
-1. **Bichos que ainda faltam:** Skeleton Archer, Tim, Fire Imp (teleporta e atira), Bone Serpent, Slimer (pedem IA de atirador/teleporte). O Demon (foices) e o Meteor Head são só "voadores que batem"; Blood Crawler/Face Monster andam como zumbi (o de verdade anda em paredes).
+1. **Bichos que ainda faltam:** Bone Serpent e os que só existem no Hardmode. Dark Caster, Tim e Fire Imp seguem a IA de conjurador da wiki (teleporta e solta 3 esferas), mas as esferas não podem ser destruídas a golpes e atravessam blocos sem revelar o mapa. O Demon (foices) e o Meteor Head são só "voadores que batem"; Blood Crawler/Face Monster andam como zumbi (o de verdade anda em paredes).
 2. **Spawn:** a wiki (NPC spawning) tem taxa por bioma/altura/hora e teto de 5; o jogo sorteia uniforme com teto 4 (dia) / 8 (noite). Estátuas e Slime Rain não existem.
 3. **Morte:** falta a lápide; as moedas caem no lugar e a espera de 10 s é no ponto de nascimento (a wiki mantém você no lugar da morte e deixa pular a espera após 1,5 s sem inimigos por perto).
 4. **Vila:** só Guide, Merchant e Nurse (faltam Dryad, Demolitionist, Arms Dealer, Clothier, Goblin Tinkerer/reforja, Wizard). O Olho de Cthulhu natural pede 4 habitantes na wiki; o jogo pede os 3 (`ponytail` em `entities._eye_watch`). Merchant sem Mining Helmet, Piggy Bank, Bug Net, Shuriken, Rope, Glowstick; a Nurse cobra pela vida que falta, a wiki usa outra fórmula.
@@ -28,7 +28,7 @@ Tudo abaixo ainda diverge; em ordem de impacto na progressão:
    - King Slime: faltam Slimy Saddle, Solidifier, Slime Gun/Hook/Staff; a receita da Slime Crown na wiki é 20 Gel + Gold/Platinum Crown (jogo: 20 Gel + 5 barras de ouro); não nasce sozinho (1/300 de dia) nem pela Slime Rain.
    - Eye of Cthulhu: faltam Corrupt/Crimson Seeds, Binoculars e o altar (só cai se não houver).
    - Eater of Worlds: não foge quando o jogador sai do bioma; falta Eater's Bone; Worm Food/Rotten Chunk (Eater of Souls solta 33%) não existem, só as orbes o invocam.
-   - Skeletron: faltam as caveiras teleguiadas (abaixo de 75% ou com uma mão morta) e os drops Skeletron Hand/Book of Skulls/Mask. **Decisão pendente:** ao amanhecer a wiki o enfurece (9999 de dano e defesa); o jogo faz ele ir embora.
+   - Skeletron: faltam os drops Skeletron Hand/Book of Skulls/Mask. **Decisão pendente:** ao amanhecer a wiki o enfurece (9999 de dano e defesa); o jogo faz ele ir embora.
    - Wall of Flesh: faltam Horrified/The Tongue (puxa o jogador para a boca), a arma e o emblema do Hardmode e o Demon Heart.
    - Queen Bee e Deerclops dependem de selva e neve.
 7. **Biomas e eventos:** neve, deserto, selva, oceano de verdade, cogumelo; Blood Moon, Goblin Army, Slime Rain; critters; pesca; Living Tree, Pirâmide, cavernas de aranha.
@@ -47,5 +47,5 @@ Escala: 1 tile = 0,6 bloco e o mundo é uma ilha de 256x256 (o mundo pequeno da 
 
 ## Em aberto com o dono
 - Bug do verme/subsolo: causa raiz corrigida (chunk gerado na fila), mas o dono ainda não conseguiu verificar.
-- Pedir playtest da revisão pré-Hardmode (2ª parte: espera de 10 s ao morrer, baús de superfície — **mundo novo**, Giant Worm/Devourer/Blood Crawler/Face Monster/Mother Slime/Undead Miner, Anvil no Merchant) e da 1ª: regeneração de vida (agora pela fórmula da wiki: parado e sem apanhar ~2/s aos 60 s), corações e estrelas dos inimigos, moedas que caem ao morrer, Eater of Worlds com 67 segmentos (**conferir o FPS**; o número é `worm.segments` em `enemies.json`), Skeletron alternando mãos e giro, bichos das cavernas/submundo/meteorito, tijolos do dungeon (agora pedem a Molten, 100%).
+- Pedir playtest (3ª parte: conjuradores — Dark Caster no dungeon, Fire Imp no submundo, Tim raro nas cavernas; caveiras teleguiadas do Skeletron abaixo de 75% da vida) e da revisão pré-Hardmode (2ª parte: espera de 10 s ao morrer, baús de superfície — **mundo novo**, Giant Worm/Devourer/Blood Crawler/Face Monster/Mother Slime/Undead Miner, Anvil no Merchant) e da 1ª: regeneração de vida (agora pela fórmula da wiki: parado e sem apanhar ~2/s aos 60 s), corações e estrelas dos inimigos, moedas que caem ao morrer, Eater of Worlds com 67 segmentos (**conferir o FPS**; o número é `worm.segments` em `enemies.json`), Skeletron alternando mãos e giro, bichos das cavernas/submundo/meteorito, tijolos do dungeon (agora pedem a Molten, 100%).
 - Pedir playtest do que mudou antes: Configurações, cartões do menu, inimigos com sprite, "Reiniciar mundo" (F9).

@@ -38,6 +38,9 @@ var follow: Node3D = null
 var heading := Vector3.ZERO
 var summoned_timer := 3.0   # king slime: espera até soltar mais um slime
 var teleport_timer := 9.0
+var skull_timer := 1.33     # skeletron: espera até a próxima caveira
+var shots := 0            # conjurador: esferas que faltam depois do teleporte
+var shot_timer := 0.0
 var spin_timer := 13.33   # skeletron: segundos até trocar de fase (mãos ↔ giro)
 var angle := 0.0    # creeper: fase da órbita em volta do cérebro (follow = o cérebro)
 
@@ -49,6 +52,8 @@ func stats() -> void:
 	defense = def.defense
 	half = def.size[0] / 2.0
 	tall = def.size[1]
+	if def.ai == "caster":
+		timer = 2.5   # wiki: teleporta 2,5 s depois de nascer
 
 
 func _ready() -> void:
@@ -134,6 +139,8 @@ func think(delta: float) -> void:
 			skeletron(delta, to)
 		"wall":
 			wall(delta, flat)
+		"caster":
+			caster(delta)
 		"npc":   # fica parado e vira para o jogador quando ele chega perto
 			velocity.x = 0.0
 			velocity.z = 0.0
@@ -286,6 +293,13 @@ func skeletron(delta: float, to: Vector3) -> void:
 	if phase == 2:
 		velocity = velocity.lerp(to.normalized() * def.speed * 1.4, delta * 3.0)
 		return
+	# wiki: com uma mão morta ou abaixo de 75% da vida, solta uma caveira teleguiada a cada ~1,33 s (0,67 s sem as mãos); não atira girando
+	var hands: int = entities.enemies.filter(func(e): return e.def.name == "skeletron_hand").size()
+	if hands < def.hands or hp < def.life * 0.75:
+		skull_timer -= delta
+		if skull_timer <= 0.0:
+			skull_timer = 1.33 if hands > 0 else 0.67
+			entities.spawn_projectile("skull_bolt", position + Vector3.UP * tall * 0.4, to, 8.0, 34, 0.0)
 	var t := Time.get_ticks_msec() / 1000.0
 	if mode == "dash":
 		if timer <= 0:
@@ -320,6 +334,47 @@ func wall(delta: float, flat: Vector3) -> void:
 		entities.spawn_enemy(entities.def_named(def.minion), position + Vector3.UP * tall * 0.3 + flat * 3.0)
 	if position.distance_to(p.position) > 150.0:
 		entities.remove_enemy(self)
+
+
+# Conjurador (wiki Caster AI: Dark Caster, Tim, Fire Imp): parado; 2,5 s depois de nascer e a cada 10,8 s teleporta para um ponto livre perto do jogador e
+# solta 3 esferas (def.shoot) com 1,67 s entre elas; levar um golpe cancela os tiros e adia o teleporte para 4,2 s.
+# ponytail: as esferas atravessam blocos e o jogador não consegue destruí-las (na wiki um golpe as destrói).
+func caster(delta: float) -> void:
+	velocity.x = 0.0
+	velocity.z = 0.0
+	timer -= delta
+	var p: Node3D = entities.player
+	if timer <= 0.0:
+		timer = 10.83
+		shots = 0
+		if _blink(p.position):
+			shots = int(def.shoot.get("count", 3))
+			shot_timer = 1.67
+	if shots > 0:
+		shot_timer -= delta
+		if shot_timer <= 0.0:
+			shot_timer = 1.67
+			shots -= 1
+			var from := position + Vector3.UP * tall * 0.7
+			entities.spawn_projectile(def.shoot.projectile, from, p.position + Vector3.UP - from, def.shoot.speed, def.shoot.damage, 0.0)
+
+
+# Teleporta para o chão livre (3 de altura) a 6-12 blocos do alvo, na altura dele ±6. false = não achou lugar.
+func _blink(target: Vector3) -> bool:
+	var world: Node3D = entities.world
+	for attempt in 20:
+		var a := rng.randf() * TAU
+		var d := rng.randf_range(6.0, 12.0)
+		var x := floori(target.x + cos(a) * d)
+		var z := floori(target.z + sin(a) * d)
+		for y in range(floori(target.y) + 6, floori(target.y) - 7, -1):
+			if Blocks.solid[world.get_block(x, y - 1, z)] and not Blocks.solid[world.get_block(x, y, z)] and not Blocks.solid[world.get_block(x, y + 1, z)] and not Blocks.solid[world.get_block(x, y + 2, z)]:
+				Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 14)
+				position = Vector3(x + 0.5, y, z + 0.5)
+				velocity = Vector3.ZERO
+				Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 14)
+				return true
+	return false
 
 
 func _teleport(p: Node3D, dist: float) -> void:
@@ -463,6 +518,9 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false) -> int:
 		Fx.sparks(entities, position + Vector3.UP * tall * 0.5, Color(0.8, 0.8, 1.0), 4, dir)
 		return 0
 	var taken := maxi(1, dmg - ceili(defense / 2.0)) * (2 if crit else 1)
+	if def.ai == "caster":   # golpe: cancela os tiros e adia o teleporte
+		timer = 4.17
+		shots = 0
 	hp -= taken
 	flash = FLASH_TIME
 	Sfx.play(entities, "die" if hp <= 0 else "hit", position)
