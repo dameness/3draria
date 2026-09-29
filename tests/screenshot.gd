@@ -94,6 +94,12 @@ const SHOTS := [
 	{"name": "mao_espingarda", "item": "musket", "look": Vector2(0.5, -0.12)},
 	{"name": "mao_space_gun", "item": "space_gun", "look": Vector2(0.5, -0.12)},
 	{"name": "mao_vilethorn", "item": "vilethorn", "look": Vector2(0.5, -0.12)},
+	# projétil a caminho do monstro (câmera de lado): "fire" = distância (em blocos) do alvo em que o voo congela
+	{"name": "proj_flecha", "item": "copper_bow", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "proj_bala", "item": "musket", "ammo": "musket_ball", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "proj_terra", "item": "terra_blade", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "proj_laser", "item": "space_gun", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "proj_faisca", "item": "wand_of_sparking", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "teste_spawn", "testworld": true, "look": Vector2(0, -0.12)},
 	{"name": "teste_baus", "testworld": true, "from": Vector3(0, 0, -2), "look": Vector2(0, -0.05)},
 	{"name": "teste_blocos", "testworld": true, "from": Vector3(0, 7, -9), "look": Vector2(0, -0.6), "creative": true},
@@ -500,6 +506,33 @@ func _setup(s: Dictionary) -> void:
 		player.rotation.y = s.look.x + 1.1   # a câmera de lado: a corrente não fica de ponta para o olhar
 		player.hook_time = 0.12   # congelado no meio do voo da corrente (a física do jogador fica parada para o print)
 		player.set_physics_process(false)
+	if s.has("fire"):   # dispara no 1º inimigo e congela o projétil a `fire` blocos dele; a câmera vai para o lado do voo
+		var t: Node3D = ent.enemies[0]
+		var aim_at: Vector3 = t.position + Vector3.UP * 0.8
+		var eye0: Vector3 = player.position + Vector3.UP * player.EYE
+		var dir: Vector3 = (aim_at - eye0).normalized()
+		var wd: Dictionary = Items.defs[Items.ids[s.item]]
+		player.inv.add(Items.ids[s.get("ammo", "wooden_arrow")], 50)
+		player.mana = 100.0
+		if wd.has("ammo"):
+			player.shoot(wd, eye0, dir)
+		elif wd.has("cost"):
+			player.cast(wd, dir)
+		else:
+			player.swing(wd, eye0, dir)
+		var pr: Node3D = ent.get_children().back()
+		var steps := 0
+		while is_instance_valid(pr) and pr.position.distance_to(aim_at) > s.fire and steps < 600:
+			pr._physics_process(1.0 / 60.0)
+			steps += 1
+		pr.set_physics_process(false)
+		player.creative = true
+		player.position = (eye0 + aim_at) / 2.0 + dir.cross(Vector3.UP).normalized() * 4.5 + Vector3.UP * 0.2 - Vector3.UP * player.EYE
+		var to: Vector3 = pr.position - player.eye()
+		player.rotation.y = atan2(-to.x, -to.z)
+		player.pitch = asin(clampf(to.y / to.length(), -1.0, 1.0))
+		player.cam.rotation.x = player.pitch
+		print("  projétil %s a %.1f blocos do alvo" % [pr.def.name, pr.position.distance_to(aim_at)])
 	if s.has("mine"):   # um bloco à frente, na mira, já com `mine` golpes
 		player.pitch = -0.75
 		player.cam.rotation.x = -0.75
