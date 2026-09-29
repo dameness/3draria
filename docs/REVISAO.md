@@ -14,7 +14,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | 3 | Ataque: use time, autoswing só onde a wiki diz, mira exata, tool speed | ✅ |
 | 4 | Danos da wiki (variância, crítico, defesa, recuo) + martelos | ✅ |
 | 5 | Voo: modo criativo (F) separado das asas (acessório) | ✅ |
-| 6 | Loot: baús por camada, Life Crystal, poções e buffs | ⬜ |
+| 6 | Loot: baús por camada, Life Crystal, poções e buffs | ✅ |
 | 7 | Mana e magia | ⬜ |
 | 8 | NPCs (Guide, Merchant, Nurse) | ⬜ |
 
@@ -252,7 +252,7 @@ Medido: pulo simples 1,52 blocos; segurando Espaço com as asas ~5,95 (26 quadro
 quadros de voo, sobe ~3-4 blocos a mais, planeio a 1/3, sem Espaço cai normal, tempo só gasta segurando, F liga/desliga o criativo, atravessa e não leva dano) e HUD
 (aviso e barra) na integração. Prints: `asas` (3ª pessoa de costas, batendo) e `criativo`.
 
-## 6 — Loot de cavernas/baús e consumíveis
+## 6 — Loot de cavernas/baús e consumíveis ✅
 
 **Wiki (Chest, Gold/Shadow Chest, Life Crystal, poções):** cada baú tem **1 item principal** (sorteado) + itens comuns sorteados com
 faixa de quantidade; Underground (Band of Regeneration, Magic Mirror, Cloud in a Bottle, Hermes Boots, Mace, Shoe Spikes — 1/6 cada;
@@ -276,6 +276,15 @@ poções, sem buffs (a GUI reserva a fileira e não há sistema). `MAX_HP` é co
 **Precisa de mundo novo** (geração de cristais/baús).
 **Teste/print:** `test_loot`: 1 principal exato por baú; frequências das faixas em 4000 baús; Life Crystal soma 20 e para em 400; Potion
 Sickness bloqueia cura por 60 s; buff expira. Prints `bau` (loot) e `cristal` (na caverna).
+
+**Feito:** `loot.json` + `loot.gd` (1 principal entre Band of Regeneration / Magic Mirror / Cloud in a Bottle / Hermes Boots, comuns por camada com conjuntos
+exclusivos; subsolo, cavernas e "lava" por altura; baús agora nascem nas 3 camadas). **Life Crystal**: bloco `crystal` (cruz brilhante, mira acerta, 1 golpe), ~55 por mundo,
+item +20 de vida máxima até 400 (`max_hp` no save; corações em 2 fileiras, minimapa desce). **Consumíveis**: Lesser Healing (50, Doença da poção 60 s), Ironskin,
+Regeneration, Swiftness, Mining, Archery (`buffs.json`, `Buffs`, ícones com tempo ao lado da hotbar, clique direito cancela, salvos no personagem), Recall Potion, Magic Mirror
+(teleporte para o spawn) e Cloud in a Bottle (pulo extra). Teclas H/Q cura, B buffs. **Orbes**: Musket / The Undertaker + 100 Musket Balls (1ª sempre, depois 20%);
+Vilethorn/Crimson Rod/Band of Starpower entram com a magia (item 7); Ball O' Hurt, Rotted Fork, Panic Necklace e pets ficam de fora. Shiny Red Balloon e Fledgling Wings
+são de ilhas no céu (Depois). Shine/Night Owl/Spelunker precisam de luz dinâmica (Depois). Testes: `test_consumables`, `test_life_crystal`, `test_loot`; prints `pocoes`,
+`pocoes_inv`, `cristal`, `bau`. **Precisa de mundo novo** (cristais e baús por camada).
 
 ## 7 — Mana e magia
 

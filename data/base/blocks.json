@@ -61,5 +61,6 @@
 	{"name": "palladium_ore", "mine": 0.5, "power": 100, "icon": "palladium_ore_item", "tiles": {"all": "palladium_ore"}},
 	{"name": "pearlstone", "mine": 0.5, "icon": "pearlstone_item", "tiles": {"all": "pearlstone"}},
 	{"name": "hallowed_grass", "grass": true, "mine": 2, "drop": "dirt", "tiles": {"top": "hallowed_grass_top", "side": "hallowed_grass_side", "bottom": "dirt"}},
-	{"name": "sapling", "solid": false, "shape": "plant", "breakable": false, "tiles": {"all": "sapling"}}
+	{"name": "sapling", "solid": false, "shape": "plant", "breakable": false, "tiles": {"all": "sapling"}},
+	{"name": "life_crystal", "mine": 10, "solid": false, "shape": "crystal", "light": 5, "item": false, "drop": "life_crystal", "tiles": {"all": "life_crystal"}}
 ]

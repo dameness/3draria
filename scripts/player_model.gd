@@ -223,7 +223,9 @@ func _process(delta: float) -> void:
 	parts.head.rotation.x = player.pitch * 0.6
 	var id: int = player.held()
 	var st := HeldItem.style(id) if id != -1 else ""
-	var dur: float = Items.use_dur(id) if id != -1 else 0.25
+	var dur: float = 0.25
+	if id != -1:
+		dur = player.get("use_len") if player.get("use_len") != null else Items.use_dur(id)
 	var use: float = clampf(1.0 - player.cooldown / dur, 0, 1) if player.cooldown > 0 else 1.0
 	var rest: float = (swing * 0.5 if grounded and not swimming else arm)
 	if id != -1:   # com item na mão o braço fica à frente

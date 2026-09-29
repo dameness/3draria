@@ -47,6 +47,7 @@ var WOOD: int
 var LEAVES: int
 var ALTAR: int
 var CHEST: int
+var CRYSTAL: int
 var SAND: int
 var WATER: int
 var LAVA: int
@@ -99,6 +100,7 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	LEAVES = Blocks.ids.leaves
 	ALTAR = Blocks.ids.demon_altar
 	CHEST = Blocks.ids.chest
+	CRYSTAL = Blocks.ids.life_crystal
 	SAND = Blocks.ids.sand
 	WATER = Blocks.ids.water
 	LAVA = Blocks.ids.lava
@@ -226,6 +228,8 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_altar(d, rng)
 	rng.seed = hash([seed, cx, cz, "chest"])
 	_chest(d, rng)
+	rng.seed = hash([seed, cx, cz, "crystal"])
+	_crystal(d, rng)
 	if hardmode:
 		hardmode_pass(d, cx, cz)
 	return d
@@ -417,17 +421,33 @@ func _altar(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
 				return
 
 
-# Baú de tesouro no chão de uma caverna (o conteúdo sai de World.chest_at na primeira vez que abre).
+# Baú de tesouro no chão de uma caverna, numa das camadas (subsolo, cavernas, perto do submundo); o conteúdo sai de World.chest_at (Loot) na
+# primeira vez que abre.
 func _chest(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
 	if rng.randf() > 0.3:
+		return
+	var band: Array = [[CAVERN_TOP + 1, SURFACE - 14], [UNDERWORLD_TOP + 12, CAVERN_TOP], [UNDERWORLD_TOP + 2, UNDERWORLD_TOP + 11]][rng.randi() % 3]
+	for attempt in 8:
+		var x := rng.randi_range(1, CHUNK - 2)
+		var z := rng.randi_range(1, CHUNK - 2)
+		for y in range(band[1], band[0] - 1, -1):
+			var i := x + z * CHUNK + y * CHUNK * CHUNK
+			if d[i] == AIR and d[i + CHUNK * CHUNK] == AIR and (d[i - CHUNK * CHUNK] == STONE or d[i - CHUNK * CHUNK] == DIRT):
+				d[i] = CHEST
+				return
+
+
+# Life Crystal no chão de uma caverna (~1 a cada 3 chunks), do subsolo às cavernas; nunca no submundo nem em cima (wiki Life Crystal).
+func _crystal(d: PackedByteArray, rng: RandomNumberGenerator) -> void:
+	if rng.randf() > 0.34:
 		return
 	for attempt in 8:
 		var x := rng.randi_range(1, CHUNK - 2)
 		var z := rng.randi_range(1, CHUNK - 2)
-		for y in range(CAVERN_TOP, UNDERWORLD_TOP + 1, -1):
+		for y in range(SURFACE - 14, UNDERWORLD_TOP + 2, -1):
 			var i := x + z * CHUNK + y * CHUNK * CHUNK
-			if d[i] == AIR and d[i + CHUNK * CHUNK] == AIR and d[i - CHUNK * CHUNK] == STONE:
-				d[i] = CHEST
+			if d[i] == AIR and (d[i - CHUNK * CHUNK] == STONE or d[i - CHUNK * CHUNK] == DIRT):
+				d[i] = CRYSTAL
 				return
 
 

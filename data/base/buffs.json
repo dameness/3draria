@@ -1,0 +1,8 @@
+{
+	"ironskin": {"label": "Ironskin", "tip": "Aumenta a defesa em 8", "defense": 8, "icon": "ironskin_potion"},
+	"regeneration": {"label": "Regeneração", "tip": "Regenera 2 de vida por segundo", "regen": 2.0, "icon": "regeneration_potion"},
+	"swiftness": {"label": "Rapidez", "tip": "25% mais velocidade de movimento", "speed": 0.25, "icon": "swiftness_potion"},
+	"mining": {"label": "Mineração", "tip": "25% mais velocidade de mineração", "mining": 0.25, "icon": "mining_potion"},
+	"archery": {"label": "Arquearia", "tip": "10% mais dano de arco e 20% mais velocidade da flecha", "arrow_damage": 0.1, "arrow_speed": 0.2, "icon": "archery_potion"},
+	"potion_sickness": {"label": "Doença da poção", "tip": "Não pode usar mais poções de cura", "debuff": true, "icon": "lesser_healing_potion"}
+}

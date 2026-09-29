@@ -2,7 +2,8 @@ extends Node3D
 # Jogador em 1ª pessoa com colisão AABB contra os voxels (VoxelBody).
 # Teclas como no Terraria (wiki Controls): WASD anda, Espaço pula, 1-0 ou a roda escolhem o slot, Esc abre/fecha o inventário (a pausa é o botão
 # Configurações dele), Tab/M/+/- são do minimapa (minimap.gd), Shift segurado = Auto Select (a ferramenta certa para o alvo, senão a tocha).
-# Botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira, bloco coloca); o direito interage (baú, NPC).
+# Botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira, bloco coloca, poção bebe); o direito interage (baú, NPC).
+# H/Q bebem a poção de cura, B as de buff (wiki Controls).
 # Só do jogo (não do Terraria): F liga/desliga o modo criativo (atravessa blocos, invulnerável; Espaço sobe, C desce), V troca 1ª/3ª pessoa,
 # F5 salva (também salva ao fechar), F8 dá o kit de teste. Voar de verdade é com asas (acessório): segurar Espaço no ar.
 
@@ -28,7 +29,10 @@ const SWIM_DEPTH := 1.0    # com mais líquido que isto acima dos pés (até a c
 const HOP_DEPTH := 1.5     # perto da superfície, Espaço junto de uma margem dá um pulo inteiro para sair da água
 const LAVA_DAMAGE := 50    # por golpe (há invencibilidade entre um e outro), sem tirar a armadura
 const METEORITE_BURN := 4  # por golpe (há invencibilidade entre um e outro)
-const MAX_HP := 100
+const MAX_HP := 100          # vida máxima inicial (max_hp sobe com Life Crystals)
+const MAX_HP_CAP := 400      # 20 Life Crystals de 20 (wiki)
+const SICKNESS := 60.0       # Doença da poção depois de uma cura (wiki)
+const AIR_JUMP := 0.87       # Cloud in a Bottle: o pulo extra tem ~75% da altura do primeiro (0,87² da velocidade)
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
 const REGEN_DELAY := 5.0
 const MINE_DECAY := 2.5        # sem golpear o bloco por este tempo, as rachaduras somem
@@ -67,6 +71,12 @@ var third_person := false     # V alterna
 var message := ""             # aviso curto para o HUD
 var message_until := 0
 var hp := float(MAX_HP)
+var max_hp := MAX_HP
+var buffs := {}               # nome (buffs.json) -> segundos que faltam
+var recall_left := 0.0        # Magic Mirror / Recall Potion: segundos até o teleporte para casa
+var air_jump_ready := false   # o pulo extra do Cloud in a Bottle ainda não foi usado neste voo
+var jump_was := false         # Espaço estava apertado no passo anterior (o pulo extra pede um aperto novo)
+var use_len := 0.25           # duração do uso em andamento (a animação da mão usa)
 var iframes := 0.0
 var since_hit := 99.0
 var cooldown := 0.0
@@ -165,6 +175,10 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventKey and e.pressed and not e.echo:
 		if e.physical_keycode >= KEY_0 and e.physical_keycode <= KEY_9:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
+		elif e.physical_keycode == KEY_H or e.physical_keycode == KEY_Q:
+			quick_heal()
+		elif e.physical_keycode == KEY_B:
+			quick_buff()
 		elif e.physical_keycode == KEY_F:
 			creative = not creative
 		elif e.physical_keycode == KEY_V:
@@ -274,13 +288,23 @@ func tick(delta: float) -> void:
 	if mine_idle > MINE_DECAY:
 		mine_damage = 0.0
 		mine_pos = Vector3i(-1, -1, -1)
+	for n in buffs.keys():
+		buffs[n] -= delta
+		if buffs[n] <= 0.0:
+			buffs.erase(n)
+	if recall_left > 0.0:
+		recall_left -= delta
+		if entities:
+			Fx.sparks(entities, position + Vector3(0, 1.0, 0), Color("#a8e8f8"), 2, Vector3.UP)
+		if recall_left <= 0.0:
+			_teleport_home()
 	since_hit += delta
 	if since_hit > REGEN_DELAY:
-		hp = minf(hp + delta * (1.0 + inv.acc_sum("regen")), MAX_HP)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
+		hp = minf(hp + delta * (1.0 + inv.acc_sum("regen") + buff_sum("regen")), max_hp)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
 
 
 func step(delta: float, wish: Vector3, jump: bool) -> void:
-	var boots := 1.0 + inv.acc_sum("speed")
+	var boots := 1.0 + inv.acc_sum("speed") + buff_sum("speed")
 	var speed := WALK * boots
 	if creative:
 		velocity = Vector3.ZERO
@@ -314,6 +338,15 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 			velocity.y = maxf(velocity.y - GRAVITY * (GLIDE if gliding else 1.0) * delta, -(GLIDE_FALL if gliding else FALL_MAX))
 		if jump and on_floor:
 			velocity.y = JUMP * (1.0 + inv.acc_sum("jump"))
+		if on_floor or depth > 0.0:
+			air_jump_ready = inv.has_acc("double_jump")
+		elif jump and not jump_was and air_jump_ready:   # Cloud in a Bottle: um pulo a mais no ar, com um aperto novo
+			air_jump_ready = false
+			velocity.y = JUMP * AIR_JUMP * (1.0 + inv.acc_sum("jump"))
+			if entities:
+				Fx.puff(entities, position + Vector3(0, 0.2, 0), Color("#e8f0ff"), 8)
+				Sfx.play(entities, "flap", position, -6.0, 1.3)
+	jump_was = jump
 	if depth > 0.0 and kind == Blocks.ids.lava:
 		hurt(LAVA_DAMAGE, Vector3.ZERO)
 	fall_speed = minf(velocity.y, fall_speed)
@@ -406,7 +439,7 @@ func say(text: String) -> void:
 func hurt(damage: int, dir: Vector3) -> int:
 	if iframes > 0 or creative:
 		return 0
-	var taken := maxi(1, damage - ceili(inv.defense() / 2.0))
+	var taken := maxi(1, damage - ceili(defense() / 2.0))
 	hp -= taken
 	if entities:
 		entities.spawn_text(position + Vector3.UP * (TALL + 0.4), str(taken), Color("#ff5058"))
@@ -417,13 +450,115 @@ func hurt(damage: int, dir: Vector3) -> int:
 	knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
 	velocity.y = 5.0
 	if hp <= 0:
-		hp = MAX_HP
+		hp = max_hp
 		death = position
 		position = spawn
 		velocity = Vector3.ZERO
 		knock = Vector3.ZERO
 		say("você morreu")
 	return taken
+
+
+func defense() -> int:
+	return inv.defense() + int(buff_sum("defense"))
+
+
+# Soma do efeito `stat` dos buffs ativos (buffs.json).
+func buff_sum(stat: String) -> float:
+	var t := 0.0
+	for n in buffs:
+		t += Buffs.defs[n].get(stat, 0.0)
+	return t
+
+
+func has_buff(name: String) -> bool:
+	return buffs.has(name)
+
+
+# Beber de novo renova o tempo; não soma.
+func add_buff(name: String, seconds: float) -> void:
+	buffs[name] = maxf(buffs.get(name, 0.0), seconds)
+
+
+# Tempo de um uso: o do item; a picareta com o buff de Mineração usa ⌊tool speed × (1 − bônus)⌋ quadros (wiki Tool speed; o bônus vale só para picaretas, até 70%).
+func use_time(id: int) -> float:
+	var t := Items.use_dur(id)
+	if Items.pick_power[id] > 0 and has_buff("mining"):
+		t = floorf(t * 60.0 * (1.0 - minf(buff_sum("mining"), 0.7))) / 60.0
+	return t
+
+
+# Poção ou espelho do slot i faz o efeito e, sendo consumível, gasta um. false = não deu (Doença da poção).
+func consume(i: int) -> bool:
+	var id: int = inv.item[i]
+	var d: Dictionary = Items.defs[id]
+	if d.has("heal"):
+		if has_buff("potion_sickness"):
+			say("Doença da poção: espere para beber outra de cura")
+			return false
+		hp = minf(hp + d.heal, max_hp)
+		if entities:
+			entities.spawn_text(position + Vector3.UP * (TALL + 0.4), "+%d" % d.heal, Color("#5aff6a"))
+		add_buff("potion_sickness", SICKNESS)
+	if d.has("life"):   # Life Crystal: +20 de vida máxima (e de vida), até 400
+		if max_hp >= MAX_HP_CAP:
+			say("a vida máxima já é %d" % MAX_HP_CAP)
+			return false
+		max_hp = mini(max_hp + int(d.life), MAX_HP_CAP)
+		hp = minf(hp + d.life, max_hp)
+		if entities:
+			Fx.puff(entities, position + Vector3(0, 1.0, 0), Color("#ff6a8a"), 12)
+		say("vida máxima: %d" % max_hp)
+	if d.has("buff"):
+		add_buff(d.buff, d.buff_time)
+	if d.has("recall"):
+		recall_left = d.recall
+		say("indo para casa...")
+	if d.get("consumable", false):
+		Sfx.play(entities, "drink", position + Vector3.UP, -4.0)
+		inv.take_one(i)
+	return true
+
+
+# H/Q (wiki Controls): bebe a poção de cura que cobre o que falta com o menor desperdício; se nenhuma cobre, a maior.
+func quick_heal() -> void:
+	var missing := max_hp - hp
+	var best := -1
+	for i in Inventory.SIZE:
+		var id: int = inv.item[i]
+		if id == -1 or not Items.defs[id].has("heal"):
+			continue
+		var h: int = Items.defs[id].heal
+		var b: int = Items.defs[inv.item[best]].heal if best != -1 else 0
+		if best == -1 or (h >= missing and (b < missing or h < b)) or (h < missing and b < missing and h > b):
+			best = i
+	if best == -1:
+		say("sem poção de cura")
+	else:
+		consume(best)
+
+
+# B: bebe uma poção de cada buff que não está ativo.
+func quick_buff() -> void:
+	var drank := 0
+	for i in Inventory.SIZE:
+		var id: int = inv.item[i]
+		if id != -1 and Items.defs[id].has("buff") and not has_buff(Items.defs[id].buff):
+			drank += int(consume(i))
+	if drank == 0:
+		say("sem poção de buff nova")
+
+
+# Teleporte para casa (o spawn): as partículas saem de onde estava e chegam onde volta.
+func _teleport_home() -> void:
+	if entities:
+		Fx.puff(entities, position + Vector3(0, 1.0, 0), Color("#a8e8f8"), 16)
+		Sfx.play(entities, "coin", position, -4.0, 0.7)
+	position = spawn
+	velocity = Vector3.ZERO
+	knock = Vector3.ZERO
+	if entities:
+		Fx.puff(entities, position + Vector3(0, 1.0, 0), Color("#a8e8f8"), 16)
 
 
 # Botão esquerdo (wiki Autoswing): cada clique usa o item uma vez (o clique durante o fim do golpe anterior espera até CLICK_BUFFER);
@@ -442,9 +577,13 @@ func use_item() -> void:
 	if id == -1:
 		return
 	var d: Dictionary = Items.defs[id]
-	cooldown = Items.use_dur(id)
+	cooldown = use_time(id)
+	use_len = cooldown
 	if d.has("summon"):
 		summon(d)
+		return
+	if d.has("heal") or d.has("buff") or d.has("recall") or d.has("life"):
+		consume(slot)
 		return
 	if d.has("ammo"):
 		shoot(d, eye(), -cam.global_basis.z)
@@ -543,7 +682,11 @@ func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
 		return
 	var dmg: int = d.damage + Items.defs[ammo].get("damage", 0)
 	var kb: float = d.knockback + Items.defs[ammo].get("knockback", 0.0)   # wiki Knockback: arma + munição
-	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, d.shoot_speed, dmg, kb)
+	var speed: float = d.shoot_speed
+	if d.ammo == "arrow":   # Arquearia: +10% de dano e +20% de velocidade nas flechas
+		dmg = roundi(dmg * (1.0 + buff_sum("arrow_damage")))
+		speed *= 1.0 + buff_sum("arrow_speed")
+	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, speed, dmg, kb)
 
 
 # Um golpe da picareta no bloco da mira, como no Terraria: cada golpe soma ao bloco (poder da picareta × dureza dele) e ele racha
@@ -602,7 +745,7 @@ func break_target() -> void:
 	world.set_block(p.x, p.y, p.z, 0)
 	world.chests.erase(p)
 	if b == Blocks.ids.shadow_orb or b == Blocks.ids.crimson_heart:
-		entities.orb_broken(b)
+		entities.orb_broken(b, Vector3(p) + Vector3(0.5, 0.2, 0.5))
 	mine_damage = 0.0
 	mine_pos = Vector3i(-1, -1, -1)
 	if Items.drop[b] != -1:

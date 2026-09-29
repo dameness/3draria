@@ -44,8 +44,11 @@ const SHOTS := [
 	{"name": "flash", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "hurt": true},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "asas", "third": true, "look": Vector2(0.4, -0.2), "wings": true, "item": "copper_pickaxe"},
+	{"name": "pocoes", "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "ironskin_potion", "regeneration_potion", "swiftness_potion", "mining_potion", "archery_potion", "recall_potion", "magic_mirror"], "buffs": ["ironskin", "regeneration", "swiftness", "potion_sickness"], "hp": 60},
+	{"name": "pocoes_inv", "inventory": true, "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "cloud_in_a_bottle", "life_crystal"], "buffs": ["ironskin", "potion_sickness"], "gear": true, "max_hp": 260},
 	{"name": "criativo", "look": Vector2(0.4, -0.3), "up": 6.0},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
+	{"name": "cristal", "cave": true, "crystal": true, "look": Vector2(0.15, -0.3), "item": "copper_pickaxe", "time": 1100.0},
 	{"name": "caverna", "cave": true, "look": Vector2(0.3, -0.25), "item": "copper_pickaxe"},
 	{"name": "noite_tochas", "time": 1100.0, "torches": true, "look": Vector2(0, -0.3), "third": true},
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
@@ -258,6 +261,10 @@ func _setup(s: Dictionary) -> void:
 					world.set_block(sp.x + x, sp.y - 14 + y, sp.z + z, 0)
 		for t in [Vector3i(-4, 0, -6), Vector3i(4, 0, -6), Vector3i(0, 0, -2)]:
 			world.set_block(sp.x + t.x, sp.y - 14, sp.z + t.z, Blocks.ids.torch)
+		if s.get("crystal", false):   # Life Crystals brilhando no chão e um baú
+			for t in [Vector3i(-2, 0, -3), Vector3i(3, 0, -4), Vector3i(1, 0, -6)]:
+				world.set_block(sp.x + t.x, sp.y - 14, sp.z + t.z, Blocks.ids.life_crystal)
+			world.set_block(sp.x - 3, sp.y - 14, sp.z - 1, Blocks.ids.chest)
 		player.position = Vector3(sp.x + 0.5, sp.y - 14, sp.z + 3.5)
 	if s.get("torches", false):
 		for t in [Vector3i(-2, 0, -4), Vector3i(3, 0, -5), Vector3i(0, 0, -9)]:
@@ -288,12 +295,20 @@ func _setup(s: Dictionary) -> void:
 		player.inv.add(Items.ids.torch, 40)
 		player.inv.add(Items.ids.gold_bar, 12)
 		player.inv.fav[3] = 1
+	for n in s.get("give", []):
+		player.inv.add(Items.ids[n], 3 if n != "magic_mirror" and n != "cloud_in_a_bottle" else 1)
+	player.buffs.clear()
+	var bi := 0
+	for n in s.get("buffs", []):
+		player.add_buff(n, 470.0 - bi * 130.0)
+		bi += 1
 	if s.get("wings", false):
 		player.inv.acc[0] = Items.ids.fledgling_wings
 		player.flight_left = 0.2   # a barra de voo aparece
-	player.hp = s.get("hp", 100)
+	player.max_hp = s.get("max_hp", 100)
+	player.hp = s.get("hp", player.max_hp)
 	if s.get("chest", false):
-		var c: Dictionary = world.chest_at(Vector3i(1, 2, 3))
+		var c: Dictionary = world.chest_at(Vector3i(1, 40, 3))
 		main.get_node("HUD").open_chest(c)
 	player.inv.add(Items.ids.wood, 25)
 	player.inv.add(Items.ids.stone, 40)

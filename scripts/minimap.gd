@@ -17,6 +17,7 @@ var player: Node3D
 var tex: ImageTexture
 var top := PackedByteArray()   # altura do topo de cada coluna na última leitura: a próxima começa perto dela
 var style := STYLE_PORTRAIT
+var corner_y := 74.0        # onde o retrato começa (a HUD desce quando a vida ocupa duas fileiras de corações)
 var full := false
 var zoom := 1
 var row := 0
@@ -55,8 +56,8 @@ func _layout() -> void:
 	anchor_bottom = 0.0 if corner else 1.0
 	offset_left = -PORTRAIT - 14.0 if corner else 0.0
 	offset_right = -14.0 if corner else 0.0
-	offset_top = 74.0 if corner else 0.0
-	offset_bottom = 74.0 + PORTRAIT if corner else 0.0
+	offset_top = corner_y if corner else 0.0
+	offset_bottom = corner_y + PORTRAIT if corner else 0.0
 	modulate.a = 0.6 if style == STYLE_OVERLAY and not full else 1.0
 	visible = style != STYLE_HIDDEN or full
 	frame.visible = corner

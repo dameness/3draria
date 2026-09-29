@@ -44,6 +44,8 @@ func _ready() -> void:
 	Blocks.load_pack()
 	Items.load_pack()
 	Crafting.load_pack()
+	Buffs.load_pack()
+	Loot.load_pack()
 	gen = WorldGen.new(world_seed)
 	var atlas_image := Atlas.build(Blocks.textures)
 	Blocks.tile_colors = Atlas.tile_colors(atlas_image)
@@ -166,27 +168,12 @@ func start_hardmode() -> void:
 		_rebuild(k)
 
 
-# Conteúdo do baú em p; na primeira vez sorteia o tesouro (determinístico pela seed e posição): acessório, flechas, tochas, minério.
+# Conteúdo do baú em p; na primeira vez sorteia o tesouro pela camada (Loot; determinístico pela seed e posição).
 func chest_at(p: Vector3i) -> Dictionary:
 	if not chests.has(p):
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash([world_seed, p.x, p.y, p.z])
-		var c := {"item": PackedInt32Array(), "count": PackedInt32Array()}
-		c.item.resize(40)
-		c.item.fill(-1)
-		c.count.resize(40)
-		var loot: Array = [["hermes_boots", 1, 1, 0.12], ["shiny_red_balloon", 1, 1, 0.12], ["band_of_regeneration", 1, 1, 0.12],
-			["wooden_arrow", 25, 60, 0.5], ["torch", 8, 20, 0.6], ["iron_bar", 3, 8, 0.4], ["gold_bar", 2, 5, 0.25], ["copper_bar", 4, 10, 0.4]]
-		var k := 0
-		for l in loot:
-			if rng.randf() < l[3]:
-				c.item[k] = Items.ids[l[0]]
-				c.count[k] = rng.randi_range(l[1], l[2])
-				k += 1
-		if k == 0:   # baú nunca vem vazio
-			c.item[0] = Items.ids.torch
-			c.count[0] = 10
-		chests[p] = c
+		chests[p] = Loot.chest(Loot.layer_of(p.y), rng)
 	return chests[p]
 
 

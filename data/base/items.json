@@ -123,5 +123,18 @@
 	{"name": "tungsten_hammer", "icon": "tungsten_hammer", "hammer_power": 50, "use_time": 0.467, "tool_speed": 25, "autoswing": true, "stack": 1, "damage": 9, "reach": 2.2, "knockback": 5.5},
 	{"name": "gold_hammer", "icon": "gold_hammer", "hammer_power": 55, "use_time": 0.467, "tool_speed": 23, "autoswing": true, "stack": 1, "damage": 9, "reach": 2.2, "knockback": 5.5},
 	{"name": "platinum_hammer", "icon": "platinum_hammer", "hammer_power": 59, "use_time": 0.45, "tool_speed": 21, "autoswing": true, "stack": 1, "damage": 10, "reach": 2.2, "knockback": 5.5},
-	{"name": "fledgling_wings", "icon": "fledgling_wings", "stack": 1, "rarity": 0, "accessory": {"wings": {"time": 0.42, "lift": 9.7}}}
+	{"name": "fledgling_wings", "icon": "fledgling_wings", "stack": 1, "rarity": 0, "accessory": {"wings": {"time": 0.42, "lift": 9.7}}},
+	{"name": "lesser_healing_potion", "icon": "lesser_healing_potion", "consumable": true, "heal": 50, "use_time": 0.283, "rarity": 0},
+	{"name": "ironskin_potion", "icon": "ironskin_potion", "consumable": true, "buff": "ironskin", "buff_time": 480, "use_time": 0.283, "rarity": 1},
+	{"name": "regeneration_potion", "icon": "regeneration_potion", "consumable": true, "buff": "regeneration", "buff_time": 480, "use_time": 0.283, "rarity": 1},
+	{"name": "swiftness_potion", "icon": "swiftness_potion", "consumable": true, "buff": "swiftness", "buff_time": 480, "use_time": 0.283, "rarity": 1},
+	{"name": "mining_potion", "icon": "mining_potion", "consumable": true, "buff": "mining", "buff_time": 600, "use_time": 0.283, "rarity": 1},
+	{"name": "archery_potion", "icon": "archery_potion", "consumable": true, "buff": "archery", "buff_time": 480, "use_time": 0.283, "rarity": 1},
+	{"name": "recall_potion", "icon": "recall_potion", "consumable": true, "recall": 0.167, "use_time": 0.5, "rarity": 1},
+	{"name": "magic_mirror", "icon": "magic_mirror", "recall": 0.75, "use_time": 1.5, "stack": 1, "rarity": 1},
+	{"name": "cloud_in_a_bottle", "icon": "cloud_in_a_bottle", "stack": 1, "rarity": 1, "accessory": {"double_jump": true}},
+	{"name": "life_crystal", "icon": "life_crystal_item", "consumable": true, "life": 20, "use_time": 0.5, "rarity": 1},
+	{"name": "musket_ball", "icon": "musket_ball", "damage": 7, "knockback": 2, "ammo_class": "bullet", "projectile": "musket_ball", "sprite_angle": 0},
+	{"name": "musket", "icon": "musket", "damage": 31, "use_time": 0.533, "ammo": "bullet", "shoot_speed": 33.75, "knockback": 5.25, "stack": 1, "rarity": 1, "sprite_angle": 0},
+	{"name": "the_undertaker", "icon": "the_undertaker", "damage": 19, "use_time": 0.333, "ammo": "bullet", "shoot_speed": 22.5, "knockback": 2, "stack": 1, "rarity": 1, "sprite_angle": 0}
 ]

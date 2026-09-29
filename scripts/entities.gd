@@ -315,8 +315,12 @@ func boss_life() -> int:
 
 
 # Um orbe quebrado (Shadow Orb / Crimson Heart): a cada 3º acorda o chefe do bioma.
-func orb_broken(id: int) -> void:
+func orb_broken(id: int, at := Vector3.ZERO) -> void:
 	world.orbs_broken += 1
+	var gun: String = "musket" if id == Blocks.ids.shadow_orb else "the_undertaker"   # wiki: a 1ª orbe sempre dá a arma + 100 balas; nas outras 20%
+	if world.orbs_broken == 1 or rng.randf() < 0.2:
+		spawn_drop(Items.ids[gun], 1, at + Vector3(0, 0.3, 0))
+		spawn_drop(Items.ids.musket_ball, 100, at + Vector3(0.3, 0.3, 0))
 	if world.orbs_broken % 3 != 0:
 		player.say("você sente uma presença maligna (%d/3)" % (world.orbs_broken % 3))
 	elif boss == null:

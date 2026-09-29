@@ -280,6 +280,12 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 				var sh: float = SHADE[f]
 				_face(a, pos + Vector3(0.44, 0, 0.44), f, Vector3(0.12, 0.55, 0.12), stick, tw, Color(sh, sh, 0))
 				_face(a, pos + Vector3(0.41, 0.55, 0.41), f, Vector3(0.18, 0.2, 0.18), flame, tw, Color(1, 1, 0.25))
+		"crystal":   # Life Crystal: dois quadros em cruz do tamanho do bloco, sem balançar e brilhando sozinho (b = 1)
+			var u0 := tiles_of(b, 0) * tw
+			var c := Color(light.x, light.y, 1.0)
+			for pair in [[Vector3(0.05, 0, 0.05), Vector3(0.95, 0, 0.95)], [Vector3(0.95, 0, 0.05), Vector3(0.05, 0, 0.95)]]:
+				_vquad(a, pos + pair[0], pos + pair[1], 0.95, u0, tw, c)
+				_vquad(a, pos + pair[1], pos + pair[0], 0.95, u0, tw, c)
 		"plant":
 			var u0 := tiles_of(b, 0) * tw
 			var c := Color(light.x * 0.95, light.y * 0.95, 0.5)

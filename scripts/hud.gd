@@ -29,6 +29,10 @@ var root: Control
 var slots: Array[Slot] = []
 var trash_slot: Slot
 var hearts: Array[TextureRect] = []
+var heart_rows: Array[HBoxContainer] = []
+var hearts_shown := 0                 # corações visíveis (a vida máxima sobe com Life Crystals: 20 por coração, 10 por fileira)
+var buff_row: HBoxContainer
+var buff_key := ""                    # quais buffs a fileira mostra (refaz quando muda)
 var life_label: Label
 var defense_label: Label
 var item_label: Label
@@ -144,7 +148,7 @@ func _ready() -> void:
 	creative_label = _label("MODO CRIATIVO  ·  atravessa blocos e não leva dano  ·  Espaço sobe, C desce, F sai", 16, HORIZONTAL_ALIGNMENT_CENTER)
 	creative_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	creative_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	creative_label.offset_top = 8
+	creative_label.offset_top = 104   # no meio do topo, abaixo da hotbar e dos buffs
 	creative_label.add_theme_color_override("font_color", Ui.GOLD)
 	root.add_child(creative_label)
 	flight_bar = ProgressBar.new()   # tempo de voo das asas: só aparece enquanto não está cheio
@@ -164,6 +168,11 @@ func _ready() -> void:
 	debug_label.offset_bottom = -8
 	debug_label.modulate = Color(1, 1, 1, 0.8)
 	root.add_child(debug_label)
+	buff_row = HBoxContainer.new()   # à direita da hotbar, na mesma altura
+	buff_row.position = Vector2(X0 + 10 * PITCH + 14, Y0)
+	buff_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	buff_row.add_theme_constant_override("separation", 6)
+	root.add_child(buff_row)
 	cursor_view = Control.new()   # o item preso ao mouse, sempre por cima
 	cursor_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ic := TextureRect.new()
@@ -413,22 +422,24 @@ func _build_life() -> void:
 	root.add_child(box)
 	life_label = _label("", 18, HORIZONTAL_ALIGNMENT_RIGHT)
 	box.add_child(life_label)
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_END
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_theme_constant_override("separation", 2)
-	box.add_child(row)
-	for i in ceili(player.MAX_HP / float(HP_PER_HEART)):
-		var h := TextureRect.new()
-		h.texture = Ui.heart()
-		h.custom_minimum_size = Vector2(30, 30)
-		h.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		h.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		h.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		h.pivot_offset = Vector2(15, 15)
-		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(h)
-		hearts.append(h)
+	for r in 2:   # até 20 corações (400 de vida) em duas fileiras de 10, como no Terraria
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_END
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", 0)
+		box.add_child(row)
+		heart_rows.append(row)
+		for k in 10:
+			var h := TextureRect.new()
+			h.texture = Ui.heart()
+			h.custom_minimum_size = Vector2(30, 30)
+			h.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			h.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			h.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			h.pivot_offset = Vector2(15, 15)
+			h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			row.add_child(h)
+			hearts.append(h)
 
 
 # Coluna de moedas (as moedas giram), coluna de munição e o botão Ordenar, à direita da grade.
@@ -709,6 +720,41 @@ func _refresh_recipes() -> void:
 		_show_ingredients(hovered)
 
 
+# Buffs ativos: ícone da poção com o tempo embaixo, à direita da hotbar (o clique direito, com o inventário aberto, cancela). Refaz quando muda o conjunto.
+func _show_buffs() -> void:
+	var names: Array = player.buffs.keys()
+	names.sort()
+	var key := ",".join(names)
+	if key != buff_key:
+		buff_key = key
+		for c in buff_row.get_children():
+			c.queue_free()
+		for n in names:
+			var def: Dictionary = Buffs.defs[n]
+			var cell := VBoxContainer.new()
+			cell.name = n
+			cell.add_theme_constant_override("separation", -2)
+			var ic := TextureRect.new()
+			ic.texture = _icon(Items.ids[def.icon])
+			ic.custom_minimum_size = Vector2(32, 32)
+			ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ic.tooltip_text = "%s\n%s" % [def.label, def.tip]
+			ic.modulate = Color(1, 0.6, 0.6) if def.get("debuff", false) else Color.WHITE
+			ic.gui_input.connect(func(e: InputEvent):
+				if _pressed(e, MOUSE_BUTTON_RIGHT) and not def.get("debuff", false):
+					player.buffs.erase(n))
+			cell.add_child(ic)
+			var t := _label("", 12, HORIZONTAL_ALIGNMENT_CENTER)
+			t.name = "Time"
+			cell.add_child(t)
+			buff_row.add_child(cell)
+	for cell in buff_row.get_children():
+		if player.buffs.has(cell.name):
+			cell.get_node("Time").text = Buffs.time_text(player.buffs[cell.name])
+
+
 func _process(delta: float) -> void:
 	var open: bool = player.inventory_open
 	pause.visible = player.menu_open
@@ -744,7 +790,17 @@ func _process(delta: float) -> void:
 				player.entities.spawn_drop(held_id, left, player.position + Vector3.UP)
 		shown_version = -1
 	var hp: float = player.hp
-	var low: bool = hp <= player.MAX_HP * 0.3
+	var low: bool = hp <= player.max_hp * 0.3
+	var want := ceili(player.max_hp / float(HP_PER_HEART))
+	if want != hearts_shown:   # a vida máxima mudou: mostra os corações certos e desce o minimapa/equipamento se sobrar uma 2ª fileira
+		hearts_shown = want
+		for i in hearts.size():
+			hearts[i].visible = i < want
+		heart_rows[1].visible = want > 10
+		var extra := 30.0 if want > 10 else 0.0
+		minimap.corner_y = 74.0 + extra
+		minimap._layout()
+		equip_root.offset_top = 250.0 + extra
 	var beat := 1.0 + (0.14 * maxf(sin(spin * 7.0), 0.0) if low else 0.03 * sin(spin * 2.0))   # com pouca vida os corações batem
 	var hurt_shake: float = maxf(0.0, 0.35 - player.since_hit) * 14.0
 	for i in hearts.size():
@@ -752,8 +808,9 @@ func _process(delta: float) -> void:
 		hearts[i].modulate = Color(1, 1, 1, 0.35 + 0.65 * f) if f > 0.0 else Color(0.2, 0.2, 0.2, 0.55)
 		hearts[i].scale = Vector2.ONE * (0.68 + 0.32 * f) * (beat if f > 0.0 else 1.0)
 		hearts[i].rotation = sin(spin * 60.0 + i) * 0.05 * hurt_shake
-	life_label.text = "Vida: %d/%d" % [ceili(hp), player.MAX_HP]
-	defense_label.text = "Defesa: %d" % player.inv.defense()
+	life_label.text = "Vida: %d/%d" % [ceili(hp), player.max_hp]
+	defense_label.text = "Defesa: %d" % player.defense()
+	_show_buffs()
 	var id: int = player.held()
 	var now := Time.get_ticks_msec()
 	if id != shown_held:  # o nome do item aparece um instante, na cor da raridade

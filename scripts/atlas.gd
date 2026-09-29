@@ -76,6 +76,11 @@ static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 					if img.get_pixel(ox + x, y).is_equal_approx(Color(from)):
 						img.set_pixel(ox + x, y, Color(spec.recolor[from]))
 		return
+	if wiki and spec.get("fit", false):   # sprite maior que o tile (Life Crystal 32x32): encolhe para caber
+		var small := wiki.duplicate()
+		small.resize(TILE, TILE, Image.INTERPOLATE_NEAREST)
+		img.blit_rect(small, Rect2i(0, 0, TILE, TILE), Vector2i(ox, 0))
+		return
 	if not spec.has("pattern"):
 		return  # entrada só de ícone da wiki; não ocupa pixels no atlas
 	var rng := RandomNumberGenerator.new()

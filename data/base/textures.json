@@ -224,5 +224,19 @@
 	"tungsten_hammer": {"wiki": "Tungsten_Hammer", "pattern": "pickaxe", "colors": ["#8fb08a", "#6a8a66"], "top_colors": ["#6e4b2a"]},
 	"gold_hammer": {"wiki": "Gold_Hammer", "pattern": "pickaxe", "colors": ["#f2cf3a", "#d4a81e"], "top_colors": ["#6e4b2a"]},
 	"platinum_hammer": {"wiki": "Platinum_Hammer", "pattern": "pickaxe", "colors": ["#c8d8e8", "#a0b0c0"], "top_colors": ["#6e4b2a"]},
-	"fledgling_wings": {"wiki": "Fledgling_Wings", "pattern": "blob", "colors": ["#e8f0ff", "#b8c8e8", "#ffffff"]}
+	"fledgling_wings": {"wiki": "Fledgling_Wings", "pattern": "blob", "colors": ["#e8f0ff", "#b8c8e8", "#ffffff"]},
+	"lesser_healing_potion": {"wiki": "Lesser_Healing_Potion", "pattern": "blob", "colors": ["#e83a3a", "#a01818", "#d8e8f8"]},
+	"ironskin_potion": {"wiki": "Ironskin_Potion", "pattern": "blob", "colors": ["#e8d020", "#a89010", "#d8e8f8"]},
+	"regeneration_potion": {"wiki": "Regeneration_Potion", "pattern": "blob", "colors": ["#f08ab0", "#b04a70", "#d8e8f8"]},
+	"swiftness_potion": {"wiki": "Swiftness_Potion", "pattern": "blob", "colors": ["#5ad8a8", "#2a9070", "#d8e8f8"]},
+	"mining_potion": {"wiki": "Mining_Potion", "pattern": "blob", "colors": ["#e8a040", "#a06818", "#d8e8f8"]},
+	"archery_potion": {"wiki": "Archery_Potion", "pattern": "blob", "colors": ["#e87850", "#a03818", "#d8e8f8"]},
+	"recall_potion": {"wiki": "Recall_Potion", "pattern": "blob", "colors": ["#b078e8", "#7038a8", "#d8e8f8"]},
+	"magic_mirror": {"wiki": "Magic_Mirror", "pattern": "blob", "colors": ["#a8e8f8", "#58a0c0", "#e8f8ff"]},
+	"cloud_in_a_bottle": {"wiki": "Cloud_in_a_Bottle", "pattern": "blob", "colors": ["#e8f0ff", "#88a8d8", "#ffffff"]},
+	"life_crystal": {"wiki": "Life_Crystal_(placed)", "fit": true, "pattern": "blob", "colors": ["#e0405a", "#a01838", "#ffb0c0"]},
+	"life_crystal_item": {"wiki": "Life_Crystal", "pattern": "blob", "colors": ["#e0405a", "#a01838", "#ffb0c0"]},
+	"musket_ball": {"wiki": "Musket_Ball", "pattern": "blob", "colors": ["#8a8a92", "#5a5a62", "#c8c8d0"]},
+	"musket": {"wiki": "Musket", "pattern": "bow", "colors": ["#6e4b2a", "#8a8a92"], "top_colors": ["#6e4b2a"]},
+	"the_undertaker": {"wiki": "The_Undertaker", "pattern": "bow", "colors": ["#6e4b2a", "#8a8a92"], "top_colors": ["#6e4b2a"]}
 }

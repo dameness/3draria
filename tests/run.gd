@@ -21,8 +21,10 @@ func _init() -> void:
 	Blocks.load_pack()
 	Items.load_pack()
 	Crafting.load_pack()
+	Buffs.load_pack()
+	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -246,6 +248,8 @@ func test_save():
 	p.inv.add(Items.ids.iron_pickaxe, 1)
 	p.inv.add(Items.ids.stone, 42)
 	p.hp = 37
+	p.max_hp = 140
+	p.add_buff("ironskin", 300.0)
 	p.inv.add(Items.ids.iron_helmet, 1)
 	p.inv.equip_from(p.inv.item.find(Items.ids.iron_helmet))
 	p.spawn = Vector3(21.5, 11, 22.5)
@@ -269,6 +273,7 @@ func test_save():
 	check(SaveGame.load_world(w2, p2, p2.clock, wp) and SaveGame.load_player(p2, pp), "carregar")
 	check(w2.get_block(20, 11, 20) == Blocks.ids.dirt and w2.world_seed == w.world_seed, "bloco editado volta, seed do mundo")
 	check(p2.inv.total(Items.ids.stone) == 42 and p2.inv.total(Items.ids.iron_pickaxe) == 1 and p2.hp == 37, "inventário e vida voltam")
+	check(p2.max_hp == 140 and is_equal_approx(p2.buffs.get("ironskin", 0.0), 300.0), "vida máxima e buffs voltam")
 	check(p2.inv.equip[0] == Items.ids.iron_helmet, "armadura vestida volta")
 	check(p2.spawn == p.spawn and p2.clock.time == 123.0, "spawn e hora do mundo voltam")
 	check(p2.inv.coin[2] == 3 and p2.inv.ammo[1] == Items.ids.wooden_arrow and p2.inv.ammo_count[1] == 77 and p2.inv.acc[2] == Items.ids.hermes_boots \
@@ -1052,6 +1057,302 @@ func test_binds():
 	p.cam.free()
 	free_player(p)
 	w.free()
+	return true
+
+
+# Consumíveis e buffs (wiki: Lesser Healing, Ironskin, Regeneration, Swiftness, Mining, Archery, Recall, Magic Mirror, Cloud in a Bottle).
+func test_consumables():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var dt := 1.0 / 60
+	var give := func(name: String, n := 1) -> int:
+		p.inv = Inventory.new()
+		p.inv.add(Items.ids[name], n)
+		p.slot = 0
+		return 0
+	# dados da wiki
+	var d: Dictionary = Items.defs[Items.ids.lesser_healing_potion]
+	check(d.heal == 50 and absf(Items.use_dur(Items.ids.lesser_healing_potion) - 17.0 / 60.0) < 0.001 and d.consumable, "Lesser Healing: cura 50, use time 17")
+	var times := {"ironskin_potion": 480, "regeneration_potion": 480, "swiftness_potion": 480, "mining_potion": 600, "archery_potion": 480}
+	for n in times:
+		check(Items.defs[Items.ids[n]].buff_time == times[n] and Buffs.defs.has(Items.defs[Items.ids[n]].buff), "%s dura %d s" % [n, times[n]])
+	check(is_equal_approx(Items.defs[Items.ids.recall_potion].recall, 0.167) and is_equal_approx(Items.defs[Items.ids.magic_mirror].recall, 0.75) and Items.use_dur(Items.ids.magic_mirror) == 1.5, "Recall Potion 0,167 s e Magic Mirror 0,75 s de espera (uso 1,5 s)")
+	# cura e Doença da poção
+	give.call("lesser_healing_potion", 3)
+	p.hp = 30.0
+	p.use_item()
+	check(is_equal_approx(p.hp, 80.0) and p.inv.total(Items.ids.lesser_healing_potion) == 2 and is_equal_approx(p.buffs.potion_sickness, 60.0), "beber cura 50, gasta a poção e dá Doença da poção (60 s)")
+	p.cooldown = 0.0
+	p.use_item()
+	check(is_equal_approx(p.hp, 80.0) and p.inv.total(Items.ids.lesser_healing_potion) == 2 and p.message.contains("Doença"), "com a Doença da poção não bebe outra de cura")
+	p.tick(60.5)
+	check(not p.has_buff("potion_sickness"), "a Doença da poção passa em 60 s")
+	p.hp = 90.0
+	p.cooldown = 0.0
+	p.use_item()
+	check(is_equal_approx(p.hp, 100.0), "a cura para na vida máxima (%.0f)" % p.hp)
+	p.max_hp = 200
+	p.buffs.clear()
+	p.hp = 100.0
+	p.quick_heal()
+	check(is_equal_approx(p.hp, 150.0) and p.inv.total(Items.ids.lesser_healing_potion) == 0, "H/Q: cura com a poção que há (max_hp 200)")
+	p.quick_heal()
+	check(p.message.contains("sem poção"), "sem poção, avisa")
+	p.max_hp = 100
+	# Ironskin: +8 de defesa, some no fim
+	var base_def: int = p.defense()
+	give.call("ironskin_potion")
+	p.buffs.clear()
+	p.hp = 100.0
+	p.use_item()
+	check(p.defense() == base_def + 8 and is_equal_approx(p.buffs.ironskin, 480.0), "Ironskin: +8 de defesa por 8 minutos")
+	p.iframes = 0.0
+	check(p.hurt(30, Vector3.RIGHT) == 26, "com 8 de defesa 30 de dano vira 26 (30 − 4)")
+	p.tick(481.0)
+	check(p.defense() == base_def and p.buffs.is_empty(), "e o buff acaba")
+	# Regeneração: +2 de vida por segundo além do 1 base
+	p.hp = 40.0
+	p.since_hit = 99.0
+	p.tick(1.0)
+	var plain: float = p.hp - 40.0
+	p.hp = 40.0
+	p.add_buff("regeneration", 480.0)
+	p.tick(1.0)
+	check(is_equal_approx(plain, 1.0) and is_equal_approx(p.hp - 40.0, 3.0), "Regeneração: +2 de vida por segundo (1 → 3)")
+	p.buffs.clear()
+	# Rapidez: +25% de velocidade
+	p.knock = Vector3.ZERO   # o golpe de antes empurrou
+	p.position = Vector3(20.5, 11, 24.5)
+	p.step(dt, Vector3.RIGHT, false)
+	var x0: float = p.position.x
+	p.add_buff("swiftness", 480.0)
+	for i in 60:
+		p.step(dt, Vector3.RIGHT, false)
+	check(absf(p.position.x - x0 - 6.6 * 1.25) < 0.06, "Rapidez: 25%% mais rápido (%.2f blocos em 1 s)" % (p.position.x - x0))
+	p.buffs.clear()
+	# Mineração: só picareta, ⌊15 × 0,75⌋ = 11 quadros (wiki Tool speed)
+	var pick: int = Items.ids.copper_pickaxe
+	var axe: int = Items.ids.copper_axe
+	p.add_buff("mining", 600.0)
+	check(is_equal_approx(p.use_time(pick), 11.0 / 60.0) and is_equal_approx(p.use_time(axe), 21.0 / 60.0), "Mineração: picareta de 15 para 11 quadros; o machado não muda")
+	p.buffs.clear()
+	check(is_equal_approx(p.use_time(pick), 15.0 / 60.0), "sem o buff volta a 15")
+	# Arquearia: +10% de dano e +20% de velocidade nas flechas
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.wooden_arrow, 4)
+	var eye: Vector3 = p.position + Vector3.UP * p.EYE
+	p.shoot(Items.defs[Items.ids.wooden_bow], eye, Vector3.RIGHT)
+	var plain_arrow: Node3D = ent.get_children().back()
+	p.add_buff("archery", 480.0)
+	p.shoot(Items.defs[Items.ids.wooden_bow], eye, Vector3.RIGHT)
+	var fast_arrow: Node3D = ent.get_children().back()
+	check(plain_arrow.damage == 9 and fast_arrow.damage == 10 and is_equal_approx(fast_arrow.velocity.length() / plain_arrow.velocity.length(), 1.2), "Arquearia: dano 9 → 10 e flecha 20%% mais rápida (%d, %.2f×)" % [fast_arrow.damage, fast_arrow.velocity.length() / plain_arrow.velocity.length()])
+	p.buffs.clear()
+	# B: um de cada buff novo
+	p.inv = Inventory.new()
+	for n in ["ironskin_potion", "ironskin_potion", "swiftness_potion", "lesser_healing_potion"]:
+		p.inv.add(Items.ids[n], 1)
+	p.quick_buff()
+	check(p.has_buff("ironskin") and p.has_buff("swiftness") and not p.has_buff("potion_sickness") and p.inv.total(Items.ids.ironskin_potion) == 1, "B bebe uma poção de cada buff (a de cura não)")
+	p.quick_buff()
+	check(p.inv.total(Items.ids.ironskin_potion) == 1, "e não repete o que já está ativo")
+	p.buffs.clear()
+	# Recall Potion e Magic Mirror: teleporte para casa depois da espera
+	p.spawn = Vector3(30.5, 11, 30.5)
+	give.call("recall_potion", 2)
+	p.position = Vector3(20.5, 11, 20.5)
+	p.use_item()
+	check(p.inv.total(Items.ids.recall_potion) == 1 and p.recall_left > 0.0 and p.position.x == 20.5, "Recall Potion: gasta uma e espera")
+	p.tick(0.2)
+	check(p.position == p.spawn and p.recall_left <= 0.0, "e leva para o spawn depois de 0,167 s")
+	give.call("magic_mirror")
+	p.position = Vector3(20.5, 11, 20.5)
+	p.cooldown = 0.0
+	p.use_item()
+	p.tick(0.5)
+	check(p.inv.total(Items.ids.magic_mirror) == 1 and p.position.x == 20.5, "Magic Mirror: não gasta e ainda espera aos 0,5 s")
+	p.tick(0.3)
+	check(p.position == p.spawn, "e leva para casa aos 0,75 s")
+	# Cloud in a Bottle: um pulo a mais no ar, com um aperto novo; o chão recarrega
+	var land := func():
+		p.position = Vector3(24.5, 11.0, 24.5)
+		p.velocity = Vector3.ZERO
+		p.inv.acc[0] = -1
+		for i in 5:
+			p.step(dt, Vector3.ZERO, false)
+	var peak := func(cloud: bool, taps: Array) -> float:   # taps = quadros em que Espaço está apertado
+		land.call()
+		if cloud:
+			p.inv.acc[0] = Items.ids.cloud_in_a_bottle
+			p.step(dt, Vector3.ZERO, false)
+		var top := 0.0
+		for i in 240:
+			p.step(dt, Vector3.ZERO, i in taps)
+			top = maxf(top, p.position.y - 11.0)
+		return top
+	var single: float = peak.call(false, [0])
+	var doubled: float = peak.call(true, [0, 30])
+	var triple: float = peak.call(true, [0, 30, 60])
+	print("pulo simples %.2f, com o Cloud in a Bottle %.2f, terceiro toque %.2f" % [single, doubled, triple])
+	check(doubled > single + 0.5 and absf(triple - doubled) < 0.05, "Cloud in a Bottle: 1 pulo extra (%.2f contra %.2f) e nunca dois" % [doubled, single])
+	free_player(p)
+	w.free()
+	return true
+
+
+# Baús e cristais do mundo inteiro de uma seed, contados uma vez para os testes (leva ~3 s).
+var census_cache := {}
+
+
+func world_census() -> Dictionary:
+	if census_cache.is_empty():
+		var gen := WorldGen.new(4242)
+		var r := {"crystals": 0, "bad_crystals": 0, "chests": {"underground": 0, "cavern": 0, "lava": 0}, "bad_chests": 0}
+		for cz in WorldGen.SIZE_CHUNKS:
+			for cx in WorldGen.SIZE_CHUNKS:
+				var d := gen.generate(cx, cz)
+				for i in d.size():
+					var y := i / (C * C)
+					var below := d[i - C * C] if y > 0 else 0
+					if d[i] == Blocks.ids.life_crystal:
+						r.crystals += 1
+						r.bad_crystals += int(y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE - 14 or not (below == gen.STONE or below == gen.DIRT or below == Blocks.ids.dungeon_brick))
+					elif d[i] == Blocks.ids.chest:
+						r.chests[Loot.layer_of(y)] += 1
+						r.bad_chests += int(y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE - 14 or not (below == gen.STONE or below == gen.DIRT or below == Blocks.ids.dungeon_brick))
+		census_cache = r
+	return census_cache
+
+
+# Life Crystal (wiki): +20 de vida máxima até 400; brilha na caverna, quebra com qualquer picareta e cai como item; gerado no subsolo/cavernas, nunca no submundo.
+func test_life_crystal():
+	var b: int = Blocks.ids.life_crystal
+	var id: int = Items.ids.life_crystal
+	check(Blocks.breakable[b] == 1 and Blocks.solid[b] == 0 and Blocks.shape[b] == "crystal" and Blocks.light[b] > 0 and Blocks.soft[b] == 0, "o cristal é um bloco que brilha, sem colisão e que a mira acerta")
+	check(Items.places[id] == -1 and Items.defs[id].life == 20 and Items.defs[id].consumable and Items.drop[b] == id, "o item é consumível (+20) e não se coloca; o bloco solta ele")
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	w.set_block(20, 11, 20, b)
+	p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i.UP}
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
+	p.break_target()
+	check(w.get_block(20, 11, 20) == 0 and ent.get_children().any(func(n): return n.get("item") == id), "1 golpe com a picareta de cobre quebra e solta o item")
+	p.inv = Inventory.new()
+	p.inv.add(id, 20)
+	p.slot = 0
+	p.hp = 60.0
+	p.use_item()
+	check(p.max_hp == 120 and is_equal_approx(p.hp, 80.0) and p.inv.total(id) == 19, "usar: +20 de vida máxima e de vida, e gasta o cristal")
+	for i in 14:
+		p.cooldown = 0.0
+		p.use_item()
+	check(p.max_hp == 400 and p.inv.total(id) == 5, "15 cristais levam a vida máxima a 400")
+	p.cooldown = 0.0
+	p.use_item()
+	check(p.max_hp == 400 and p.inv.total(id) == 5 and p.message.contains("400"), "o 16º é recusado e não se gasta")
+	p.iframes = 0.0
+	p.hp = 400.0
+	p.hurt(1000, Vector3.RIGHT)
+	check(p.hp == 400.0, "morrer renasce com a vida máxima nova")
+	# geração: cristais no chão das cavernas, do subsolo às cavernas, nunca no submundo; ~1 a cada 3 chunks
+	var cs: Dictionary = world_census()
+	print("cristais: %d no mundo de %d chunks" % [cs.crystals, WorldGen.SIZE_CHUNKS * WorldGen.SIZE_CHUNKS])
+	check(cs.crystals >= 40 and cs.crystals <= 110 and cs.bad_crystals == 0, "o mundo tem ~1 cristal a cada 3 chunks (%d), no chão e fora do submundo (%d fora do lugar)" % [cs.crystals, cs.bad_crystals])
+	free_player(p)
+	w.free()
+	return true
+
+
+# Loot dos baús (wiki Gold Chest): 1 item principal + comuns sorteados por camada (data/base/loot.json), conjuntos que não vêm juntos, quantidades
+# dentro da faixa, determinístico por seed e posição; o mundo gera baús nas três camadas.
+func test_loot():
+	for layer in ["underground", "cavern", "lava"]:
+		var t: Dictionary = Loot.tables[layer]
+		var ok: bool = t.main.all(func(n): return Items.ids.has(n))
+		for e in t.common:
+			ok = ok and e.items.all(func(n): return Items.ids.has(n)) and e.min <= e.max and e.chance > 0.0 and e.chance <= 1.0
+		check(ok, "loot %s: todos os itens existem, faixas e chances válidas" % layer)
+	check(Loot.layer_of(60) == "underground" and Loot.layer_of(WorldGen.CAVERN_TOP - 1) == "cavern" and Loot.layer_of(WorldGen.CAVERN_TOP) == "underground" and Loot.layer_of(40) == "cavern" and Loot.layer_of(25) == "lava" and Loot.layer_of(WorldGen.UNDERWORLD_TOP + 2) == "lava", "a altura decide a camada")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var n := 4000
+	var main_count := {}
+	var lesser := 0
+	var lesser_min := 99
+	var lesser_max := 0
+	var regen := 0
+	var both_bars := 0
+	var torches_ok := true
+	var first_is_main := true
+	for i in n:
+		var c: Dictionary = Loot.chest("underground", rng)
+		var items: Array = Array(c.item).filter(func(id): return id != -1)
+		first_is_main = first_is_main and Loot.tables.underground.main.has(Items.names[c.item[0]]) and c.count[0] == 1 and items.count(c.item[0]) == 1
+		main_count[c.item[0]] = main_count.get(c.item[0], 0) + 1
+		for k in 40:
+			var id: int = c.item[k]
+			if id == Items.ids.lesser_healing_potion:
+				lesser += 1
+				lesser_min = mini(lesser_min, c.count[k])
+				lesser_max = maxi(lesser_max, c.count[k])
+			elif id == Items.ids.regeneration_potion:
+				regen += 1
+			elif id == Items.ids.torch:
+				torches_ok = torches_ok and c.count[k] >= 10 and c.count[k] <= 20
+		both_bars += int(items.has(Items.ids.iron_bar) and items.has(Items.ids.lead_bar))
+	check(first_is_main, "cada baú tem exatamente 1 item principal, no 1º slot")
+	var even := true
+	for id in main_count:
+		even = even and absf(main_count[id] / float(n) - 0.25) < 0.03
+	check(even and main_count.size() == 4, "os 4 principais saem com ~1/4 cada (renormalizado do 1/6 da wiki)")
+	check(absf(lesser / float(n) - 0.5) < 0.03 and lesser_min == 3 and lesser_max == 5, "Lesser Healing: 3-5 em ~50%% dos baús (%.3f)" % (lesser / float(n)))
+	check(absf(regen / float(n) - 0.667) < 0.03, "Regeneration em ~2/3 (%.3f)" % (regen / float(n)))
+	check(both_bars == 0 and torches_ok, "ferro e chumbo nunca juntos (mesmo conjunto); tochas 10-20 no subsolo")
+	rng.seed = 6
+	var meteor := 0
+	for i in 1000:
+		var c: Dictionary = Loot.chest("lava", rng)
+		for k in 40:
+			meteor += int(c.item[k] == Items.ids.meteorite_bar)
+	check(meteor > 50, "baús perto do submundo podem ter barra de meteorito (%d em 1000)" % meteor)
+	# determinístico por seed e posição
+	var w1: Node3D = load("res://scripts/world.gd").new()
+	var w2: Node3D = load("res://scripts/world.gd").new()
+	var w3: Node3D = load("res://scripts/world.gd").new()
+	w1.world_seed = 9
+	w2.world_seed = 9
+	w3.world_seed = 10
+	var pos := Vector3i(30, 40, 30)
+	check(w1.chest_at(pos).item == w2.chest_at(pos).item and w1.chest_at(pos).count == w2.chest_at(pos).count, "o mesmo baú, a mesma seed: o mesmo conteúdo")
+	check(w1.chest_at(pos).item != w3.chest_at(pos).item or w1.chest_at(pos).count != w3.chest_at(pos).count or w1.chest_at(Vector3i(31, 40, 30)).item != w1.chest_at(pos).item, "outra seed ou posição muda o conteúdo")
+	w1.free()
+	w2.free()
+	w3.free()
+	# orbes: a 1ª dá arma + 100 balas; as seguintes 20% (wiki Shadow Orb / Crimson Heart)
+	var w4 := floor_world()
+	var pl := make_player(w4)
+	var ent: Node3D = pl.entities
+	var guns := func(item: String) -> int:
+		return ent.get_children().filter(func(n): return n.get("item") == Items.ids[item]).size()
+	ent.orb_broken(Blocks.ids.shadow_orb)
+	check(guns.call("musket") == 1 and ent.get_children().any(func(n): return n.get("item") == Items.ids.musket_ball and n.count == 100), "1ª Shadow Orb: Musket + 100 Musket Balls")
+	ent.rng.seed = 3
+	for i in 200:
+		ent.orb_broken(Blocks.ids.crimson_heart)
+	var extra: int = guns.call("the_undertaker")
+	check(extra > 20 and extra < 60 and guns.call("musket") == 1, "as outras: ~20%% (%d de 200; a arma é a do bioma)" % extra)
+	var gd: Dictionary = Items.defs[Items.ids.musket]
+	check(gd.damage == 31 and gd.ammo == "bullet" and Items.defs[Items.ids.musket_ball].damage == 7 and Items.defs[Items.ids.musket_ball].ammo_class == "bullet", "Musket 31 de dano + Musket Ball 7 (wiki)")
+	free_player(pl)
+	w4.free()
+	# geração: baús no chão das três camadas
+	var cs: Dictionary = world_census()
+	var total: int = cs.chests.underground + cs.chests.cavern + cs.chests.lava
+	print("baús: %s (%d, fora do lugar %d)" % [str(cs.chests), total, cs.bad_chests])
+	check(cs.chests.underground >= 5 and cs.chests.cavern >= 5 and cs.chests.lava >= 5 and total >= 40 and total <= 90 and cs.bad_chests == 0, "baús nas 3 camadas, em cima de pedra, fora do submundo e da superfície")
 	return true
 
 
@@ -2389,7 +2690,7 @@ func integration():
 			var m: MeshInstance3D = world.meshes.get(edit_chunk)
 			check(m != null and m.get_instance_id() != edit_mesh_id and m.mesh.surface_get_array_len(0) != edit_faces, "mesh do chunk editado foi refeita")
 			var hud: CanvasLayer = main.get_node("HUD")
-			check(hud.hearts.size() == 5 and hud.slots.size() == Inventory.SIZE and hud.slots[Inventory.HOTBAR].visible and hud.craft_root.visible and hud.equip_root.visible, "HUD: corações, hotbar + 4 fileiras, criação e equipamento ao abrir")
+			check(hud.hearts.filter(func(h): return h.visible).size() == 5 and hud.slots.size() == Inventory.SIZE and hud.slots[Inventory.HOTBAR].visible and hud.craft_root.visible and hud.equip_root.visible, "HUD: corações, hotbar + 4 fileiras, criação e equipamento ao abrir")
 			hud.show_all = true
 			hud.shown_version = -1
 			hud._process(0.0)
@@ -2460,6 +2761,18 @@ func integration():
 			hud._unhandled_input(esc)
 			hud._process(0.0)
 			check(not main.get_tree().paused and not player.menu_open, "Esc dentro do Configurações: o HUD despausa")
+			player.add_buff("ironskin", 125.0)
+			hud._process(0.0)
+			check(hud.buff_row.get_child_count() == 1 and hud.buff_row.get_child(0).get_node("Time").text == "2:05" and hud.defense_label.text == "Defesa: 8", "buff na HUD: ícone com o tempo (2:05) e a defesa sobe")
+			player.buffs.clear()
+			player.max_hp = 240
+			player.hp = 240.0
+			hud._process(0.0)
+			check(hud.hearts_shown == 12 and hud.heart_rows[1].visible and hud.minimap.corner_y == 104.0 and hud.life_label.text == "Vida: 240/240", "vida máxima 240: 12 corações em duas fileiras e o minimapa desce")
+			player.max_hp = 100
+			player.hp = 100.0
+			hud._process(0.0)
+			check(hud.hearts_shown == 5 and not hud.heart_rows[1].visible and hud.minimap.corner_y == 74.0, "volta a 5 corações")
 			player.creative = true
 			hud._process(0.0)
 			check(hud.creative_label.visible and not hud.flight_bar.visible, "modo criativo: aviso fixo na tela")

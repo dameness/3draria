@@ -136,8 +136,20 @@ static func item_tip(id: int) -> String:
 		if a.has("jump"): lines.append("+%d%% de altura do pulo" % roundi(a.jump * 100))
 		if a.has("regen"): lines.append("Regeneração de vida mais rápida")
 		if a.has("wings"): lines.append("Permite voar e planar (%.2f s de voo)" % a.wings.time)
+		if a.has("double_jump"): lines.append("Permite pular de novo no ar")
 		if a.has("defense"): lines.append("+%d de defesa" % a.defense)
 		lines.append("Acessório")
+	if d.has("heal"):
+		lines.append("Recupera %d de vida" % d.heal)
+	if d.has("life"):
+		lines.append("Aumenta a vida máxima em %d" % d.life)
+	if d.has("buff"):
+		lines.append(Buffs.defs[d.buff].tip)
+		lines.append("Dura %d minutos" % roundi(d.buff_time / 60.0))
+	if d.has("recall"):
+		lines.append("Leva você para casa")
+	if d.get("consumable", false):
+		lines.append("Consumível")
 	if Inventory.coin_kind(id) != -1:
 		lines.append("Moeda")
 	if Items.pick_power[id] > 0:

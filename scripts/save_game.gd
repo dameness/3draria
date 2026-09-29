@@ -96,7 +96,7 @@ static func save_player(player, path: String) -> Error:
 		inv.append([Items.names[id] if id != -1 else "", player.inv.count[i]])
 	var equip := Array(player.inv.equip).map(func(id): return Items.names[id] if id != -1 else "")
 	var name := func(id): return Items.names[id] if id != -1 else ""
-	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "inv": inv, "equip": equip,
+	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "max_hp": player.max_hp, "buffs": player.buffs, "inv": inv, "equip": equip,
 		"look": _read(path).get("look", {}), "acc": Array(player.inv.acc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
 		"coin": Array(player.inv.coin), "fav": Array(player.inv.fav)})
 
@@ -106,7 +106,12 @@ static func load_player(player, path: String) -> bool:
 	var data := _read(path)
 	if data.is_empty() or data.get("new", false):
 		return false
-	player.hp = data.hp
+	player.max_hp = data.get("max_hp", player.MAX_HP)   # saves antigos: 100
+	player.hp = minf(data.hp, player.max_hp)
+	player.buffs = {}
+	for n in data.get("buffs", {}):
+		if Buffs.defs.has(n):
+			player.buffs[n] = data.buffs[n]
 	player.inv = Inventory.new()
 	for i in mini(Inventory.SIZE, data.inv.size()):   # saves antigos têm menos slots
 		var entry: Array = data.inv[i]

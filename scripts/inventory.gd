@@ -204,6 +204,14 @@ func click_trash() -> void:
 	version += 1
 
 
+# Algum acessório vestido tem o efeito `flag` ligado (ex.: double_jump).
+func has_acc(flag: String) -> bool:
+	for id in acc:
+		if id != -1 and Items.defs[id].get("accessory", {}).get(flag, false):
+			return true
+	return false
+
+
 # O item das asas vestidas (só um par vale), ou -1.
 func wing_id() -> int:
 	for id in acc:
