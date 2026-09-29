@@ -192,7 +192,10 @@ func try_spawn() -> void:
 	var z := floori(player.position.z + sin(ang) * dist)
 	if not world.in_world(Vector2i(floori(x / 16.0), floori(z / 16.0))):
 		return
-	spawn_enemy(d, Vector3(x + 0.5, world.surface_y(x, z) + (6 if d.ai == "fly" else 0), z + 0.5))
+	var sy: int = world.surface_y(x, z)
+	if d.ai != "fly" and Blocks.liquid[world.get_block(x, sy, z)]:
+		return   # não nasce no fundo do mar (nem de lago)
+	spawn_enemy(d, Vector3(x + 0.5, sy + (6 if d.ai == "fly" else 0), z + 0.5))
 
 
 # O Velho na entrada do dungeon: aparece à noite (até o Skeletron cair) e some ao amanhecer.

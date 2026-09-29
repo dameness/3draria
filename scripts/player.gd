@@ -455,6 +455,8 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 		velocity.y = 0.0
 	if on_floor:
 		_land()
+	position.x = clampf(position.x, HALF, WorldGen.SIZE - HALF)   # a borda do mundo é uma parede (senão dava para cair para fora do mapa)
+	position.z = clampf(position.z, HALF, WorldGen.SIZE - HALF)
 	last_pos = position
 	_effects(delta)
 

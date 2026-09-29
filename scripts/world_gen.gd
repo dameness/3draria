@@ -26,6 +26,9 @@ const DUNGEON_FLOORS := 2
 const SKY_BASE := 110          # de y = 110 para cima é céu: só há as ilhas flutuantes; a luz do céu e surface_y ignoram isso (a terra embaixo não escurece)
 const SKY_ISLANDS := 3         # mundo pequeno: 3 ilhas (wiki Floating Island), cada uma com uma casa e um Skyware Chest
 const SKY_R := 9               # raio de uma ilha
+const LAND_RADIUS := 104.0     # o mundo é uma ilha: até este raio do centro é terra; daí a costa desce e fora dela é oceano
+const COAST := 18.0            # largura da costa (do fim da terra ao fundo do mar)
+const OCEAN_DEPTH := 14        # o fundo do oceano fica tantos blocos abaixo do nível da água
 const CHASMS := 6              # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
 const CHASM_DEPTH := 38
 const CENTER := Vector2(SIZE_CHUNKS * CHUNK / 2.0, SIZE_CHUNKS * CHUNK / 2.0)   # nascimento: planície
@@ -162,7 +165,7 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 
 
 # Colinas largas + serras (cristas de ruído onde a máscara de montanha é alta) + terraços de 5 blocos, como as
-# saliências de rocha do Terraria; o meio do mundo é uma planície para o nascimento.
+# saliências de rocha do Terraria; o meio do mundo é uma planície para o nascimento e em volta há oceano (o mundo é uma ilha).
 func surface_height(wx: int, wz: int) -> int:
 	var hills := height_noise.get_noise_2d(wx, wz)
 	var ridge := 1.0 - absf(ridge_noise.get_noise_2d(wx, wz))
@@ -172,6 +175,8 @@ func surface_height(wx: int, wz: int) -> int:
 	h = lerpf(h, (floorf(q) + smoothstep(0.55, 1.0, q - floorf(q))) * 5.0, 0.38)
 	var flat := 1.0 - smoothstep(16.0, 46.0, Vector2(wx, wz).distance_to(CENTER))
 	h = lerpf(h, SURFACE + 2.0 + hills * 2.0, flat)
+	var sea := smoothstep(LAND_RADIUS, LAND_RADIUS + COAST, Vector2(wx, wz).distance_to(CENTER))   # ilha: a costa desce até o fundo do oceano em volta
+	h = lerpf(h, WATER_LEVEL - OCEAN_DEPTH + hills * 2.0, sea)
 	return clampi(int(h), 24, HEIGHT - 20)
 
 

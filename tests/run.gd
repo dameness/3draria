@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -3930,4 +3930,43 @@ func test_hook():
 	check(Ui.item_tip(Items.ids.grappling_hook).contains("Tecla E"), "a dica ensina a tecla")
 	free_player(p)
 	w.free()
+	return true
+
+
+# O mundo é uma ilha: terra até 104 blocos do centro, a costa desce e o oceano cobre o resto (cantos incluídos); o mal, o Hallow e o dungeon ficam em terra; a borda do mundo é
+# uma parede para o jogador.
+func test_island():
+	for sd in [1, 2, 3, 4242, 7, 99]:
+		var g := WorldGen.new(sd)
+		var land_ok := true
+		var sea_ok := true
+		var ang := 0.0
+		for k in 40:
+			ang = k * TAU / 40.0
+			var inner := WorldGen.CENTER + Vector2.from_angle(ang) * 96.0
+			var outer := WorldGen.CENTER + Vector2.from_angle(ang) * 124.0
+			land_ok = land_ok and g.surface_height(int(inner.x), int(inner.y)) > 0   # (terra ou lago: só não pode ser o fundo do mar)
+			sea_ok = sea_ok and g.surface_height(int(outer.x), int(outer.y)) <= WorldGen.WATER_LEVEL - WorldGen.OCEAN_DEPTH + 4
+		check(land_ok and sea_ok, "seed %d: o anel de fora (124 blocos) é fundo de oceano" % sd)
+		var shore := WorldGen.WATER_LEVEL - 6   # (lagos da terra ficam um pouco abaixo da água; o fundo do mar fica bem abaixo disto)
+		check(g.surface_height(int(g.evil_center.x), int(g.evil_center.y)) > shore and g.dungeon_entrance.y > shore \
+			and g.surface_height(int(g.hallow_center.x), int(g.hallow_center.y)) > shore, "seed %d: o mal, o Hallow e a entrada do dungeon ficam em terra" % sd)
+		var sea := 0
+		var samples := 0
+		for z in range(0, WorldGen.SIZE, 8):
+			for x in range(0, WorldGen.SIZE, 8):
+				sea += int(g.surface_height(x, z) <= WorldGen.WATER_LEVEL)
+				samples += 1
+		check(sea / float(samples) > 0.3 and sea / float(samples) < 0.6, "seed %d: %.0f%% do mapa é água (oceano em volta)" % [sd, 100.0 * sea / samples])
+	var w := dungeon_world(1)
+	check(w.get_block(6, WorldGen.WATER_LEVEL - 2, 6) == Blocks.ids.water and w.get_block(6, WorldGen.WATER_LEVEL - WorldGen.OCEAN_DEPTH - 6, 6) != Blocks.ids.water \
+		and Blocks.solid[w.get_block(6, WorldGen.WATER_LEVEL - WorldGen.OCEAN_DEPTH - 3, 6)] == 1, "no canto do mundo: água por cima e areia/terra no fundo do mar")
+	w.free()
+	var fw := floor_world()
+	var p := make_player(fw)
+	p.position = Vector3(-4.0, 11.0, WorldGen.SIZE + 9.0)
+	p.step(1.0 / 60, Vector3.ZERO, false)
+	check(absf(p.position.x - p.HALF) < 0.001 and absf(p.position.z - (WorldGen.SIZE - p.HALF)) < 0.001, "a borda do mundo é uma parede para o jogador")
+	free_player(p)
+	fw.free()
 	return true
