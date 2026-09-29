@@ -5,6 +5,7 @@ class_name EnemyModel
 #   slime    gelatina translúcida com núcleo; achata/estica com a velocidade vertical.
 #   wall     coluna de carne (Wall of Flesh): olhos, boca com dentes e veias; a frente é -Z.
 #   skull    caveira (Cursed Skull; "big" = Skeletron, com brilho vermelho nas órbitas)   hand  mão de osso (Skeletron).
+#   hungry   The Hungry: bolha de carne rosada com lóbulos, boca de dentes na frente e a veia vermelha que a prende ao Muro (atrás).
 #   brain    cérebro rosado com dobras, olhos e tentáculos (Brain of Cthulhu).
 #   worm     segmento de verme (esfera com anéis; cabeça com mandíbula, rabo mais fino), centrado na origem; enemy.gd gira inteiro.
 #   humanoid corpo do jogador (player_model.gd) com as cores de "colors" e braços estendidos.
@@ -24,6 +25,8 @@ static func build(def: Dictionary) -> Node3D:
 			_slime(root, size, Color(def.color), def)
 		"worm":
 			_worm(root, size[0], def)
+		"hungry":
+			_hungry(root, size, Color(def.color))
 		"brain":
 			_brain(root, size, Color(def.color))
 		"skull":
@@ -210,6 +213,35 @@ static func _hand(root: Node3D, w: float, c: Color) -> void:
 	thumb.rotation = Vector3(PI / 2, 0, -0.7)
 
 
+# The Hungry (sprite da wiki: bolha de carne rosa-arroxeada com boca de barras vermelhas e a veia atrás): corpo achatado com lóbulos
+# claros, boca com dentes em cima e embaixo na frente (-Z) e a veia (cilindros) saindo por trás.
+static func _hungry(root: Node3D, size: Array, c: Color) -> void:
+	var r: float = size[0] / 2.0
+	var pivot := Node3D.new()
+	pivot.name = "Squash"
+	pivot.position.y = size[1] / 2.0
+	root.add_child(pivot)
+	var flesh := _mat(c)
+	flesh.roughness = 0.35
+	flesh.rim_enabled = true
+	flesh.rim = 0.5
+	_part(pivot, SphereMesh.new(), Vector3(r * 2.0, r * 1.8, r * 2.0), c, Vector3.ZERO, flesh)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 271
+	for i in 9:   # lóbulos claros como as manchas do sprite
+		var dir := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.6, 1), rng.randf_range(-0.2, 1)).normalized()
+		_part(pivot, SphereMesh.new(), Vector3.ONE * r * rng.randf_range(0.35, 0.55), c.lightened(rng.randf_range(0.15, 0.35)), dir * r * 0.82, flesh)
+	_part(pivot, SphereMesh.new(), Vector3(r * 1.25, r * 0.7, r * 0.4), Color("#2a0610"), Vector3(0, -r * 0.05, -r * 0.82), _mat(Color("#2a0610")))   # boca
+	for row in [-1, 1]:
+		for i in 5:
+			var t := _part(pivot, BoxMesh.new(), Vector3(r * 0.12, r * 0.26, r * 0.1), Color("#f0e4d0"), Vector3((i - 2) * r * 0.24, -r * 0.05 + row * r * 0.3, -r * 1.0))
+			t.rotation.z = row * 0.12 * (i - 2)
+	var vein := _mat(Color("#b01820"))
+	for i in 3:   # veia por trás, quebrando em degraus como no sprite
+		var seg := _part(pivot, CylinderMesh.new(), Vector3(r * 0.16, r * 0.9, r * 0.16), Color("#b01820"), Vector3((i % 2) * r * 0.25 - r * 0.12, r * 0.15 * (1 - i), r * (1.0 + i * 0.8)), vein)
+		seg.rotation.x = PI / 2
+
+
 # Cérebro: massa rosada de lóbulos com sulcos escuros e dois olhos na frente (-Z); os tentáculos pendem atrás.
 static func _brain(root: Node3D, size: Array, c: Color) -> void:
 	var r: float = size[0] / 2.0
@@ -294,7 +326,7 @@ static func _slime(root: Node3D, size: Array, c: Color, def: Dictionary) -> void
 	rim.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	rim.cull_mode = BaseMaterial3D.CULL_FRONT
 	rim.albedo_color = c.darkened(0.6)
-	_part(body, SphereMesh.new(), Vector3(w * 1.08, h * 1.4, w * 1.08), c, Vector3(0, h * 0.66, 0), rim)
+	_part(body, SphereMesh.new(), Vector3(w * 1.08, h * 1.5, w * 1.08), c, Vector3(0, h * 0.4, 0), rim)   # domo: a metade de baixo fica no chão
 	var gel := _mat(Color(c.lightened(0.1), 0.8))
 	gel.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	gel.roughness = 0.12
@@ -302,7 +334,7 @@ static func _slime(root: Node3D, size: Array, c: Color, def: Dictionary) -> void
 	gel.emission = c * 0.4
 	gel.rim_enabled = true
 	gel.rim = 0.7
-	_part(body, SphereMesh.new(), Vector3(w, h * 1.3, w), c, Vector3(0, h * 0.65, 0), gel)
+	_part(body, SphereMesh.new(), Vector3(w, h * 1.4, w), c, Vector3(0, h * 0.38, 0), gel)
 	_part(body, SphereMesh.new(), Vector3(w * 0.4, h * 0.5, w * 0.4), c.darkened(0.5), Vector3(w * 0.05, h * 0.36, w * 0.02))   # miolo
 	for side in [-1, 1]:   # olhos
 		_part(body, SphereMesh.new(), Vector3(w * 0.14, h * 0.26, w * 0.09), Color("#0c1018"), Vector3(side * w * 0.2, h * 0.78, -w * 0.4))

@@ -495,6 +495,8 @@ func test_enemy_models():
 	EnemyModel.set_phase(eye, 2)
 	check(not eye.get_node("Look/Iris").visible and eye.get_node("Look/Mouth").visible, "fase 2: íris vira boca")
 	eye.free()
+	check(ent.def_named("the_hungry").model == "hungry" and EnemyModel.build(ent.def_named("the_hungry")).find_children("", "MeshInstance3D", true, false).size() > 20, "The Hungry é carne com boca, não um olho")
+	check(Items.title("brain_of_cthulhu") == "Brain of Cthulhu" and Items.title("the_rotted_fork") == "The Rotted Fork" and Items.title("wand_of_sparking") == "Wand of Sparking", "nomes em title case da wiki")
 	check(ent.def_named("zombie").model == "humanoid", "zumbi usa o corpo humanoide")
 	var icon := Items.icon_texture(Items.ids.copper_pickaxe, ImageTexture.create_from_image(Atlas.build(Blocks.textures)))
 	var small: Array = ItemModel.for_item(Items.ids.copper_pickaxe, icon, 0.4)
