@@ -5,7 +5,7 @@ Marque ✅ ao concluir. Perguntas que precisam do dono: liste no fim do passo.
 
 ## Prioridade (pós commit dos machados)
 1. Árvore: quebrar a base derruba a árvore inteira (tronco + copa), como no Terraria; drop de madeira por bloco do tronco, e acorn/semente.
-2. Voo: hoje é modo criativo (F). Falta descer na horizontal/Ctrl (Ctrl desce, Espaço sobe). Com asas (futuro): sem voo livre, planar/cair sozinho,
+2. Voo: hoje é modo criativo (F). Falta descer na VERTICAL de forma natural (Espaço sobe, Ctrl desce; hoje só C desce e o Ctrl não faz nada). Com asas (futuro): sem voo livre, planar/cair sozinho,
    sem dano de queda, tempo de voo limitado. Separar "modo criativo/debug" (F) de "asas" (item de acessório, ver `inv.acc_sum`).
 3. Dano de armas/ferramentas = wiki (machado/picareta/espada: dano, use_time, knockback, escala de dano do Terraria; revisar `hurt`, defesa/2).
 4. Cursor do minimapa "teleporta": `minimap.gd` atualiza a origem só a cada ciclo de 40 quadros; a seta usa a origem antiga → mover a seta
