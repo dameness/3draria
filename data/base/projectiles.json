@@ -1,6 +1,6 @@
 [
 	{"name": "wooden_arrow", "model_item": "wooden_arrow", "size": 1.1, "gravity": 10, "life": 5, "pierce": 1},
-	{"name": "enchanted_beam", "sprite": "enchanted_sword_beam", "size": 0.8, "gravity": 0, "life": 1.5, "pierce": 1, "glow": "#8fd3ff"},
+	{"name": "enchanted_beam", "sprite": "enchanted_sword_beam", "solid": true, "size": 0.8, "gravity": 0, "life": 1.5, "pierce": 1, "glow": "#8fd3ff"},
 	{"name": "terra_beam", "sprite": "terra_beam", "size": 1.6, "gravity": 0, "life": 1.2, "pierce": 3, "glow": "#7dff5a"},
 	{"name": "unholy_arrow", "model_item": "unholy_arrow", "size": 1.1, "gravity": 10, "life": 5, "pierce": 5, "glow": "#a070ff"},
 	{"name": "eye_laser", "size": 0.9, "gravity": 0, "life": 4, "pierce": 1, "glow": "#ff3a3a", "hostile": true},
@@ -8,6 +8,6 @@
 	{"name": "spark", "sprite": "spark", "size": 1.0, "gravity": 4, "life": 1.4, "pierce": 1, "glow": "#ffe27a"},
 	{"name": "space_laser", "sprite": "space_laser", "beam": true, "thick": 3, "size": 1.4, "gravity": 0, "life": 1.5, "pierce": 1, "glow": "#5aff7a"},
 	{"name": "blood_drop", "size": 0.35, "gravity": 25, "life": 3, "pierce": 1, "glow": "#e02030"},
-	{"name": "fork_wave", "sprite": "fork_wave", "size": 1.6, "gravity": 0, "life": 0.22, "pierce": 3, "glow": "#c04050"},
+	{"name": "fork_wave", "sprite": "fork_wave", "solid": true, "sprite_angle": 135, "size": 1.6, "gravity": 0, "life": 0.22, "pierce": 3, "glow": "#c04050"},
 	{"name": "thorn", "sprite": "thorn", "size": 1.0, "gravity": 0, "life": 0.8, "pierce": 2, "glow": "#6adf4a"}
 ]

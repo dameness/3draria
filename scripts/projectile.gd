@@ -15,18 +15,24 @@ var hit: Array[Node3D] = []
 
 func _ready() -> void:
 	var atlas: Texture2D = entities.world.atlas_texture
-	if def.has("model_item"):
-		var id: int = Items.ids[def.model_item]
-		var m := ItemModel.for_item(id, Items.icon_texture(id, atlas), def.size)
+	if def.has("model_item") or def.get("solid", false):   # solid: o sprite da wiki (pixel art pequeno) extrudado em 3D, como o ícone de item
+		var m: Array
+		var ang := 45.0
+		if def.has("model_item"):
+			var id: int = Items.ids[def.model_item]
+			m = ItemModel.for_item(id, Items.icon_texture(id, atlas), def.size)
+			ang = Items.defs[id].get("sprite_angle", 45.0)
+		else:
+			m = ItemModel.for_item(def.name.hash(), Atlas.texture(def.sprite, Blocks.textures.keys().find(def.sprite), atlas), def.size)
+			ang = def.get("sprite_angle", 45.0)
 		var mi := MeshInstance3D.new()
 		mi.mesh = m[0]
 		mi.material_override = m[1]
 		# Gira a direção para onde o sprite aponta (sprite_angle) até a frente do projétil (-Z).
-		var ang := deg_to_rad(Items.defs[id].get("sprite_angle", 45.0))
-		mi.transform = Transform3D(Basis(Vector3.UP, PI / 2) * Basis(Vector3.BACK, -ang), Vector3.ZERO)
+		mi.transform = Transform3D(Basis(Vector3.UP, PI / 2) * Basis(Vector3.BACK, -deg_to_rad(ang)), Vector3.ZERO)
 		mi.position = -(mi.transform.basis * m[0].get_aabb().get_center())
 		add_child(mi)
-	if def.has("sprite"):
+	if def.has("sprite") and not def.get("solid", false):
 		var sp := Sprite3D.new()
 		sp.texture = Atlas.texture(def.sprite, Blocks.textures.keys().find(def.sprite), atlas)
 		var big := maxf(sp.texture.get_width(), sp.texture.get_height())
