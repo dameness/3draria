@@ -38,5 +38,6 @@ bônus por dados: `"accessory": {speed, jump, regen, defense, wings: {time, lift
 minimapa (mapa de exploração do mundo inteiro; Tab troca retrato/sobreposição/oculto, M mapa cheio, +/- zoom; salvo no mundo), lixeira (Ctrl+clique), Ordenar, Alt+clique favorita (★), Shift+clique (veste ou manda ao baú), Configurações (pausa; opções em `settings.gd`), baús (botão direito;
 40 slots; tesouro sorteado na 1ª abertura; só quebra vazio). Animação: slots crescem/pulam, item voa até o slot, painéis deslizam, corações batem,
 dicas com fade, cursor balança.
+Mundo de teste: **F9** abre o painel de atalhos (modal: esconde o inventário; hora, vida/mana, hardmode, chefes, viagem) e um rodapé lista as teclas.
 Criação: o botão do martelo alterna a lista completa. Ctrl (inventário fechado) liga o cursor inteligente: com ferramenta na mão e a mira no vazio, pega o bloco mais perto da linha de visada (mira dourada).
 Pendente: vanity/dye.
