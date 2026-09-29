@@ -113,5 +113,15 @@
 	{"result": "grappling_hook", "needs": {"chain": 3, "hook": 1}, "station": "anvil"},
 	{"result": "chair", "needs": {"wood": 4}, "station": "workbench"},
 	{"result": "door", "count": 1, "needs": {"wood": 6}, "station": "workbench"},
-	{"result": "mana_crystal", "needs": {"fallen_star": 5}}
+	{"result": "mana_crystal", "needs": {"fallen_star": 5}},
+	{"result": "tin_shortsword", "needs": {"tin_bar": 5}, "station": "anvil"},
+	{"result": "iron_shortsword", "needs": {"iron_bar": 6}, "station": "anvil"},
+	{"result": "lead_shortsword", "needs": {"lead_bar": 6}, "station": "anvil"},
+	{"result": "silver_shortsword", "needs": {"silver_bar": 6}, "station": "anvil"},
+	{"result": "tungsten_shortsword", "needs": {"tungsten_bar": 6}, "station": "anvil"},
+	{"result": "gold_shortsword", "needs": {"gold_bar": 6}, "station": "anvil"},
+	{"result": "platinum_shortsword", "needs": {"platinum_bar": 6}, "station": "anvil"},
+	{"result": "wood_helmet", "needs": {"wood": 20}, "station": "workbench"},
+	{"result": "wood_breastplate", "needs": {"wood": 30}, "station": "workbench"},
+	{"result": "wood_greaves", "needs": {"wood": 25}, "station": "workbench"}
 ]

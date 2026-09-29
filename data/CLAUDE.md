@@ -54,6 +54,7 @@ Acessório: `accessory: {speed?, jump?, regen?, defense?, max_mana?, panic?, no_
 Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus, free_cost?: [armas sem custo de mana com o conjunto completo]}}`.
 Magia: `cost` (mana) + `shoot` (projétil); `cloud: alcance` faz a arma soltar uma nuvem que chove (`blood_drop`) em vez de um projétil (Crimson Rod).
 Gancho: `hook: {range, launch, pull}` (blocos, blocos/s); a tecla E usa o primeiro gancho do inventário. Poção/buff: `buff` + `buff_time` (s), nomes em `buffs.json` (efeitos `defense speed regen mining arrow_damage arrow_speed shine owl spelunker`).
+`pickup: {heal?, mana?}`: coração/estrela, consumidos ao pegar (não entram no inventário).
 Item novo entra no FIM de `items.json` e de `blocks.json` (o mundo de teste o põe sozinho no baú da categoria: `TestWorld.category`).
 
 ## recipes.json
@@ -67,6 +68,7 @@ Item novo entra no FIM de `items.json` e de `blocks.json` (o mundo de teste o p�
 `{name, ai: hop|walk|fly|eye_of_cthulhu, model?: eye|slime|humanoid (senão sprite extrudado), iris?, colors?,
 life, damage, defense, speed, size:[largura, altura], color, blood? (cor das gotas ao levar golpe; padrão = color), sprite?,
 spawn: day|night|any|none, kb_resist? (resistência a recuo da tabela NPCs da wiki; negativo = recua mais), boss?, minion?, phase2?:{below, damage, defense, sprite}, drops:[{item, min, max, chance}]}`.
+`biome?`: onde nasce (sem ele: superfície comum): `underground` (terra, ≥ 8 blocos abaixo da superfície) `cavern` (rocha, y < 48) `underworld` `dungeon` `corruption` `crimson` `hallow` `meteorite` (perto de uma cratera). `final_drops`: só o último segmento/parte do grupo. `pick`: em `drops`, só um item de cada grupo cai. `heart`: chance de soltar Heart (senão 1/12 ou 1/24; estrela 13/24; só inimigos que soltam moedas). Moedas: valor da wiki em cobre ±40%.
 Escala: 1 tile do Terraria ≈ 0,6 bloco (jogador de 3 tiles = 1,8). IA nova = um `match` em `scripts/enemy.gd`.
 Chefes atravessam blocos e vão embora ao amanhecer; itens com `summon` os invocam (só à noite).
 

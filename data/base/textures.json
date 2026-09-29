@@ -288,5 +288,15 @@
 	"skeleton": {"wiki": "Skeleton"},
 	"meteor_head": {"wiki": "Meteor_Head"},
 	"demon": {"wiki": "Demon"},
+	"tin_shortsword": {"wiki": "Tin_Shortsword", "pattern": "sword", "colors": ["#b0a890", "#8f876f"], "top_colors": ["#6e4b2a"]},
+	"iron_shortsword": {"wiki": "Iron_Shortsword", "pattern": "sword", "colors": ["#c8c8d0", "#9a9aa4"], "top_colors": ["#6e4b2a"]},
+	"lead_shortsword": {"wiki": "Lead_Shortsword", "pattern": "sword", "colors": ["#7a8aa0", "#5a6a80"], "top_colors": ["#6e4b2a"]},
+	"silver_shortsword": {"wiki": "Silver_Shortsword", "pattern": "sword", "colors": ["#d8dce8", "#a8aec0"], "top_colors": ["#6e4b2a"]},
+	"tungsten_shortsword": {"wiki": "Tungsten_Shortsword", "pattern": "sword", "colors": ["#8fb08f", "#6a8a6a"], "top_colors": ["#6e4b2a"]},
+	"gold_shortsword": {"wiki": "Gold_Shortsword", "pattern": "sword", "colors": ["#f0d050", "#c0a030"], "top_colors": ["#6e4b2a"]},
+	"platinum_shortsword": {"wiki": "Platinum_Shortsword", "pattern": "sword", "colors": ["#d8e8f0", "#a8c0d0"], "top_colors": ["#6e4b2a"]},
+	"wood_helmet": {"wiki": "Wood_Helmet"},
+	"wood_breastplate": {"wiki": "Wood_Breastplate"},
+	"wood_greaves": {"wiki": "Wood_Greaves"},
 	"logo": {"wiki": "Terraria_Steam_Library_logo"}
 }

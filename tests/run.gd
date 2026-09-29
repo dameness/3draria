@@ -4219,4 +4219,12 @@ func test_wiki_review():
 	check(enemy_def("wall_of_flesh").drops.any(func(d): return d.item == "pwnhammer") and Items.hammer_power[Items.ids.pwnhammer] == 80 and Items.defs[Items.ids.healing_potion].heal == 100, "o Wall of Flesh solta a Pwnhammer (80%) e Healing Potion (100)")
 	check(enemy_def("king_slime").drops.any(func(d): return d.item == "lesser_healing_potion") and enemy_def("eye_of_cthulhu").drops.any(func(d): return d.item == "lesser_healing_potion"), "os chefes soltam Lesser Healing Potion (5–15)")
 	check(Items.defs[Items.ids.band_of_regeneration].accessory.regen == 1 and Items.defs[Items.ids.life_crystal].rarity == 2 and Items.defs[Items.ids.wand_of_sparking].rarity == 1, "Band of Regeneration +1 vida/s; raridades da wiki")
+	# espadas curtas de cada metal (dano e use time da wiki) e o conjunto de madeira
+	var dmg := {"tin": 7, "iron": 8, "lead": 9, "silver": 9, "tungsten": 10, "gold": 12, "platinum": 13}
+	var frames := {"tin": 12, "iron": 12, "lead": 12, "silver": 12, "tungsten": 11, "gold": 11, "platinum": 10}
+	for m in dmg:
+		var id: int = Items.ids[m + "_shortsword"]
+		check(Items.defs[id].damage == dmg[m] and roundi(Items.defs[id].use_time * 60) == frames[m] and Crafting.recipes.any(func(r): return r.result == id and r.station == Blocks.ids.anvil), "%s shortsword: dano %d, use time %d, receita na bigorna" % [m, dmg[m], frames[m]])
+	var wood: Dictionary = Items.sets.wood
+	check(wood.pieces.size() == 3 and wood.defense == 1 and Items.defs[wood.pieces[0]].defense + Items.defs[wood.pieces[1]].defense + Items.defs[wood.pieces[2]].defense == 2, "conjunto de madeira: 1+1+0 de defesa e +1 do conjunto")
 	return true
