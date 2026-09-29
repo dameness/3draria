@@ -67,6 +67,17 @@ static func burst(parent: Node3D, pos: Vector3, color: Color, n: int, o := {}) -
 	return p
 
 
+# Rastro contínuo preso a `parent` (projétil): faíscas aditivas que ficam no ar onde o projétil passou e esmaecem.
+static func trail(parent: Node3D, color: Color, size: float) -> CPUParticles3D:
+	var p := burst(parent, Vector3.ZERO, color, 18, {"size": size, "life": 0.4, "speed": 0.5, "spread": 180.0, "gravity": 0.0, "additive": true})
+	if p == null:
+		return null
+	p.one_shot = false
+	p.explosiveness = 0.0
+	p.finished.disconnect(p.queue_free)
+	return p
+
+
 static func dust(parent: Node3D, pos: Vector3, color: Color, n := 5, dir := Vector3.UP) -> void:
 	burst(parent, pos, color, n, {"size": 0.17, "life": 0.6, "speed": 1.8, "spread": 80.0, "gravity": 3.0, "dir": dir})
 

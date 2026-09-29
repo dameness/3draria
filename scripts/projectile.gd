@@ -57,6 +57,8 @@ func _ready() -> void:
 		halo.shaded = false
 		halo.modulate = Color(1, 1, 1, 0.6)
 		add_child(halo)
+		if def.get("trail", false):
+			Fx.trail(self, Color(def.glow), def.size * 0.09)
 
 
 func _physics_process(delta: float) -> void:

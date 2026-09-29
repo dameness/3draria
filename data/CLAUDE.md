@@ -71,7 +71,7 @@ Escala: 1 tile do Terraria ≈ 0,6 bloco (jogador de 3 tiles = 1,8). IA nova = u
 Chefes atravessam blocos e vão embora ao amanhecer; itens com `summon` os invocam (só à noite).
 
 ## projectiles.json
-`{name, sprite? (textura, billboard) | model_item? (ícone extrudado), size, gravity, life (s), pierce, glow?}`.
+`{name, sprite? (textura, billboard) | model_item? (ícone extrudado), size, gravity, life (s), pierce, glow? (cor do halo), trail? (rastro de partículas na cor do glow)}`.
 Dano/velocidade vêm da arma (feixe = dano da espada; flecha = arco + flecha).
 
 ## loot.json

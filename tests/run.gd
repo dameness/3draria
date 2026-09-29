@@ -370,6 +370,8 @@ func test_projectiles():
 	p.shoot(Items.defs[Items.ids.musket], eye, Vector3.RIGHT)
 	var bullet: Node3D = ent.get_children().back()
 	check(bullet.def.name == "musket_ball" and bullet.damage == 38 and p.inv.total(Items.ids.musket_ball) == 4, "Musket dispara a bala (31 + 7 de dano) e gasta 1 munição")
+	for pd in ent.projectiles.values():
+		check(not pd.get("trail", false) or pd.has("glow"), "%s: rastro usa a cor do brilho" % pd.name)
 	free_player(p)
 	w.free()
 	return true

@@ -107,6 +107,8 @@ const SHOTS := [
 	{"name": "proj_bala", "item": "musket", "ammo": "musket_ball", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_terra", "item": "terra_blade", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_laser", "item": "space_gun", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "rastro_laser", "item": "space_gun", "enemies": ["zombie"], "fire": 9.0, "slow": 0.004, "look": Vector2(0, -0.05)},
+	{"name": "rastro_terra", "item": "terra_blade", "enemies": ["zombie"], "fire": 9.0, "slow": 0.004, "look": Vector2(0, -0.05)},
 	{"name": "proj_espinho", "item": "vilethorn", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_garfo", "item": "the_rotted_fork", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_faisca", "item": "wand_of_sparking", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
@@ -135,6 +137,9 @@ var wait := 0
 var tree_base := Vector3i.ZERO
 
 
+var slow_pr: Node3D
+
+
 func _initialize() -> void:
 	var only := Array(OS.get_cmdline_user_args())
 	shots = SHOTS.filter(func(s): return only.is_empty() or only.any(func(o): return s.name.contains(o)))
@@ -155,6 +160,8 @@ func _process(_delta: float) -> bool:
 	if wait == 0:
 		_setup(shots[shot])
 	wait += 1
+	if slow_pr and is_instance_valid(slow_pr):
+		slow_pr._physics_process(shots[shot].slow)
 	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.use_len = 0.4
@@ -545,6 +552,7 @@ func _setup(s: Dictionary) -> void:
 			pr._physics_process(1.0 / 60.0)
 			steps += 1
 		pr.set_physics_process(false)
+		slow_pr = pr if s.has("slow") else null   # segue voando a passos curtos a cada quadro da cena: o rastro de partículas aparece
 		player.creative = true
 		player.position = (eye0 + aim_at) / 2.0 + dir.cross(Vector3.UP).normalized() * 4.5 + Vector3.UP * 0.2 - Vector3.UP * player.EYE
 		var to: Vector3 = pr.position - player.eye()
