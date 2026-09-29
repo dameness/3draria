@@ -79,7 +79,7 @@ static func style(id: int) -> String:
 		return d.use_style
 	if d.has("ammo"):
 		return "shoot"
-	if d.get("damage", 0) > 0 or Items.pick_power[id] > 0:
+	if d.get("damage", 0) > 0 or Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or d.has("bucket"):
 		return "swing"
 	return "hold"
 
@@ -168,7 +168,7 @@ func _show(id: int) -> void:
 	glow = null
 	sparks = null
 	var fx: Dictionary = Items.defs[id].get("effects", {})
-	trail_on = fx.has("trail") or (st in ["swing", "thrust"] and Items.defs[id].get("damage", 0) > 0 and Items.pick_power[id] == 0)
+	trail_on = fx.has("trail") or (st in ["swing", "thrust"] and Items.defs[id].get("damage", 0) > 0 and Items.pick_power[id] == 0 and Items.axe_power[id] == 0)
 	trail.color = Color(fx.trail) if fx.has("trail") else Color(0.92, 0.96, 1.0)
 	if fx.has("glow"):
 		glow = MeshInstance3D.new()

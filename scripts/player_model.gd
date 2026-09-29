@@ -264,7 +264,7 @@ func _show_held(id: int) -> void:
 	held.mesh = m[0]
 	held.material_override = m[1]
 	var fx: Dictionary = Items.defs[id].get("effects", {})
-	trail_on = fx.has("trail") or (st in ["swing", "thrust"] and Items.defs[id].get("damage", 0) > 0 and Items.pick_power[id] == 0)
+	trail_on = fx.has("trail") or (st in ["swing", "thrust"] and Items.defs[id].get("damage", 0) > 0 and Items.pick_power[id] == 0 and Items.axe_power[id] == 0)
 	trail.color = Color(fx.trail) if fx.has("trail") else Color(0.92, 0.96, 1.0)
 	var blade := st in ["swing", "thrust"]
 	var phi: float = {"swing": 0.8, "thrust": 0.0}.get(st, PI / 2)

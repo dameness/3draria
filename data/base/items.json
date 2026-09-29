@@ -101,5 +101,16 @@
 	{"name": "palladium_pickaxe", "icon": "palladium_pickaxe", "pick_power": 130, "damage": 12, "use_time": 0.417, "reach": 2.2, "knockback": 5, "stack": 1, "rarity": 4},
 	{"name": "cobalt_sword", "icon": "cobalt_sword", "damage": 40, "use_time": 0.317, "reach": 2.7, "knockback": 5, "stack": 1, "rarity": 4},
 	{"name": "palladium_sword", "icon": "palladium_sword", "damage": 49, "use_time": 0.367, "reach": 2.7, "knockback": 5.5, "stack": 1, "rarity": 4},
-	{"name": "guide_voodoo_doll", "icon": "guide_voodoo_doll", "rarity": 0, "stack": 1, "summon": "wall_of_flesh", "underworld": true, "use_time": 0.75}
+	{"name": "guide_voodoo_doll", "icon": "guide_voodoo_doll", "rarity": 0, "stack": 1, "summon": "wall_of_flesh", "underworld": true, "use_time": 0.75},
+	{"name": "copper_axe", "icon": "copper_axe", "axe_power": 35, "damage": 3, "use_time": 0.5, "reach": 2.2, "knockback": 4.5, "stack": 1},
+	{"name": "tin_axe", "icon": "tin_axe", "axe_power": 40, "damage": 4, "use_time": 0.467, "reach": 2.2, "knockback": 4.5, "stack": 1},
+	{"name": "iron_axe", "icon": "iron_axe", "axe_power": 45, "damage": 5, "use_time": 0.45, "reach": 2.2, "knockback": 4.5, "stack": 1},
+	{"name": "lead_axe", "icon": "lead_axe", "axe_power": 50, "damage": 6, "use_time": 0.467, "reach": 2.2, "knockback": 4.5, "stack": 1},
+	{"name": "silver_axe", "icon": "silver_axe", "axe_power": 50, "damage": 6, "use_time": 0.433, "reach": 2.2, "knockback": 4.5, "stack": 1},
+	{"name": "tungsten_axe", "icon": "tungsten_axe", "axe_power": 55, "damage": 7, "use_time": 0.433, "reach": 2.2, "knockback": 4.5, "stack": 1},
+	{"name": "gold_axe", "icon": "gold_axe", "axe_power": 55, "damage": 7, "use_time": 0.433, "reach": 2.2, "knockback": 4.5, "stack": 1},
+	{"name": "platinum_axe", "icon": "platinum_axe", "axe_power": 60, "damage": 8, "use_time": 0.417, "reach": 2.2, "knockback": 4.5, "stack": 1},
+	{"name": "empty_bucket", "icon": "empty_bucket", "stack": 1, "bucket": "empty", "use_time": 0.25},
+	{"name": "water_bucket", "icon": "water_bucket", "stack": 1, "bucket": "water", "use_time": 0.25},
+	{"name": "lava_bucket", "icon": "lava_bucket", "stack": 1, "bucket": "lava", "use_time": 0.25, "rarity": 1}
 ]

@@ -90,5 +90,14 @@
 	{"result": "cobalt_pickaxe", "needs": {"cobalt_bar": 15}, "station": "anvil"},
 	{"result": "palladium_pickaxe", "needs": {"palladium_bar": 18}, "station": "anvil"},
 	{"result": "cobalt_sword", "needs": {"cobalt_bar": 8}, "station": "anvil"},
-	{"result": "palladium_sword", "needs": {"palladium_bar": 10}, "station": "anvil"}
+	{"result": "palladium_sword", "needs": {"palladium_bar": 10}, "station": "anvil"},
+	{"result": "copper_axe", "needs": {"copper_bar": 6, "wood": 3}, "station": "anvil"},
+	{"result": "tin_axe", "needs": {"tin_bar": 6, "wood": 3}, "station": "anvil"},
+	{"result": "iron_axe", "needs": {"iron_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "lead_axe", "needs": {"lead_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "silver_axe", "needs": {"silver_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "tungsten_axe", "needs": {"tungsten_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "gold_axe", "needs": {"gold_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "platinum_axe", "needs": {"platinum_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "empty_bucket", "needs": {"iron_bar": 2}, "station": "anvil"}
 ]

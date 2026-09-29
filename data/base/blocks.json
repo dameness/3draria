@@ -5,7 +5,7 @@
 	{"name": "stone", "tiles": {"all": "stone"}, "icon": "stone_item"},
 	{"name": "ash", "mine": 2, "tiles": {"all": "ash"}, "icon": "ash_item"},
 	{"name": "bedrock", "breakable": false, "tiles": {"all": "bedrock"}},
-	{"name": "wood", "mine": 1.5, "clear": true, "tiles": {"top": "wood_top", "side": "wood_side"}, "icon": "wood_item"},
+	{"name": "wood", "mine": 1.5, "axe": true, "clear": true, "tiles": {"top": "wood_top", "side": "wood_side"}, "icon": "wood_item"},
 	{"name": "leaves", "mine": 5, "clear": true, "drop": "", "tiles": {"all": "leaves"}},
 	{"name": "copper_ore", "tiles": {"all": "copper_ore"}, "icon": "copper_ore_item"},
 	{"name": "iron_ore", "tiles": {"all": "iron_ore"}, "icon": "iron_ore_item"},

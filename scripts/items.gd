@@ -8,6 +8,7 @@ static var icon := PackedInt32Array()     # id -> índice no atlas (ícone proce
 static var icon_name: Array[String] = []  # id -> entrada de textures.json com o sprite da wiki
 static var places := PackedInt32Array()   # id -> bloco que coloca, ou -1
 static var pick_power := PackedInt32Array()
+static var axe_power := PackedInt32Array()   # id -> poder de machado (só machado corta tronco)
 static var stack := PackedInt32Array()
 static var drop := PackedInt32Array()     # bloco -> item que dropa, ou -1
 static var sets := {}                     # conjunto de armadura -> {pieces: [ids], defense: bônus}
@@ -23,6 +24,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	Atlas.texture_cache.clear()
 	places.clear()
 	pick_power.clear()
+	axe_power.clear()
 	stack.clear()
 	drop.clear()
 	defs.clear()
@@ -56,6 +58,7 @@ static func _add(def: Dictionary, ic: int, pl: int) -> void:
 	icon_name.append(def.get("icon", ""))
 	places.append(pl)
 	pick_power.append(def.get("pick_power", 0))
+	axe_power.append(def.get("axe_power", 0))
 	stack.append(def.get("stack", 9999))
 	defs.append(def)
 

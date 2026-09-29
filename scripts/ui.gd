@@ -126,6 +126,10 @@ static func item_tip(id: int) -> String:
 		lines.append("Moeda")
 	if Items.pick_power[id] > 0:
 		lines.append("%d%% de poder de picareta" % Items.pick_power[id])
+	if Items.axe_power[id] > 0:
+		lines.append("%d%% de poder de machado" % Items.axe_power[id])
+	if d.has("bucket"):
+		lines.append({"empty": "Botão esquerdo pega água ou lava", "water": "Botão esquerdo derrama a água", "lava": "Botão esquerdo derrama a lava"}[d.bucket])
 	if d.has("summon"):
 		lines.append("Invoca um chefe (só à noite)" if d.get("night", false) else "Invoca um chefe")
 	if d.has("set"):

@@ -29,6 +29,8 @@ const LIST_ROW := 66                   # altura de uma linha da lista (nome + in
 
 var box: VBoxContainer                 # conteúdo da tela atual (botões, lista, campo de nome)
 var chosen_player := ""
+var new_look := {}                     # cores do personagem que está sendo criado (pele, cabelo, camisa, calça)
+var new_name := ""
 var screen := "title"                  # title | players | worlds
 var world: Node3D
 var clock: Node
@@ -189,7 +191,7 @@ func _process(delta: float) -> void:
 
 
 # Mostra o personagem `who` (nome + armadura salva) de pé no gramado, com um pulinho de entrada.
-func _show_avatar(who: String, equip: Array) -> void:
+func _show_avatar(who: String, equip: Array, look := {}) -> void:
 	if avatar:
 		avatar.queue_free()
 	avatar = Avatar.new()
@@ -199,7 +201,7 @@ func _show_avatar(who: String, equip: Array) -> void:
 	var model: Node3D = load("res://scripts/player_model.gd").new()
 	model.player = avatar
 	avatar.add_child(model)
-	model.restyle(SaveGame.look_for(who))
+	model.restyle(look if not look.is_empty() else SaveGame.look_for(who))
 	avatar.position = Vector3(SPAWN.x, ground, SPAWN.y)
 	avatar.scale = Vector3.ONE * 0.01
 	world.get_parent().add_child(avatar)
@@ -217,7 +219,7 @@ func _hide_avatar() -> void:
 
 
 func _avatar_of(entry: Dictionary) -> void:
-	_show_avatar(entry.name, entry.info.get("equip", []))
+	_show_avatar(entry.name, entry.info.get("equip", []), SaveGame.look_of(entry.info, entry.name))
 
 
 # --- telas ------------------------------------------------------------------------------------------------------
@@ -347,12 +349,13 @@ func _refresh(dir: String) -> void:
 
 # Campo de nome + botão criar; `create` recebe o nome e retorna o caminho ("" se inválido/repetido). `typing` (opcional)
 # recebe o texto a cada tecla.
-func _create_row(hint: String, create: Callable, after: Callable, typing := Callable()) -> void:
+func _create_row(hint: String, create: Callable, after: Callable, typing := Callable(), initial := "") -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	var name_edit := LineEdit.new()
 	name_edit.placeholder_text = hint
 	name_edit.max_length = 20
+	name_edit.text = initial
 	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_edit.custom_minimum_size = Vector2(0, 40)
 	row.add_child(name_edit)
@@ -372,18 +375,50 @@ func _create_row(hint: String, create: Callable, after: Callable, typing := Call
 	box.add_child(status)
 
 
+# Fileira de amostras de cor do novo personagem: clicar troca essa parte e mostra o boneco na hora.
+func _swatches(label: String, key: String, colors: Array) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	var l := Label.new()
+	l.text = label
+	l.custom_minimum_size = Vector2(70, 0)
+	row.add_child(l)
+	for c in colors:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(28, 28)
+		b.focus_mode = Control.FOCUS_NONE
+		var sb := Ui.box(Color(c), Ui.GOLD if Color(c).is_equal_approx(new_look[key]) else Ui.EDGE, 3, 4)
+		for st in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(st, sb)
+		b.pressed.connect(func():
+			new_look[key] = Color(c)
+			show_players()
+			_show_avatar("?", [], new_look))
+		row.add_child(b)
+	box.add_child(row)
+
+
 func show_players() -> void:
 	screen = "players"
 	_clear("Escolha o personagem", true, 0.74, 0.58)
 	_go(AVATAR_VIEW, 0.62)
 	var entries := SaveGame.list(SaveGame.players_dir)
+	if new_look.is_empty():
+		new_look = SaveGame.look_for(str(randi()))
 	if entries.is_empty():
-		_hide_avatar()
+		_show_avatar("?", [], new_look)   # sem saves: o boneco é o que está sendo criado
 	elif avatar == null:
 		_avatar_of(entries[0])
 	_save_list(SaveGame.players_dir, pick_player, _avatar_of)
-	_create_row("nome do novo personagem", SaveGame.create_player, func(_p): show_players(),
-		func(t: String): _show_avatar(t.strip_edges() if t.strip_edges() != "" else "?", []))
+	_create_row("nome do novo personagem", func(n): return SaveGame.create_player(n, new_look), func(_p):
+		new_look = {}
+		new_name = ""
+		show_players(),
+		func(t: String):
+			new_name = t
+			_show_avatar("?", [], new_look), new_name)
+	for part in [["pele", "skin", SaveGame.SKINS], ["cabelo", "hair", SaveGame.HAIRS], ["camisa", "shirt", SaveGame.SHIRTS], ["calça", "pants", SaveGame.PANTS]]:
+		_swatches(part[0], part[1], part[2])
 	var back := Ui.menu_button("Voltar", 24)
 	back.pressed.connect(show_title)
 	box.add_child(back)

@@ -172,7 +172,7 @@ func _rebuild(k: Vector2i) -> void:
 
 # Percorre voxels ao longo do raio (Amanatides & Woo).
 # Retorna {"pos": bloco atingido, "normal": face atingida, "t": distância até a entrada no bloco} ou {} se não acertar.
-func raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
+func raycast(from: Vector3, dir: Vector3, max_dist: float, liquids := false) -> Dictionary:   # liquids: o líquido também é alvo (balde)
 	var p := Vector3i(from.floor())
 	var step := Vector3i(dir.sign())
 	var t_delta := Vector3.INF
@@ -185,7 +185,7 @@ func raycast(from: Vector3, dir: Vector3, max_dist: float) -> Dictionary:
 	var t := 0.0
 	while t <= max_dist:
 		var b := get_block(p.x, p.y, p.z)
-		if b != 0 and not Blocks.soft[b]:  # a mira pega também blocos não sólidos (tochas), mas atravessa plantas e líquidos
+		if b != 0 and (not Blocks.soft[b] or (liquids and Blocks.liquid[b])):  # a mira pega também blocos não sólidos (tochas), mas atravessa plantas e líquidos
 			return {"pos": p, "normal": normal, "t": t}
 		var a := t_max.min_axis_index()
 		t = t_max[a]

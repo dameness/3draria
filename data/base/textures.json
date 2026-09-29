@@ -201,5 +201,16 @@
 	"palladium_pickaxe": {"wiki": "Palladium_Pickaxe", "pattern": "pickaxe", "colors": ["#e8823a", "#b85a1a"], "top_colors": ["#6e4b2a"]},
 	"cobalt_sword": {"wiki": "Cobalt_Sword", "pattern": "sword", "colors": ["#3a6ad8", "#2a4aa8"], "top_colors": ["#6e4b2a"]},
 	"palladium_sword": {"wiki": "Palladium_Sword", "pattern": "sword", "colors": ["#e8823a", "#b85a1a"], "top_colors": ["#6e4b2a"]},
-	"guide_voodoo_doll": {"wiki": "Guide_Voodoo_Doll", "pattern": "blob", "colors": ["#c0703a", "#8a4a20", "#e8c060"]}
+	"guide_voodoo_doll": {"wiki": "Guide_Voodoo_Doll", "pattern": "blob", "colors": ["#c0703a", "#8a4a20", "#e8c060"]},
+	"copper_axe": {"wiki": "Copper_Axe", "pattern": "pickaxe", "colors": ["#c87533", "#808088"], "top_colors": ["#6e4b2a"]},
+	"tin_axe": {"wiki": "Tin_Axe", "pattern": "pickaxe", "colors": ["#b8b8c8", "#808088"], "top_colors": ["#6e4b2a"]},
+	"iron_axe": {"wiki": "Iron_Axe", "pattern": "pickaxe", "colors": ["#c9c9d0", "#808088"], "top_colors": ["#6e4b2a"]},
+	"lead_axe": {"wiki": "Lead_Axe", "pattern": "pickaxe", "colors": ["#5a6a8a", "#808088"], "top_colors": ["#6e4b2a"]},
+	"silver_axe": {"wiki": "Silver_Axe", "pattern": "pickaxe", "colors": ["#d8d8e8", "#808088"], "top_colors": ["#6e4b2a"]},
+	"tungsten_axe": {"wiki": "Tungsten_Axe", "pattern": "pickaxe", "colors": ["#7ac08a", "#808088"], "top_colors": ["#6e4b2a"]},
+	"gold_axe": {"wiki": "Gold_Axe", "pattern": "pickaxe", "colors": ["#f0c030", "#808088"], "top_colors": ["#6e4b2a"]},
+	"platinum_axe": {"wiki": "Platinum_Axe", "pattern": "pickaxe", "colors": ["#a8e8e0", "#808088"], "top_colors": ["#6e4b2a"]},
+	"empty_bucket": {"wiki": "Empty_Bucket", "pattern": "blob", "colors": ["#a8a8b8", "#70708a", "#e0e0f0"]},
+	"water_bucket": {"wiki": "Water_Bucket", "pattern": "blob", "colors": ["#3a78d8", "#2a5aa8", "#a8d4ff"]},
+	"lava_bucket": {"wiki": "Lava_Bucket", "pattern": "blob", "colors": ["#ff5a1a", "#c02a06", "#ffd050"]}
 }

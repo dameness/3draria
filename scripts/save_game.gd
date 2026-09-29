@@ -29,11 +29,22 @@ static func list(dir: String) -> Array:
 
 
 # Cria o arquivo e retorna o caminho, ou "" se o nome for vazio ou já existir.
-static func create_player(name: String) -> String:
+# look = cores escolhidas na criação ({skin, hair, shirt, pants} em Color); vazio = a aparência sai do nome (look_for).
+static func create_player(name: String, look := {}) -> String:
 	var path := _path(players_dir, name, ".plr")
-	if path == "" or _write(path, {"version": VERSION, "name": name.strip_edges(), "new": true}) != OK:
+	var data := {"version": VERSION, "name": name.strip_edges(), "new": true}
+	if not look.is_empty():
+		data["look"] = _look_out(look)
+	if path == "" or _write(path, data) != OK:
 		return ""
 	return path
+
+
+static func _look_out(look: Dictionary) -> Dictionary:
+	var out := {}
+	for k in look:
+		out[k] = look[k].to_html(false)
+	return out
 
 
 static func create_world(name: String, seed: int) -> String:
@@ -50,8 +61,19 @@ static func look_for(name: String) -> Dictionary:
 		"shirt": Color(SHIRTS[(h >> 6) % SHIRTS.size()]), "pants": Color(PANTS[(h >> 9) % PANTS.size()])}
 
 
+# Aparência de um save: as cores escolhidas (data.look) ou, sem elas, as do nome.
+static func look_of(data: Dictionary, name: String) -> Dictionary:
+	if not data.get("look", {}).is_empty():
+		var out := {}
+		for k in data.look:
+			out[k] = Color(data.look[k])
+		return out
+	return look_for(name)
+
+
 static func look(path: String) -> Dictionary:
-	return look_for(str(_read(path).get("name", "")))
+	var data := _read(path)
+	return look_of(data, str(data.get("name", "")))
 
 
 static func delete(path: String) -> void:
@@ -75,7 +97,7 @@ static func save_player(player, path: String) -> Error:
 	var equip := Array(player.inv.equip).map(func(id): return Items.names[id] if id != -1 else "")
 	var name := func(id): return Items.names[id] if id != -1 else ""
 	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "inv": inv, "equip": equip,
-		"acc": Array(player.inv.acc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
+		"look": _read(path).get("look", {}), "acc": Array(player.inv.acc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
 		"coin": Array(player.inv.coin), "fav": Array(player.inv.fav)})
 
 

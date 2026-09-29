@@ -61,6 +61,8 @@ func _process(_delta: float) -> bool:
 			shot("1_titulo")
 			scene.show_players()
 		1:
+			shot("2a_novo")   # a tela de criação, com as amostras de cor
+			scene.new_look["shirt"] = Color(SaveGame.SHIRTS[2])
 			type_name("Ana")
 		2:
 			shot("2_personagens")

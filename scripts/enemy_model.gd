@@ -327,6 +327,7 @@ static func animate(model: Node3D, enemy: Node3D, target: Vector3, t: float) -> 
 		for i in 5:
 			var ten: Node3D = look.get_node("Tendril%d" % i)
 			ten.rotation.y = sin(t * 6.0 + i) * 0.25
+		look.scale.y = 0.12 if fmod(t + enemy.get_instance_id() % 13, 3.7) < 0.1 else 1.0   # pisca de tempos em tempos
 	var pulse := model.get_node_or_null("Pulse")
 	if pulse:   # a carne pulsa
 		pulse.scale = Vector3(1.0 + sin(t * 2.2) * 0.015, 1.0 + sin(t * 1.7) * 0.01, 1.0 + sin(t * 2.6) * 0.06)

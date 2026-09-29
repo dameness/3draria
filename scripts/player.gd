@@ -82,6 +82,7 @@ func _ready() -> void:
 	if SaveGame.player_path == "" or not SaveGame.load_player(self, SaveGame.player_path):
 		inv.add(Items.ids.copper_pickaxe, 1)  # itens iniciais de personagem novo
 		inv.add(Items.ids.copper_shortsword, 1)
+		inv.add(Items.ids.copper_axe, 1)
 	cam.position.y = EYE
 	if SaveGame.player_path != "":   # a aparência (cores) do personagem escolhido no menu
 		get_node("Model").restyle(SaveGame.look(SaveGame.player_path))
@@ -227,7 +228,7 @@ func tick(delta: float) -> void:
 			var hits := 0
 			if swing_item.get("damage", 0) > 0:
 				hits = swing(swing_item, eye(), -cam.global_basis.z)
-			if swing_item.has("pick_power"):
+			if swing_item.has("pick_power") or swing_item.has("axe_power"):
 				break_target()
 			if hits > 0:
 				shake = maxf(shake, 0.4)
@@ -382,9 +383,35 @@ func use_item() -> void:
 	var forward := -cam.global_basis.z
 	if d.has("ammo"):
 		shoot(d, eye(), forward)
-	elif d.get("damage", 0) > 0 or Items.pick_power[id] > 0:   # a lâmina (ou a picareta) só acerta quando o arco chega à frente (~1/3 do golpe)
+	elif d.has("bucket"):
+		use_bucket(d)
+	elif d.get("damage", 0) > 0 or Items.pick_power[id] > 0 or Items.axe_power[id] > 0:   # a lâmina (ou a picareta) só acerta quando o arco chega à frente (~1/3 do golpe)
 		swing_item = d
 		swing_timer = d.get("use_time", 0.25) * (0.42 if d.get("use_style") == "thrust" else 0.3)
+
+
+# Balde: vazio pega o líquido da mira (um bloco); cheio derrama um bloco cheio no ar junto do alvo. O líquido depois flui sozinho (liquid.gd).
+func use_bucket(d: Dictionary) -> void:
+	if d.bucket == "empty":
+		var look := Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD   # a mira, sem depender da câmera na árvore
+		var hit: Dictionary = world.raycast(position + Vector3.UP * EYE, look, REACH, true)
+		if hit.is_empty() or not Blocks.liquid[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]:
+			return
+		var kind := Blocks.liquid_kind[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]
+		world.set_block(hit.pos.x, hit.pos.y, hit.pos.z, 0)
+		inv.item[slot] = Items.ids["water_bucket" if kind == Blocks.ids.water else "lava_bucket"]
+		inv.version += 1
+		Fx.splash(entities, Vector3(hit.pos) + Vector3(0.5, 0.8, 0.5), 8)
+		return
+	if target.is_empty():
+		return
+	var p: Vector3i = target.pos + target.normal
+	var there: int = world.get_block(p.x, p.y, p.z)
+	if there == 0 or Blocks.soft[there]:
+		world.set_block(p.x, p.y, p.z, Blocks.ids[d.bucket])
+		inv.item[slot] = Items.ids.empty_bucket
+		inv.version += 1
+		Fx.splash(entities, Vector3(p) + Vector3(0.5, 0.8, 0.5), 8)
 
 
 # Acerta todos os inimigos que a lâmina varre: à frente no plano horizontal (cone de ~75°) na altura do corpo, como o
@@ -450,11 +477,12 @@ func break_target() -> void:
 		return
 	var p: Vector3i = target.pos
 	var b: int = world.get_block(p.x, p.y, p.z)
-	var power := Items.pick_power[held()] if held() != -1 else 0
+	var axe := Blocks.axe[b] == 1   # tronco: só o machado corta; o resto, só a picareta
+	var power := (Items.axe_power[held()] if axe else Items.pick_power[held()]) if held() != -1 else 0
 	if not Blocks.breakable[b]:
 		return
 	if power == 0:
-		say("segure uma picareta")
+		say("precisa de um machado" if axe else "segure uma picareta")
 		return
 	if b == Blocks.ids.chest and Array(world.chest_at(p).item).any(func(id): return id != -1):
 		say("esvazie o baú primeiro")

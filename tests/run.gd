@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -226,6 +226,10 @@ func test_save():
 	var wp := SaveGame.create_world("Mundo 1", 777)
 	check(pp != "" and wp != "", "criar personagem e mundo")
 	check(SaveGame.create_player("Ana") == "" and SaveGame.create_world("  ", 1) == "", "nome repetido ou vazio é recusado")
+	var chosen := {"skin": Color("#a86a44"), "hair": Color("#3a2a5a"), "shirt": Color("#4fa8a8"), "pants": Color("#5a2a3a")}
+	var bia := SaveGame.create_player("Bia", chosen)
+	check(SaveGame.look(bia) == chosen and SaveGame.look(pp) == SaveGame.look_for("Ana"), "cores escolhidas na criação ficam no save; sem escolha, vêm do nome")
+	SaveGame.delete(bia)
 	check(SaveGame.list(SaveGame.players_dir).map(func(s): return s.name) == ["Ana"], "lista de personagens")
 	check(SaveGame.list(SaveGame.worlds_dir)[0].info.seed == 777, "mundo guarda a seed")
 	var w := floor_world()
@@ -1104,6 +1108,58 @@ func test_hardmode():
 	for i in 60:
 		ent.try_spawn()
 	check(ent.biome_at(p.position) == "underworld" and ent.enemies.any(func(e): return e.def.name in ["voodoo_demon", "hellbat"]) and ent.enemies.all(func(e): return e.def.get("biome") == "underworld"), "no submundo nascem demônios voodoo e hellbats")
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_tools():
+	var w := floor_world()
+	var p := make_player(w)
+	w.set_block(20, 11, 20, Blocks.ids.wood)
+	p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i(0, 1, 0)}
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.inv.add(Items.ids.copper_axe, 1)
+	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
+	for i in 10:
+		p.break_target()
+	check(w.get_block(20, 11, 20) == Blocks.ids.wood and p.message.contains("machado"), "tronco não quebra com picareta")
+	p.slot = p.inv.item.find(Items.ids.copper_axe)
+	p.break_target()
+	check(w.get_block(20, 11, 20) == Blocks.ids.wood, "o machado precisa de mais de um golpe (35% x 1,5)")
+	p.break_target()
+	check(w.get_block(20, 11, 20) == 0, "…e corta o tronco em 2")
+	w.set_block(20, 11, 20, Blocks.ids.dirt)
+	p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i(0, 1, 0)}
+	p.break_target()
+	check(w.get_block(20, 11, 20) == Blocks.ids.dirt and p.message.contains("picareta"), "machado não escava terra")
+	var by := {}
+	for r in Crafting.recipes:
+		by[Items.names[r.result]] = r
+	check(by.copper_axe.needs == {Items.ids.copper_bar: 6, Items.ids.wood: 3} and by.platinum_axe.needs == {Items.ids.platinum_bar: 8, Items.ids.wood: 3} \
+		and Items.axe_power[Items.ids.platinum_axe] == 60 and Items.axe_power[Items.ids.tin_axe] == 40 and by.empty_bucket.needs == {Items.ids.iron_bar: 2}, "receitas e poderes dos machados (wiki)")
+	# balde: pega um bloco de água e derrama em outro lugar, onde ela flui
+	w.set_block(24, 11, 20, Blocks.ids.water)
+	p.inv.add(Items.ids.empty_bucket, 1)
+	p.slot = p.inv.item.find(Items.ids.empty_bucket)
+	p.position = Vector3(22.5, 11, 20.5)
+	p.rotation.y = -PI / 2   # olha para +X
+	p.pitch = -0.3
+	p.use_bucket(Items.defs[Items.ids.empty_bucket])
+	check(w.get_block(24, 11, 20) == 0 and p.held() == Items.ids.water_bucket, "balde vazio pega a água da mira")
+	p.target = {"pos": Vector3i(24, 10, 20), "normal": Vector3i(0, 1, 0)}
+	p.use_bucket(Items.defs[Items.ids.water_bucket])
+	check(w.get_block(24, 11, 20) == Blocks.ids.water and p.held() == Items.ids.empty_bucket, "balde cheio derrama água e volta vazio")
+	w.liquid.settle(w)
+	var wet := 0
+	for x in range(20, 29):
+		for z in range(16, 25):
+			wet += 1 if Blocks.liquid[w.get_block(x, 11, z)] else 0
+	check(wet >= 4, "a água derramada se espalha (%d blocos)" % wet)
+	p.inv.item[p.slot] = Items.ids.lava_bucket
+	p.target = {"pos": Vector3i(20, 10, 16), "normal": Vector3i(0, 1, 0)}
+	p.use_bucket(Items.defs[Items.ids.lava_bucket])
+	check(w.get_block(20, 11, 16) == Blocks.ids.lava and p.held() == Items.ids.empty_bucket, "balde de lava derrama lava")
 	free_player(p)
 	w.free()
 	return true
