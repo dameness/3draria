@@ -12,6 +12,8 @@ const SHOTS := [
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
 	{"name": "inventario_cheio", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "hp": 22},
 	{"name": "inventario_moedas", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "loose": true},
+	{"name": "estrela", "inventory": true, "look": Vector2(0, -0.2), "stars": 5},
+	{"name": "estrela_chao", "look": Vector2(0, -0.2), "stars": 0},
 	{"name": "bau", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "chest": true},
 	{"name": "config", "look": Vector2(0, -0.2), "settings": true},
 	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true},
@@ -342,6 +344,9 @@ func _setup(s: Dictionary) -> void:
 	player.inv.add(Items.ids.wood, 25)
 	player.inv.add(Items.ids.stone, 40)
 	var ent: Node3D = main.get_node("Entities")
+	if s.has("stars"):   # Fallen Stars no inventário (a receita do Mana Crystal aparece) e uma no chão à frente
+		player.inv.add(Items.ids.fallen_star, s.stars)
+		ent.spawn_drop(Items.ids.fallen_star, 1, player.position + Vector3(-sin(s.look.x), 0.7, -cos(s.look.x)) * 4.5)
 	for e in ent.enemies.duplicate():
 		if not s.get("testworld", false):   # no mundo de teste ficam os habitantes e a vitrine
 			ent.remove_enemy(e)

@@ -320,6 +320,23 @@ func test_wiki_sprites():
 	var tex := Items.icon_texture(Items.ids.copper_pickaxe, null)
 	check(tex.get_width() == 32, "ícone da wiki em tamanho original")
 	check(Items.icon_texture(Items.ids.gel, null) is AtlasTexture, "sem sprite do item: ícone do atlas")
+	# arquivo que não é PNG de verdade (a wiki serve o Fallen_Star como GIF com nome .png; ou um download cortado): cai no procedural, sem quebrar
+	var star_file := dir + "Fallen_Star_(old).png"
+	var tile_star: int = Blocks.textures.keys().find("fallen_star")
+	for bad in [PackedByteArray([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 22, 0, 24, 0, 0, 0, 0]), PackedByteArray([0x89, 0x50, 0x4e, 0x47, 1, 2, 3, 4, 5, 6, 7, 8]), PackedByteArray()]:
+		var f := FileAccess.open(star_file, FileAccess.WRITE)
+		f.store_buffer(bad)
+		f.close()
+		Atlas.texture_cache.clear()
+		var atlas_img := Atlas.build(Blocks.textures)
+		var mid := atlas_img.get_pixel(tile_star * 16 + 8, 8)
+		check(Atlas.wiki_image(Blocks.textures.fallen_star) == null and Items.icon_texture(Items.ids.fallen_star, null) is AtlasTexture and mid.r > 0.9 and mid.g > 0.7 and mid.b < 0.5, \
+			"Fallen Star: arquivo corrompido (%d bytes) cai na estrela procedural amarela" % bad.size())
+	var good := Image.create(22, 24, false, Image.FORMAT_RGBA8)
+	good.fill(Color.YELLOW)
+	good.save_png(star_file)
+	Atlas.texture_cache.clear()
+	check(Items.icon_texture(Items.ids.fallen_star, null).get_width() == 22, "Fallen Star: com o PNG estático usa o sprite da wiki")
 	for f in DirAccess.get_files_at(dir):
 		DirAccess.remove_absolute(dir + f)
 	Atlas.wiki_dir = saved

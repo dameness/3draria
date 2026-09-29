@@ -239,7 +239,7 @@
 	"musket_ball": {"wiki": "Musket_Ball", "pattern": "blob", "colors": ["#8a8a92", "#5a5a62", "#c8c8d0"]},
 	"musket": {"wiki": "Musket", "pattern": "bow", "colors": ["#6e4b2a", "#8a8a92"], "top_colors": ["#6e4b2a"]},
 	"the_undertaker": {"wiki": "The_Undertaker", "pattern": "bow", "colors": ["#6e4b2a", "#8a8a92"], "top_colors": ["#6e4b2a"]},
-	"fallen_star": {"pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
+	"fallen_star": {"wiki": "Fallen_Star_(old)", "pattern": "star", "colors": ["#ffe23a", "#d9a010", "#fff7b8"], "top_colors": ["#9ad8ff"]},
 	"mana_crystal": {"wiki": "Mana_Crystal", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
 	"mana_potion": {"wiki": "Mana_Potion", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
 	"lesser_mana_potion": {"wiki": "Lesser_Mana_Potion", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},

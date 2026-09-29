@@ -6,6 +6,7 @@ class_name Atlas
 
 const TILE := 16
 
+static var png_magic := PackedByteArray([0x89, 0x50, 0x4e, 0x47])   # assinatura de um PNG de verdade
 static var wiki_dir := "res://assets/wiki/"   # sprites baixados por scripts/fetch-sprites.sh
 
 
@@ -35,9 +36,11 @@ static func wiki_image(spec: Dictionary) -> Image:
 	var path := ProjectSettings.globalize_path(wiki_dir + spec.wiki + ".png")
 	if not FileAccess.file_exists(path):
 		return null
-	var img := Image.load_from_file(path)
-	if img:
-		img.convert(Image.FORMAT_RGBA8)
+	var bytes := FileAccess.get_file_as_bytes(path)   # arquivo que não é PNG de verdade (a wiki serve GIF com nome .png; download cortado): cai no procedural sem barulho
+	var img := Image.new()
+	if bytes.size() < 8 or bytes.slice(0, 4) != png_magic or img.load_png_from_buffer(bytes) != OK:
+		return null
+	img.convert(Image.FORMAT_RGBA8)
 	return img
 
 
@@ -133,6 +136,21 @@ static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 			if spec.has("top_colors"):
 				for p in [Vector2i(7, 8), Vector2i(8, 8), Vector2i(7, 9), Vector2i(8, 9)]:
 					set_px.call(p.x, p.y, top[0])  # pupila da lente
+		"star":   # estrela cadente: corpo amarelo com luz num canto e sombra no outro, contorno escuro e faíscas azuis (top_colors) em volta
+			var poly := PackedVector2Array()
+			for k in 10:
+				var a := -PI / 2.0 + k * PI / 5.0
+				poly.append(Vector2(7.5, 8.3) + Vector2(cos(a), sin(a)) * (7.2 if k % 2 == 0 else 3.2))
+			var inside := func(x: int, y: int) -> bool: return Geometry2D.is_point_in_polygon(Vector2(x + 0.5, y + 0.5), poly)
+			for y in TILE:
+				for x in TILE:
+					if inside.call(x, y):
+						var edge: bool = not (inside.call(x - 1, y) and inside.call(x + 1, y) and inside.call(x, y - 1) and inside.call(x, y + 1))
+						var lit := (x - 7.5) + (y - 8.3)
+						set_px.call(x, y, cols[1].darkened(0.55) if edge else cols[2] if lit < -2.5 else cols[1] if lit > 2.5 else cols[0])
+			for p in [Vector2i(1, 2), Vector2i(14, 1), Vector2i(15, 9), Vector2i(0, 12), Vector2i(13, 15)]:
+				if not inside.call(p.x, p.y):
+					set_px.call(p.x, p.y, top[0])   # faíscas
 		"torch":
 			for y in range(6, 15):
 				set_px.call(7, y, top[0])

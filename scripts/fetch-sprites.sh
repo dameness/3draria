@@ -68,6 +68,8 @@ for name, host in todo.items():
             data = get(url) if url else None
         if data is None:
             raise RuntimeError("não existe na wiki")
+        if data[:4] != b"\x89PNG":   # a wiki serve GIF/SVG com o nome .png (ex.: Fallen_Star): o Godot não carrega, então nem grava
+            raise RuntimeError("não é PNG (procure outro arquivo na wiki e ponha em \"wiki\")")
         with open(dest + ".tmp", "wb") as f:
             f.write(data)
         os.replace(dest + ".tmp", dest)
