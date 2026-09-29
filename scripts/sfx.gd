@@ -1,6 +1,6 @@
 class_name Sfx
 # Sons gerados por código (sem arquivos de áudio): rajadas de ruído filtrado e tons com envelope, como os efeitos curtos do Terraria.
-# Sfx.play(entities, "dig", pos) toca em 3D no ponto; fora da árvore (testes) ou com M desligado nada acontece.
+# Sfx.play(entities, "dig", pos) toca em 3D no ponto; fora da árvore (testes) ou com o volume das Configurações em zero nada acontece.
 #   dig / stone (picareta em terra / pedra)  break (bloco quebrou)  place  swing  hit  hurt (o jogador)  die (inimigo)
 #   pickup / coin  splash  boss  bow
 
@@ -87,11 +87,11 @@ static func stream(name: String) -> AudioStreamWAV:
 
 
 static func play(parent: Node3D, name: String, pos: Vector3, volume_db := -6.0, pitch := 1.0) -> void:
-	if not enabled or parent == null or not parent.is_inside_tree() or active >= MAX_ACTIVE:
+	if not enabled or Settings.volume <= 0.0 or parent == null or not parent.is_inside_tree() or active >= MAX_ACTIVE:
 		return
 	var p := AudioStreamPlayer3D.new()
 	p.stream = stream(name)
-	p.volume_db = volume_db
+	p.volume_db = volume_db + linear_to_db(Settings.volume)
 	p.pitch_scale = pitch * randf_range(0.93, 1.07)   # cada toque um pouco diferente
 	p.unit_size = 10.0
 	p.max_distance = 70.0

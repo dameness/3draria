@@ -204,6 +204,18 @@ func click_trash() -> void:
 	version += 1
 
 
+# Ctrl+clique: manda o item do slot direto para a lixeira (o que estava lá é destruído). Favorito e slot vazio não vão.
+func quick_trash(i: int) -> bool:
+	if item[i] == -1 or fav[i] == 1:
+		return false
+	trash_id = item[i]
+	trash_count = count[i]
+	item[i] = -1
+	count[i] = 0
+	version += 1
+	return true
+
+
 # Devolve o item da mão ao inventário (ao fechar a janela). Retorna quantos não couberam.
 func release_cursor() -> int:
 	var left := 0

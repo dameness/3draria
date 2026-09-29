@@ -1,12 +1,12 @@
 extends CanvasLayer
 # Interface no layout e com o comportamento do Terraria (spec em docs/UI.md; visual em ui.gd):
-# - hotbar = 1ª fileira do inventário, canto superior esquerdo; Tab abre as outras 4 fileiras logo abaixo, mais a lixeira;
+# - hotbar = 1ª fileira do inventário, canto superior esquerdo; Esc abre as outras 4 fileiras logo abaixo, mais a lixeira;
 # - criação em coluna à esquerda, embaixo do inventário: só o que dá para criar agora (estações + ingredientes), roda do
 #   mouse rola, ingredientes do item sob o mouse em fileira ao lado, clicar cria para a mão (segurar repete);
-# - equipamento (defesa e armadura) e botão de menu à direita; vida (corações) no canto superior direito;
+# - equipamento (defesa e armadura) e o botão Configurações (pausa, distância, volume, sensibilidade) à direita; vida (corações) no canto superior direito;
 # - clique esquerdo pega/solta/junta/troca (item preso ao cursor), direito pega 1 ou veste armadura; dica ao passar o mouse.
 # - à direita da grade: 4 slots de moedas (giram) e 4 de munição; acessórios embaixo da armadura; minimapa sob a vida; lixeira e Ordenar;
-#   Alt+clique favorita; Shift+clique manda para o baú (ou veste); baú aberto ocupa o lugar da criação.
+#   Alt+clique favorita; Ctrl+clique joga no lixo; Shift+clique manda para o baú (ou veste); baú aberto ocupa o lugar da criação; F10 esconde o FPS, F11 o HUD.
 # - animação: slots crescem sob o mouse e "pulam" ao receber item (que voa da tela até o slot), painéis deslizam ao abrir/fechar,
 #   corações batem com pouca vida, dicas surgem com fade, item preso ao cursor balança.
 # A lógica de itens fica em inventory.gd (com teste); aqui só desenho e entrada.
@@ -34,6 +34,7 @@ var defense_label: Label
 var item_label: Label
 var note_label: Label
 var debug_label: Label
+var cross: Label
 var craft_root: Control
 var craft_list: VBoxContainer
 var craft_info: HBoxContainer
@@ -59,6 +60,8 @@ var spin := 0.0
 var cursor_view: Control
 var boss_bar: ProgressBar
 var pause: PanelContainer
+var syncs: Array[Callable] = []       # Configurações: cada linha recarrega o valor atual ao abrir
+var was_menu := false
 var tint: ColorRect
 var flash: ColorRect
 var stations := {}
@@ -126,7 +129,7 @@ func _ready() -> void:
 	_build_chest()
 	_build_boss()
 	_build_pause()
-	var cross := _label("+", 22)
+	cross = _label("+", 22)
 	cross.set_anchors_preset(Control.PRESET_CENTER)
 	cross.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	cross.grow_vertical = Control.GROW_DIRECTION_BOTH
@@ -262,13 +265,15 @@ func _pressed(e: InputEvent, button: int) -> bool:
 	return e is InputEventMouseButton and e.pressed and e.button_index == button
 
 
-# Clique num slot do inventário: esquerdo pega/solta/junta/troca; direito pega 1; Alt favorita; Shift manda para o baú aberto ou veste.
+# Clique num slot do inventário: esquerdo pega/solta/junta/troca; direito pega 1; Alt favorita; Ctrl joga no lixo; Shift manda para o baú aberto ou veste.
 func _on_slot_input(e: InputEvent, i: int) -> void:
 	var inv: Inventory = player.inv
 	if _pressed(e, MOUSE_BUTTON_LEFT):
 		last_click = Engine.get_process_frames()
 		if e.alt_pressed:
 			inv.toggle_fav(i)
+		elif e.ctrl_pressed and inv.cursor_id == -1 and inv.quick_trash(i):
+			pass
 		elif e.shift_pressed and inv.cursor_id == -1 and inv.fav[i] == 0 and (_to_chest(i) or inv.equip_from(i)):
 			pass
 		else:
@@ -324,7 +329,7 @@ func _build_craft() -> void:
 	craft_root.add_child(station_label)
 
 
-# Equipamento à direita: defesa, 3 slots de armadura e o botão de menu (a "engrenagem" do Terraria).
+# Equipamento à direita: defesa, 3 slots de armadura, acessórios e o botão Configurações.
 func _build_equipment() -> void:
 	equip_root = VBoxContainer.new()
 	equip_root.anchor_left = 1.0
@@ -365,11 +370,11 @@ func _build_equipment() -> void:
 					player.inv.acc[k] = -1)
 		acc_slots.append(b)
 		grid.add_child(b)
-	var menu := Button.new()
-	menu.text = "Menu"
+	var menu := Button.new()   # a engrenagem do Terraria: a pausa mora aqui, não no Esc
+	menu.text = "Configurações"
 	menu.focus_mode = Control.FOCUS_NONE
 	menu.pressed.connect(func():
-		player.inventory_open = false
+		player.set_inventory(false)
 		player.set_menu(true))
 	equip_root.add_child(menu)
 
@@ -517,15 +522,19 @@ func _build_boss() -> void:
 	root.add_child(boss_bar)
 
 
+# Configurações (o botão do inventário): pausa o jogo; o que se muda vale na hora e fica em user://settings.cfg (Settings).
 func _build_pause() -> void:
 	pause = PanelContainer.new()
 	pause.set_anchors_preset(Control.PRESET_CENTER)
 	pause.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	pause.grow_vertical = Control.GROW_DIRECTION_BOTH
 	var box := VBoxContainer.new()
-	box.custom_minimum_size = Vector2(280, 0)
+	box.custom_minimum_size = Vector2(360, 0)
 	box.add_theme_constant_override("separation", 8)
-	box.add_child(_label("Pausado", 30, HORIZONTAL_ALIGNMENT_CENTER))
+	box.add_child(_label("Configurações", 30, HORIZONTAL_ALIGNMENT_CENTER))
+	_setting(box, "Distância de renderização", Settings.DISTANCE.x, Settings.DISTANCE.y, 1, " chunks", func(): return world.render_distance, _set_distance)
+	_setting(box, "Volume", 0, 100, 5, "%", func(): return Settings.volume * 100.0, func(v: float): Settings.volume = v / 100.0)
+	_setting(box, "Sensibilidade do mouse", Settings.SENS.x * 100, Settings.SENS.y * 100, 5, "%", func(): return Settings.mouse_sens * 100.0, func(v: float): Settings.mouse_sens = v / 100.0)
 	for b in [["Continuar", func(): player.set_menu(false)], ["Salvar e sair", _save_and_quit]]:
 		var btn := Ui.menu_button(b[0])
 		btn.pressed.connect(b[1])
@@ -534,15 +543,47 @@ func _build_pause() -> void:
 	root.add_child(pause)
 
 
-# Com o jogo pausado o jogador não recebe teclas: é o HUD que fecha o menu com Esc.
+func _set_distance(v: float) -> void:
+	Settings.render_distance = int(v)
+	world.set_render_distance(int(v))
+
+
+# Linha do Configurações: nome e valor sobre um controle deslizante que aplica na hora. `value` lê o valor atual (a linha se ajusta ao abrir).
+func _setting(box: Control, text: String, lo: float, hi: float, step: float, unit: String, value: Callable, apply: Callable) -> void:
+	var label := _label("", 16)
+	var s := HSlider.new()
+	s.min_value = lo
+	s.max_value = hi
+	s.step = step
+	s.focus_mode = Control.FOCUS_NONE
+	s.custom_minimum_size = Vector2(0, 22)
+	var show := func(v: float): label.text = "%s: %d%s" % [text, roundi(v), unit]
+	s.value_changed.connect(func(v: float):
+		apply.call(v)
+		show.call(v))
+	syncs.append(func():
+		var v: float = value.call()
+		s.set_value_no_signal(v)
+		show.call(v))
+	box.add_child(label)
+	box.add_child(s)
+
+
+# Com o jogo pausado o jogador não recebe teclas: é o HUD que fecha o Configurações com Esc. F10 esconde o FPS e F11 o HUD (wiki Controls).
 func _unhandled_input(e: InputEvent) -> void:
 	if player.menu_open and e.is_action_pressed("ui_cancel"):
 		player.set_menu(false)
 		get_viewport().set_input_as_handled()
+	elif e is InputEventKey and e.pressed and not e.echo:
+		if e.physical_keycode == KEY_F10:
+			debug_label.visible = not debug_label.visible
+		elif e.physical_keycode == KEY_F11:
+			root.visible = not root.visible
 
 
 func _save_and_quit() -> void:
 	get_tree().paused = false
+	Settings.save()
 	SaveGame.save_all(world, player, clock)
 	get_tree().change_scene_to_file("res://menu.tscn")
 
@@ -653,6 +694,14 @@ func _refresh_recipes() -> void:
 func _process(delta: float) -> void:
 	var open: bool = player.inventory_open
 	pause.visible = player.menu_open
+	cross.visible = not (open or player.menu_open or player.map_open)   # com o mouse solto a mira não faz sentido
+	if player.menu_open != was_menu:   # abrir recarrega os valores; fechar grava as opções
+		was_menu = player.menu_open
+		if was_menu:
+			for f in syncs:
+				f.call()
+		else:
+			Settings.save()
 	spin += delta
 	if prev_item.is_empty():
 		prev_item.resize(Inventory.SIZE)

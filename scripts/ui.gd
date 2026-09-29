@@ -52,7 +52,22 @@ static func theme() -> Theme:
 	_theme.set_stylebox("focus", "LineEdit", box(NAVY, GOLD))
 	_theme.set_stylebox("fill", "ProgressBar", box(Color("#c62a2a"), Color("#ff9a8a"), 1, 3))
 	_theme.set_stylebox("background", "ProgressBar", box(Color(0, 0, 0, 0.7), EDGE, 2, 3))
+	var track := box(Color(0, 0, 0, 0.6), EDGE, 2, 3)   # controle deslizante do Configurações: trilho escuro, parte cheia dourada, puxador quadrado
+	track.set_content_margin_all(5)
+	_theme.set_stylebox("slider", "HSlider", track)
+	_theme.set_stylebox("grabber_area", "HSlider", box(GOLD.darkened(0.4), EDGE, 2, 3))
+	_theme.set_stylebox("grabber_area_highlight", "HSlider", box(GOLD.darkened(0.25), EDGE, 2, 3))
+	_theme.set_icon("grabber", "HSlider", _knob(GOLD.darkened(0.1)))
+	_theme.set_icon("grabber_highlight", "HSlider", _knob(GOLD))
 	return _theme
+
+
+# Puxador do controle deslizante: retângulo de borda escura.
+static func _knob(color: Color) -> Texture2D:
+	var img := Image.create(14, 26, false, Image.FORMAT_RGBA8)
+	img.fill(EDGE)
+	img.fill_rect(Rect2i(2, 2, 10, 22), color)
+	return ImageTexture.create_from_image(img)
 
 
 # Botão de menu como no Terraria: só o texto, que fica dourado sob o mouse.

@@ -10,7 +10,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | B3 | Brain: fase 1 não fica translúcida; barra e nº de Creepers | ✅ |
 | B4 | Iluminação estranha (tochas cortam na borda do chunk; mão clara em caverna) | ✅ |
 | 1 | Árvore cai inteira (madeira por bloco, acorn, muda) | ✅ |
-| 2 | Binds do Terraria (Esc, Settings, botão esquerdo coloca, Shift, H/J/B) | ⬜ |
+| 2 | Binds do Terraria (Esc, Settings, botão esquerdo coloca, Shift; H/Q/J/B vêm com poções e mana) | ✅ |
 | 3 | Ataque: use time, autoswing só onde a wiki diz, mira exata, tool speed | ⬜ |
 | 4 | Danos da wiki (variância, crítico, defesa, recuo) + martelos | ⬜ |
 | 5 | Voo: modo criativo (F) separado das asas (acessório) | ⬜ |
@@ -141,7 +141,7 @@ solta madeira (1 por tile, 2 com chance (2·poder+175)/525) e acorn (1/2 por tuf
 só em grama (bloco `grass: true`); a muda cresce em 2-5 min com 5x5x12 livres e sai com a semente da posição. Mudas vão no save do mundo.
 Funciona em mundos antigos (o tronco é o `wood` de sempre).
 
-## 2 — Binds do Terraria
+## 2 — Binds do Terraria ✅
 
 **Wiki (Controls, Desktop):** botão esquerdo = usar item (**inclusive colocar bloco**, com autoswing); direito = interagir (baú, porta,
 NPC); **Esc = inventário** (e Save & Quit; só pausa com Autopause); **Tab = estilo do mapa**; M = mapa cheio; W/A/S/D e Espaço; 0-9 e
@@ -160,6 +160,17 @@ favorita, **Ctrl+clique** joga no lixo, Shift+clique move para o baú; segurar o
    FPS/HUD. Tudo em constantes no topo de `player.gd` para trocar depois.
 **Teste/print:** `test_binds` com `InputEventKey/MouseButton` sintéticos (Esc abre/fecha, Tab cicla, M, esquerdo coloca bloco e direito
 não, Shift troca de slot e devolve, H usa a poção certa). Prints `inventario` com o botão Settings e o painel Settings.
+
+**Feito:** `player.gd`: Esc abre/fecha o inventário (`set_inventory`; baú e item preso voltam junto), E e Tab não abrem mais; botão esquerdo
+(`use_item`) coloca bloco (`place_block`, a cada 0,25 s segurando), direito só `interact()` (NPC, baú); sem corrida, `WALK` = 6,6 blocos/s
+(voo livre F segue a 13,5 em `FLY`); **Auto Select** (`auto_pick`): com Shift a mão vai para o melhor machado (tronco) ou picareta (resto) da
+hotbar para o bloco da mira, sem alvo para a tocha, e o slot de antes volta ao soltar. 1-0 e a roda valem com o inventário aberto.
+`hud.gd`: o botão "Menu" virou **Configurações** (pausa de verdade) com distância de renderização (2-16), volume e sensibilidade do mouse
+em controles deslizantes que aplicam na hora e gravam em `user://settings.cfg` (`settings.gd`, o menu liga o caminho; testes não gravam);
+Ctrl+clique joga no lixo (`Inventory.quick_trash`, favorito não vai); F10 esconde o FPS, F11 o HUD; a mira "+" some com painel aberto.
+**H/Q (cura), J (mana) e B (buffs) ficam para os itens 6 e 7**, quando existirem poções e mana (hoje não há nada para beber). Testes:
+`test_binds` (eventos sintéticos, Auto Select, lixeira, sensibilidade, gravar/ler/limitar as opções) e, na integração, baú com botão
+direito + Esc, painel Configurações com os controles, F10/F11. Prints: `inventario` (botão Configurações) e `config`.
 
 ## 3 — Ataque: use time, autoswing e mira
 

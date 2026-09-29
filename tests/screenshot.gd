@@ -12,6 +12,7 @@ const SHOTS := [
 	{"name": "inventario", "inventory": true, "look": Vector2(0, -0.2)},
 	{"name": "inventario_cheio", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "hp": 22},
 	{"name": "bau", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "chest": true},
+	{"name": "config", "look": Vector2(0, -0.2), "settings": true},
 	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true},
 	{"name": "minimapa", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "portrait", "zoom": 1},
 	{"name": "minimapa_overlay", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "overlay"},
@@ -266,6 +267,8 @@ func _setup(s: Dictionary) -> void:
 		player.pitch = asin(sd.y) + s.get("tilt", 0.0)
 		player.cam.rotation.x = player.pitch
 	player.inventory_open = s.get("inventory", false)
+	if s.get("settings", false):   # o Configurações do inventário (pausa o jogo)
+		player.set_menu(true)
 	if s.get("gear", false):   # moedas, munição, acessórios e um favorito, para a GUI do inventário
 		player.inv.add(Items.ids.copper_coin, 37)
 		player.inv.add(Items.ids.gold_coin, 4)

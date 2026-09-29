@@ -17,7 +17,8 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
 - **Terraria em 3D, nunca Minecraft**: personagem, armaduras, inimigos, itens, blocos e GUI. Se parecer Minecraft, refaça.
 - **GUI = a do Terraria, nos mesmos lugares e com a mesma interatividade** (spec em docs/UI.md): hotbar/inventário no canto
   superior esquerdo, criação à esquerda, equipamento à direita, vida no canto superior direito, item preso ao cursor,
-  botão direito, lixeira, dicas com a cor da raridade. Tab abre o inventário. Jogabilidade também como a do Terraria.
+  botão direito, lixeira, dicas com a cor da raridade. **Esc abre o inventário** (e o botão Configurações dele pausa), Tab/M são do mapa,
+  botão esquerdo usa (até coloca bloco), direito só interage, Shift = Auto Select (wiki Controls). Jogabilidade também como a do Terraria.
 - **Animação sempre**: câmera/mão, poses, inimigos, partículas e interface. Jogo parado é defeito.
 - Desempenho está bom no PC do dono (Ubuntu modesto): manter e pedir o FPS de volta.
 - **Ao fim de todo passo, diga como rebuildar**: `git pull && scripts/update.sh && .tools/godot` (update.sh = Godot + sprites +
@@ -88,10 +89,11 @@ scripts/             setup-godot.sh e um .gd por sistema:
   day_night.gd       ciclo 15+9 min
   save_game.gd       user://players/*.plr e user://worlds/*.wld (seed, hora, spawn, chunks editados)
   menu.gd            menu inicial com o mundo real ao fundo (câmera girando, dia passando) e o personagem escolhido de pé
-                     no gramado: Um jogador → personagem → mundo; Esc no jogo = Continuar / Salvar e sair
+                     no gramado: Um jogador → personagem → mundo; no jogo o botão Configurações do inventário pausa (Continuar / Salvar e sair)
   ui.gd              tema e peças da interface do Terraria (fonte com contorno, painéis azuis, coração, dicas por raridade)
   minimap.gd         mapa de exploração (256x256, origem fixa, vai no save): retrato / sobreposição / oculto (Tab), cheio (M), zoom (+/-)
-  hud.gd             GUI no layout do Terraria (docs/UI.md): hotbar/inventário, criação, equipamento, vida, cursor, pausa
+  hud.gd             GUI no layout do Terraria (docs/UI.md): hotbar/inventário, criação, equipamento, vida, cursor, Configurações (pausa)
+  settings.gd        opções (distância, volume, sensibilidade) em user://settings.cfg; o menu liga o caminho, testes usam os padrões
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  braço + item na mão (1ª pessoa): pose, inércia, balanço
   player_model.gd    boneco chibi arredondado com contorno (3ª pessoa, tecla V): poses, arma na mão, armadura por peça
 scripts/update.sh    após cada git pull: Godot + sprites + cache de classes

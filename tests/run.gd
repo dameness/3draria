@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -906,16 +906,143 @@ func test_tree():
 	p.inv.add(Items.ids.acorn, 3)
 	p.slot = 0
 	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}   # pedra
-	p.place_target()
+	p.place_block()
 	check(w.get_block(24, 11, 24) == 0 and p.inv.total(Items.ids.acorn) == 3, "muda não pega em pedra")
 	w.set_block(24, 10, 24, Blocks.ids.grass)
-	p.place_target()
+	p.place_block()
 	check(w.get_block(24, 11, 24) == Blocks.sapling and p.inv.total(Items.ids.acorn) == 2 and w.saplings.has(base), "muda pega na grama e gasta o acorn")
 	w.set_block(24, 14, 24, Blocks.ids.stone)   # sem espaço em cima: não cresce e tenta de novo depois
 	check(not w.grow_sapling(base) and w.saplings[base] == 60.0 and w.get_block(24, 11, 24) == Blocks.sapling, "sem espaço livre a muda espera")
 	w.set_block(24, 14, 24, 0)
 	check(w.grow_sapling(base) and Timber.is_tree(w, base) and not w.saplings.has(base), "com espaço a muda vira árvore")
 	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
+	free_player(p)
+	w.free()
+	return true
+
+
+# Teclas como no Terraria (wiki Controls): Esc = inventário, botão esquerdo usa (também coloca bloco), direito só interage, Shift = Auto Select
+# (a ferramenta certa para o alvo, senão a tocha) e não há corrida; Ctrl+clique joga no lixo; as opções do Configurações persistem.
+func test_binds():
+	var w := floor_world()
+	var p := make_player(w)
+	p.cam = Camera3D.new()
+	p._unhandled_input(key(KEY_ESCAPE))
+	check(p.inventory_open, "Esc abre o inventário")
+	p._unhandled_input(key(KEY_ESCAPE))
+	check(not p.inventory_open, "Esc fecha o inventário")
+	p._unhandled_input(key(KEY_E))
+	p._unhandled_input(key(KEY_TAB))
+	check(not p.inventory_open, "E e Tab não abrem o inventário (E é o gancho e Tab o mapa no Terraria)")
+	p.map_open = true
+	p._unhandled_input(key(KEY_ESCAPE))
+	check(not p.inventory_open, "com o mapa cheio o Esc é do mapa")
+	p.map_open = false
+	p.menu_open = true
+	p._unhandled_input(key(KEY_ESCAPE))
+	check(not p.inventory_open, "pausado o Esc é do HUD")
+	p.menu_open = false
+	p._unhandled_input(key(KEY_3))
+	check(p.slot == 2, "3 escolhe o 3º slot")
+	p._unhandled_input(key(KEY_0))
+	check(p.slot == 9, "0 escolhe o 10º slot")
+	p.set_inventory(true)
+	p._unhandled_input(key(KEY_2))
+	var wheel := InputEventMouseButton.new()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	wheel.pressed = true
+	p._unhandled_input(wheel)
+	check(p.slot == 2, "com o inventário aberto as teclas 1-0 e a roda também trocam de slot")
+	p.set_inventory(false)
+	# sem corrida: a base é a da wiki (11 tiles/s = 6,6 blocos/s) com ou sem Shift
+	p.position = Vector3(20.5, 11, 24.5)
+	p.step(1.0 / 60, Vector3.RIGHT, false)
+	var x0: float = p.position.x
+	for i in 60:
+		p.step(1.0 / 60, Vector3.RIGHT, false)
+	check(absf(p.position.x - x0 - 6.6) < 0.05, "anda 6,6 blocos em 1 s (%.2f)" % (p.position.x - x0))
+	# esquerdo coloca o bloco da mão, direito só interage
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.dirt, 5)
+	p.slot = 0
+	p.position = Vector3(30.5, 11, 30.5)
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
+	p.interact()
+	var rmb := InputEventMouseButton.new()
+	rmb.button_index = MOUSE_BUTTON_RIGHT
+	rmb.pressed = true
+	p._unhandled_input(rmb)
+	check(w.get_block(24, 11, 24) == 0 and p.inv.total(Items.ids.dirt) == 5, "botão direito não coloca bloco")
+	p.use_item()
+	check(w.get_block(24, 11, 24) == Blocks.ids.dirt and p.inv.total(Items.ids.dirt) == 4 and is_equal_approx(p.cooldown, 0.25), "botão esquerdo coloca o bloco da mão (a cada 0,25 s segurando)")
+	# Auto Select
+	p.inv = Inventory.new()
+	for n in ["copper_pickaxe", "copper_axe", "iron_pickaxe", "torch"]:
+		p.inv.add(Items.ids[n], 1)
+	p.slot = 1
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}   # pedra
+	p.auto_pick(true)
+	check(p.slot == 2 and p.auto_prev == 1, "Shift em pedra: a melhor picareta (ferro), lembrando o slot da mão")
+	w.set_block(24, 11, 24, Blocks.ids.wood)
+	p.target = {"pos": Vector3i(24, 11, 24), "normal": Vector3i.UP}
+	p.auto_pick(true)
+	check(p.slot == 1 and p.auto_prev == 1, "segurando Shift e mirando o tronco: o machado (o slot de antes não se perde)")
+	p.target = {}
+	p.auto_pick(true)
+	check(p.slot == 3, "Shift sem bloco na mira: a tocha")
+	p.auto_pick(false)
+	check(p.slot == 1 and p.auto_prev == -1, "soltar o Shift devolve o slot de antes")
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.dirt, 1)
+	p.slot = 0
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
+	p.auto_pick(true)
+	check(p.slot == 0 and p.auto_prev == -1, "sem ferramenta adequada na hotbar o Auto Select não troca")
+	# Ctrl+clique: lixeira
+	var inv := Inventory.new()
+	inv.add(Items.ids.dirt, 30)
+	inv.add(Items.ids.stone, 5)
+	check(inv.quick_trash(0) and inv.trash_id == Items.ids.dirt and inv.trash_count == 30 and inv.item[0] == -1, "Ctrl+clique manda o item para a lixeira")
+	inv.toggle_fav(1)
+	check(not inv.quick_trash(1) and inv.item[1] == Items.ids.stone and not inv.quick_trash(7), "favorito e slot vazio não vão para a lixeira")
+	inv.toggle_fav(1)
+	check(inv.quick_trash(1) and inv.trash_id == Items.ids.stone and inv.trash_count == 5, "outro item destrói o que estava na lixeira")
+	# sensibilidade do mouse (Configurações)
+	p.rotation.y = 0.0
+	p.look(Vector2(100, 0))
+	var turn: float = p.rotation.y
+	p.rotation.y = 0.0
+	Settings.mouse_sens = 2.0
+	p.look(Vector2(100, 0))
+	check(turn < 0.0 and is_equal_approx(p.rotation.y, turn * 2.0), "a sensibilidade das Configurações multiplica o giro do mouse")
+	Settings.mouse_sens = 1.0
+	p.look(Vector2(0, -100000))
+	check(is_equal_approx(p.pitch, 1.55), "olhar para cima para em 1,55 rad")
+	# opções: valem sem arquivo (padrões), gravam e leem de volta, e valores absurdos do arquivo são limitados
+	check(Settings.path == "" and Settings.render_distance == 6, "sem menu as opções são as padrão e nada é gravado")
+	Settings.path = "user://settings_test.cfg"
+	Settings.render_distance = 9
+	Settings.volume = 0.4
+	Settings.mouse_sens = 1.5
+	Settings.save()
+	Settings.render_distance = 6
+	Settings.volume = 1.0
+	Settings.mouse_sens = 1.0
+	Settings.load_file()
+	check(Settings.render_distance == 9 and is_equal_approx(Settings.volume, 0.4) and is_equal_approx(Settings.mouse_sens, 1.5), "as opções gravadas voltam ao abrir")
+	var cfg := ConfigFile.new()
+	cfg.set_value("game", "render_distance", 99)
+	cfg.set_value("game", "volume", -3.0)
+	cfg.set_value("game", "mouse_sens", 50.0)
+	cfg.save(Settings.path)
+	Settings.load_file()
+	check(Settings.render_distance == 16 and Settings.volume == 0.0 and Settings.mouse_sens == 3.0, "valores fora da faixa no arquivo são limitados")
+	DirAccess.remove_absolute(Settings.path)
+	Settings.path = ""
+	Settings.render_distance = 6
+	Settings.volume = 1.0
+	Settings.mouse_sens = 1.0
+	p.cam.free()
 	free_player(p)
 	w.free()
 	return true
@@ -1852,7 +1979,7 @@ func test_mining():
 	p.slot = 2
 	p.target = {"pos": Vector3i(20, 10, 21), "normal": Vector3i(0, 1, 0)}
 	p.position = Vector3(25.5, 11, 25.5)
-	p.place_target()
+	p.place_block()
 	check(w.get_block(20, 11, 21) == Blocks.ids.gold_ore and p.inv.total(Items.ids.gold_ore) == 0, "colocar usa o item da mão")
 	Blocks.power[Blocks.ids.gold_ore] = saved_power
 	# Golpes até quebrar, como a tabela da wiki (poder da picareta × dureza; 100 quebra): terra 2 com cobre, pedra 3, grama 3.
@@ -1999,13 +2126,47 @@ func integration():
 			player.third_person = false
 			player._process(0)
 			check(player.cam.position == Vector3(0, player.EYE, 0) and not model.visible, "V de novo: volta à 1ª pessoa")
-			player.set_menu(true)
-			check(main.get_tree().paused and player.menu_open, "Esc: pausa de verdade (a árvore para)")
+			var hud: CanvasLayer = main.get_node("HUD")
+			var cp := Vector3i(player.position.floor()) + Vector3i(3, 0, 0)
+			world.set_block(cp.x, cp.y, cp.z, Blocks.ids.chest)
+			player.set_inventory(false)
+			player.target = {"pos": cp, "normal": Vector3i(-1, 0, 0)}
+			player.interact()
+			hud._process(0.1)
+			check(player.inventory_open and not hud.chest.is_empty(), "botão direito no baú abre o inventário com o painel do baú")
+			player._unhandled_input(key(KEY_ESCAPE))
+			hud._process(0.1)
+			check(not player.inventory_open and hud.chest.is_empty(), "Esc fecha o inventário e o baú")
+			world.set_block(cp.x, cp.y, cp.z, 0)
+			world.chests.erase(cp)
+			# Configurações: o botão do inventário pausa de verdade; os controles aplicam na hora e o Esc fecha
+			player.set_inventory(true)
+			hud._process(0.1)
+			hud.equip_root.get_children().filter(func(n): return n is Button)[0].pressed.emit()
+			hud._process(0.1)
+			check(main.get_tree().paused and player.menu_open and not player.inventory_open and hud.pause.visible, "botão Configurações: pausa de verdade (a árvore para) e fecha o inventário")
+			var sliders: Array = hud.pause.find_children("*", "HSlider", true, false)
+			check(sliders.size() == 3 and sliders[0].value == world.render_distance, "Configurações: distância, volume e sensibilidade, já no valor atual")
+			sliders[0].value = 5
+			sliders[1].value = 50
+			sliders[2].value = 200
+			check(world.render_distance == 5 and Settings.render_distance == 5 and is_equal_approx(Settings.volume, 0.5) and is_equal_approx(Settings.mouse_sens, 2.0), "mexer nos controles aplica na hora")
+			sliders[0].value = 6
+			Settings.volume = 1.0
+			Settings.mouse_sens = 1.0
 			var esc := InputEventAction.new()
 			esc.action = "ui_cancel"
 			esc.pressed = true
-			main.get_node("HUD")._unhandled_input(esc)
-			check(not main.get_tree().paused and not player.menu_open, "Esc de novo: o HUD despausa")
+			hud._unhandled_input(esc)
+			hud._process(0.0)
+			check(not main.get_tree().paused and not player.menu_open, "Esc dentro do Configurações: o HUD despausa")
+			hud._unhandled_input(key(KEY_F10))
+			check(not hud.debug_label.visible, "F10 esconde o FPS")
+			hud._unhandled_input(key(KEY_F10))
+			hud._unhandled_input(key(KEY_F11))
+			check(not hud.root.visible, "F11 esconde o HUD")
+			hud._unhandled_input(key(KEY_F11))
+			check(hud.root.visible and hud.debug_label.visible, "F10 e F11 de novo mostram tudo")
 			phase = 3
 		3:   # câmera em 3ª pessoa: nunca dentro de bloco, em qualquer ângulo (ver abaixo da terra era a câmera atravessando o chão)
 			player.flying = false

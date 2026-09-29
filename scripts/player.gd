@@ -1,16 +1,18 @@
 extends Node3D
 # Jogador em 1ª pessoa com colisão AABB contra os voxels (VoxelBody).
-# WASD anda, Espaço pula, Shift corre, F liga/desliga voo (Espaço sobe, C desce), V troca 1ª/3ª pessoa.
-# Segurar o botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira); direito coloca bloco.
-# 1-0 ou roda escolhem o slot; E abre inventário/criação; Tab/M/+/- são do minimapa (minimap.gd); F5 salva (também salva ao fechar); F8 dá o kit de teste.
-# Esc fecha o inventário; sem nada aberto, abre o menu (Continuar / Salvar e sair).
+# Teclas como no Terraria (wiki Controls): WASD anda, Espaço pula, 1-0 ou a roda escolhem o slot, Esc abre/fecha o inventário (a pausa é o botão
+# Configurações dele), Tab/M/+/- são do minimapa (minimap.gd), Shift segurado = Auto Select (a ferramenta certa para o alvo, senão a tocha).
+# Botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira, bloco coloca); o direito interage (baú, NPC).
+# Só do jogo (não do Terraria): F liga/desliga voo (Espaço sobe, C desce), V troca 1ª/3ª pessoa, F5 salva (também salva ao fechar), F8 dá o kit de teste.
 
 const HALF := 0.3        # meia largura da caixa
 const TALL := 1.8
 const EYE := 1.62
 const GRAVITY := 28.0
 const JUMP := 9.0        # sobe ~1,4 bloco
-const WALK := 4.5
+const WALK := 6.6        # 11 tiles/s da wiki (1 bloco = 1,67 tile); não há corrida
+const FLY := 13.5        # voo livre (F)
+const LOOK := 0.003      # radianos por pixel do mouse, vezes Settings.mouse_sens
 const REACH := 5.0
 const SWIM_UP := 4.5       # Espaço na água: sobe a esta velocidade
 const SWIM_SINK := 3.0     # sem Espaço: afunda devagar
@@ -45,7 +47,8 @@ var death := Vector3.INF      # onde morreu por último (o mapa marca)
 var inv := Inventory.new()
 var slot := 0                 # slot da hotbar na mão
 var inventory_open := false
-var menu_open := false        # Esc: Continuar / Salvar e sair
+var menu_open := false        # Configurações (pausa): botão do inventário
+var auto_prev := -1           # slot de antes do Auto Select (Shift); -1 = não trocou
 var third_person := false     # V alterna
 var message := ""             # aviso curto para o HUD
 var message_until := 0
@@ -77,6 +80,7 @@ var highlight: MeshInstance3D
 func _ready() -> void:
 	if SaveGame.world_path != "":
 		SaveGame.load_world(world, self, clock, SaveGame.world_path)
+		world.render_distance = Settings.render_distance
 	if spawn == Vector3.ZERO:  # mundo novo: nasce no meio, na superfície
 		var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2
 		spawn = Vector3(mid + 0.5, world.surface_y(mid, mid), mid + 0.5)
@@ -116,32 +120,28 @@ func set_menu(open: bool) -> void:
 		get_tree().paused = open   # pausa de verdade: mundo, inimigos e relógio param (o HUD continua vivo)
 
 
+func set_inventory(open: bool) -> void:
+	inventory_open = open
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
+
+
 func _unhandled_input(e: InputEvent) -> void:
-	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
-	if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_E and not menu_open and not map_open:
-		inventory_open = not inventory_open
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if inventory_open else Input.MOUSE_MODE_CAPTURED
-	elif inventory_open:
-		if e.is_action_pressed("ui_cancel"):
-			inventory_open = false
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	elif e.is_action_pressed("ui_cancel"):
-		set_menu(not menu_open)
-	elif menu_open or map_open:
-		pass
-	elif e is InputEventMouseMotion and captured:
-		rotation.y -= e.relative.x * 0.003
-		pitch = clampf(pitch - e.relative.y * 0.003, -1.55, 1.55)
-		cam.rotation.x = pitch
+	if menu_open or map_open:   # pausa: o HUD fecha; mapa cheio: o minimapa fecha
+		return
+	if e.is_action_pressed("ui_cancel"):   # Esc abre e fecha o inventário (o baú aberto e o item preso ao cursor voltam junto)
+		set_inventory(not inventory_open)
+	elif e is InputEventMouseMotion:
+		if not inventory_open and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+			look(e.relative)
 	elif e is InputEventMouseButton and e.pressed:
-		if not captured:
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-		elif e.button_index == MOUSE_BUTTON_RIGHT:
-			place_target()
-		elif e.button_index == MOUSE_BUTTON_WHEEL_UP:
+		if e.button_index == MOUSE_BUTTON_WHEEL_UP:
 			slot = posmod(slot - 1, Inventory.HOTBAR)
 		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			slot = posmod(slot + 1, Inventory.HOTBAR)
+		elif not inventory_open:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED   # clique com o mouse solto (voltou do Alt+Tab) recaptura
+			if e.button_index == MOUSE_BUTTON_RIGHT:
+				interact()
 	elif e is InputEventKey and e.pressed and not e.echo:
 		if e.physical_keycode >= KEY_0 and e.physical_keycode <= KEY_9:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
@@ -157,12 +157,19 @@ func _unhandled_input(e: InputEvent) -> void:
 			say("jogo salvo" if SaveGame.save_all(world, self, clock) == OK else "erro ao salvar")
 
 
+func look(rel: Vector2) -> void:
+	var sens := LOOK * Settings.mouse_sens
+	rotation.y -= rel.x * sens
+	pitch = clampf(pitch - rel.y * sens, -1.55, 1.55)
+	cam.rotation.x = pitch
+
+
 func _physics_process(delta: float) -> void:
 	var k := func(key): return 1.0 if Input.is_physical_key_pressed(key) and not map_open else 0.0   # com o mapa cheio aberto fica parado
 	var wish := Vector3(k.call(KEY_D) - k.call(KEY_A), 0, k.call(KEY_S) - k.call(KEY_W)).rotated(Vector3.UP, rotation.y)
 	if flying:
 		wish.y = k.call(KEY_SPACE) - k.call(KEY_C)
-	step(delta, wish.normalized(), k.call(KEY_SPACE) > 0.0, k.call(KEY_SHIFT) > 0.0)
+	step(delta, wish.normalized(), k.call(KEY_SPACE) > 0.0)
 	tick(delta)
 
 
@@ -180,8 +187,9 @@ func _process(delta: float) -> void:
 		crack.show_at(mine_pos, mine_damage / 100.0)
 	else:
 		crack.visible = false
-	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not inventory_open and not menu_open and not map_open \
-			and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and cooldown <= 0:
+	var free := not (inventory_open or menu_open or map_open)   # mãos livres: sem painel na frente
+	auto_pick(free and Input.is_physical_key_pressed(KEY_SHIFT))
+	if free and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and cooldown <= 0:
 		use_item()
 
 
@@ -247,11 +255,12 @@ func tick(delta: float) -> void:
 		hp = minf(hp + delta * (1.0 + inv.acc_sum("regen")), MAX_HP)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
 
 
-func step(delta: float, wish: Vector3, jump: bool, sprint := false) -> void:
-	var speed := WALK * (1.4 if sprint else 1.0) * (1.0 + inv.acc_sum("speed"))
+func step(delta: float, wish: Vector3, jump: bool) -> void:
+	var boots := 1.0 + inv.acc_sum("speed")
+	var speed := WALK * boots
 	if flying:
 		velocity = Vector3.ZERO
-		position += wish * speed * 3.0 * delta  # voo atravessa blocos
+		position += wish * FLY * boots * delta  # voo atravessa blocos
 		return
 	depth = liquid_depth()
 	var kind := liquid_kind_below()
@@ -374,7 +383,7 @@ func hurt(damage: int, dir: Vector3) -> int:
 	return taken
 
 
-# Botão esquerdo: picareta minera, arma com munição atira, arma golpeia.
+# Botão esquerdo: picareta minera, arma com munição atira, arma golpeia, bloco coloca.
 func use_item() -> void:
 	var id := held()
 	if id == -1:
@@ -384,11 +393,12 @@ func use_item() -> void:
 	if d.has("summon"):
 		summon(d)
 		return
-	var forward := -cam.global_basis.z
 	if d.has("ammo"):
-		shoot(d, eye(), forward)
+		shoot(d, eye(), -cam.global_basis.z)
 	elif d.has("bucket"):
 		use_bucket(d)
+	elif Items.places[id] != -1:
+		place_block()
 	elif d.get("damage", 0) > 0 or Items.pick_power[id] > 0 or Items.axe_power[id] > 0:   # a lâmina (ou a picareta) só acerta quando o arco chega à frente (~1/3 do golpe)
 		swing_item = d
 		swing_timer = d.get("use_time", 0.25) * (0.42 if d.get("use_style") == "thrust" else 0.3)
@@ -542,16 +552,17 @@ func break_target() -> void:
 	shake = maxf(shake, 0.3)
 
 
-func place_target() -> void:
+# Botão direito: interage com o que está na mira (NPC, baú), como no Terraria; colocar bloco é o botão esquerdo (use_item).
+func interact() -> void:
 	var npc: Node3D = entities.npc_aimed(REACH)
 	if npc:
 		entities.talk(npc)
-		return
-	if not target.is_empty() and world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
-		inventory_open = true   # botão direito num baú abre o inventário com o painel do baú
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	elif not target.is_empty() and world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
+		set_inventory(true)   # o baú abre o inventário com o painel do baú
 		get_parent().get_node("HUD").open_chest(world.chest_at(target.pos))
-		return
+
+
+func place_block() -> void:
 	if target.is_empty() or held() == -1 or Items.places[held()] == -1:
 		return
 	if Items.places[held()] == Blocks.sapling and not (target.normal == Vector3i.UP and Blocks.grassy[world.get_block(target.pos.x, target.pos.y, target.pos.z)] == 1):
@@ -567,3 +578,32 @@ func place_target() -> void:
 		world.set_block(p.x, p.y, p.z, Items.places[held()])
 		inv.take_one(slot)
 		place_anim = 0.18
+
+
+# Auto Select (Shift): segurado, a mão vai para a melhor ferramenta da hotbar para o bloco da mira (machado no tronco, picareta no resto)
+# ou, sem bloco na mira, para uma tocha; ao soltar volta ao slot de antes. Sem ferramenta adequada não troca.
+func auto_pick(hold: bool) -> void:
+	if not hold:
+		if auto_prev != -1:
+			slot = auto_prev
+			auto_prev = -1
+		return
+	var b: int = world.get_block(target.pos.x, target.pos.y, target.pos.z) if not target.is_empty() else 0
+	var best := -1
+	var best_score := 0
+	for i in Inventory.HOTBAR:
+		var id: int = inv.item[i]
+		if id == -1:
+			continue
+		var score := 0
+		if b == 0:
+			score = 1 if Items.places[id] == Blocks.ids.torch else 0
+		elif Blocks.breakable[b]:
+			score = Items.axe_power[id] if Blocks.axe[b] == 1 else Items.pick_power[id]
+		if score > best_score:   # empate: fica o primeiro slot
+			best = i
+			best_score = score
+	if best != -1 and best != slot:
+		if auto_prev == -1:
+			auto_prev = slot
+		slot = best

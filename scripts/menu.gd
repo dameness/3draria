@@ -50,6 +50,8 @@ var fade: ColorRect
 func _ready() -> void:
 	theme = Ui.theme()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	Settings.path = "user://settings.cfg"   # as opções do Configurações valem em todos os mundos
+	Settings.load_file()
 	SaveGame.player_path = ""   # voltar do jogo para cá: a escolha recomeça
 	SaveGame.world_path = ""
 	_build_backdrop()
