@@ -51,6 +51,11 @@ const SHOTS := [
 	{"name": "martelo", "look": Vector2(0.5, -0.5), "item": "iron_hammer", "block": "shadow_orb", "mine": 1, "mine_late": true},
 	{"name": "arco", "look": Vector2(0.8, -0.1), "item": "iron_broadsword", "arc": true},
 	{"name": "arco_3a", "third": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "arc": true},
+	{"name": "golpe3_0", "third": true, "front": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "swing": 0.36},
+	{"name": "golpe3_1", "third": true, "front": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "swing": 0.30},
+	{"name": "golpe3_2", "third": true, "front": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "swing": 0.22},
+	{"name": "golpe3_3", "third": true, "front": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "swing": 0.14},
+	{"name": "golpe3_4", "third": true, "front": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "swing": 0.06},
 	{"name": "particulas", "look": Vector2(0, -0.1), "fx": true},
 	{"name": "golpe_slime", "look": Vector2(0, -0.3), "enemies": ["green_slime"], "item": "wooden_sword", "hurt_late": true},
 	{"name": "flash", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "hurt": true},
@@ -515,6 +520,7 @@ func _setup(s: Dictionary) -> void:
 			else:
 				EnemyModel.set_phase(b.model, 2)
 	player.third_person = s.get("third", false)
+	player.get_node("Model").rotation.y = PI if s.get("front", false) else 0.0   # boneco de frente para a câmera
 	for n in s.get("armor", []):
 		player.inv.add(Items.ids[n], 1)
 		player.inv.equip_from(player.inv.item.find(Items.ids[n]))

@@ -233,7 +233,8 @@ func _process(delta: float) -> void:
 	var target_twist := 0.0
 	if player.cooldown > 0 and id != -1:
 		match st:
-			"swing":   # de cima para trás, por cima da cabeça, até à frente e para baixo; o corpo gira junto
+			"swing":   # diagonal como em 1ª pessoa: do alto à direita, por cima da cabeça, cruzando o corpo até embaixo à esquerda; o corpo gira junto
+				parts.arm_r.rotation.z = lerpf(0.9, -0.6, ease(use, 0.6))
 				parts.arm_r.rotation.x = lerpf(rest, 3.3, use / 0.1) if use < 0.1 else lerpf(3.3, 0.35, ease((use - 0.1) / 0.9, 0.4))
 				target_twist = lerpf(-0.3, 0.3, ease(use, 0.5))
 			"thrust":   # estocada para a frente, com o corpo indo junto

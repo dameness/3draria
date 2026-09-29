@@ -2867,6 +2867,14 @@ func integration():
 			player._process(0)
 			var model: Node3D = player.get_node("Model")
 			check(player.cam.position.distance_to(Vector3(0, player.EYE, 0)) > 3.5 and model.visible and not hand.visible, "V: 3ª pessoa afasta a câmera e mostra o corpo")
+			player.use_len = 0.4
+			var arm_z: Array = []
+			for cd in [0.36, 0.04]:   # começo e fim do golpe
+				player.cooldown = cd
+				model._process(0.016)
+				arm_z.append(model.parts.arm_r.rotation.z)
+			player.cooldown = 0
+			check(arm_z[0] > 0.6 and arm_z[1] < -0.3, "golpe em 3ª pessoa é diagonal: braço abre à direita e termina cruzando o corpo (%s)" % [arm_z])
 			player.third_person = false
 			player._process(0)
 			check(player.cam.position == Vector3(0, player.EYE, 0) and not model.visible, "V de novo: volta à 1ª pessoa")
