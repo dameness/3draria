@@ -915,6 +915,9 @@ func use_item() -> void:
 	if d.has("heal") or d.has("buff") or d.has("recall") or d.has("life") or d.has("mana") or d.has("mana_max"):
 		consume(slot)
 		return
+	if d.has("throw"):
+		throw_item(id, d, -cam.global_basis.z)
+		return
 	if d.has("cost"):
 		cast(d)
 		return
@@ -1010,6 +1013,14 @@ func summon(d: Dictionary) -> void:
 		var b: Node3D = entities.spawn_boss(d.summon)
 		inv.take_one(slot)
 		say("%s despertou!" % Items.title(b.def.name))
+
+
+# Bomba e dinamite: joga um projétil com pavio (projectiles.json) em arco e gasta um.
+func throw_item(id: int, d: Dictionary, forward: Vector3) -> void:
+	inv.remove(id, 1)
+	var dir := forward + Vector3.UP * 0.2
+	entities.spawn_projectile(d.throw, eye() + dir.normalized() * 0.5, dir, d.get("shoot_speed", 11.0), d.damage, d.knockback)
+	Sfx.play(entities, "swing", position + Vector3.UP, -8.0, 0.7)
 
 
 func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:

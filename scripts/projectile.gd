@@ -85,8 +85,28 @@ func _trail() -> void:
 	add_child(p)
 
 
+# Bomba/dinamite (def.fuse): cai, quica e explode depois do pavio (def.radius em blocos).
+func _bomb(delta: float) -> void:
+	velocity.y -= def.get("gravity", 20.0) * delta
+	var r := VoxelBody.move(entities.world, position, 0.15, 0.3, velocity * delta)
+	position = r[0]
+	var hit: Vector3i = r[1]
+	if hit.y < 0:
+		velocity = Vector3(velocity.x * 0.6, -velocity.y * 0.35, velocity.z * 0.6)
+	elif hit.y > 0 or hit.x != 0 or hit.z != 0:
+		velocity = Vector3(-velocity.x * 0.35 if hit.x != 0 else velocity.x, velocity.y * 0.5, -velocity.z * 0.35 if hit.z != 0 else velocity.z)
+	if fmod(age, 0.12) < delta:
+		Fx.sparks(entities, position + Vector3.UP * 0.45, Color("#ffb040"), 1, Vector3.UP)
+	if age >= def.fuse:
+		entities.explode(position + Vector3.UP * 0.2, def.radius, damage)
+		queue_free()
+
+
 func _physics_process(delta: float) -> void:
 	age += delta
+	if def.has("fuse"):
+		_bomb(delta)
+		return
 	velocity.y -= def.get("gravity", 0.0) * delta
 	var next := position + velocity * delta
 	var b: Vector3i = Vector3i(next.floor())

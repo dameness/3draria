@@ -4280,6 +4280,44 @@ func test_wiki_review():
 	check(cent.def_named("fire_imp").shoot.projectile == "burning_sphere" and cent.projectiles.water_sphere.ghost and cent.def_named("tim").rare == 0.1, "Fire Imp, Tim (raro) e esferas que atravessam blocos")
 	free_player(cp)
 	cw.free()
+	# --- bomba e dinamite (wiki Bomb, Dynamite)
+	var bw := floor_world()
+	var bp := make_player(bw)
+	var bent: Node3D = bp.entities
+	bp.max_hp = 300
+	bp.hp = 300.0
+	bp.position = Vector3(40.5, 11, 24.5)
+	bw.set_block(25, 8, 24, Blocks.ids.chest)
+	bw.set_block(24, 8, 25, Blocks.ids.dungeon_brick)
+	var zed: Node3D = bent.spawn_enemy(bent.def_named("zombie"), Vector3(27.0, 11, 24.5))
+	bent.explode(Vector3(24.5, 8.5, 24.5), 3.0, 100)
+	var stone := 0
+	for n in bent.get_children():
+		stone += n.count if n.get("item") == Items.ids.stone else 0
+	check(bw.get_block(24, 8, 24) == 0 and bw.get_block(24, 10, 24) == 0 and bw.get_block(24, 3, 24) == Blocks.ids.stone and stone > 20, "explosão abre uma esfera de 3 blocos e solta a pedra (%d)" % stone)
+	check(bw.get_block(25, 8, 24) == Blocks.ids.chest and bw.get_block(24, 8, 25) == Blocks.ids.dungeon_brick, "baú e tijolo do dungeon resistem à explosão")
+	check(not bent.enemies.has(zed) and bp.hp == 300.0, "fere quem está no raio (o Zombie morre) e poupa quem está longe")
+	bp.position = Vector3(24.5, 11, 24.5)
+	bp.iframes = 0.0
+	bent.explode(Vector3(24.5, 10.0, 24.5), 3.0, 100)
+	check(bp.hp < 300.0, "o jogador no raio também leva o dano (%.0f)" % bp.hp)
+	for n in bent.get_children():
+		if n.get("item") != null:
+			n.free()
+	bp.position = Vector3(40.5, 11, 24.5)
+	var lit: Node3D = bent.spawn_projectile("bomb", Vector3(33.5, 12.5, 24.5), Vector3.ZERO, 0.0, 100, 8.0)
+	for i in 60 * 2:
+		lit._physics_process(1.0 / 60)
+	check(is_instance_valid(lit) and not lit.is_queued_for_deletion() and absf(lit.position.y - 11.0) < 0.6 and bw.get_block(33, 10, 24) == Blocks.ids.stone, "a bomba cai, pousa e espera o pavio de 3 s")
+	for i in 60 * 2:
+		lit._physics_process(1.0 / 60)
+	check(lit.is_queued_for_deletion() and bw.get_block(33, 10, 24) == 0, "depois do pavio ela explode")
+	check(Items.defs[Items.ids.bomb].damage == 100 and Items.defs[Items.ids.dynamite].damage == 250 and bent.projectiles.dynamite.radius > bent.projectiles.bomb.radius and bent.projectiles.dynamite.fuse == 5.0, "Bomb 100 e Dynamite 250 de dano; pavio de 3 e 5 s")
+	bp.inv.add(Items.ids.bomb, 2)
+	bp.throw_item(Items.ids.bomb, Items.defs[Items.ids.bomb], Vector3.RIGHT)
+	check(bp.inv.total(Items.ids.bomb) == 1 and bent.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "bomb"), "jogar gasta uma bomba e cria o projétil")
+	free_player(bp)
+	bw.free()
 	# --- dados conferidos com a wiki
 	var eow := enemy_def("eater_of_worlds")
 	check(eow.worm.segments == 67 and eow.life == 150 and enemy_def("eater_of_worlds_body").life == 150 and enemy_def("eater_of_worlds_tail").life == 150, "Eater of Worlds: 67 segmentos de 150 de vida")

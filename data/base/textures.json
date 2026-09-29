@@ -306,5 +306,7 @@
 	"blood_crawler": {"wiki": "Blood_Crawler_(ground)"},
 	"face_monster": {"wiki": "Face_Monster"},
 	"fire_imp": {"wiki": "Fire_Imp"},
+	"bomb": {"wiki": "Bomb", "pattern": "blob", "colors": ["#4a4a52", "#2a2a30", "#c8c8d0"]},
+	"dynamite": {"wiki": "Dynamite", "pattern": "blob", "colors": ["#c83a3a", "#8a1a1a", "#f0e0a0"]},
 	"logo": {"wiki": "Terraria_Steam_Library_logo"}
 }

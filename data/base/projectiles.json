@@ -12,5 +12,7 @@
 	{"name": "thorn", "sprite": "thorn", "size": 1.0, "gravity": 0, "life": 0.8, "pierce": 2, "glow": "#6adf4a"},
 	{"name": "water_sphere", "size": 0.7, "gravity": 0, "life": 6, "pierce": 1, "glow": "#4a8aff", "hostile": true, "ghost": true, "destroy": true},
 	{"name": "burning_sphere", "size": 0.7, "gravity": 0, "life": 6, "pierce": 1, "glow": "#ff7a1a", "hostile": true, "ghost": true, "destroy": true},
-	{"name": "skull_bolt", "size": 0.6, "gravity": 0, "life": 6, "pierce": 1, "glow": "#e8f0ff", "hostile": true, "homing": 1.1}
+	{"name": "skull_bolt", "size": 0.6, "gravity": 0, "life": 6, "pierce": 1, "glow": "#e8f0ff", "hostile": true, "homing": 1.1},
+	{"name": "bomb", "model_item": "bomb", "size": 0.6, "gravity": 22, "life": 10, "pierce": 1, "fuse": 3.0, "radius": 3.0},
+	{"name": "dynamite", "model_item": "dynamite", "size": 0.8, "gravity": 22, "life": 10, "pierce": 1, "fuse": 5.0, "radius": 4.2}
 ]

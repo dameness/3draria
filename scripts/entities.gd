@@ -45,7 +45,7 @@ func load_defs(dir := "res://data/base") -> void:
 	for p in Blocks.read(dir + "/projectiles.json"):
 		projectiles[p.name] = p
 	for it in Items.defs:
-		for k in ["shoot", "projectile"]:
+		for k in ["shoot", "projectile", "throw"]:
 			assert(not it.has(k) or projectiles.has(it[k]), "projétil desconhecido: " + str(it.get(k)))
 
 
@@ -669,6 +669,39 @@ func spawn_cloud(at: Vector3, damage: int) -> void:
 	cloud_next = 0.3
 	cloud_damage = damage
 	Fx.puff(self, at, Color("#a04a54"), 10)
+
+
+# Explosão (wiki Bomb/Dynamite): quebra os blocos numa esfera de `r` blocos, menos os à prova de explosão (inquebráveis, tijolos do dungeon,
+# baús, orbes e cristais, pedra infernal antes do Hardmode), solta os itens (juntos, por tipo) e fere a `r + 0.8` inimigos (não habitantes) e o jogador.
+func explode(at: Vector3, r: float, dmg: int) -> void:
+	var lost := {}
+	var c := Vector3i(at.floor())
+	var n := ceili(r)
+	for dz in range(-n, n + 1):
+		for dy in range(-n, n + 1):
+			for dx in range(-n, n + 1):
+				if Vector3(dx, dy, dz).length() > r:
+					continue
+				var b: int = world.get_block(c.x + dx, c.y + dy, c.z + dz)
+				if b == 0 or not Blocks.breakable[b] or Blocks.liquid[b] or Blocks.guard[b] > 0 or Blocks.hammer[b] == 1 or b == Blocks.ids.chest \
+						or b == Blocks.ids.life_crystal or (b == Blocks.ids.hellstone and not world.hardmode):
+					continue
+				world.set_block(c.x + dx, c.y + dy, c.z + dz, 0)
+				if Items.drop[b] != -1:
+					lost[Items.drop[b]] = lost.get(Items.drop[b], 0) + 1
+	for item in lost:
+		spawn_drop(item, lost[item], at)
+	Fx.puff(self, at, Color("#ff9a3a"), 30)
+	Fx.puff(self, at, Color("#5a5048"), 20)
+	Fx.sparks(self, at, Color("#ffd060"), 24, Vector3.UP)
+	Sfx.play(self, "boss", at, -2.0, 0.6)
+	for e in enemies.duplicate():
+		if not e.display and e.def.ai != "npc" and e.position.distance_to(at) < r + 0.8:
+			e.hurt(dmg, e.position - at, 8.0)
+	if player.position.distance_to(at) < r + 0.8:
+		player.hurt(dmg, player.position - at)
+	if player.position.distance_to(at) < 40.0:
+		player.shake = maxf(player.shake, 1.0)
 
 
 # Esfera de conjurador destruída (golpe ou projétil do jogador).

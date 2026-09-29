@@ -172,5 +172,7 @@
 	{"name": "spear", "icon": "spear", "damage": 8, "use_time": 0.517, "reach": 3.4, "knockback": 6.5, "stack": 1, "use_style": "thrust", "sprite_angle": 45},
 	{"name": "bone_sword", "icon": "bone_sword", "damage": 19, "use_time": 0.367, "reach": 2.6, "knockback": 5.5, "stack": 1, "rarity": 3},
 	{"name": "aglet", "tip": "5% mais velocidade de movimento","icon": "aglet", "stack": 1, "rarity": 1, "accessory": {"speed": 0.05}},
-	{"name": "shackle", "icon": "shackle", "stack": 1, "rarity": 1, "accessory": {"defense": 1}}
+	{"name": "shackle", "icon": "shackle", "stack": 1, "rarity": 1, "accessory": {"defense": 1}},
+	{"name": "bomb", "tip": "Uma pequena explosão que destrói a maioria dos blocos","icon": "bomb", "damage": 100, "use_time": 0.417, "knockback": 8, "throw": "bomb", "consumable": true, "rarity": 0, "sprite_angle": 45},
+	{"name": "dynamite", "tip": "Uma grande explosão que destrói a maioria dos blocos","icon": "dynamite", "damage": 250, "use_time": 0.667, "knockback": 10, "throw": "dynamite", "consumable": true, "rarity": 1, "sprite_angle": 45}
 ]

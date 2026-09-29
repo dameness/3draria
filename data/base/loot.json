@@ -101,6 +101,14 @@
 				"min": 2,
 				"max": 4,
 				"chance": 0.3
+			},
+			{
+				"items": [
+					"bomb"
+				],
+				"min": 10,
+				"max": 19,
+				"chance": 0.333
 			}
 		]
 	},
@@ -191,6 +199,14 @@
 				"min": 2,
 				"max": 4,
 				"chance": 0.3
+			},
+			{
+				"items": [
+					"dynamite"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.333
 			}
 		]
 	},
@@ -282,6 +298,14 @@
 				"min": 1,
 				"max": 1,
 				"chance": 0.08
+			},
+			{
+				"items": [
+					"dynamite"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.333
 			}
 		]
 	},
