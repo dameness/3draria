@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -3448,6 +3448,52 @@ func test_fall_drown():
 	for i in 120:
 		p.tick(dt)
 	check(p.hp == float(p.max_hp) and p.position.distance_to(p.spawn) < 0.01 and p.breath == p.BREATH, "afogar até o fim é morte: volta ao spawn com tudo cheio")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Poções de luz (Brilho, Coruja) e do Espeleólogo: buffs de 10 min; a luz anda com o jogador (uniform do shader dos blocos) e os brilhos vêm da varredura dos chunks.
+func test_light_potions():
+	var w := floor_world()
+	var p := make_player(w)
+	for n in ["shine", "night_owl", "spelunker"]:
+		var id: int = Items.ids[n + "_potion"]
+		check(Items.defs[id].buff == n and Items.defs[id].buff_time == 600 and Buffs.defs.has(n) and Items.defs[id].consumable, "poção %s dá o buff por 10 min" % n)
+	var aura := func() -> Array: return [w.material.get_shader_parameter("aura_power"), w.material.get_shader_parameter("aura")]
+	p.tick(0.01)
+	check(aura.call()[0] == 0.0, "sem poção não há aura")
+	p.inv.add(Items.ids.night_owl_potion, 1)
+	p.consume(p.inv.item.find(Items.ids.night_owl_potion))
+	p.tick(0.01)
+	check(is_equal_approx(aura.call()[0], 0.55) and is_equal_approx(aura.call()[1].w, 15.0) and p.buffs.has("night_owl"), "Coruja: aura fraca e larga em volta do jogador")
+	p.inv.add(Items.ids.shine_potion, 1)
+	p.consume(p.inv.item.find(Items.ids.shine_potion))
+	p.tick(0.01)
+	var a: Array = aura.call()
+	check(is_equal_approx(a[0], 1.0) and is_equal_approx(a[1].w, 10.0) and absf(a[1].x - p.position.x) < 0.001 and absf(a[1].y - (p.position.y + 1.0)) < 0.001, "Brilho: luz forte de 10 blocos que anda com o jogador (e vale mais que a Coruja)")
+	p.buffs.clear()
+	p.tick(0.01)
+	check(aura.call()[0] == 0.0, "acabou o buff, acabou a luz")
+	# Espeleólogo: minérios, baú e Life Crystal dentro do raio; o resto não
+	for e in [[Vector3i(20, 8, 20), Blocks.ids.copper_ore], [Vector3i(30, 12, 30), Blocks.ids.chest], [Vector3i(26, 12, 26), Blocks.ids.life_crystal], [Vector3i(45, 8, 45), Blocks.ids.gold_ore],
+			[Vector3i(22, 5, 22), Blocks.ids.dirt], [Vector3i(17, 9, 25), Blocks.ids.demonite_ore]]:
+		w.set_block(e[0].x, e[0].y, e[0].z, e[1])
+	var spots := Spelunker.scan(w, Vector3(24.5, 11.0, 24.5))
+	check(spots.size() == 4 and spots.has(Vector3(20.5, 8.5, 20.5)) and spots.has(Vector3(30.5, 12.5, 30.5)) and spots.has(Vector3(26.5, 12.5, 26.5)) and spots.has(Vector3(17.5, 9.5, 25.5)), \
+		"Espeleólogo acha minérios, baú e Life Crystal perto (%d), e ignora terra e o que está longe" % spots.size())
+	check(Spelunker.scan(w, Vector3(45.5, 8.0, 45.5)).has(Vector3(45.5, 8.5, 45.5)), "…em outro lugar acha o de lá")
+	# as poções vêm nos baús das cavernas
+	var seen := {}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for i in 400:
+		for layer in ["underground", "cavern", "lava"]:
+			var c: Dictionary = Loot.chest(layer, rng)
+			for id in c.item:
+				if id != -1:
+					seen[Items.names[id]] = true
+	check(seen.has("shine_potion") and seen.has("night_owl_potion") and seen.has("spelunker_potion"), "as poções de luz saem nos baús")
 	free_player(p)
 	w.free()
 	return true

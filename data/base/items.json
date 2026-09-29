@@ -143,5 +143,8 @@
 	{"name": "lesser_mana_potion", "icon": "lesser_mana_potion", "consumable": true, "mana": 50, "use_time": 0.283, "rarity": 0},
 	{"name": "wand_of_sparking", "icon": "wand_of_sparking", "damage": 14, "cost": 2, "use_time": 0.433, "shoot": "spark", "shoot_speed": 26, "knockback": 0, "crit": 0.14, "stack": 1, "sprite_angle": 45},
 	{"name": "space_gun", "icon": "space_gun", "damage": 20, "cost": 6, "use_time": 0.283, "autoswing": true, "shoot": "space_laser", "shoot_speed": 45, "knockback": 0.75, "stack": 1, "rarity": 1, "sprite_angle": 0},
+	{"name": "shine_potion", "icon": "shine_potion", "consumable": true, "buff": "shine", "buff_time": 600, "use_time": 0.283, "rarity": 1},
+	{"name": "night_owl_potion", "icon": "night_owl_potion", "consumable": true, "buff": "night_owl", "buff_time": 600, "use_time": 0.283, "rarity": 1},
+	{"name": "spelunker_potion", "icon": "spelunker_potion", "consumable": true, "buff": "spelunker", "buff_time": 600, "use_time": 0.283, "rarity": 1},
 	{"name": "vilethorn", "icon": "vilethorn", "damage": 10, "cost": 10, "use_time": 0.467, "shoot": "thorn", "shoot_speed": 45, "knockback": 1, "stack": 1, "rarity": 1, "sprite_angle": 45}
 ]

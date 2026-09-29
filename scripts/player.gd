@@ -110,6 +110,7 @@ var last_pos := Vector3.ZERO  # posição do passo anterior (um salto grande = t
 var breath := BREATH          # segundos de fôlego que restam (só cai com a cabeça na água)
 var drown_text := 0.0         # tempo até o próximo número de dano do afogamento
 var crack: BlockCrack
+var spelunker: Spelunker
 @onready var cam: Camera3D = $Camera
 var highlight: MeshInstance3D
 
@@ -144,6 +145,11 @@ func _ready() -> void:
 	add_child(highlight)
 	crack = BlockCrack.new()
 	add_child(crack)
+	spelunker = Spelunker.new()   # os brilhos do Espeleólogo (só aparecem com o buff)
+	spelunker.world = world
+	spelunker.player = self
+	spelunker.visible = false
+	add_child(spelunker)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
@@ -321,6 +327,12 @@ func tick(delta: float) -> void:
 		if recall_left <= 0.0:
 			_teleport_home()
 	_breathe(delta)
+	var shine := buff_sum("shine") > 0.0   # Brilho: luz forte de 10 blocos (como uma tocha); Coruja: raio maior e fraco; juntas vale a mais forte
+	var owl := buff_sum("owl") > 0.0
+	if spelunker:
+		spelunker.visible = buff_sum("spelunker") > 0.0
+		spelunker.set_process(spelunker.visible)
+	world.set_aura(position + Vector3.UP, 10.0 if shine else 15.0, 1.0 if shine else 0.55 if owl else 0.0)
 	mana_use += delta
 	# regeneração de mana da wiki: (máx/3 + 1) × (2 parado) × (mana/máx × 0,5 + 0,5) × (0,05 usando mana), ÷ 2 por segundo
 	var still := 2.0 if Vector2(velocity.x, velocity.z).length() < 0.1 else 1.0

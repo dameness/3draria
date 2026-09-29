@@ -58,6 +58,12 @@ func _ready() -> void:
 		m.set_shader_parameter("atlas", atlas_texture)
 
 
+# Luz que anda com o jogador (poções Brilho e Coruja): power 0 desliga.
+func set_aura(at: Vector3, radius: float, power: float) -> void:
+	material.set_shader_parameter("aura", Vector4(at.x, at.y, at.z, radius))
+	material.set_shader_parameter("aura_power", power)
+
+
 # Luz do dia (day_night.gd): claridade do céu, cor dela e direção de onde vem (sol ou lua).
 func set_light(daylight: float, tint: Vector3, dir: Vector3) -> void:
 	for m in [material, water_material]:

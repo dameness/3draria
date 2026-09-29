@@ -58,6 +58,12 @@ const SHOTS := [
 	{"name": "criativo", "look": Vector2(0.4, -0.3), "up": 6.0},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
 	{"name": "cristal", "cave": true, "crystal": true, "look": Vector2(0.15, -0.3), "item": "copper_pickaxe", "time": 1100.0},
+	{"name": "brilho", "cave": true, "look": Vector2(0.3, -0.25), "time": 1100.0, "buffs": ["shine"], "item": "copper_pickaxe"},
+	{"name": "brilho_noite", "time": 1100.0, "look": Vector2(0, -0.3), "buffs": ["shine"], "third": true},
+	{"name": "coruja_noite", "time": 1100.0, "look": Vector2(0, -0.3), "buffs": ["night_owl"], "third": true},
+	{"name": "sem_brilho_noite", "time": 1100.0, "look": Vector2(0, -0.3), "third": true},
+	{"name": "coruja", "cave": true, "look": Vector2(0.3, -0.25), "time": 1100.0, "buffs": ["night_owl"], "item": "copper_pickaxe"},
+	{"name": "espeleologo", "cave": true, "look": Vector2(0.3, -0.25), "time": 1100.0, "buffs": ["spelunker"], "ores": true, "item": "copper_pickaxe"},
 	{"name": "caverna", "cave": true, "look": Vector2(0.3, -0.25), "item": "copper_pickaxe"},
 	{"name": "noite_tochas", "time": 1100.0, "torches": true, "look": Vector2(0, -0.3), "third": true},
 	{"name": "chefe", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "item": "terra_blade"},
@@ -290,6 +296,9 @@ func _setup(s: Dictionary) -> void:
 				world.set_block(sp.x + t.x, sp.y - 14, sp.z + t.z, Blocks.ids.life_crystal)
 			world.set_block(sp.x - 3, sp.y - 14, sp.z - 1, Blocks.ids.chest)
 		player.position = Vector3(sp.x + 0.5, sp.y - 14, sp.z + 3.5)
+	if s.get("ores", false):   # minérios, baú e cristal escondidos na rocha em volta da sala (o Espeleólogo os mostra através dela)
+		for t in [Vector3i(-7, -13, -2), Vector3i(-8, -12, 1), Vector3i(7, -14, -3), Vector3i(8, -13, 0), Vector3i(0, -16, -5), Vector3i(-3, -17, -8), Vector3i(4, -11, -10), Vector3i(-6, -15, -9)]:
+			world.set_block(sp.x + t.x, sp.y + t.y, sp.z + t.z, Blocks.ids[["copper_ore", "gold_ore", "iron_ore", "life_crystal", "chest"][(t.x + t.z + 20) % 5]])
 	if s.get("torches", false):
 		for t in [Vector3i(-2, 0, -4), Vector3i(3, 0, -5), Vector3i(0, 0, -9)]:
 			var y: int = world.surface_y(sp.x + t.x, sp.z + t.z)

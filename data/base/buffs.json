@@ -4,5 +4,8 @@
 	"swiftness": {"label": "Rapidez", "tip": "25% mais velocidade de movimento", "speed": 0.25, "icon": "swiftness_potion"},
 	"mining": {"label": "Mineração", "tip": "25% mais velocidade de mineração", "mining": 0.25, "icon": "mining_potion"},
 	"archery": {"label": "Arquearia", "tip": "10% mais dano de arco e 20% mais velocidade da flecha", "arrow_damage": 0.1, "arrow_speed": 0.2, "icon": "archery_potion"},
+	"shine": {"label": "Brilho", "tip": "Emite uma luz forte ao seu redor", "shine": 1, "icon": "shine_potion"},
+	"night_owl": {"label": "Coruja", "tip": "Visão noturna: aumenta o raio da luz ao seu redor", "owl": 1, "icon": "night_owl_potion"},
+	"spelunker": {"label": "Espeleólogo", "tip": "Destaca minérios, baús e Life Crystals por perto", "spelunker": 1, "icon": "spelunker_potion"},
 	"potion_sickness": {"label": "Doença da poção", "tip": "Não pode usar mais poções de cura", "debuff": true, "icon": "lesser_healing_potion"}
 }

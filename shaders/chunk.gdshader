@@ -9,12 +9,16 @@ uniform sampler2D atlas : source_color, filter_nearest;
 uniform float daylight = 1.0;
 uniform vec3 sky_tint = vec3(1.0);
 uniform vec3 light_dir = vec3(0.0, 1.0, 0.0);
+uniform vec4 aura = vec4(0.0);      // luz que anda com o jogador (poções Brilho e Coruja): xyz = posição no mundo, w = raio
+uniform float aura_power = 0.0;    // 0 = sem aura
 
 varying vec3 wpos;
+varying vec3 wworld;
 varying float facing;
 
 void vertex() {
 	wpos = VERTEX;
+	wworld = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	facing = 0.86 + 0.14 * dot(NORMAL, light_dir);
 	if (abs(COLOR.b - 0.5) < 0.1) {
 		// Planta: a ponta (parte fracionária de y alta) balança; a base fica parada.
@@ -35,6 +39,10 @@ void fragment() {
 		vec3 sky = COLOR.r * daylight * sky_tint * facing;
 		float flicker = 0.93 + 0.07 * sin(TIME * 9.0 + wpos.x * 0.7 + wpos.z * 0.9);   // a luz das tochas tremula
 		vec3 torch = COLOR.g * flicker * vec3(1.0, 0.8, 0.55);
+		if (aura_power > 0.0) {
+			float near = clamp(1.0 - distance(wworld, aura.xyz) / aura.w, 0.0, 1.0);
+			torch = max(torch, vec3(1.0, 0.92, 0.75) * near * aura_power);
+		}
 		ALBEDO = t.rgb * max(max(sky, torch), vec3(0.03));
 		if (abs(COLOR.b - 0.25) < 0.05) {   // chama da tocha
 			ALBEDO = t.rgb * (1.1 + 0.3 * sin(TIME * 13.0 + wpos.x * 9.0 + wpos.z * 7.0));

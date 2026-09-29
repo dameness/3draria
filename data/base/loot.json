@@ -35,7 +35,10 @@
 				"items": [
 					"swiftness_potion",
 					"archery_potion",
-					"mining_potion"
+					"mining_potion",
+					"shine_potion",
+					"night_owl_potion",
+					"spelunker_potion"
 				],
 				"min": 1,
 				"max": 2,
@@ -148,7 +151,10 @@
 					"regeneration_potion",
 					"swiftness_potion",
 					"archery_potion",
-					"mining_potion"
+					"mining_potion",
+					"shine_potion",
+					"night_owl_potion",
+					"spelunker_potion"
 				],
 				"min": 1,
 				"max": 2,
@@ -236,7 +242,10 @@
 					"regeneration_potion",
 					"swiftness_potion",
 					"archery_potion",
-					"mining_potion"
+					"mining_potion",
+					"shine_potion",
+					"night_owl_potion",
+					"spelunker_potion"
 				],
 				"min": 1,
 				"max": 2,
