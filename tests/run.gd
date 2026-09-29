@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -2809,7 +2809,7 @@ func integration():
 			hud.show_all = true
 			hud.shown_version = -1
 			hud._process(0.0)
-			check(hud.craft_list.get_child_count() == Crafting.recipes.size(), "criação com 'Todas' lista as %d receitas" % Crafting.recipes.size())
+			check(hud.craft_list.get_child_count() == Crafting.recipes.size(), "criação com o martelo lista as %d receitas" % Crafting.recipes.size())
 			var click := InputEventMouseButton.new()
 			click.button_index = MOUSE_BUTTON_LEFT
 			click.pressed = true
@@ -3805,6 +3805,42 @@ func test_sounds():
 	# respingo (entrar na água, balde, etc. usam Fx.splash)
 	Fx.splash(ent, Vector3(24, 12, 24))
 	check(tell.call() == "splash", "Fx.splash toca splash")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Cursor inteligente (Ctrl): com ferramenta na mão e a mira no vazio, pega o bloco mais perto da linha de visada (cone de 12°); a mira que já acerta manda.
+func test_smart_cursor():
+	var w := floor_world()
+	var p := make_player(w)
+	p.position = Vector3(24.5, 11.0, 24.5)
+	var from: Vector3 = p.position + Vector3.UP * p.EYE   # y = 12,62
+	w.set_block(27, 13, 24, Blocks.ids.stone)   # um pouco acima da linha de visada (~7° a 3 blocos)
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.inv.add(Items.ids.wooden_sword, 1)
+	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
+	check(p.find_target(from, Vector3.RIGHT).is_empty(), "sem o cursor inteligente a mira no vazio não pega nada")
+	p.smart_cursor = true
+	check(p.find_target(from, Vector3.RIGHT).get("pos") == Vector3i(27, 13, 24), "com ele e a picareta, pega o bloco perto da linha de visada")
+	p.slot = p.inv.item.find(Items.ids.wooden_sword)
+	check(p.find_target(from, Vector3.RIGHT).is_empty(), "com uma espada na mão ele não age")
+	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
+	w.set_block(27, 13, 24, 0)
+	w.set_block(27, 17, 24, Blocks.ids.stone)   # longe demais da linha (>12°)
+	check(p.find_target(from, Vector3.RIGHT).is_empty(), "fora do cone não pega")
+	w.set_block(26, 13, 24, Blocks.ids.dirt)   # a mira já acerta o de trás: ele manda sobre o mais perto fora da linha
+	w.set_block(28, 12, 24, Blocks.ids.stone)
+	check(p.find_target(from, Vector3.RIGHT).get("pos") == Vector3i(28, 12, 24), "a mira que já acerta um bloco não é trocada")
+	# Ctrl liga e desliga (com o inventário fechado)
+	p.smart_cursor = false
+	p._unhandled_input(key(KEY_CTRL))
+	check(p.smart_cursor and p.message.contains("ligado"), "Ctrl liga o cursor inteligente")
+	p._unhandled_input(key(KEY_CTRL))
+	check(not p.smart_cursor and p.message.contains("desligado"), "Ctrl de novo desliga")
+	p.inventory_open = true
+	p._unhandled_input(key(KEY_CTRL))
+	check(not p.smart_cursor, "com o inventário aberto o Ctrl é da lixeira: não liga")
 	free_player(p)
 	w.free()
 	return true

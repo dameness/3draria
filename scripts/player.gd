@@ -23,6 +23,7 @@ const CLICK_BUFFER := 0.12   # um clique durante o fim do golpe anterior vale pa
 const FAN := deg_to_rad(20.0)   # o golpe corpo a corpo testa a mira e mais dois raios a ±20°
 const PAD := 0.25            # ...contra a caixa do inimigo alargada em tanto (dá folga ao mirar)
 const REACH := 5.0
+const SMART_CONE := deg_to_rad(12.0)   # cursor inteligente: até onde da mira ele procura um bloco
 const SWIM_UP := 4.5       # Espaço na água: sobe a esta velocidade
 const SWIM_SINK := 3.0     # sem Espaço: afunda devagar
 const SWIM_DEPTH := 1.0    # com mais líquido que isto acima dos pés (até a cintura) nada; com menos, vadeia: anda e pula como em terra
@@ -74,6 +75,7 @@ var auto_prev := -1           # slot de antes do Auto Select (Shift); -1 = não 
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
+var smart_cursor := false     # Ctrl liga o cursor inteligente (find_target)
 var message := ""             # aviso curto para o HUD
 var message_until := 0
 var hp := float(MAX_HP)
@@ -211,6 +213,9 @@ func _unhandled_input(e: InputEvent) -> void:
 			var show: bool = not (inventory_open and hud.test_open)
 			set_inventory(show)
 			hud.test_open = show
+		elif e.physical_keycode == KEY_CTRL and not inventory_open:   # (com o inventário aberto o Ctrl é o atalho da lixeira)
+			smart_cursor = not smart_cursor
+			say("Cursor inteligente: %s" % ("ligado" if smart_cursor else "desligado"))
 		elif e.physical_keycode == KEY_F8:
 			for n in TEST_KIT:
 				inv.add(Items.ids[n], TEST_KIT[n])
@@ -235,13 +240,33 @@ func _physics_process(delta: float) -> void:
 	tick(delta)
 
 
+# O bloco da mira. Com o cursor inteligente (Ctrl) e uma ferramenta na mão, se a mira não pega nada, procura o bloco mais perto da linha de visada
+# num cone de 12° (dois anéis de 8 raios), como o Smart Cursor do Terraria escolhe o bloco perto do cursor.
+func find_target(from: Vector3, dir: Vector3) -> Dictionary:
+	var hit: Dictionary = world.raycast(from, dir, REACH)
+	var id := held()
+	if not hit.is_empty() or not smart_cursor or id == -1 or (Items.pick_power[id] == 0 and Items.axe_power[id] == 0 and Items.hammer_power[id] == 0):
+		return hit
+	var side := dir.cross(Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT).normalized()
+	var up := side.cross(dir).normalized()
+	for ring in [SMART_CONE / 2.0, SMART_CONE]:
+		for k in 8:
+			var a := k * TAU / 8.0
+			var h: Dictionary = world.raycast(from, (dir + (side * cos(a) + up * sin(a)) * tan(ring)).normalized(), REACH)
+			if not h.is_empty() and (hit.is_empty() or h.t < hit.t):
+				hit = h
+		if not hit.is_empty():
+			return hit   # o anel de dentro tem prioridade
+	return hit
+
+
 func eye() -> Vector3:
 	return global_position + Vector3.UP * EYE
 
 
 func _process(delta: float) -> void:
 	_update_camera(delta)
-	target = world.raycast(eye(), -cam.global_basis.z, REACH)
+	target = find_target(eye(), -cam.global_basis.z)
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
 		highlight.global_position = Vector3(target.pos) + Vector3.ONE * 0.5

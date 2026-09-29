@@ -357,10 +357,12 @@ func _build_craft() -> void:
 	root.add_child(craft_root)
 	craft_root.add_child(_label("Criação", 18))
 	toggle_all = Button.new()
-	toggle_all.text = "Todas"
+	toggle_all.icon = Items.icon_texture(Items.ids.wooden_hammer, world.atlas_texture)   # o martelo, como no Terraria
+	toggle_all.add_theme_constant_override("icon_max_width", 22)
+	toggle_all.custom_minimum_size = Vector2(40, 30)
 	toggle_all.toggle_mode = true
 	toggle_all.focus_mode = Control.FOCUS_NONE
-	toggle_all.tooltip_text = "Mostrar também o que ainda não dá para criar"
+	toggle_all.tooltip_text = "Martelo: mostra a lista completa (o que ainda não dá para criar fica apagado)"
 	toggle_all.position = Vector2(PITCH + 30, -2)
 	toggle_all.toggled.connect(func(on: bool):
 		show_all = on
@@ -1111,6 +1113,7 @@ func _process(delta: float) -> void:
 	test_panel.visible = show_test
 	test_footer.visible = world.test_world and root.visible
 	cross.visible = not (open or player.menu_open or player.map_open)   # com o mouse solto a mira não faz sentido
+	cross.add_theme_color_override("font_color", Ui.GOLD if player.smart_cursor else Color.WHITE)   # dourada: cursor inteligente ligado
 	creative_label.visible = player.creative
 	breath_label.visible = player.breath < player.BREATH - 0.05
 	if breath_label.visible:   # uma bolha por 10% do fôlego; a última treme quando está acabando
