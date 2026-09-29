@@ -51,6 +51,9 @@ scripts/setup-godot.sh                        # baixa o Godot em .tools/godot (i
 scripts/update.sh                             # após cada git pull: Godot + sprites + cache de classes (depois: .tools/godot)
 scripts/fetch-sprites.sh                      # baixa os sprites da wiki em assets/wiki/ (idempotente, respeita o 429; opcional)
 scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki (tabelas Cargo) para montar data/
+# Referência em vídeo (rede liberada pelo dono): `yt-dlp <url do post do r/Terraria>` baixa v.redd.it (ok); busca de posts por `reddit.com/r/Terraria/search.rss?q=...`
+# (JSON dá 403, RSS passa); vídeo do YouTube dá 403 nos dados (só busca/metadados). Quadros: `ffmpeg -i v.mp4 -vf fps=2,scale=640:-1 f_%03d.png`.
+# Clipes de usuário podem ter mod/zoom (a Terra Blade "laser" era mod): confira o vanilla na wiki antes de copiar.
 .tools/godot --headless --import              # após pull ou novo class_name: atualiza o cache de classes
 .tools/godot -e                               # abre o editor (local)
 .tools/godot                                  # roda o jogo (local)
