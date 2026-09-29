@@ -110,6 +110,8 @@ const SHOTS := [
 	{"name": "proj_espinho", "item": "vilethorn", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_garfo", "item": "the_rotted_fork", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_faisca", "item": "wand_of_sparking", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "rastro_terra", "item": "terra_blade", "enemies": ["zombie"], "fire": 6.0, "slow": 0.2, "look": Vector2(0, -0.05)},
+	{"name": "rastro_laser", "item": "space_gun", "enemies": ["zombie"], "fire": 6.0, "slow": 0.2, "look": Vector2(0, -0.05)},
 	{"name": "teste_spawn", "testworld": true, "look": Vector2(0, -0.12)},
 	{"name": "teste_baus", "testworld": true, "from": Vector3(0, 0, -2), "look": Vector2(0, -0.05)},
 	{"name": "teste_blocos", "testworld": true, "from": Vector3(0, 7, -9), "look": Vector2(0, -0.6), "creative": true},
@@ -131,6 +133,7 @@ var main: Node
 var world: Node3D
 var player: Node3D
 var shot := 0
+var trail_pr: Node3D
 var wait := 0
 var tree_base := Vector3i.ZERO
 
@@ -155,6 +158,8 @@ func _process(_delta: float) -> bool:
 	if wait == 0:
 		_setup(shots[shot])
 	wait += 1
+	if is_instance_valid(trail_pr) and wait > 4 and wait < 20:   # rastro: o projétil anda `slow` blocos por quadro (as partículas nascem a cada quadro)
+		trail_pr._physics_process(shots[shot].slow / trail_pr.velocity.length())
 	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.use_len = 0.4
@@ -545,6 +550,7 @@ func _setup(s: Dictionary) -> void:
 			pr._physics_process(1.0 / 60.0)
 			steps += 1
 		pr.set_physics_process(false)
+		trail_pr = pr if s.get("slow", false) else null
 		player.creative = true
 		player.position = (eye0 + aim_at) / 2.0 + dir.cross(Vector3.UP).normalized() * 4.5 + Vector3.UP * 0.2 - Vector3.UP * player.EYE
 		var to: Vector3 = pr.position - player.eye()

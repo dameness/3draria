@@ -57,6 +57,26 @@ func _ready() -> void:
 		halo.shaded = false
 		halo.modulate = Color(1, 1, 1, 0.6)
 		add_child(halo)
+		_trail()
+
+
+# Rastro: faíscas aditivas na cor do brilho, soltas no mundo (local_coords falso) para ficarem para trás; estilo do pó do Terraria.
+func _trail() -> void:
+	var p := CPUParticles3D.new()
+	p.amount = 24
+	p.lifetime = 0.45
+	p.local_coords = false
+	p.mesh = Fx._mesh(clampf(def.size * 0.12, 0.06, 0.14), true)
+	p.color = Color(def.glow)
+	p.color_ramp = Fx.fade()
+	p.scale_amount_curve = Fx.shrink()
+	p.direction = Vector3.BACK
+	p.spread = 25.0
+	p.initial_velocity_min = 0.2
+	p.initial_velocity_max = 0.9
+	p.gravity = Vector3.ZERO
+	p.position.z = def.size * 0.3   # na cauda (o projétil voa para -Z)
+	add_child(p)
 
 
 func _physics_process(delta: float) -> void:

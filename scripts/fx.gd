@@ -29,18 +29,27 @@ static func _mesh(size: float, additive: bool) -> QuadMesh:
 	return _quads[key]
 
 
+static func shrink() -> Curve:
+	if _shrink == null:
+		_shrink = Curve.new()
+		_shrink.add_point(Vector2(0, 1))
+		_shrink.add_point(Vector2(1, 0.15))
+	return _shrink
+
+
+static func fade() -> Gradient:
+	if _fade == null:
+		_fade = Gradient.new()
+		_fade.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
+		_fade.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.9), Color(1, 1, 1, 0)])
+	return _fade
+
+
 # Disparo de `n` partículas em `pos`. Opções: size, life, speed (máxima; a mínima é metade), spread (graus em torno de dir),
 # dir, gravity (positivo = cai), additive, shrink (encolhe ao longo da vida; padrão sim).
 static func burst(parent: Node3D, pos: Vector3, color: Color, n: int, o := {}) -> CPUParticles3D:
 	if parent == null or not parent.is_inside_tree():
 		return null
-	if _shrink == null:
-		_shrink = Curve.new()
-		_shrink.add_point(Vector2(0, 1))
-		_shrink.add_point(Vector2(1, 0.15))
-		_fade = Gradient.new()
-		_fade.offsets = PackedFloat32Array([0.0, 0.6, 1.0])
-		_fade.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.9), Color(1, 1, 1, 0)])
 	var p := CPUParticles3D.new()
 	p.one_shot = true
 	p.emitting = false
@@ -50,7 +59,7 @@ static func burst(parent: Node3D, pos: Vector3, color: Color, n: int, o := {}) -
 	p.local_coords = false
 	p.mesh = _mesh(o.get("size", 0.1), o.get("additive", false))
 	p.color = color
-	p.color_ramp = _fade
+	p.color_ramp = fade()
 	p.direction = o.get("dir", Vector3.UP)
 	p.spread = o.get("spread", 70.0)
 	p.initial_velocity_min = o.get("speed", 2.0) * 0.5
@@ -59,7 +68,7 @@ static func burst(parent: Node3D, pos: Vector3, color: Color, n: int, o := {}) -
 	p.scale_amount_min = 0.6
 	p.scale_amount_max = 1.4
 	if o.get("shrink", true):
-		p.scale_amount_curve = _shrink
+		p.scale_amount_curve = shrink()
 	p.position = pos
 	parent.add_child(p)
 	p.emitting = true

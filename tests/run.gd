@@ -356,6 +356,8 @@ func test_projectiles():
 	check(p.swing(Items.defs[Items.ids.enchanted_sword], eye, Vector3.RIGHT) == 0, "zumbi longe está fora do alcance da lâmina")
 	var beam: Node3D = ent.get_children().back()
 	check(beam.def.name == "enchanted_beam", "Enchanted Sword dispara o feixe dos dados")
+	beam._ready()
+	check(beam.get_children().any(func(c): return c is CPUParticles3D and not c.local_coords), "projétil com brilho solta rastro de partículas no mundo")
 	run(beam, 1.0)
 	check(dmg_ok(45 - z1.hp, 23, 6), "feixe acerta longe com o dano da espada − defesa (%d)" % (45 - z1.hp))
 	z1.hp = 1000
