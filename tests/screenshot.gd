@@ -99,6 +99,8 @@ const SHOTS := [
 	{"name": "proj_bala", "item": "musket", "ammo": "musket_ball", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_terra", "item": "terra_blade", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_laser", "item": "space_gun", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "proj_espinho", "item": "vilethorn", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "proj_garfo", "item": "the_rotted_fork", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_faisca", "item": "wand_of_sparking", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "teste_spawn", "testworld": true, "look": Vector2(0, -0.12)},
 	{"name": "teste_baus", "testworld": true, "from": Vector3(0, 0, -2), "look": Vector2(0, -0.05)},

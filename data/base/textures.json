@@ -265,5 +265,9 @@
 	"chain": {"wiki": "Chain", "pattern": "blob", "colors": ["#9aa0a8", "#5a6068", "#d0d4d8"]},
 	"hook": {"wiki": "Hook", "pattern": "blob", "colors": ["#9aa0a8", "#5a6068", "#d0d4d8"]},
 	"grappling_hook": {"wiki": "Grappling_Hook", "pattern": "blob", "colors": ["#9aa0a8", "#5a6068", "#d0d4d8"]},
-	"lucky_horseshoe": {"wiki": "Lucky_Horseshoe", "pattern": "blob", "colors": ["#d8d8e0", "#8a8a98", "#ffffff"]}
+	"lucky_horseshoe": {"wiki": "Lucky_Horseshoe", "pattern": "blob", "colors": ["#d8d8e0", "#8a8a98", "#ffffff"]},
+	"spark": {"wiki": "Wand_of_Sparking_(projectile)", "pattern": "blob", "colors": ["#ffe27a", "#ff9a3a", "#ffffff"]},
+	"space_laser": {"wiki": "Green_Laser_(projectile)", "pattern": "blob", "colors": ["#5aff7a", "#20a040", "#e0ffe8"]},
+	"thorn": {"wiki": "Vilethorn_(projectile)", "pattern": "blob", "colors": ["#6adf4a", "#2f8a2a", "#d0ffb0"]},
+	"fork_wave": {"wiki": "The_Rotted_Fork_(projectile)", "pattern": "blob", "colors": ["#c04050", "#7a1a2a", "#ffd0d8"]}
 }

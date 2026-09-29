@@ -35,6 +35,13 @@ func _ready() -> void:
 		sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR if big > 64 else BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		sp.shaded = false
 		sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
+		if def.get("beam", false):   # faixa fina (laser): dois planos cruzados ao longo do voo (-Z), visíveis de qualquer lado, engrossados
+			sp.billboard = BaseMaterial3D.BILLBOARD_DISABLED
+			sp.scale.y = def.get("thick", 3.0)
+			sp.transform.basis = Basis(Vector3.UP, PI / 2) * Basis.from_scale(sp.scale)
+			var cross: Sprite3D = sp.duplicate()
+			cross.transform.basis = Basis(Vector3.UP, PI / 2) * Basis(Vector3.RIGHT, PI / 2) * Basis.from_scale(sp.scale)
+			add_child(cross)
 		add_child(sp)
 	if def.has("glow"):
 		var halo := Sprite3D.new()
