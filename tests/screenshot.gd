@@ -42,6 +42,7 @@ const SHOTS := [
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
+	{"name": "inimigos_voadores", "look": Vector2(0, -0.1), "enemies": ["eater_of_souls", "crimera", "voodoo_demon", "hellbat", "pixie", "unicorn"]},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
 	{"name": "minera_pedra", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "block": "stone", "mine": 1, "mine_late": true},

@@ -700,6 +700,10 @@ func _build_test() -> void:
 		trips.append([t[0], func():
 			ent.goto(t[1])
 			player.set_inventory(false)])
+	trips.append(["Reiniciar mundo", func():   # apaga o save do mundo de teste e recomeça do zero (blocos, baús e inimigos)
+		DirAccess.remove_absolute(SaveGame.test_world())
+		SaveGame.world_path = SaveGame.test_world()
+		get_tree().change_scene_to_file("res://game.tscn")])
 	_test_row(box, "Ir para", trips)
 	test_panel.add_child(box)
 	root.add_child(test_panel)

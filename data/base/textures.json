@@ -269,5 +269,11 @@
 	"spark": {"wiki": "Wand_of_Sparking_(projectile)", "pattern": "blob", "colors": ["#ffe27a", "#ff9a3a", "#ffffff"]},
 	"space_laser": {"wiki": "Green_Laser_(projectile)", "pattern": "blob", "colors": ["#5aff7a", "#20a040", "#e0ffe8"]},
 	"thorn": {"wiki": "Vilethorn_(projectile)", "pattern": "blob", "colors": ["#6adf4a", "#2f8a2a", "#d0ffb0"]},
-	"fork_wave": {"wiki": "The_Rotted_Fork_(projectile)", "pattern": "blob", "colors": ["#c04050", "#7a1a2a", "#ffd0d8"]}
+	"fork_wave": {"wiki": "The_Rotted_Fork_(projectile)", "pattern": "blob", "colors": ["#c04050", "#7a1a2a", "#ffd0d8"]},
+	"eater_of_souls": {"wiki": "Eater_of_Souls"},
+	"crimera": {"wiki": "Crimera"},
+	"voodoo_demon": {"wiki": "Voodoo_Demon"},
+	"hellbat": {"wiki": "Hellbat"},
+	"pixie": {"wiki": "Pixie"},
+	"unicorn": {"wiki": "Unicorn"}
 }
