@@ -9,6 +9,7 @@ static var icon_name: Array[String] = []  # id -> entrada de textures.json com o
 static var places := PackedInt32Array()   # id -> bloco que coloca, ou -1
 static var pick_power := PackedInt32Array()
 static var axe_power := PackedInt32Array()   # id -> poder de machado (só machado corta tronco)
+static var hammer_power := PackedInt32Array()   # id -> poder de martelo (só martelo quebra orbes e corações)
 static var stack := PackedInt32Array()
 static var drop := PackedInt32Array()     # bloco -> item que dropa, ou -1
 static var sets := {}                     # conjunto de armadura -> {pieces: [ids], defense: bônus}
@@ -25,6 +26,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	places.clear()
 	pick_power.clear()
 	axe_power.clear()
+	hammer_power.clear()
 	stack.clear()
 	drop.clear()
 	defs.clear()
@@ -63,8 +65,14 @@ static func _add(def: Dictionary, ic: int, pl: int) -> void:
 	places.append(pl)
 	pick_power.append(def.get("pick_power", 0))
 	axe_power.append(def.get("axe_power", 0))
+	hammer_power.append(def.get("hammer_power", 0))
 	stack.append(def.get("stack", 9999))
 	defs.append(def)
+
+
+# Poder do item contra o bloco b: machado no tronco, martelo nas orbes, picareta no resto.
+static func power_on(id: int, b: int) -> int:
+	return axe_power[id] if Blocks.axe[b] == 1 else hammer_power[id] if Blocks.hammer[b] == 1 else pick_power[id]
 
 
 # Duração de um uso em segundos (o ciclo do golpe e da animação): picareta e machado usam o tool speed da wiki (o intervalo entre golpes

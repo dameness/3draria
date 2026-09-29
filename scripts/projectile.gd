@@ -63,7 +63,7 @@ func _physics_process(delta: float) -> void:
 	if def.get("hostile", false):   # laser do chefe: fere o jogador
 		var p: Node3D = entities.player
 		if VoxelBody.touches(next - Vector3.UP * r, r, r * 2, p.position, p.HALF, p.TALL):
-			p.hurt(damage, velocity)
+			p.hurt(Combat.vary(damage, entities.rng), velocity)
 			queue_free()
 			return
 		position = next
@@ -71,7 +71,7 @@ func _physics_process(delta: float) -> void:
 	for e in entities.enemies.duplicate():
 		if not e in hit and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
 			hit.append(e)
-			e.hurt(damage, velocity, knockback)
+			e.hurt(Combat.vary(damage, entities.rng), velocity, knockback, Combat.is_crit(entities.rng))
 			if hit.size() >= def.get("pierce", 1):
 				queue_free()
 				return

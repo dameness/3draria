@@ -253,7 +253,7 @@ func tick(delta: float) -> void:
 			var hits := 0
 			if swing_item.get("damage", 0) > 0:
 				hits = swing(swing_item, eye(), -cam.global_basis.z)
-			if swing_item.has("pick_power") or swing_item.has("axe_power"):
+			if swing_item.has("pick_power") or swing_item.has("axe_power") or swing_item.has("hammer_power"):
 				break_target()
 			if hits > 0:
 				shake = maxf(shake, 0.4)
@@ -477,7 +477,7 @@ func melee_targets(eye: Vector3, forward: Vector3, reach: float) -> Array:
 func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 	var hits := melee_targets(eye, forward, d.reach)
 	for e in hits:
-		e.hurt(d.damage, forward, d.knockback)
+		e.hurt(Combat.vary(d.damage, entities.rng), forward, d.knockback, Combat.is_crit(entities.rng))
 	if d.has("shoot"):
 		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, d.damage, d.knockback)
 	return hits.size()
@@ -526,12 +526,11 @@ func break_target() -> void:
 		return
 	var p: Vector3i = target.pos
 	var b: int = world.get_block(p.x, p.y, p.z)
-	var axe := Blocks.axe[b] == 1   # tronco: só o machado corta; o resto, só a picareta
-	var power := (Items.axe_power[held()] if axe else Items.pick_power[held()]) if held() != -1 else 0
+	var power := Items.power_on(held(), b) if held() != -1 else 0   # tronco: só o machado; orbe e coração: só o martelo; o resto, a picareta
 	if not Blocks.breakable[b]:
 		return
 	if power == 0:
-		say("precisa de um machado" if axe else "segure uma picareta")
+		say("precisa de um machado" if Blocks.axe[b] == 1 else "precisa de um martelo" if Blocks.hammer[b] == 1 else "segure uma picareta")
 		return
 	if b == Blocks.ids.chest and Array(world.chest_at(p).item).any(func(id): return id != -1):
 		say("esvazie o baú primeiro")
@@ -634,7 +633,7 @@ func auto_pick(hold: bool) -> void:
 		if b == 0:
 			score = 1 if Items.places[id] == Blocks.ids.torch else 0
 		elif Blocks.breakable[b]:
-			score = Items.axe_power[id] if Blocks.axe[b] == 1 else Items.pick_power[id]
+			score = Items.power_on(id, b)
 		if score > best_score:   # empate: fica o primeiro slot
 			best = i
 			best_score = score

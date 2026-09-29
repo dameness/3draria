@@ -22,6 +22,7 @@ Cada pacote (`base/`, depois `calamity/`) tem os mesmos JSON. Os sistemas em `sc
 ## blocks.json
 `{name, tiles:{all|top|side|bottom}, icon?, station_as? (conta como outra estação), solid?=true, breakable?=true, power?=0 (picareta mínima), mine?=1 (dano por golpe = poder da picareta × mine; 100 quebra), drop?=name ("" = nada)}`.
 `mine` segue a wiki (Pickaxe power): terra, areia, cinza e grama 2; pedra e minérios 1; pedra infernal 0,5; tocha 100 (1 golpe). A grama absorve o golpe que a quebraria e vira terra.
+`axe: true` = só machado quebra (tronco); `hammer: true` = só martelo quebra (Shadow Orb, Crimson Heart: wiki "any hammer"); `Items.power_on(item, bloco)` escolhe o poder.
 `icon`: textura do ícone do item-bloco (ex.: `dirt_item` → `Dirt_Block.png`).
 `shape`: forma não cúbica e não sólida: `"torch"`, `"plant"` (dois quadros em cruz que balançam ao vento; a mira
 atravessa e colocar bloco substitui; some se o chão sumir), `"liquid"` (água/lava: a mira atravessa; água = superfície
@@ -35,7 +36,7 @@ Todo bloco sólido e quebrável vira item automaticamente (ícone = textura late
 `breakable: false`: não viram item.
 
 ## items.json (itens que não são bloco)
-`{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), tool_speed? (quadros de 1/60 s), autoswing? (bool), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
+`{name, icon, stack?=9999, rarity?=0, pick_power?, axe_power?, hammer_power?, use_time? (s), tool_speed? (quadros de 1/60 s), autoswing? (bool), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
 `ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
 `sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
 flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glow, trail, particles} (cores).
@@ -57,7 +58,7 @@ Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjun
 ## enemies.json
 `{name, ai: hop|walk|fly|eye_of_cthulhu, model?: eye|slime|humanoid (senão sprite extrudado), iris?, colors?,
 life, damage, defense, speed, size:[largura, altura], color, blood? (cor das gotas ao levar golpe; padrão = color), sprite?,
-spawn: day|night|any|none, kb_resist?, boss?, minion?, phase2?:{below, damage, defense, sprite}, drops:[{item, min, max, chance}]}`.
+spawn: day|night|any|none, kb_resist? (resistência a recuo da tabela NPCs da wiki; negativo = recua mais), boss?, minion?, phase2?:{below, damage, defense, sprite}, drops:[{item, min, max, chance}]}`.
 Escala: 1 tile do Terraria ≈ 0,6 bloco (jogador de 3 tiles = 1,8). IA nova = um `match` em `scripts/enemy.gd`.
 Chefes atravessam blocos e vão embora ao amanhecer; itens com `summon` os invocam (só à noite).
 

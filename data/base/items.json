@@ -113,5 +113,14 @@
 	{"name": "empty_bucket", "icon": "empty_bucket", "stack": 1, "bucket": "empty", "use_time": 0.25},
 	{"name": "water_bucket", "icon": "water_bucket", "stack": 1, "bucket": "water", "use_time": 0.25},
 	{"name": "lava_bucket", "icon": "lava_bucket", "stack": 1, "bucket": "lava", "use_time": 0.25, "rarity": 1},
-	{"name": "acorn", "icon": "acorn", "places": "sapling", "use_time": 0.25}
+	{"name": "acorn", "icon": "acorn", "places": "sapling", "use_time": 0.25},
+	{"name": "wooden_hammer", "icon": "wooden_hammer", "hammer_power": 25, "use_time": 0.617, "tool_speed": 25, "autoswing": true, "stack": 1, "damage": 2, "reach": 2.2, "knockback": 5.5},
+	{"name": "copper_hammer", "icon": "copper_hammer", "hammer_power": 35, "use_time": 0.55, "tool_speed": 23, "autoswing": true, "stack": 1, "damage": 4, "reach": 2.2, "knockback": 5.5},
+	{"name": "tin_hammer", "icon": "tin_hammer", "hammer_power": 38, "use_time": 0.517, "tool_speed": 21, "autoswing": true, "stack": 1, "damage": 6, "reach": 2.2, "knockback": 5.5},
+	{"name": "iron_hammer", "icon": "iron_hammer", "hammer_power": 40, "use_time": 0.5, "tool_speed": 20, "autoswing": true, "stack": 1, "damage": 7, "reach": 2.2, "knockback": 5.5},
+	{"name": "lead_hammer", "icon": "lead_hammer", "hammer_power": 43, "use_time": 0.483, "tool_speed": 19, "autoswing": true, "stack": 1, "damage": 8, "reach": 2.2, "knockback": 5.5},
+	{"name": "silver_hammer", "icon": "silver_hammer", "hammer_power": 45, "use_time": 0.483, "tool_speed": 19, "autoswing": true, "stack": 1, "damage": 9, "reach": 2.2, "knockback": 5.5},
+	{"name": "tungsten_hammer", "icon": "tungsten_hammer", "hammer_power": 50, "use_time": 0.467, "tool_speed": 25, "autoswing": true, "stack": 1, "damage": 9, "reach": 2.2, "knockback": 5.5},
+	{"name": "gold_hammer", "icon": "gold_hammer", "hammer_power": 55, "use_time": 0.467, "tool_speed": 23, "autoswing": true, "stack": 1, "damage": 9, "reach": 2.2, "knockback": 5.5},
+	{"name": "platinum_hammer", "icon": "platinum_hammer", "hammer_power": 59, "use_time": 0.45, "tool_speed": 21, "autoswing": true, "stack": 1, "damage": 10, "reach": 2.2, "knockback": 5.5}
 ]

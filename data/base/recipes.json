@@ -99,5 +99,14 @@
 	{"result": "tungsten_axe", "needs": {"tungsten_bar": 8, "wood": 3}, "station": "anvil"},
 	{"result": "gold_axe", "needs": {"gold_bar": 8, "wood": 3}, "station": "anvil"},
 	{"result": "platinum_axe", "needs": {"platinum_bar": 8, "wood": 3}, "station": "anvil"},
-	{"result": "empty_bucket", "needs": {"iron_bar": 2}, "station": "anvil"}
+	{"result": "empty_bucket", "needs": {"iron_bar": 2}, "station": "anvil"},
+	{"result": "wooden_hammer", "needs": {"wood": 8}, "station": "workbench"},
+	{"result": "copper_hammer", "needs": {"copper_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "tin_hammer", "needs": {"tin_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "iron_hammer", "needs": {"iron_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "lead_hammer", "needs": {"lead_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "silver_hammer", "needs": {"silver_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "tungsten_hammer", "needs": {"tungsten_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "gold_hammer", "needs": {"gold_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "platinum_hammer", "needs": {"platinum_bar": 8, "wood": 3}, "station": "anvil"}
 ]

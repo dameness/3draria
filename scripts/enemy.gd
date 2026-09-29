@@ -89,7 +89,7 @@ func _physics_process(delta: float) -> void:
 	move(delta)
 	var p: Node3D = entities.player
 	if damage > 0 and VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
-		p.hurt(damage, p.position - position)
+		p.hurt(Combat.vary(damage, rng), p.position - position)
 
 
 func think(delta: float) -> void:
@@ -446,22 +446,23 @@ func move(delta: float) -> void:
 
 
 # Dano como no Terraria (modo normal): dano − defesa/2, mínimo 1. Retorna o dano causado.
-func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
+# dmg já vem com a variância (Combat.vary); a defesa entra agora e o crítico dobra depois dela (wiki Damage), com 40% mais recuo.
+func hurt(dmg: int, dir: Vector3, knockback: float, crit := false) -> int:
 	if def.get("invulnerable", false):
 		return 0
 	if def.ai == "brain" and phase == 1:   # imune enquanto houver Creepers
 		Fx.sparks(entities, position + Vector3.UP * tall * 0.5, Color(0.8, 0.8, 1.0), 4, dir)
 		return 0
-	var taken := maxi(1, dmg - ceili(defense / 2.0))
+	var taken := maxi(1, dmg - ceili(defense / 2.0)) * (2 if crit else 1)
 	hp -= taken
 	flash = FLASH_TIME
 	Sfx.play(entities, "die" if hp <= 0 else "hit", position)
-	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ffa050"))
+	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ff5a14") if crit else Color("#ffa050"), crit)
 	var blood := Color(def.get("blood", def.color))
 	var away := Vector3(dir.x, 0.4, dir.z).normalized()
 	Fx.blood(entities, position + Vector3.UP * tall * 0.55, blood, 8, away)
 	Fx.sparks(entities, position + Vector3.UP * tall * 0.55, Color(1, 0.95, 0.75), 3, away)
-	var kb: float = knockback * (1.0 - def.get("kb_resist", 0.0))
+	var kb: float = knockback * (Combat.CRIT_KNOCKBACK if crit else 1.0) * (1.0 - def.get("kb_resist", 0.0))
 	if kb > 0:
 		var flat := Vector3(dir.x, 0, dir.z).normalized()
 		velocity = flat * kb + Vector3.UP * (3.0 if def.ai != "fly" else 0.0)

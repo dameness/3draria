@@ -36,6 +36,7 @@ const SHOTS := [
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
 	{"name": "minera_pedra", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "block": "stone", "mine": 1, "mine_late": true},
+	{"name": "martelo", "look": Vector2(0.5, -0.5), "item": "iron_hammer", "block": "shadow_orb", "mine": 1, "mine_late": true},
 	{"name": "arco", "look": Vector2(0.8, -0.1), "item": "iron_broadsword", "arc": true},
 	{"name": "arco_3a", "third": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "arc": true},
 	{"name": "particulas", "look": Vector2(0, -0.1), "fx": true},
@@ -125,9 +126,11 @@ func _process(_delta: float) -> bool:
 		if shots[shot].get("splash", false) and wait == 12:
 			player.flying = false
 			player.velocity = Vector3(0, -8, 0)
-		if shots[shot].get("numbers", false) and wait == 15:  # números de dano no ar (duram menos de 1 s)
-			for e in main.get_node("Entities").enemies:
-				main.get_node("Entities").spawn_text(e.position + Vector3.UP * (e.tall + 0.3), str(23), Color("#ffa050"))
+		if shots[shot].get("numbers", false) and wait == 15:  # números de dano no ar (duram menos de 1 s); o do meio é um crítico
+			var ents: Array = main.get_node("Entities").enemies
+			for k in ents.size():
+				var crit: bool = k == 1
+				main.get_node("Entities").spawn_text(ents[k].position + Vector3.UP * (ents[k].tall + 0.3), "46" if crit else str(17 + k * 3), Color("#ff5a14") if crit else Color("#ffa050"), crit)
 		return false
 	main.get_node("HUD").item_until = Time.get_ticks_msec() + 5000   # o nome do item some em 2 s; aqui fica
 	var img := root.get_texture().get_image()

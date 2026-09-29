@@ -12,7 +12,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | 1 | Árvore cai inteira (madeira por bloco, acorn, muda) | ✅ |
 | 2 | Binds do Terraria (Esc, Settings, botão esquerdo coloca, Shift; H/Q/J/B vêm com poções e mana) | ✅ |
 | 3 | Ataque: use time, autoswing só onde a wiki diz, mira exata, tool speed | ✅ |
-| 4 | Danos da wiki (variância, crítico, defesa, recuo) + martelos | ⬜ |
+| 4 | Danos da wiki (variância, crítico, defesa, recuo) + martelos | ✅ |
 | 5 | Voo: modo criativo (F) separado das asas (acessório) | ⬜ |
 | 6 | Loot: baús por camada, Life Crystal, poções e buffs | ⬜ |
 | 7 | Mana e magia | ⬜ |
@@ -203,7 +203,7 @@ projétil = arma + munição. Como o Terraria, a picareta/machado também bate e
 de ferramenta é baixo, sem ajuste). Testes: `test_attack` (autoswing/use_dur pela wiki, segurar dá 1 uso sem autoswing, 8 golpes em 2 s com a picareta de
 cobre, buffer, mira/leque/fila/slime baixo, recuo 2 e 4) + o botão esquerdo de verdade na integração. Prints: `arco`, `minera`.
 
-## 4 — Danos da wiki
+## 4 — Danos da wiki ✅
 
 **Wiki (Damage, Defense):** dano final = base × modificador; **variância** ×[0,85; 1,15] arredondada; contra **inimigo**: subtrai
 ⌈defesa/2⌉ (mínimo 1) e **depois** o crítico ×2 (chance base 4%); contra o **jogador** (clássico): ⌊dano − defesa × 0,5⌋ (mínimo 1)
@@ -217,6 +217,17 @@ via `scripts/wiki.py`) porque a wiki manda quebrar **Shadow Orb / Crimson Heart 
 em itens e `hammer` em blocos, e o Auto Select do item 2 já escolhe o martelo.
 **Teste/print:** `test_damage`: 20 000 golpes: mínimo/máximo/média da variância; crítico ×2 depois da defesa; jogador `⌊d − def/2⌋`;
 orbe só quebra com martelo. Print `inimigos` com números normais e um crítico.
+
+**Feito:** `combat.gd` (`Combat.vary`, `Combat.is_crit`): o golpe corpo a corpo, a flecha/feixe (a cada inimigo acertado) e o dano que o jogador leva
+(contato e laser) sorteiam a variância de ±15% **antes** da defesa; `Enemy.hurt(dmg, dir, kb, crit)` desconta ⌈def/2⌉ e o crítico (4%) dobra **depois**,
+com +40% de recuo e número maior/mais alto/mais demorado (`spawn_text(..., crit)`). O jogador já levava ⌊dano − def × 0,5⌋ (mesmo resultado que
+dano − ⌈def/2⌉ com dano inteiro), agora com variância. `kb_resist` de todas as criaturas conferido com a tabela NPCs da wiki (Zombie 50%, Demon Eye 20%,
+Green Slime −20%, Cursed Skull 80%, Dark Caster 40%, Hellbat 20%, The Hungry −10%, Pixie 40%, Unicorn 70%, Old Man 50% e defesa 15).
+**Martelos** (novos, no fim de items.json): Wooden 25%, Copper 35, Tin 38, Iron 40, Lead 43, Silver 45, Tungsten 50, Gold 55, Platinum 59, com dano, use
+time, tool speed e receitas da wiki (`scripts/wiki.py`); bloco `hammer: true` na Shadow Orb e no Crimson Heart: a picareta agora avisa "precisa de um
+martelo"; `Items.power_on` e o Auto Select escolhem o martelo. Sprites novos: rode `scripts/update.sh`. Testes: `test_damage` (20 000 sorteios: 85-115 e média
+100; crítico 4%; (20−3)×2 = 34; recuo 3 e 4,2; tabela de recuos da wiki; jogador com 4 conjuntos de armadura; martelos e orbes) e as flechas/feixe agora
+conferem a faixa da variância. Prints: `inimigos` (números normais e um crítico) e `martelo`.
 
 ## 5 — Voo: modo criativo separado das asas
 

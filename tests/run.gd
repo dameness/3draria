@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -147,6 +147,13 @@ func test_day_night():
 	return true
 
 
+# A vida perdida cabe no golpe de `dmg` contra defesa `def`: variância de ±15% antes da defesa (⌈def/2⌉) e, se foi crítico, ×2 depois dela.
+func dmg_ok(lost: int, dmg: int, def: int) -> bool:
+	var lo := maxi(1, roundi(dmg * 0.85) - ceili(def / 2.0))
+	var hi := maxi(1, roundi(dmg * 1.15) - ceili(def / 2.0))
+	return (lost >= lo and lost <= hi) or (lost >= lo * 2 and lost <= hi * 2)
+
+
 func test_combat():
 	var w := floor_world()
 	var p := make_player(w)
@@ -171,7 +178,7 @@ func test_combat():
 	p.shoot(Items.defs[Items.ids.wooden_bow], eye, Vector3.RIGHT)
 	var arrow: Node = ent.get_children().back()
 	run(arrow, 1.0)
-	check(z.hp == hp - (4 + 5 - 3) and p.inv.total(Items.ids.wooden_arrow) == 1, "flecha gasta munição e fere com arco + flecha − defesa")
+	check(dmg_ok(hp - z.hp, 4 + 5, 6) and p.inv.total(Items.ids.wooden_arrow) == 1, "flecha gasta munição e fere com arco + flecha − defesa (%d)" % (hp - z.hp))
 	run(z, 1.0)
 	check(p.hp < p.MAX_HP, "zumbi anda até o jogador e causa dano ao encostar")
 	var after: float = p.hp
@@ -326,7 +333,7 @@ func test_projectiles():
 	var beam: Node3D = ent.get_children().back()
 	check(beam.def.name == "enchanted_beam", "Enchanted Sword dispara o feixe dos dados")
 	run(beam, 1.0)
-	check(z1.hp == 45 - (23 - 3), "feixe acerta longe com o dano da espada − defesa")
+	check(dmg_ok(45 - z1.hp, 23, 6), "feixe acerta longe com o dano da espada − defesa (%d)" % (45 - z1.hp))
 	z1.hp = 1000
 	var z2: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(36.5, 11, 24.5))
 	z2._ready()
@@ -1043,6 +1050,102 @@ func test_binds():
 	Settings.volume = 1.0
 	Settings.mouse_sens = 1.0
 	p.cam.free()
+	free_player(p)
+	w.free()
+	return true
+
+
+# Danos da wiki: variância de ±15% antes da defesa (⌈def/2⌉), crítico de 4% que dobra depois dela (+40% de recuo), jogador leva ⌊dano − def × 0,5⌋,
+# recuos das criaturas pela wiki, martelos (só martelo quebra Shadow Orb / Crimson Heart).
+func test_damage():
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var lo := 999
+	var hi := 0
+	var sum := 0
+	var n := 20000
+	for i in n:
+		var v := Combat.vary(100, rng)
+		lo = mini(lo, v)
+		hi = maxi(hi, v)
+		sum += v
+	check(lo == 85 and hi == 115 and absf(float(sum) / n - 100.0) < 0.3, "variância: 100 de dano vai de 85 a 115 e a média é 100 (%d a %d, média %.2f)" % [lo, hi, float(sum) / n])
+	var crits := 0
+	for i in 50000:
+		crits += int(Combat.is_crit(rng))
+	check(absf(crits / 50000.0 - 0.04) < 0.004, "crítico de 4%% (%.3f)" % (crits / 50000.0))
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var zombie := func() -> Node3D:
+		var z: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(26, 11, 24.5))
+		z._ready()
+		return z
+	var z: Node3D = zombie.call()
+	check(z.hurt(20, Vector3.RIGHT, 0.0) == 17, "defesa 6: 20 de dano vira 17 (20 − ⌈6/2⌉)")
+	ent.remove_enemy(z)
+	z = zombie.call()
+	check(z.hurt(20, Vector3.RIGHT, 0.0, true) == 34, "crítico dobra DEPOIS da defesa: (20 − 3) × 2 = 34 e não 20 × 2 − 3")
+	ent.remove_enemy(z)
+	z = zombie.call()
+	z.hurt(10, Vector3.RIGHT, 6.0)
+	var kb_normal: float = z.velocity.x
+	ent.remove_enemy(z)
+	z = zombie.call()
+	z.hurt(10, Vector3.RIGHT, 6.0, true)
+	check(is_equal_approx(kb_normal, 3.0) and is_equal_approx(z.velocity.x, 4.2), "recuo 6 com o zumbi (50% de resistência) = 3; crítico dá +40% = 4,2")
+	ent.remove_enemy(z)
+	# recuos (resistência) de cada criatura, da tabela NPCs da wiki
+	var wiki_kb := {"green_slime": -0.2, "blue_slime": 0.0, "zombie": 0.5, "demon_eye": 0.2, "servant_of_cthulhu": 0.0, "eye_of_cthulhu": 1.0, "eater_of_souls": 0.5, "crimera": 0.5,
+		"eater_of_worlds": 1.0, "creeper": 0.2, "brain_of_cthulhu": 0.55, "king_slime": 1.0, "angry_bones": 0.2, "cursed_skull": 0.8, "dark_caster": 0.4, "old_man": 0.5, "skeletron": 1.0,
+		"voodoo_demon": 0.2, "hellbat": 0.2, "the_hungry": -0.1, "wall_of_flesh": 1.0, "pixie": 0.4, "unicorn": 0.7}
+	var wrong := []
+	for name in wiki_kb:
+		if not is_equal_approx(enemy_def(name).get("kb_resist", 0.0), wiki_kb[name]):
+			wrong.append(name)
+	check(wrong.is_empty(), "resistência a recuo de todas as criaturas bate com a wiki (erradas: %s)" % str(wrong))
+	# jogador: ⌊dano − defesa × 0,5⌋, mínimo 1, depois da variância (quem chama sorteia)
+	for set_name in [[], ["copper_helmet", "copper_chainmail", "copper_greaves"], ["gold_helmet", "gold_chainmail", "gold_greaves"], ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]]:
+		p.inv = Inventory.new()
+		for k in set_name.size():
+			p.inv.equip[k] = Items.ids[set_name[k]]
+		var def: int = p.inv.defense()
+		p.iframes = 0.0
+		p.hp = 100.0
+		var taken: int = p.hurt(30, Vector3.RIGHT)
+		check(taken == maxi(1, floori(30.0 - def * 0.5)), "jogador com %d de defesa leva ⌊30 − %d × 0,5⌋ = %d (levou %d)" % [def, def, floori(30.0 - def * 0.5), taken])
+	p.iframes = 0.0
+	check(p.hurt(2, Vector3.RIGHT) == 1, "o mínimo é 1")
+	# martelos: poder e tool speed da wiki; orbe e coração só quebram com martelo
+	var power := {"wooden_hammer": 25, "copper_hammer": 35, "tin_hammer": 38, "iron_hammer": 40, "lead_hammer": 43, "silver_hammer": 45, "tungsten_hammer": 50, "gold_hammer": 55, "platinum_hammer": 59}
+	var speed := {"wooden_hammer": 25, "copper_hammer": 23, "tin_hammer": 21, "iron_hammer": 20, "lead_hammer": 19, "silver_hammer": 19, "tungsten_hammer": 25, "gold_hammer": 23, "platinum_hammer": 21}
+	for name in power:
+		var id: int = Items.ids[name]
+		check(Items.hammer_power[id] == power[name] and is_equal_approx(Items.use_dur(id), speed[name] / 60.0) and Items.autoswing(id) and Crafting.recipes.any(func(r): return r.result == id), "%s: poder %d%%, tool speed %d, autoswing e receita" % [name, power[name], speed[name]])
+	for orb in ["shadow_orb", "crimson_heart"]:
+		var b: int = Blocks.ids[orb]
+		w.set_block(20, 11, 20, b)
+		p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i.UP}
+		p.mine_damage = 0.0
+		p.inv = Inventory.new()
+		p.inv.add(Items.ids.iron_pickaxe, 1)
+		p.slot = 0
+		p.break_target()
+		check(w.get_block(20, 11, 20) == b and p.mine_damage == 0.0 and p.message.contains("martelo"), "%s: a picareta não quebra e avisa que precisa de martelo" % orb)
+		p.inv.add(Items.ids.wooden_hammer, 1)
+		p.slot = 1
+		for i in 3:
+			p.break_target()
+		check(w.get_block(20, 11, 20) == b and is_equal_approx(p.mine_damage, 75.0), "%s: o martelo de madeira (25%%) racha 25 por golpe (3 golpes = 75)" % orb)
+		p.break_target()
+		check(w.get_block(20, 11, 20) == 0 and w.orbs_broken >= 1, "%s: o 4º golpe quebra e conta como orbe quebrada" % orb)
+		w.set_block(20, 11, 20, b)
+		p.slot = 0
+		p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i.UP}
+		p.auto_pick(true)
+		check(p.slot == 1 and p.auto_prev == 0, "Auto Select em %s escolhe o martelo" % orb)
+		p.auto_pick(false)
+		w.set_block(20, 11, 20, 0)
 	free_player(p)
 	w.free()
 	return true

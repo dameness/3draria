@@ -214,5 +214,14 @@
 	"water_bucket": {"wiki": "Water_Bucket", "pattern": "blob", "colors": ["#3a78d8", "#2a5aa8", "#a8d4ff"]},
 	"lava_bucket": {"wiki": "Lava_Bucket", "pattern": "blob", "colors": ["#ff5a1a", "#c02a06", "#ffd050"]},
 	"sapling": {"pattern": "sapling", "colors": ["#3a9a2a", "#4cc03a", "#2a7a22"], "top_colors": ["#7d5733"]},
-	"acorn": {"wiki": "Acorn", "pattern": "blob", "colors": ["#b8843a", "#7a4a1a", "#e0b868"]}
+	"acorn": {"wiki": "Acorn", "pattern": "blob", "colors": ["#b8843a", "#7a4a1a", "#e0b868"]},
+	"wooden_hammer": {"wiki": "Wooden_Hammer", "pattern": "pickaxe", "colors": ["#b07c46", "#8a5a2e"], "top_colors": ["#6e4b2a"]},
+	"copper_hammer": {"wiki": "Copper_Hammer", "pattern": "pickaxe", "colors": ["#d9824a", "#b8622e"], "top_colors": ["#6e4b2a"]},
+	"tin_hammer": {"wiki": "Tin_Hammer", "pattern": "pickaxe", "colors": ["#b0a890", "#8f876f"], "top_colors": ["#6e4b2a"]},
+	"iron_hammer": {"wiki": "Iron_Hammer", "pattern": "pickaxe", "colors": ["#c9c9d0", "#a0a0a8"], "top_colors": ["#6e4b2a"]},
+	"lead_hammer": {"wiki": "Lead_Hammer", "pattern": "pickaxe", "colors": ["#5a6470", "#48505a"], "top_colors": ["#6e4b2a"]},
+	"silver_hammer": {"wiki": "Silver_Hammer", "pattern": "pickaxe", "colors": ["#d8d8e0", "#b0b0b8"], "top_colors": ["#6e4b2a"]},
+	"tungsten_hammer": {"wiki": "Tungsten_Hammer", "pattern": "pickaxe", "colors": ["#8fb08a", "#6a8a66"], "top_colors": ["#6e4b2a"]},
+	"gold_hammer": {"wiki": "Gold_Hammer", "pattern": "pickaxe", "colors": ["#f2cf3a", "#d4a81e"], "top_colors": ["#6e4b2a"]},
+	"platinum_hammer": {"wiki": "Platinum_Hammer", "pattern": "pickaxe", "colors": ["#c8d8e8", "#a0b0c0"], "top_colors": ["#6e4b2a"]}
 }

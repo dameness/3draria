@@ -326,8 +326,9 @@ func orb_broken(id: int) -> void:
 			player.say("%s despertou!" % n.replace("_", " "))
 
 
-# Número de dano flutuante, como no Terraria: aparece com um salto, sobe e some. Laranja nos inimigos, vermelho no jogador.
-func spawn_text(pos: Vector3, text: String, color: Color) -> void:
+# Número de dano flutuante, como no Terraria: aparece com um salto, sobe e some. Laranja nos inimigos, vermelho no jogador; crítico (wiki:
+# número mais forte, que sobe mais e demora mais) sai maior e fica mais tempo no ar.
+func spawn_text(pos: Vector3, text: String, color: Color, crit := false) -> void:
 	if not is_inside_tree():
 		return
 	var l := Label3D.new()
@@ -342,13 +343,14 @@ func spawn_text(pos: Vector3, text: String, color: Color) -> void:
 	l.render_priority = 10
 	l.pixel_size = 0.005 * maxf(1.0, pos.distance_to(player.eye()) / 7.0)   # de longe continua legível
 	l.position = pos + Vector3(rng.randf_range(-0.3, 0.3), 0, rng.randf_range(-0.3, 0.3))
-	l.scale = Vector3.ONE * 1.6
+	var big := 1.6 if not crit else 2.4
+	l.scale = Vector3.ONE * big
 	add_child(l)
 	var tw := l.create_tween().set_parallel(true)
-	tw.tween_property(l, "scale", Vector3.ONE, 0.15)
-	tw.tween_property(l, "position:y", l.position.y + 1.5, 0.9).set_ease(Tween.EASE_OUT)
-	tw.tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55)
-	tw.tween_property(l, "outline_modulate:a", 0.0, 0.35).set_delay(0.55)
+	tw.tween_property(l, "scale", Vector3.ONE * (1.0 if not crit else 1.5), 0.15)
+	tw.tween_property(l, "position:y", l.position.y + (1.5 if not crit else 2.2), 0.9 if not crit else 1.2).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "modulate:a", 0.0, 0.35).set_delay(0.55 if not crit else 0.85)
+	tw.tween_property(l, "outline_modulate:a", 0.0, 0.35).set_delay(0.55 if not crit else 0.85)
 	tw.chain().tween_callback(l.queue_free)
 
 

@@ -72,6 +72,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   atlas.gd           gera o atlas 16x16 procedural
   world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128)
   timber.gd          árvores (wiki Tree): dano por tile, queda da árvore inteira com animação, madeira e acorn; a muda cresce em world.gd
+  combat.gd          sorteios do dano da wiki: variância de ±15% (antes da defesa) e crítico de 4% (×2 depois da defesa, +40% de recuo)
   chunk_mesher.gd    faces visíveis → arrays de mesh com luz (céu pela altura da coluna + tochas dos 8 chunks em volta); thread-safe
                      shaders/chunk.gdshader: atlas × luz (+ direção do sol, balanço das plantas, lava, tocha); o dia/noite muda só a luz do céu
                      shaders/water.gdshader: água translúcida com ondas   shaders/sky.gdshader: céu, sol, lua, estrelas, nuvens, montanhas
