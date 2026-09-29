@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -3969,4 +3969,20 @@ func test_island():
 	check(absf(p.position.x - p.HALF) < 0.001 and absf(p.position.z - (WorldGen.SIZE - p.HALF)) < 0.001, "a borda do mundo é uma parede para o jogador")
 	free_player(p)
 	fw.free()
+	return true
+
+
+# Chunk gerado por get_block (thread principal) enquanto esperava na fila: não pode ficar sem mesh (o mundo nunca ficava "ocioso" e o chunk virava um buraco).
+func test_sync_gen():
+	var w: Node3D = load("res://scripts/world.gd").new()
+	w.gen = WorldGen.new(3)
+	var k := Vector2i(4, 4)
+	w.pending.append(k)
+	for o in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i.ZERO]:
+		w.chunks[k + o] = chunk(0) if o != Vector2i.ZERO else chunk(0)
+	w.chunks.erase(k + Vector2i(1, 0))   # falta o vizinho: ainda não pode virar mesh
+	check(not w._has_data(k) and w.meshable.is_empty(), "com um vizinho faltando o chunk espera")
+	w.get_block(k.x * C + C, 5, k.y * C)   # o vizinho é gerado na hora, por get_block
+	check(w._has_data(k) and w.meshable.has(k), "gerar o vizinho por get_block libera o chunk para a mesh (%s)" % str(w.meshable))
+	w.free()
 	return true

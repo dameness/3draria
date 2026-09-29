@@ -342,11 +342,45 @@ com troco), Nurse cura o que falta por 1 cobre/ponto. Sem casa/moradia (fica em 
 10. **Vida/mana nos saves:** salvo `max_hp`/`max_mana` no `.plr` (save v2 continua legível). Personagens antigos ficam com 100/20.
 11. **Mundo novo:** cristais, baús por camada e mudas mudam a geração — precisa criar mundo novo para ver tudo.
 
+## Sessão 3 — mundo de teste e melhorias ✅ (tudo com teste em tests/run.gd; prints em textures/shot_*.png)
+
+- **Mundo de teste** (`test_world.gd`, botão "Mundo de teste" na tela de mundos; flag `test` no .wld, seed 1337): arena plana de 89 x 74 no nascimento, gerada dentro de
+  `WorldGen.generate` (o `.wld` só guarda a flag). Um baú por categoria **saído de `Items.names`** (Armas, Ferramentas, Armaduras, Acessórios, Poções e consumíveis, Blocos e minérios,
+  Moedas e munição, Materiais e barras, Chefes e invocadores; passa de 40 slots = mais um baú "n/m"), todos os blocos de `Blocks.ids` em fileiras com o nome em cima (líquido afundado
+  no gramado; só os níveis parciais de líquido ficam de fora), tochas de 9 em 9, Guide/Merchant/Nurse/Velho parados perto, vitrine com um de cada inimigo que não é chefe (parados,
+  ainda levam golpe), duas casas de demonstração (uma válida, uma sem cadeira). **F9** abre o painel (hora, relógio parado, vida/mana máximas, +10 de ouro, criativo, hardmode
+  liga/desliga, os 6 chefes, vitrine, limpar inimigos, meteorito, reabastecer baús, viagem: nascimento/submundo/dungeon/bioma do mal/Hallow/ilha no céu); a mira mostra o nome do bloco
+  no rodapé (F10). Testes: `test_testworld` (todo item em exatamente um baú, todo bloco na fileira, gramado plano e limpo, `chest_at`, save, cena com F9 e atalhos) + fase 4 da integração
+  + `menu_flow` (o botão abre o mundo). Prints `teste_*`. Desligar o hardmode só volta os spawns/geração: o terreno já convertido fica.
+- **Moedas e munição em qualquer slot**: slots de moeda clicáveis (`click_coin`: leva a pilha à mão / guarda moeda do mesmo tipo, 100 sobem de tipo); `coin_value`/`pay` contam também as
+  moedas em slots comuns (pagar recolhe tudo para os slots de moeda: `ponytail:`); munição apanhada vai primeiro aos slots de munição (`add`), `total`/`remove` contam esses slots; Shift+clique
+  do baú usa `take_stack` (= apanhar do chão). Teste `test_coins_ammo` (inclui save).
+- **Fallen Star**: o `Fallen_Star.png` da wiki é um GIF; agora `Fallen_Star_(old)` (PNG estático) + estrela procedural (`star` em atlas.gd) de reserva; `wiki_image` confere a assinatura PNG
+  (GIF/truncado/vazio → procedural) e o `fetch-sprites.sh` não grava o que não é PNG. Prints `estrela`, `estrela_chao`.
+- **"Subsolo bugado" do verme**: reproduzido como voo criativo com a câmera dentro do bloco (dava para ver o mundo através da terra, faces de trás não existem). Agora a tela escurece
+  (`hud.dark`, atrás do minimapa). Se o dono ainda vir isso **fora do criativo**, pedir posição/ângulo. Prints `dentro_terra*`.
+- **Guia**: dicas do momento (`_guide_tips`, na ordem do jogo) e modo **Criação** (espaço para o item + lista de `Crafting.uses_of`). **Moradia** (`housing.gd`): cômodo fechado por blocos e portas
+  (busca em 3D, 12–400 blocos de ar) com tocha, bancada e cadeira; botão direito na cadeira diz o que falta; Guide/Merchant/Nurse se mudam sozinhos (`Entities._homes`, `world.homes` no save),
+  voltam ao nascimento se a casa for desfeita. Blocos `chair`, `door` (sólida) e `door_open` (painel fino; botão direito abre/fecha os 2 blocos), receitas da wiki (4 e 6 de madeira).
+- **Queda e afogamento** (wiki Fall damage / Breath meter / Drowning): 25 tiles (15 blocos) seguros, 10 de dano por tile a mais (a defesa reduz; asas, água, Lucky Horseshoe e teletransporte
+  anulam; o pulo do Cloud in a Bottle recomeça a queda); fôlego 23,3 s, depois 17 de vida por segundo direto; bolhas na tela.
+- **Poções de luz**: Shine (aura de 10 blocos), Night Owl (aura fraca de 15) via `aura` no shader dos blocos, Spelunker (`spelunker.gd`); 10 min; entram nos baús.
+- **Itens das orbes**: Space Gun sem mana com o conjunto Meteor (`free_cost` em armor_sets.json), Band of Starpower (+40 de mana máx.), Panic Necklace, The Rotted Fork (estocada + onda),
+  Crimson Rod (nuvem que chove sangue: 30 de mana, uma por vez, 5 min; a gota cai sobre o inimigo debaixo dela). Ball O' Hurt e os pets ficam de fora.
+- **Ilhas flutuantes** (mundo novo): 3 por mundo, acima de `SKY_BASE` (110), casa de sunplate com Skyware Chest (Shiny Red Balloon, Lucky Horseshoe na ordem; Fledgling Wings em 1/4 dos
+  baús — a wiki dá 1/40, subi porque são só 3 ilhas —, 50–100 nuvens + o loot comum de superfície). O céu não escurece a terra (`_light` e `surface_y` ignoram y ≥ SKY_BASE).
+- **Mundo em ilha** (mundo novo): terra até 104 blocos do centro, costa de 18 e oceano de 14 de fundo em volta; a borda do mundo é uma parede para o jogador; nada nasce no fundo do mar.
+- **Criação com o martelo** (ícone alterna a lista completa), **Ctrl = cursor inteligente** (mira dourada), **gancho na tecla E** (Grappling Hook: alcance 18,75 tiles, lançamento 11,5 px/quadro,
+  puxão 11 px/quadro; Chain 15 por barra de ferro e Hook 4% dos Angry Bones para criá-lo), **sons** ligados (pickup, coin, swing, bow, splash, baú).
+- **Boneco mais adulto** (cabeça 0,78 → 0,68, olhos menores, ombros mais largos); a tela de criação de personagem não recarrega mais ao escolher cor.
+
+**Perguntas ao dono (padrão marcado):** (1) Fledgling Wings em 1/4 dos baús de ilha em vez de 1/40: ok? (2) o "Mundo de teste" tem seed fixa 1337 (Corrupção ou Carmesim depende dela): quer uma segunda seed?
+(3) desligar hardmode não desfaz o terreno: precisa de "restaurar"? (4) o que exatamente estava "bugado" no verme (posição/ângulo se ainda acontecer fora do criativo)?
+
 ## Depois
 
-- Modo lista/martelo da criação (wiki: o martelo alterna lista; UI.md), criação com o guia; Ctrl = Smart Cursor; gancho (E).
-- Dano de queda (wiki: seguro 25 tiles ≈ 15 blocos; dano = 10 × excesso em tiles) e afogamento; mais asas no hardmode.
-- Moradia de NPC (parede de fundo, mesa, cadeira, luz), ilhas no céu (Skyware Chest → Fledgling Wings), baús de superfície.
-- Mobs e personagem mais "adultos"; tela de criação recarrega ao escolher cor e não edita personagem existente.
-- Animações de arma em 3D pleno (hoje sprite extrudado); mapa circular (oceano em volta, biomas no meio, baús embaixo).
-- Sons: falta pickup, moeda, bow, swing e splash ligados (`sfx.gd` já gera). M agora é o mapa (não mutar).
+- Ball O' Hurt (mangual), Starfury e Celestial Magnet (Skyware), Sky Mill; mais asas no hardmode.
+- Animações de arma em 3D pleno (hoje sprite extrudado: é o visual "Terraria em 3D"; modelos de primitivas seriam outra estética).
+- Editar personagem existente na tela de criação; mobs mais "adultos" além do boneco (slimes/olhos são de outro estilo).
+- Casa: habitantes andando pelo cômodo e voltando para casa à noite; mais habitantes (Demolitionist etc.); parede de fundo (o jogo não tem).
+- Hardmode/Calamity (docs/ROADMAP.md).

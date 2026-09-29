@@ -7,18 +7,15 @@ testes headless e com prints via Xvfb (e **olhe as imagens**). Respostas curtas,
 
 ## Prompt pronto para colar numa sessão nova
 ```
-Repo dameness/3draria, branch claude/vigilant-babbage-nv53lx (commit e push nela; NÃO abra PR). Jogo voxel 3D em Godot 4.7.2 com o
-conteúdo do Terraria; o dono testa local num PC Ubuntu modesto, você não tem GPU: valide com testes headless e prints via xvfb, e olhe
-as imagens. Leia primeiro CLAUDE.md (diretrizes do dono), docs/HANDOFF.md (estado, pendências, armadilhas), docs/UI.md, docs/VISUAL.md
-e docs/ROADMAP.md; rode scripts/update.sh antes de tudo.
-Já feito (ver HANDOFF): bugs do playtest v8 (água que flui, nado, boneco, clarão vermelho, câmera 3ª pessoa), menu com o mundo real ao
-fundo + personagem, partículas, mineração com rachaduras, arco do golpe, braço em 1ª pessoa, slime legível.
-Falta, em ordem: 3) GUI restante do Terraria (docs/UI.md) e mais animação na GUI (o dono acha estática); 4) Tarefa 2 (Corrupção/Carmesim,
-Eater of Worlds, Brain of Cthulhu, Nightmare Pickaxe, Molten, King Slime, meteorito, Skeletron + masmorra, Wall of Flesh → F6) com números
-da wiki via scripts/wiki.py, um commit por subpasso; e as pendências menores do HANDOFF.
-Regras do dono: Terraria em 3D, não copiar Minecraft (pode se basear); GUI e jogabilidade como as do Terraria; muita animação; desempenho
-bom (manter). Ao fim de cada passo: testes verdes (.tools/godot --headless -s tests/run.gd), commit, push, e diga como rebuildar
-(git pull && scripts/update.sh && .tools/godot) e se precisa de mundo novo. Respostas curtas, em português.
+Repo dameness/3draria, branch claude/vigilant-babbage-nv53lx (commit e push nela; NÃO abra PR). Jogo voxel 3D em Godot 4.7.2 com o conteúdo do Terraria; o dono testa local num
+PC Ubuntu modesto e você não tem GPU: valide com testes headless (.tools/godot --headless -s tests/run.gd e tests/menu_flow.gd) e prints via xvfb (tests/screenshot.gd), e OLHE as imagens.
+Leia CLAUDE.md, docs/HANDOFF.md, docs/REVISAO.md (o que foi feito item a item + "Depois"), docs/UI.md e data/CLAUDE.md; rode scripts/update.sh.
+Regras do dono: Terraria em 3D (não copiar Minecraft), GUI e jogabilidade como as do Terraria, muita animação, bom desempenho; números sempre da wiki (curl na API ou scripts/wiki.py).
+Commits PEQUENOS (uma mudança visível cada, com teste em tests/run.gd e, se visual, um print que você olhou), push depois de cada um; ao fim de cada commit diga em 2-3 linhas como
+testar, como rebuildar (git pull && scripts/update.sh && .tools/godot) e se precisa de mundo novo. Respostas curtas, em português. Ponytail: o código mais simples que funciona.
+Já feito: revisão pré-hardmode (REVISAO 1-8) e a sessão 3 (mundo de teste no menu, moedas/munição em qualquer slot, Fallen Star, câmera dentro da terra, Guia e moradia, queda e afogamento,
+poções de luz, itens das orbes, ilhas flutuantes, mundo em ilha, gancho, cursor inteligente, sons).
+Falta: o que está em "Depois" no REVISAO.md e, só depois, hardmode/Calamity (docs/ROADMAP.md). Peça ao dono o playtest do que ainda não foi testado (ver "Perguntas ao dono" no REVISAO).
 ```
 
 ## Revisão pré-hardmode (feita)
@@ -70,25 +67,8 @@ de líquido entram no fim de `blocks.json` e saves antigos continuam válidos).
   água (cavar ao lado de um lago), sair da água, o boneco em 3ª pessoa (V), o menu, o FPS (as partículas e o fluxo são novos).
 - Regras: Terraria em 3D, nunca Minecraft; GUI e jogabilidade como as do Terraria; muita animação; desempenho bom; conteúdo é dado (JSON).
 
-## Falta, em ordem
-### 3) GUI restante (docs/UI.md, "Pendente") + mais animação
-Minimapa, buffs, moedas e slots de munição, acessórios/vanity/dye, baús, favoritar (Alt+clique), ordenar, Shift+clique, criação em lista/martelo.
-O dono acha a GUI **estática**: animar (slot que cresce/brilha ao passar o mouse, coração que pulsa com pouca vida, item pego voando até o
-slot, abrir/fechar do inventário deslizando, dica com fade, moedas girando). Estilo em `ui.gd`, layout em `hud.gd` (docs/UI.md tem as medidas).
-### 4) Tarefa 2 (fecha a pré-hardmode) — nada feito; sempre com os números da wiki
-Corrupção e Carmesim (blocos, Shadow Orb/Crimson Heart, altares) com Eater of Worlds e Brain of Cthulhu; escamas → Nightmare Pickaxe → pedra
-infernal (65) → equipamento Molten (Hellforge, obsidiana); King Slime; meteorito; Skeletron com a masmorra; Wall of Flesh, que abre a F6
-(hardmode). Conteúdo é **dado** (JSON em `data/base/`) lido por sistemas genéricos; IA nova = um `match` em `enemy.gd`; novos blocos entram **no
-fim** de `blocks.json` (id = posição). Um commit por subpasso (bioma+EoW, BoC, Nightmare/Molten, King Slime+meteorito, Skeletron+masmorra, WoF),
-cada um com testes e prints. Já existe `mine` por bloco (dureza): Ebonstone/Crimstone/Pearlstone/Hellstone ×0,5, demonita/crimtane e obsidiana
-com poder mínimo 55, meteorito 50 (wiki *Pickaxe power*). Água + lava deve formar obsidiana (hoje não reagem: `liquid.gd`, comentário `ponytail:`).
-### Pendências menores
-- Árvores: no Terraria só machado corta; hoje qualquer picareta quebra tronco (`mine` 1,5). Falta Copper Axe etc. (poder de machado).
-- Baldes (vazio/água/lava) para o dono testar líquidos; pressão em tubos em U; sons.
-- Criação de personagem com cores (hoje a aparência vem do hash do nome); dificuldade.
-- Olho demoníaco/inimigos: idle (piscar). Peça detalhes da "luta estranha" e dos "mobs meio estranhos" ao dono.
-- NPCs de vila (casas, lojas), ver docs/ROADMAP.md.
-- Se o dono ainda enxergar "abaixo da terra" **em 1ª pessoa**, peça posição/ângulo (a causa achada foi só a câmera da 3ª pessoa).
+## Falta
+Ver "Depois" e "Perguntas ao dono" no fim de docs/REVISAO.md (o que era daqui já foi feito).
 
 ## Armadilhas e descobertas
 - **Godot: `rotation.x` positivo balança braço/perna para a FRENTE** no modelo (olha para -Z); vários sinais estavam invertidos. Pivô de
@@ -112,3 +92,10 @@ Feito e testado (commits na branch `claude/vigilant-babbage-nv53lx`; a "claude" 
 moedas, munição, acessórios, baús, favoritar, ordenar, animações), Corrupção/Carmesim + Eater of Worlds + Brain, Nightmare/Deathbringer/Molten,
 obsidiana, King Slime, meteorito, Skeletron + dungeon + Velho, Wall of Flesh + hardmode (cobalto/paládio, Hallow), machados, baldes, olhos piscam,
 cores na criação de personagem, sons procedurais. **Precisa de mundo novo** (mudou a geração). Próximo: docs/REVISAO.md.
+
+## Atualização (sessão 3)
+Tudo commitado e testado na branch (ver REVISAO "Sessão 3"). **Precisa de mundo novo** (mudou a geração: ilha com oceano, ilhas flutuantes, blocos novos no fim de blocks.json: cloud, sunplate, chair,
+door, door_open). Para testar tudo sem grindar: menu → Mundo de teste (F9 painel). Armadilhas novas: `Object._set` é nome reservado em GDScript (por isso `WorldGen._write`); fora da árvore
+(testes) `global_position`/`cam` não existem: as funções que os testes chamam usam `position` e recebem a direção como parâmetro (`cast(d, aim)`, `use_hook(aim)`, `find_target`);
+`add_child` de uma cena dentro do `_init` do teste não roda `_ready` (a cena de integração troca de fase em `integration()`); `pkill -f godot` mata o próprio shell da ferramenta.
+

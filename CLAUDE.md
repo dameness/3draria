@@ -57,7 +57,8 @@ scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki (tabe
 .tools/godot --headless --quit                # smoke test: projeto abre sem erros
 .tools/godot --headless -s tests/run.gd       # testes; código de saída != 0 em falha
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd   # prints reais (OpenGL por CPU) em textures/shot_*.png
-xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar (prints textures/menu_*.png)
+xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar → Mundo de teste (prints textures/menu_*.png)
+# prints só de algumas cenas: `-- parte_do_nome` (ex.: `-- teste` = o mundo de teste, `-- ilha_ceu`, `-- gancho`); cena nova = uma linha em SHOTS de tests/screenshot.gd
 ```
 Sessão remota: **sempre confira mudanças visuais com tests/screenshot.gd** e olhe as imagens (FPS ali é de CPU, não vale).
 Testes: cada `test_*` retorna `true` no fim (erro de script aborta a função → retorna null → falha).
@@ -70,7 +71,9 @@ menu.tscn            cena inicial: menu (personagem/mundo)   game.tscn  o jogo (
 scripts/             setup-godot.sh e um .gd por sistema:
   blocks.gd          carrega blocks.json/textures.json (id = posição na lista, 0 = ar)
   atlas.gd           gera o atlas 16x16 procedural
-  world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128)
+  world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128); o mundo é uma ilha (oceano a partir de 104 blocos do centro) com 3 ilhas flutuantes (y ≥ SKY_BASE)
+  housing.gd         moradia de habitante (wiki Housing em 3D): cômodo fechado com tocha, bancada e cadeira; portas contam como parede
+  spelunker.gd       brilhos do Espeleólogo vistos através da terra (varre os chunks com find, sem laço por bloco)
   timber.gd          árvores (wiki Tree): dano por tile, queda da árvore inteira com animação, madeira e acorn; a muda cresce em world.gd
   combat.gd          sorteios do dano da wiki: variância de ±15% (antes da defesa) e crítico de 4% (×2 depois da defesa, +40% de recuo)
   chunk_mesher.gd    faces visíveis → arrays de mesh com luz (céu pela altura da coluna + tochas dos 8 chunks em volta); thread-safe
@@ -82,7 +85,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   inventory.gd       slots, empilhar, remover
   crafting.gd        receitas e estações por perto
   voxel_body.gd      colisão AABB contra voxels (jogador, inimigos, itens)
-  player.gd          1ª pessoa, vida, usar item (minerar com dano acumulado e rachaduras / golpear / atirar), colocar
+  player.gd          1ª pessoa, vida, mana, buffs, usar item (minerar / golpear / atirar / magia), colocar, queda e afogamento, gancho (E), cursor inteligente (Ctrl)
   fx.gd  block_crack.gd  trail.gd   partículas (poeira, lascas, faíscas, gotas, respingo), rachaduras do bloco minerado, arco do golpe
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly/eye_of_cthulhu)

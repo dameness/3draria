@@ -31,6 +31,7 @@ atravessa e colocar bloco substitui; some se o chão sumir), `"liquid"` (água/l
 translúcida à parte, `"glow": true` = brilha sozinho, como a lava). Líquido flui (scripts/liquid.gd) e tem nível 1-8 por bloco:
 `water`/`lava` são o nível 8 (cheio) e `water_1..7`/`lava_1..7` (`"liquid": "water", "level": n`) os níveis parciais; a altura da
 superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 níveis, no fim da lista.
+`shape: "door"`: painel fino na borda do bloco, sem colisão (porta aberta; `door` é o cubo sólido: as duas contam como parede na moradia). Forma nova = um `match` em `chunk_mesher._shape`.
 `light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
 `grass: true`: é grama (a muda de árvore só pega em cima dela).
 `clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
@@ -48,8 +49,11 @@ Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` 
 (dica e ciclo das armas); `tool_speed` é o intervalo entre golpes no bloco (picareta/machado) e vira o ciclo da ferramenta (`Items.use_dur`).
 Recuo de flecha soma ao da arma (`knockback` na munição).
 
-Acessório: `accessory: {speed?, jump?, regen?, defense?, wings?: {time (s de voo), lift (blocos/s)}}` (bônus somam; só um par de asas vale).
-Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus}}`.
+Acessório: `accessory: {speed?, jump?, regen?, defense?, max_mana?, panic?, no_fall?, double_jump?, wings?: {time (s de voo), lift (blocos/s)}}` (bônus somam; só um par de asas vale).
+Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus, free_cost?: [armas sem custo de mana com o conjunto completo]}}`.
+Magia: `cost` (mana) + `shoot` (projétil); `cloud: alcance` faz a arma soltar uma nuvem que chove (`blood_drop`) em vez de um projétil (Crimson Rod).
+Gancho: `hook: {range, launch, pull}` (blocos, blocos/s); a tecla E usa o primeiro gancho do inventário. Poção/buff: `buff` + `buff_time` (s), nomes em `buffs.json` (efeitos `defense speed regen mining arrow_damage arrow_speed shine owl spelunker`).
+Item novo entra no FIM de `items.json` e de `blocks.json` (o mundo de teste o põe sozinho no baú da categoria: `TestWorld.category`).
 
 ## recipes.json
 `{result, count?=1, needs:{item: n}, station?: bloco}`; a estação precisa estar a até 4 blocos do jogador.
@@ -68,6 +72,9 @@ Chefes atravessam blocos e vão embora ao amanhecer; itens com `summon` os invoc
 ## projectiles.json
 `{name, sprite? (textura, billboard) | model_item? (ícone extrudado), size, gravity, life (s), pierce, glow?}`.
 Dano/velocidade vêm da arma (feixe = dano da espada; flecha = arco + flecha).
+
+## loot.json
+`{camada: {main: [itens, um por baú], common: [{items, min, max, chance}]}}`, camadas `underground` `cavern` `lava` `sky` (Skyware Chest das ilhas, pela altura; as ilhas dão o item principal na ordem).
 
 ## rarities.json
 `raridade: cor` (valores do código do Terraria, −1 a 11). Pinta o feixe do item solto.

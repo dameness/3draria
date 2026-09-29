@@ -81,6 +81,7 @@ func get_block(x: int, y: int, z: int) -> int:
 		return 0
 	if not chunks.has(c):
 		chunks[c] = gen.generate(c.x, c.y)
+		_chunk_ready(c)   # gerado aqui, na thread principal (não pelo job): quem esperava por ele precisa saber
 	return chunks[c][posmod(x, C) + posmod(z, C) * C + y * C * C]
 
 
@@ -323,6 +324,15 @@ func _next_job() -> Dictionary:
 	return {}
 
 
+# Um chunk ganhou dados (do job ou de get_block): ele e os vizinhos que já tinham tudo o mais podem virar mesh. (Sem isto, um chunk gerado por get_block enquanto estava na fila
+# de geração ficava em `pending` sem nunca entrar em `meshable`: um buraco no mapa até o jogador mudar de chunk.)
+func _chunk_ready(c: Vector2i) -> void:
+	for o in [Vector2i.ZERO] + NB:
+		var k: Vector2i = c + o
+		if pending.has(k) and not meshable.has(k) and _has_data(k):
+			meshable.append(k)
+
+
 func _has_data(k: Vector2i) -> bool:
 	for o in [Vector2i.ZERO] + NB:
 		if in_world(k + o) and not chunks.has(k + o):
@@ -388,10 +398,7 @@ func _apply(r: Dictionary) -> void:
 		generating.erase(r.gen)
 		if not chunks.has(r.gen):  # a thread principal pode ter gerado o mesmo chunk antes (get_block)
 			chunks[r.gen] = r.data
-		for o in [Vector2i.ZERO] + NB:   # este chunk pode ter completado os dados de um vizinho
-			var k: Vector2i = r.gen + o
-			if pending.has(k) and not meshable.has(k) and _has_data(k):
-				meshable.append(k)
+		_chunk_ready(r.gen)
 		return
 	var k: Vector2i = r.k
 	if not meshes.has(k) or r.version != versions.get(k, 0):
