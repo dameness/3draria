@@ -81,6 +81,7 @@ var pause: PanelContainer
 var syncs: Array[Callable] = []       # Configurações: cada linha recarrega o valor atual ao abrir
 var was_menu := false
 var tint: ColorRect
+var dark: ColorRect                   # tela escura quando a câmera está dentro de bloco (fica atrás do minimapa e da interface)
 var flash: ColorRect
 var stations := {}
 var show_all := false         # criação: false = só o que dá para criar agora (como o Terraria)
@@ -424,6 +425,10 @@ func _build_life() -> void:
 	minimap = Minimap.new()
 	root.add_child(minimap)
 	root.move_child(minimap, 0)   # a sobreposição (Tab) fica atrás da interface
+	dark = _overlay()
+	dark.color = Color(0.03, 0.02, 0.02)
+	dark.visible = false
+	root.move_child(dark, 0)
 	minimap.setup(world, player)
 	var box := VBoxContainer.new()
 	life_box = box
@@ -1087,6 +1092,8 @@ func _process(delta: float) -> void:
 		cursor_view.get_node("Count").text = str(inv.cursor_count) if inv.cursor_count > 1 else ""
 	var cam: Vector3 = player.cam.global_position
 	var wet: int = world.liquid_at(cam)
+	var buried: bool = Blocks.solid[world.get_block(floori(cam.x), floori(cam.y), floori(cam.z))] == 1   # câmera dentro de bloco (voo criativo): as faces de trás não existem, então a tela escurece em vez de mostrar o mundo através da terra
+	dark.visible = buried
 	tint.color = Color(0.08, 0.28, 0.7, 0.4) if wet == Blocks.ids.water else Color(1.0, 0.3, 0.05, 0.55) if wet == Blocks.ids.lava else Color.TRANSPARENT
 	flash.color = Color(0.9, 0.05, 0.05, clampf((player.iframes - (player.IFRAMES - 0.3)) / 0.3, 0.0, 1.0) * 0.3)
 	note_label.text = player.message if now < player.message_until else ""

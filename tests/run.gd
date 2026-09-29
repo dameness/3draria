@@ -2905,6 +2905,17 @@ func integration():
 			hud._process(0.0)
 			check(hud.creative_label.visible and not hud.flight_bar.visible, "modo criativo: aviso fixo na tela")
 			player.creative = false
+			# câmera dentro da terra (voo criativo): a tela escurece, não mostra o mundo por trás das faces; fora, fica limpa
+			player.position.y = world.surface_y(floori(player.position.x), floori(player.position.z)) - 6.0
+			player.creative = true
+			player._update_camera(0.0)
+			hud._process(0.0)
+			check(hud.dark.visible and hud.dark.color.r < 0.1 and hud.dark.get_index() < hud.minimap.get_index(), "câmera dentro da terra: a tela escurece (sem ver o mundo através dela)")
+			player.position.y = world.surface_y(floori(player.position.x), floori(player.position.z)) + 20.0
+			player._update_camera(0.0)
+			hud._process(0.0)
+			check(not hud.dark.visible and hud.tint.color.a == 0.0, "…e no ar volta a ficar limpa")
+			player.creative = false
 			player.inv.acc[0] = Items.ids.fledgling_wings
 			player.flight_left = 0.2
 			hud._process(0.0)

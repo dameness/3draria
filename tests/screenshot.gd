@@ -23,6 +23,8 @@ const SHOTS := [
 	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "creative": true},
 	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "creative": true},
 	{"name": "verme_vivo", "look": Vector2(0, 0.3), "worm_sim": true, "time": 300.0},
+	{"name": "dentro_terra", "up": -6.0, "look": Vector2(0.4, -0.1), "creative": true},
+	{"name": "dentro_terra_verme", "evil": true, "up": -6.0, "look": Vector2(0, -0.1), "worm": true, "creative": true},
 	{"name": "arvore", "tree": true, "item": "copper_axe"},
 	{"name": "arvore_cai", "tree": true, "fell": 15, "item": "copper_axe"},
 	{"name": "muda", "sapling": true, "item": "acorn", "look": Vector2(0, -0.6)},
