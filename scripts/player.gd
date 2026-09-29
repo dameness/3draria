@@ -987,7 +987,7 @@ func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
 	if d.ammo == "arrow":   # Arquearia: +10% de dano e +20% de velocidade nas flechas
 		dmg = roundi(dmg * (1.0 + buff_sum("arrow_damage")))
 		speed *= 1.0 + buff_sum("arrow_speed")
-	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, speed, dmg, kb)
+	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, speed, dmg, kb, d.get("crit", Combat.CRIT))
 	Sfx.play(entities, "bow", position + Vector3.UP, -8.0, 1.0 if d.ammo == "arrow" else 2.2)   # a flecha estala, a bala é um estampido agudo
 
 

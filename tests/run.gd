@@ -2348,6 +2348,14 @@ func test_ui():
 	var tip := Ui.item_tip(Items.ids.terra_blade)
 	check(tip.begins_with("[color=#ffff0a]Terra Blade[/color]") and tip.contains("85 de dano") and tip.contains("Velocidade"), "dica do item: nome na cor da raridade e estatísticas")
 	check(Ui.item_tip(Items.ids.copper_pickaxe).contains("35% de poder de picareta") and Ui.item_tip(Items.ids.gold_helmet).contains("4 de defesa"), "dica: picareta e armadura")
+	# Descrições do Terraria (wiki Item tooltips): classe do dano, crítico, recuo pelas faixas da wiki, texto do item, "Consumível" e "Material".
+	var wand := Ui.item_tip(Items.ids.wand_of_sparking)
+	check(wand.contains("14 de dano mágico") and wand.contains("14% de chance de acerto crítico") and wand.contains("Usa 2 de mana") and wand.contains("Dispara uma pequena faísca") and wand.contains("Sem recuo"), "dica: Wand of Sparking")
+	var musket := Ui.item_tip(Items.ids.musket)
+	check(musket.contains("31 de dano à distância") and musket.contains("12% de chance") and musket.contains("Recuo médio") and Ui._knockback(4.5) == "Recuo médio" and Ui._knockback(3.5) == "Recuo fraco", "dica: Musket e faixas de recuo")
+	var potion := Ui.item_tip(Items.ids.lesser_healing_potion)
+	check(potion.contains("Restaura 50 de vida") and potion.contains("Consumível") and Ui.item_tip(Items.ids.ironskin_potion).contains("8 minutos de duração"), "dica: poções")
+	check(Ui.item_tip(Items.ids.iron_bar).ends_with("Material") and Ui.item_tip(Items.ids.copper_helmet).contains("Equipável"), "dica: Material e Equipável")
 	check(Ui.heart().get_width() == 24 and Ui.heart().get_image().get_pixel(12, 9).a > 0.5 and Ui.heart().get_image().get_pixel(0, 0).a == 0.0, "coração procedural com fundo transparente")
 	check(Ui.theme().get_constant("outline_size", "Label") > 0 and Ui.theme().get_default_font() != null, "tema: texto com contorno")
 	var slot = load("res://scripts/hud.gd").Slot.new()
@@ -3546,7 +3554,7 @@ func test_orb_items():
 	p.inv.equip = PackedInt32Array([-1, -1, -1])
 	# Band of Starpower: +40 de mana máxima enquanto vestida
 	p.inv.acc[0] = Items.ids.band_of_starpower
-	check(p.mana_cap() == 60 and Ui.item_tip(Items.ids.band_of_starpower).contains("+40 de mana"), "Band of Starpower soma 40 à mana máxima")
+	check(p.mana_cap() == 60 and Ui.item_tip(Items.ids.band_of_starpower).contains("mana máxima em 40"), "Band of Starpower soma 40 à mana máxima")
 	p.mana = 20.0
 	p.mana_use = 9.0
 	for i in 600:
@@ -3945,7 +3953,7 @@ func test_hook():
 	check(chain.size() == 1 and chain[0].count == 15 and chain[0].needs == {Items.ids.iron_bar: 1} and grapple.size() == 1 and grapple[0].needs == {Items.ids.chain: 3, Items.ids.hook: 1}, "receitas da wiki: 15 correntes por barra de ferro; gancho = 3 correntes + 1 Hook")
 	var bones := enemy_def("angry_bones")
 	check(bones.drops.any(func(d): return d.item == "hook" and absf(d.chance - 0.04) < 0.001), "o Hook cai dos esqueletos (Angry Bones)")
-	check(Ui.item_tip(Items.ids.grappling_hook).contains("Tecla E"), "a dica ensina a tecla")
+	check(Ui.item_tip(Items.ids.grappling_hook).contains("Aperte E"), "a dica ensina a tecla")
 	free_player(p)
 	w.free()
 	return true

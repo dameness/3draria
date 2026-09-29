@@ -48,6 +48,7 @@ Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` 
 `autoswing` (padrão true para quem coloca bloco e para baldes; picaretas, machados e as espadas da wiki marcam no dado). `use_time` é o use time da wiki
 (dica e ciclo das armas); `tool_speed` é o intervalo entre golpes no bloco (picareta/machado) e vira o ciclo da ferramenta (`Items.use_dur`).
 Recuo de flecha soma ao da arma (`knockback` na munição).
+`tip`: texto do item no balão, traduzido da linha "Tooltip" da wiki (`\n` separa linhas); `crit`: chance de crítico da arma (padrão 0.04). O resto do balão (dano, crítico, velocidade, recuo, "Consumível", "Material" = entra em alguma receita) sai dos campos em `ui.gd item_tip`; só escreva `tip` se o efeito existir no jogo.
 
 Acessório: `accessory: {speed?, jump?, regen?, defense?, max_mana?, panic?, no_fall?, double_jump?, wings?: {time (s de voo), lift (blocos/s)}}` (bônus somam; só um par de asas vale).
 Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus, free_cost?: [armas sem custo de mana com o conjunto completo]}}`.

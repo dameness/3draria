@@ -122,37 +122,18 @@ static func item_tip(id: int) -> String:
 		return _tips[id]
 	var d: Dictionary = Items.defs[id]
 	var lines := ["[color=#%s]%s[/color]" % [Items.rarity_color(id).to_html(false), Items.label(id).capitalize()]]
+	# Ordem do balão do Terraria: dano, crítico, velocidade, recuo, defesa, poderes, cura/mana, texto do item, consumível, duração, material.
+	if d.get("damage", 0) > 0:
+		var kind := "à distância" if d.has("ammo") or d.has("ammo_class") else "mágico" if d.has("cost") else "corpo a corpo"
+		lines.append("%d de dano %s" % [d.damage, kind])
+		if not d.has("ammo_class"):
+			lines.append("%d%% de chance de acerto crítico" % roundi(d.get("crit", Combat.CRIT) * 100))
+			lines.append(_speed(d.get("use_time", 0.3)))
+		lines.append(_knockback(d.get("knockback", 0.0)))
 	if d.has("armor"):
 		lines.append("%d de defesa" % d.defense)
-	elif d.get("damage", 0) > 0 and not d.has("ammo_class"):
-		lines.append("%d de dano" % d.damage)
-		lines.append(_speed(d.get("use_time", 0.3)))
-		lines.append(_knockback(d.get("knockback", 0.0)))
-	elif d.has("ammo_class"):
-		lines.append("%d de dano (munição)" % d.get("damage", 0))
-	if d.has("accessory"):
-		var a: Dictionary = d.accessory
-		if a.has("speed"): lines.append("+%d%% de velocidade" % roundi(a.speed * 100))
-		if a.has("jump"): lines.append("+%d%% de altura do pulo" % roundi(a.jump * 100))
-		if a.has("regen"): lines.append("Regeneração de vida mais rápida")
-		if a.has("wings"): lines.append("Permite voar e planar (%.2f s de voo)" % a.wings.time)
-		if a.has("double_jump"): lines.append("Permite pular de novo no ar")
-		if a.has("no_fall"): lines.append("Anula o dano de queda")
-		if a.has("max_mana"): lines.append("+%d de mana máxima" % a.max_mana)
-		if a.has("panic"): lines.append("Ao levar dano, dobra a velocidade por 8 s")
-		if a.has("defense"): lines.append("+%d de defesa" % a.defense)
-		lines.append("Acessório")
-	if d.has("heal"):
-		lines.append("Recupera %d de vida" % d.heal)
-	if d.has("life"):
-		lines.append("Aumenta a vida máxima em %d" % d.life)
-	if d.has("buff"):
-		lines.append(Buffs.defs[d.buff].tip)
-		lines.append("Dura %d minutos" % roundi(d.buff_time / 60.0))
-	if d.has("recall"):
-		lines.append("Leva você para casa")
-	if d.get("consumable", false):
-		lines.append("Consumível")
+	if d.has("armor") or d.has("accessory"):
+		lines.append("Equipável")
 	if Inventory.coin_kind(id) != -1:
 		lines.append("Moeda")
 	if Items.pick_power[id] > 0:
@@ -161,18 +142,26 @@ static func item_tip(id: int) -> String:
 		lines.append("%d%% de poder de machado" % Items.axe_power[id])
 	if Items.hammer_power[id] > 0:
 		lines.append("%d%% de poder de martelo" % Items.hammer_power[id])
-	if d.has("bucket"):
-		lines.append({"empty": "Botão esquerdo pega água ou lava", "water": "Botão esquerdo derrama a água", "lava": "Botão esquerdo derrama a lava"}[d.bucket])
-	if d.has("hook"):
-		lines.append("Tecla E: lança o gancho (alcance de %d blocos) e puxa você" % roundi(d.hook.range))
-	if d.has("summon"):
-		lines.append("Invoca um chefe (só à noite)" if d.get("night", false) else "Invoca um chefe")
+	if d.has("heal"):
+		lines.append("Restaura %d de vida" % d.heal)
+	if d.has("mana"):
+		lines.append("Restaura %d de mana" % d.mana)
+	if d.has("cost"):
+		lines.append("Usa %d de mana" % d.cost)
 	if d.has("set"):
-		lines.append("Conjunto: %s" % str(d.set))
-		for w in Items.sets.get(d.set, {}).get("free_cost", []):
-			lines.append("Conjunto completo: %s sem custo de mana" % Items.label(w).capitalize())
-	if Items.places[id] != -1:
-		lines.append("Pode ser colocado")
+		var s: Dictionary = Items.sets.get(d.set, {})
+		if s.get("defense", 0) > 0:
+			lines.append("Bônus do conjunto: %d de defesa" % s.defense)
+		for w in s.get("free_cost", []):
+			lines.append("Bônus do conjunto: %s sem custo de mana" % Items.label(w).capitalize())
+	if d.has("tip"):
+		lines.append(d.tip)
+	if d.get("consumable", false) or d.has("ammo_class"):
+		lines.append("Consumível")
+	if d.has("buff"):
+		lines.append("%d minutos de duração" % roundi(d.buff_time / 60.0))
+	if Crafting.recipes.any(func(r): return r.needs.has(id)):
+		lines.append("Material")
 	_tips[id] = "\n".join(lines)
 	return _tips[id]
 
@@ -186,5 +175,5 @@ static func _speed(use_time: float) -> String:
 
 
 static func _knockback(kb: float) -> String:
-	return "Sem recuo" if kb <= 0 else "Recuo fraquíssimo" if kb <= 1.5 else "Recuo fraco" if kb <= 3 else "Recuo médio" if kb <= 4 \
-		else "Recuo forte" if kb <= 6 else "Recuo fortíssimo" if kb <= 7 else "Recuo extremo" if kb <= 9 else "Recuo insano"
+	return "Sem recuo" if kb <= 0 else "Recuo extremamente fraco" if kb <= 1.5 else "Recuo muito fraco" if kb <= 3 else "Recuo fraco" if kb <= 4 \
+		else "Recuo médio" if kb <= 6 else "Recuo forte" if kb <= 7 else "Recuo muito forte" if kb <= 9 else "Recuo extremamente forte" if kb <= 11 else "Recuo insano"

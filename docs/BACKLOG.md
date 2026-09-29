@@ -9,10 +9,11 @@ Testes verdes (`tests/run.gd`, `tests/menu_flow.gd`). Não precisa de mundo novo
 - Ao concluir um item, apague-o daqui (não arquive aqui; o histórico é o `git log`).
 
 ## Agora (nesta ordem)
-1. **Descrições dos itens = as do Terraria.** Conferir `ui.gd item_tip` e `items.json` contra a wiki, começando por armas, poções e armaduras; print dos tooltips.
-2. **Personagem e armaduras "estranhos"** (dono). Comparar com o sprite do jogador da wiki; perguntar o que incomoda (proporção, cabeça, cores, volume das peças).
-3. **Projéteis:** rastro de partículas nos feixes e no laser; depois o projétil 3D (o dono pediu por último). **Golpe em 3ª pessoa** com o mesmo arco diagonal.
-4. **Inimigos:** revisão dos modelos além dos que já usam sprite (slimes, olhos, esqueleto, zumbi, chefes); nomes/comportamentos conferidos com a wiki.
+1. **Personagem e armaduras "estranhos"** (dono). Comparar com o sprite do jogador da wiki; perguntar o que incomoda (proporção, cabeça, cores, volume das peças).
+2. **Projéteis:** rastro de partículas nos feixes e no laser; depois o projétil 3D (o dono pediu por último). **Golpe em 3ª pessoa** com o mesmo arco diagonal.
+3. **Inimigos:** revisão dos modelos além dos que já usam sprite (slimes, olhos, esqueleto, zumbi, chefes); nomes/comportamentos conferidos com a wiki.
+
+- Efeitos de armadura da wiki ainda sem código (por isso sem texto na dica): Molten (+7% dano/velocidade/crítico corpo a corpo), Meteor (+9% dano mágico), Ninja (+3% crítico); bônus de conjunto de Molten/Ninja.
 
 ## Depois
 - Habitantes andando pela casa e voltando à noite; mais habitantes (Demolitionist, Arms Dealer…); parede de fundo.
