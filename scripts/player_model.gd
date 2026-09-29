@@ -85,8 +85,8 @@ func _build() -> void:
 	_hair(head)
 	for side in [-1, 1]:   # o pivô do braço é o ombro, dentro do tronco: girar o braço não abre vão
 		var arm := _pivot(upper, "arm_l" if side < 0 else "arm_r", Vector3(side * 0.232, 0.47, 0))
-		_part(arm, _capsule(0.072, 0.6), skin, Vector3(0, -0.26, 0))
-		_part(arm, _capsule(0.092, 0.29), shirt, Vector3(0, -0.11, 0))    # manga
+		_part(arm, _capsule(0.082, 0.6), skin, Vector3(0, -0.26, 0))
+		_part(arm, _capsule(0.1, 0.29), shirt, Vector3(0, -0.11, 0))    # manga
 		_part(arm, _sphere(), shirt, Vector3.ZERO, Vector3(0.19, 0.19, 0.19))   # ombro
 		_part(arm, _sphere(), skin, Vector3(0, -0.55, 0), Vector3(0.17, 0.17, 0.17))   # mão
 	held = MeshInstance3D.new()
@@ -360,14 +360,14 @@ func _dress() -> void:
 		if id == -1:
 			continue
 		var pal := _colors(id)
-		var c := [pal[0], pal[0].lightened(0.22), pal[1].lightened(0.12)]   # principal, brilho, sombra/detalhe
+		var c := [pal[0], pal[0].lightened(0.28), pal[1]]   # principal, brilho, sombra/detalhe (contraste alto como o sprite)
 		var list := []
 		var add := func(parent: String, mesh: Mesh, col: Color, pos: Vector3, size := Vector3.ONE, rot := Vector3.ZERO):
 			list.append(_part(parts[parent], mesh, col, pos, size, rot))
 		match Inventory.ARMOR[k]:
 			"head":
-				add.call("head", _sphere(), c[0], Vector3(0, 0.33, 0.01), Vector3(0.7, 0.6, 0.68))          # calota
-				add.call("head", _capsule(0.02, 0.6), c[1], Vector3(0, 0.34, 0.0), Vector3(1, 1, 1), Vector3(0, 0, PI / 2))   # aba
+				add.call("head", _sphere(), c[0], Vector3(0, 0.42, 0.03), Vector3(0.72, 0.46, 0.7))          # calota (deixa o rosto aberto)
+				add.call("head", _capsule(0.03, 0.62), c[1], Vector3(0, 0.44, -0.04), Vector3(1, 1, 1), Vector3(0, 0, PI / 2))   # aba da testa
 				add.call("head", _sphere(), c[2], Vector3(0, 0.24, 0.24), Vector3(0.66, 0.32, 0.24))         # protetor da nuca
 				add.call("head", _sphere(), c[1], Vector3(-0.31, 0.26, -0.02), Vector3(0.07, 0.2, 0.22))     # protetores de orelha
 				add.call("head", _sphere(), c[1], Vector3(0.31, 0.26, -0.02), Vector3(0.07, 0.2, 0.22))
@@ -380,8 +380,8 @@ func _dress() -> void:
 				add.call("upper", _sphere(), c[2], Vector3(0, 0.04, 0), Vector3(0.48, 0.1, 0.34))              # cinto
 				add.call("upper", BoxMesh.new(), c[1], Vector3(0, 0.36, -0.155), Vector3(0.13, 0.13, 0.05), Vector3(0, 0, PI / 4))   # emblema do peito
 				for side in [-1, 1]:
-					add.call("arm_l" if side < 0 else "arm_r", _sphere(), c[1], Vector3(0, 0.0, 0), Vector3(0.25, 0.22, 0.25))   # ombreira
-					add.call("arm_l" if side < 0 else "arm_r", _capsule(0.103, 0.3), c[0], Vector3(0, -0.12, 0))                # braçadeira
+					add.call("arm_l" if side < 0 else "arm_r", _sphere(), c[1], Vector3(side * 0.03, 0.0, 0), Vector3(0.34, 0.26, 0.32))   # ombreira grande
+					add.call("arm_l" if side < 0 else "arm_r", _capsule(0.115, 0.32), c[0], Vector3(0, -0.13, 0))                # braçadeira
 			"legs":
 				for side in [-1, 1]:
 					var p := "leg_l" if side < 0 else "leg_r"
