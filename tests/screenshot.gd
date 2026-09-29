@@ -114,6 +114,8 @@ const SHOTS := [
 	{"name": "ceu_lua", "time": 1000.0, "look": Vector2.ZERO, "aim": "moon", "tilt": -0.1},
 ]
 
+const Projectile := preload("res://scripts/projectile.gd")
+
 var shots := []
 var main: Node
 var world: Node3D
@@ -402,6 +404,9 @@ func _setup(s: Dictionary) -> void:
 	if s.has("stars"):   # Fallen Stars no inventário (a receita do Mana Crystal aparece) e uma no chão à frente
 		player.inv.add(Items.ids.fallen_star, s.stars)
 		ent.spawn_drop(Items.ids.fallen_star, 1, player.position + Vector3(-sin(s.look.x), 0.7, -cos(s.look.x)) * 4.5)
+	for n in ent.get_children():   # projéteis congelados de uma cena não ficam para a próxima
+		if n is Projectile:
+			n.free()
 	for e in ent.enemies.duplicate():
 		if not s.get("testworld", false):   # no mundo de teste ficam os habitantes e a vitrine
 			ent.remove_enemy(e)
@@ -520,7 +525,7 @@ func _setup(s: Dictionary) -> void:
 			player.cast(wd, dir)
 		else:
 			player.swing(wd, eye0, dir)
-		var pr: Node3D = ent.get_children().filter(func(n): return n.get_script() != null and n.get_script().resource_path.ends_with("projectile.gd")).back()   # o último filho pode ser o som do disparo
+		var pr: Node3D = ent.get_children().filter(func(n): return n is Projectile).back()   # o último filho pode ser o som do disparo
 		var steps := 0
 		while is_instance_valid(pr) and pr.position.distance_to(aim_at) > s.fire and steps < 600:
 			pr._physics_process(1.0 / 60.0)
