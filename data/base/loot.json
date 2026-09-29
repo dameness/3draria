@@ -1,42 +1,279 @@
 {
 	"underground": {
-		"main": ["band_of_regeneration", "magic_mirror", "cloud_in_a_bottle", "hermes_boots"],
+		"main": [
+			"band_of_regeneration",
+			"magic_mirror",
+			"cloud_in_a_bottle",
+			"hermes_boots"
+		],
 		"common": [
-			{"items": ["wooden_arrow"], "min": 25, "max": 49, "chance": 0.5},
-			{"items": ["lesser_healing_potion"], "min": 3, "max": 5, "chance": 0.5},
-			{"items": ["regeneration_potion"], "min": 1, "max": 2, "chance": 0.667},
-			{"items": ["swiftness_potion", "archery_potion", "mining_potion"], "min": 1, "max": 2, "chance": 0.286},
-			{"items": ["recall_potion"], "min": 2, "max": 4, "chance": 0.667},
-			{"items": ["torch"], "min": 10, "max": 20, "chance": 0.5},
-			{"items": ["silver_coin"], "min": 50, "max": 89, "chance": 0.5},
-			{"items": ["iron_bar", "lead_bar"], "min": 5, "max": 14, "chance": 0.5},
-			{"items": ["silver_bar", "tungsten_bar"], "min": 5, "max": 14, "chance": 0.5}
+			{
+				"items": [
+					"wooden_arrow"
+				],
+				"min": 25,
+				"max": 49,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"lesser_healing_potion"
+				],
+				"min": 3,
+				"max": 5,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"regeneration_potion"
+				],
+				"min": 1,
+				"max": 2,
+				"chance": 0.667
+			},
+			{
+				"items": [
+					"swiftness_potion",
+					"archery_potion",
+					"mining_potion"
+				],
+				"min": 1,
+				"max": 2,
+				"chance": 0.286
+			},
+			{
+				"items": [
+					"recall_potion"
+				],
+				"min": 2,
+				"max": 4,
+				"chance": 0.667
+			},
+			{
+				"items": [
+					"torch"
+				],
+				"min": 10,
+				"max": 20,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"silver_coin"
+				],
+				"min": 50,
+				"max": 89,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"iron_bar",
+					"lead_bar"
+				],
+				"min": 5,
+				"max": 14,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"silver_bar",
+					"tungsten_bar"
+				],
+				"min": 5,
+				"max": 14,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"wand_of_sparking"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.1
+			},
+			{
+				"items": [
+					"lesser_mana_potion"
+				],
+				"min": 2,
+				"max": 4,
+				"chance": 0.3
+			}
 		]
 	},
 	"cavern": {
-		"main": ["band_of_regeneration", "magic_mirror", "cloud_in_a_bottle", "hermes_boots"],
+		"main": [
+			"band_of_regeneration",
+			"magic_mirror",
+			"cloud_in_a_bottle",
+			"hermes_boots"
+		],
 		"common": [
-			{"items": ["suspicious_looking_eye"], "min": 1, "max": 1, "chance": 0.2},
-			{"items": ["silver_bar", "tungsten_bar"], "min": 3, "max": 10, "chance": 0.5},
-			{"items": ["gold_bar", "platinum_bar"], "min": 3, "max": 10, "chance": 0.5},
-			{"items": ["lesser_healing_potion"], "min": 3, "max": 5, "chance": 0.5},
-			{"items": ["regeneration_potion", "swiftness_potion", "archery_potion", "mining_potion"], "min": 1, "max": 2, "chance": 0.444},
-			{"items": ["recall_potion"], "min": 2, "max": 4, "chance": 0.5},
-			{"items": ["torch"], "min": 15, "max": 29, "chance": 0.25},
-			{"items": ["gold_coin"], "min": 1, "max": 2, "chance": 0.5}
+			{
+				"items": [
+					"suspicious_looking_eye"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.2
+			},
+			{
+				"items": [
+					"silver_bar",
+					"tungsten_bar"
+				],
+				"min": 3,
+				"max": 10,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"gold_bar",
+					"platinum_bar"
+				],
+				"min": 3,
+				"max": 10,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"lesser_healing_potion"
+				],
+				"min": 3,
+				"max": 5,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"regeneration_potion",
+					"swiftness_potion",
+					"archery_potion",
+					"mining_potion"
+				],
+				"min": 1,
+				"max": 2,
+				"chance": 0.444
+			},
+			{
+				"items": [
+					"recall_potion"
+				],
+				"min": 2,
+				"max": 4,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"torch"
+				],
+				"min": 15,
+				"max": 29,
+				"chance": 0.25
+			},
+			{
+				"items": [
+					"gold_coin"
+				],
+				"min": 1,
+				"max": 2,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"lesser_mana_potion"
+				],
+				"min": 2,
+				"max": 4,
+				"chance": 0.3
+			}
 		]
 	},
 	"lava": {
-		"main": ["band_of_regeneration", "magic_mirror", "cloud_in_a_bottle", "hermes_boots"],
+		"main": [
+			"band_of_regeneration",
+			"magic_mirror",
+			"cloud_in_a_bottle",
+			"hermes_boots"
+		],
 		"common": [
-			{"items": ["suspicious_looking_eye"], "min": 1, "max": 1, "chance": 0.2},
-			{"items": ["silver_bar", "tungsten_bar"], "min": 15, "max": 29, "chance": 0.5},
-			{"items": ["meteorite_bar", "gold_bar", "platinum_bar"], "min": 15, "max": 29, "chance": 0.5},
-			{"items": ["lesser_healing_potion"], "min": 3, "max": 5, "chance": 0.5},
-			{"items": ["regeneration_potion", "swiftness_potion", "archery_potion", "mining_potion"], "min": 1, "max": 2, "chance": 0.444},
-			{"items": ["recall_potion"], "min": 2, "max": 4, "chance": 0.5},
-			{"items": ["torch"], "min": 15, "max": 29, "chance": 0.25},
-			{"items": ["gold_coin"], "min": 1, "max": 2, "chance": 0.5}
+			{
+				"items": [
+					"suspicious_looking_eye"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.2
+			},
+			{
+				"items": [
+					"silver_bar",
+					"tungsten_bar"
+				],
+				"min": 15,
+				"max": 29,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"meteorite_bar",
+					"gold_bar",
+					"platinum_bar"
+				],
+				"min": 15,
+				"max": 29,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"lesser_healing_potion"
+				],
+				"min": 3,
+				"max": 5,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"regeneration_potion",
+					"swiftness_potion",
+					"archery_potion",
+					"mining_potion"
+				],
+				"min": 1,
+				"max": 2,
+				"chance": 0.444
+			},
+			{
+				"items": [
+					"recall_potion"
+				],
+				"min": 2,
+				"max": 4,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"torch"
+				],
+				"min": 15,
+				"max": 29,
+				"chance": 0.25
+			},
+			{
+				"items": [
+					"gold_coin"
+				],
+				"min": 1,
+				"max": 2,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"space_gun"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.08
+			}
 		]
 	}
 }

@@ -238,5 +238,12 @@
 	"life_crystal_item": {"wiki": "Life_Crystal", "pattern": "blob", "colors": ["#e0405a", "#a01838", "#ffb0c0"]},
 	"musket_ball": {"wiki": "Musket_Ball", "pattern": "blob", "colors": ["#8a8a92", "#5a5a62", "#c8c8d0"]},
 	"musket": {"wiki": "Musket", "pattern": "bow", "colors": ["#6e4b2a", "#8a8a92"], "top_colors": ["#6e4b2a"]},
-	"the_undertaker": {"wiki": "The_Undertaker", "pattern": "bow", "colors": ["#6e4b2a", "#8a8a92"], "top_colors": ["#6e4b2a"]}
+	"the_undertaker": {"wiki": "The_Undertaker", "pattern": "bow", "colors": ["#6e4b2a", "#8a8a92"], "top_colors": ["#6e4b2a"]},
+	"fallen_star": {"pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
+	"mana_crystal": {"wiki": "Mana_Crystal", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
+	"mana_potion": {"wiki": "Mana_Potion", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
+	"lesser_mana_potion": {"wiki": "Lesser_Mana_Potion", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
+	"wand_of_sparking": {"wiki": "Wand_of_Sparking", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
+	"space_gun": {"wiki": "Space_Gun", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]},
+	"vilethorn": {"wiki": "Vilethorn", "pattern": "blob", "colors": ["#5a8aff", "#2a4ab0", "#c8d8ff"]}
 }

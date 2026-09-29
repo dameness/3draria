@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1353,6 +1353,67 @@ func test_loot():
 	var total: int = cs.chests.underground + cs.chests.cavern + cs.chests.lava
 	print("baús: %s (%d, fora do lugar %d)" % [str(cs.chests), total, cs.bad_chests])
 	check(cs.chests.underground >= 5 and cs.chests.cavern >= 5 and cs.chests.lava >= 5 and total >= 40 and total <= 90 and cs.bad_chests == 0, "baús nas 3 camadas, em cima de pedra, fora do submundo e da superfície")
+	return true
+
+
+# Mana e magia (wiki Mana): 20 iniciais, +20 por Mana Crystal até 200 (5 Fallen Stars), regeneração pela fórmula, sem mana ainda usa com 60% de penalidade.
+func test_mana():
+	var w := floor_world()
+	var p := make_player(w)
+	var dt := 1.0 / 60
+	check(p.max_mana == 20 and is_equal_approx(p.mana, 20.0), "começa com 20 de mana")
+	# regeneração parado: (20/3+1) × 2 × (mana/máx × 0,5 + 0,5) ÷ 2 por segundo; com mana 0 o fator é 0,5
+	p.mana = 0.0
+	p.mana_use = 9.0
+	for i in 60:
+		p.tick(dt)
+	var want := (20.0 / 3.0 + 1.0) * 2.0 * 0.5 / 2.0
+	check(absf(p.mana - want) < 0.6, "parado com 0 de mana: %.2f por segundo (fórmula %.2f)" % [p.mana, want])
+	p.mana = 0.0
+	p.velocity = Vector3(5, 0, 0)
+	for i in 60:
+		p.tick(dt)
+	check(absf(p.mana - want / 2.0) < 0.4, "andando regenera a metade (%.2f)" % p.mana)
+	p.velocity = Vector3.ZERO
+	p.mana = 10.0
+	p.mana_use = 0.0
+	p.tick(dt)
+	check(p.mana - 10.0 < 0.01, "usando mana a regeneração cai a 5%")
+	# varinha
+	var wand: Dictionary = Items.defs[Items.ids.wand_of_sparking]
+	check(wand.damage == 14 and wand.cost == 2 and absf(wand.use_time - 26.0 / 60.0) < 0.001 and is_equal_approx(wand.crit, 0.14), "Wand of Sparking: 14 de dano, 2 de mana, use 26, crítico 14%")
+	check(Items.defs[Items.ids.space_gun].cost == 6 and Items.defs[Items.ids.vilethorn].cost == 10 and Items.autoswing(Items.ids.space_gun) and not Items.autoswing(Items.ids.vilethorn), "Space Gun 6 (autoswing), Vilethorn 10")
+	# poções e cristal
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.mana_potion, 1)
+	p.inv.add(Items.ids.lesser_mana_potion, 1)
+	p.inv.add(Items.ids.mana_crystal, 12)
+	p.mana = 0.0
+	p.quick_mana()
+	check(is_equal_approx(p.mana, 20.0) and p.inv.total(Items.ids.lesser_mana_potion) == 0 and p.inv.total(Items.ids.mana_potion) == 1, "J: a poção menor que enche o que falta (a de 50 sobra 30)")
+	p.slot = p.inv.item.find(Items.ids.mana_crystal)
+	for i in 9:
+		p.cooldown = 0.0
+		p.use_item()
+	check(p.max_mana == 200 and p.inv.total(Items.ids.mana_crystal) == 3, "9 cristais: 20 → 200")
+	p.cooldown = 0.0
+	p.use_item()
+	check(p.max_mana == 200 and p.inv.total(Items.ids.mana_crystal) == 3, "o 10º é recusado")
+	var rec: Array = Crafting.recipes.filter(func(r): return r.result == Items.ids.mana_crystal)
+	check(rec.size() == 1 and rec[0].needs == {Items.ids.fallen_star: 5}, "Mana Crystal = 5 Fallen Stars")
+	# estrela cadente: só à noite, some ao amanhecer
+	var ent: Node3D = p.entities
+	ent.rng.seed = 1
+	p.clock.time = p.clock.DAY_SECONDS + 60
+	for i in 400:
+		ent._stars()
+	var stars: Array = ent.get_children().filter(func(n): return n.get("item") == Items.ids.fallen_star)
+	check(stars.size() > 3, "à noite caem estrelas (%d)" % stars.size())
+	p.clock.time = 60.0
+	ent._stars()
+	check(ent.get_children().filter(func(n): return n.get("item") == Items.ids.fallen_star and not n.is_queued_for_deletion()).is_empty(), "de dia elas somem")
+	free_player(p)
+	w.free()
 	return true
 
 

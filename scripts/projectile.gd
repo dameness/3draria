@@ -7,6 +7,7 @@ var def: Dictionary
 var velocity: Vector3
 var damage: int
 var knockback: float
+var crit := Combat.CRIT
 var entities: Node3D
 var age := 0.0
 var hit: Array[Node3D] = []
@@ -71,7 +72,7 @@ func _physics_process(delta: float) -> void:
 	for e in entities.enemies.duplicate():
 		if not e in hit and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
 			hit.append(e)
-			e.hurt(Combat.vary(damage, entities.rng), velocity, knockback, Combat.is_crit(entities.rng))
+			e.hurt(Combat.vary(damage, entities.rng), velocity, knockback, Combat.is_crit(entities.rng, crit))
 			if hit.size() >= def.get("pierce", 1):
 				queue_free()
 				return

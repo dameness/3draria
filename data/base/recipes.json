@@ -108,5 +108,6 @@
 	{"result": "silver_hammer", "needs": {"silver_bar": 8, "wood": 3}, "station": "anvil"},
 	{"result": "tungsten_hammer", "needs": {"tungsten_bar": 8, "wood": 3}, "station": "anvil"},
 	{"result": "gold_hammer", "needs": {"gold_bar": 8, "wood": 3}, "station": "anvil"},
-	{"result": "platinum_hammer", "needs": {"platinum_bar": 8, "wood": 3}, "station": "anvil"}
+	{"result": "platinum_hammer", "needs": {"platinum_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "mana_crystal", "needs": {"fallen_star": 5}}
 ]

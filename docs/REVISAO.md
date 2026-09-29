@@ -15,7 +15,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | 4 | Danos da wiki (variância, crítico, defesa, recuo) + martelos | ✅ |
 | 5 | Voo: modo criativo (F) separado das asas (acessório) | ✅ |
 | 6 | Loot: baús por camada, Life Crystal, poções e buffs | ✅ |
-| 7 | Mana e magia | ⬜ |
+| 7 | Mana e magia | ✅ |
 | 8 | NPCs (Guide, Merchant, Nurse) | ⬜ |
 
 Como mapeei: li o código (arquivo:função), baixei da wiki pela API (Controls, Damage, Defense, Tree, Axe power, Tool speed, Autoswing,
@@ -286,7 +286,7 @@ Vilethorn/Crimson Rod/Band of Starpower entram com a magia (item 7); Ball O' Hur
 são de ilhas no céu (Depois). Shine/Night Owl/Spelunker precisam de luz dinâmica (Depois). Testes: `test_consumables`, `test_life_crystal`, `test_loot`; prints `pocoes`,
 `pocoes_inv`, `cristal`, `bau`. **Precisa de mundo novo** (cristais e baús por camada).
 
-## 7 — Mana e magia
+## 7 — Mana e magia ✅
 
 **Wiki (Mana, Mana Crystal, magia):** mana inicial 20 (1 estrela = 20); **+20 por Mana Crystal** até 200 (feito de 5 Fallen Stars; a estrela
 cai à noite e some ao amanhecer); regeneração/s = (máx/3 + 1 + bônus) × (2 parado) × (mana/máx·0,5 + 0,5) × (0,05 se usando mana) ÷ 2; com pouca
@@ -300,6 +300,11 @@ Book of Skulls, Flower of Fire entram como dado + projétil em `projectiles.json
 → receita do Mana Crystal; poções de mana; (4) `Meteor armor` zera o custo do Space Gun (dado).
 **Teste/print:** `test_mana`: regeneração em 10 s bate a fórmula (parado e andando); uso sem mana leva ×1,6; cristal 20→200; poção.
 Print `magia` (Space Gun) e `inventario` com as estrelas.
+
+**Feito:** `player.mana/max_mana` (20, +20 por Mana Crystal até 200; save), regeneração pela fórmula da wiki (parado ×2, fator mana/máx, ×0,05 usando mana, ÷2 por
+segundo), estrelas azuis (uma por 20) à direita dos corações. Magia: item com `cost` (mana) e `shoot`: Wand of Sparking (14, 2 mana, use 26, crítico 14%), Space Gun (20, 6,
+autoswing), Vilethorn (10, 10, perfura 2; 20% da Shadow Orb); sem mana ainda usa, ciclo ×1,6. Mana Potion (100) e Lesser (50), J bebe. Fallen Star cai à noite e some de
+dia; Mana Crystal = 5 estrelas. Wand/Lesser Mana nos baús, Space Gun 8% nos baús fundos. Testes `test_mana`; print `magia`. Meteor armor zerando o custo do Space Gun fica para "Depois".
 
 ## 8 — NPCs
 

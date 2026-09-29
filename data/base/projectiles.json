@@ -4,5 +4,8 @@
 	{"name": "terra_beam", "sprite": "terra_beam", "size": 1.6, "gravity": 0, "life": 1.2, "pierce": 3, "glow": "#7dff5a"},
 	{"name": "unholy_arrow", "model_item": "unholy_arrow", "size": 0.6, "gravity": 10, "life": 5, "pierce": 5, "glow": "#a070ff"},
 	{"name": "eye_laser", "size": 0.9, "gravity": 0, "life": 4, "pierce": 1, "glow": "#ff3a3a", "hostile": true},
-	{"name": "musket_ball", "model_item": "musket_ball", "size": 0.3, "gravity": 0, "life": 3, "pierce": 1}
+	{"name": "musket_ball", "model_item": "musket_ball", "size": 0.3, "gravity": 0, "life": 3, "pierce": 1},
+	{"name": "spark", "size": 0.5, "gravity": 4, "life": 1.4, "pierce": 1, "glow": "#ffe27a"},
+	{"name": "space_laser", "size": 0.6, "gravity": 0, "life": 1.5, "pierce": 1, "glow": "#ff6aff"},
+	{"name": "thorn", "size": 0.7, "gravity": 0, "life": 0.8, "pierce": 2, "glow": "#6adf4a"}
 ]

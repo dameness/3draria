@@ -46,6 +46,7 @@ const SHOTS := [
 	{"name": "asas", "third": true, "look": Vector2(0.4, -0.2), "wings": true, "item": "copper_pickaxe"},
 	{"name": "pocoes", "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "ironskin_potion", "regeneration_potion", "swiftness_potion", "mining_potion", "archery_potion", "recall_potion", "magic_mirror"], "buffs": ["ironskin", "regeneration", "swiftness", "potion_sickness"], "hp": 60},
 	{"name": "pocoes_inv", "inventory": true, "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "cloud_in_a_bottle", "life_crystal"], "buffs": ["ironskin", "potion_sickness"], "gear": true, "max_hp": 260},
+	{"name": "magia", "look": Vector2(0.4, -0.2), "give": ["wand_of_sparking", "space_gun", "vilethorn", "mana_potion", "mana_crystal"], "item": "wand_of_sparking", "max_mana": 100, "mana": 70, "shoot": "spark"},
 	{"name": "criativo", "look": Vector2(0.4, -0.3), "up": 6.0},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
 	{"name": "cristal", "cave": true, "crystal": true, "look": Vector2(0.15, -0.3), "item": "copper_pickaxe", "time": 1100.0},
@@ -305,6 +306,8 @@ func _setup(s: Dictionary) -> void:
 	if s.get("wings", false):
 		player.inv.acc[0] = Items.ids.fledgling_wings
 		player.flight_left = 0.2   # a barra de voo aparece
+	player.max_mana = s.get("max_mana", 20)
+	player.mana = s.get("mana", player.max_mana)
 	player.max_hp = s.get("max_hp", 100)
 	player.hp = s.get("hp", player.max_hp)
 	if s.get("chest", false):

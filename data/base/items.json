@@ -136,5 +136,12 @@
 	{"name": "life_crystal", "icon": "life_crystal_item", "consumable": true, "life": 20, "use_time": 0.5, "rarity": 1},
 	{"name": "musket_ball", "icon": "musket_ball", "damage": 7, "knockback": 2, "ammo_class": "bullet", "projectile": "musket_ball", "sprite_angle": 0},
 	{"name": "musket", "icon": "musket", "damage": 31, "use_time": 0.533, "ammo": "bullet", "shoot_speed": 33.75, "knockback": 5.25, "stack": 1, "rarity": 1, "sprite_angle": 0},
-	{"name": "the_undertaker", "icon": "the_undertaker", "damage": 19, "use_time": 0.333, "ammo": "bullet", "shoot_speed": 22.5, "knockback": 2, "stack": 1, "rarity": 1, "sprite_angle": 0}
+	{"name": "the_undertaker", "icon": "the_undertaker", "damage": 19, "use_time": 0.333, "ammo": "bullet", "shoot_speed": 22.5, "knockback": 2, "stack": 1, "rarity": 1, "sprite_angle": 0},
+	{"name": "fallen_star", "icon": "fallen_star", "rarity": 1},
+	{"name": "mana_crystal", "icon": "mana_crystal", "consumable": true, "mana_max": 20, "use_time": 0.5, "rarity": 1},
+	{"name": "mana_potion", "icon": "mana_potion", "consumable": true, "mana": 100, "use_time": 0.283, "rarity": 1},
+	{"name": "lesser_mana_potion", "icon": "lesser_mana_potion", "consumable": true, "mana": 50, "use_time": 0.283, "rarity": 0},
+	{"name": "wand_of_sparking", "icon": "wand_of_sparking", "damage": 14, "cost": 2, "use_time": 0.433, "shoot": "spark", "shoot_speed": 26, "knockback": 0, "crit": 0.14, "stack": 1, "sprite_angle": 45},
+	{"name": "space_gun", "icon": "space_gun", "damage": 20, "cost": 6, "use_time": 0.283, "autoswing": true, "shoot": "space_laser", "shoot_speed": 45, "knockback": 0.75, "stack": 1, "rarity": 1, "sprite_angle": 0},
+	{"name": "vilethorn", "icon": "vilethorn", "damage": 10, "cost": 10, "use_time": 0.467, "shoot": "thorn", "shoot_speed": 45, "knockback": 1, "stack": 1, "rarity": 1, "sprite_angle": 45}
 ]

@@ -55,6 +55,8 @@ var side_nodes: Array[Control] = []   # coisas que só aparecem com o inventári
 var sort_button: Button
 var minimap: Minimap
 var life_box: VBoxContainer
+var stars: Array[Label] = []          # mana: uma estrela por 20 (coluna à direita dos corações)
+var star_col: VBoxContainer
 var open_t := 0.0                     # 0 fechado, 1 aberto: anima o deslizar dos painéis
 var prev_item := PackedInt32Array()   # para achar o slot que ganhou item (pulo e item voando)
 var prev_count := PackedInt32Array()
@@ -415,13 +417,28 @@ func _build_life() -> void:
 	life_box = box
 	box.anchor_left = 1.0
 	box.anchor_right = 1.0
-	box.offset_left = -330
-	box.offset_right = -14
+	box.offset_left = -360
+	box.offset_right = -44
 	box.offset_top = 10
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(box)
 	life_label = _label("", 18, HORIZONTAL_ALIGNMENT_RIGHT)
 	box.add_child(life_label)
+	star_col = VBoxContainer.new()
+	star_col.anchor_left = 1.0
+	star_col.anchor_right = 1.0
+	star_col.offset_left = -40
+	star_col.offset_right = -10
+	star_col.offset_top = 10
+	star_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	star_col.add_theme_constant_override("separation", -4)
+	root.add_child(star_col)
+	star_col.add_child(_label("Mana", 14, HORIZONTAL_ALIGNMENT_CENTER))
+	for k in 10:
+		var st := _label("★", 28, HORIZONTAL_ALIGNMENT_CENTER)
+		st.pivot_offset = Vector2(15, 16)
+		star_col.add_child(st)
+		stars.append(st)
 	for r in 2:   # até 20 corações (400 de vida) em duas fileiras de 10, como no Terraria
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_END
@@ -809,6 +826,11 @@ func _process(delta: float) -> void:
 		hearts[i].scale = Vector2.ONE * (0.68 + 0.32 * f) * (beat if f > 0.0 else 1.0)
 		hearts[i].rotation = sin(spin * 60.0 + i) * 0.05 * hurt_shake
 	life_label.text = "Vida: %d/%d" % [ceili(hp), player.max_hp]
+	for k in stars.size():   # cada estrela é 20 de mana; a última cheia pisca quando a mana chega ao máximo
+		var f := clampf((player.mana - k * 20.0) / 20.0, 0.0, 1.0)
+		stars[k].visible = k * 20 < player.max_mana
+		stars[k].modulate = Color(0.45, 0.65, 1.0, 0.3 + 0.7 * f) if f > 0.0 else Color(0.25, 0.3, 0.45, 0.5)
+		stars[k].scale = Vector2.ONE * (0.75 + 0.25 * f)
 	defense_label.text = "Defesa: %d" % player.defense()
 	_show_buffs()
 	var id: int = player.held()

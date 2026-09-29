@@ -62,9 +62,22 @@ func _physics_process(delta: float) -> void:
 	if spawn_timer <= 0:
 		spawn_timer = 1.0
 		try_spawn()
+		_stars()
 	for e in enemies.duplicate():
 		if not e.def.get("boss") and e.position.distance_to(player.position) > DESPAWN:
 			remove_enemy(e)
+
+
+# Estrela cadente (wiki Fallen Star): à noite cai perto do jogador, de vez em quando; ao amanhecer as que sobraram somem.
+func _stars() -> void:
+	if clock.is_night():
+		if rng.randf() < 0.03:
+			var at: Vector3 = player.position + Vector3(rng.randf_range(-20, 20), 45.0, rng.randf_range(-20, 20))
+			spawn_drop(Items.ids.fallen_star, 1, at)
+	else:
+		for n in get_children():
+			if n.get("item") == Items.ids.fallen_star:
+				n.queue_free()
 
 
 # Bioma sob os pés de pos: dungeon, underworld (submundo), o mal do mundo (corruption/crimson), hallow (só no hardmode) ou "".
@@ -321,6 +334,8 @@ func orb_broken(id: int, at := Vector3.ZERO) -> void:
 	if world.orbs_broken == 1 or rng.randf() < 0.2:
 		spawn_drop(Items.ids[gun], 1, at + Vector3(0, 0.3, 0))
 		spawn_drop(Items.ids.musket_ball, 100, at + Vector3(0.3, 0.3, 0))
+	if id == Blocks.ids.shadow_orb and rng.randf() < 0.2:
+		spawn_drop(Items.ids.vilethorn, 1, at + Vector3(-0.3, 0.3, 0))
 	if world.orbs_broken % 3 != 0:
 		player.say("você sente uma presença maligna (%d/3)" % (world.orbs_broken % 3))
 	elif boss == null:
@@ -379,12 +394,13 @@ func spawn_drop(item: int, count: int, pos: Vector3) -> Node3D:
 	return d
 
 
-func spawn_projectile(name: String, from: Vector3, dir: Vector3, speed: float, damage: int, knockback: float) -> Node3D:
+func spawn_projectile(name: String, from: Vector3, dir: Vector3, speed: float, damage: int, knockback: float, crit := Combat.CRIT) -> Node3D:
 	var a: Node3D = Projectile.new()
 	a.def = projectiles[name]
 	a.velocity = dir.normalized() * speed
 	a.damage = damage
 	a.knockback = knockback
+	a.crit = crit
 	a.entities = self
 	a.position = from
 	add_child(a)

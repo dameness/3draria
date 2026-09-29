@@ -54,8 +54,8 @@ func _layout() -> void:
 	anchor_right = 1.0
 	anchor_top = 0.0
 	anchor_bottom = 0.0 if corner else 1.0
-	offset_left = -PORTRAIT - 14.0 if corner else 0.0
-	offset_right = -14.0 if corner else 0.0
+	offset_left = -PORTRAIT - 44.0 if corner else 0.0
+	offset_right = -44.0 if corner else 0.0
 	offset_top = corner_y if corner else 0.0
 	offset_bottom = corner_y + PORTRAIT if corner else 0.0
 	modulate.a = 0.6 if style == STYLE_OVERLAY and not full else 1.0

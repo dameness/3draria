@@ -3,7 +3,7 @@ extends Node3D
 # Teclas como no Terraria (wiki Controls): WASD anda, Espaço pula, 1-0 ou a roda escolhem o slot, Esc abre/fecha o inventário (a pausa é o botão
 # Configurações dele), Tab/M/+/- são do minimapa (minimap.gd), Shift segurado = Auto Select (a ferramenta certa para o alvo, senão a tocha).
 # Botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira, bloco coloca, poção bebe); o direito interage (baú, NPC).
-# H/Q bebem a poção de cura, B as de buff (wiki Controls).
+# H/Q bebem a poção de cura, J a de mana, B as de buff (wiki Controls).
 # Só do jogo (não do Terraria): F liga/desliga o modo criativo (atravessa blocos, invulnerável; Espaço sobe, C desce), V troca 1ª/3ª pessoa,
 # F5 salva (também salva ao fechar), F8 dá o kit de teste. Voar de verdade é com asas (acessório): segurar Espaço no ar.
 
@@ -31,6 +31,7 @@ const LAVA_DAMAGE := 50    # por golpe (há invencibilidade entre um e outro), s
 const METEORITE_BURN := 4  # por golpe (há invencibilidade entre um e outro)
 const MAX_HP := 100          # vida máxima inicial (max_hp sobe com Life Crystals)
 const MAX_HP_CAP := 400      # 20 Life Crystals de 20 (wiki)
+const MAX_MANA_CAP := 200    # 10 Mana Crystals de 20 além dos 20 iniciais (wiki Mana)
 const SICKNESS := 60.0       # Doença da poção depois de uma cura (wiki)
 const AIR_JUMP := 0.87       # Cloud in a Bottle: o pulo extra tem ~75% da altura do primeiro (0,87² da velocidade)
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
@@ -72,6 +73,9 @@ var message := ""             # aviso curto para o HUD
 var message_until := 0
 var hp := float(MAX_HP)
 var max_hp := MAX_HP
+var mana := 20.0
+var max_mana := 20
+var mana_use := 0.0           # segundos desde a última magia (usando mana a regeneração cai a 5%)
 var buffs := {}               # nome (buffs.json) -> segundos que faltam
 var recall_left := 0.0        # Magic Mirror / Recall Potion: segundos até o teleporte para casa
 var air_jump_ready := false   # o pulo extra do Cloud in a Bottle ainda não foi usado neste voo
@@ -179,6 +183,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			quick_heal()
 		elif e.physical_keycode == KEY_B:
 			quick_buff()
+		elif e.physical_keycode == KEY_J:
+			quick_mana()
 		elif e.physical_keycode == KEY_F:
 			creative = not creative
 		elif e.physical_keycode == KEY_V:
@@ -298,6 +304,11 @@ func tick(delta: float) -> void:
 			Fx.sparks(entities, position + Vector3(0, 1.0, 0), Color("#a8e8f8"), 2, Vector3.UP)
 		if recall_left <= 0.0:
 			_teleport_home()
+	mana_use += delta
+	# regeneração de mana da wiki: (máx/3 + 1) × (2 parado) × (mana/máx × 0,5 + 0,5) × (0,05 usando mana), ÷ 2 por segundo
+	var still := 2.0 if Vector2(velocity.x, velocity.z).length() < 0.1 else 1.0
+	var rate := (max_mana / 3.0 + 1.0) * still * (mana / max_mana * 0.5 + 0.5) * (0.05 if mana_use < 0.5 else 1.0)
+	mana = minf(mana + rate / 2.0 * delta, max_mana)
 	since_hit += delta
 	if since_hit > REGEN_DELAY:
 		hp = minf(hp + delta * (1.0 + inv.acc_sum("regen") + buff_sum("regen")), max_hp)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
@@ -509,6 +520,15 @@ func consume(i: int) -> bool:
 		if entities:
 			Fx.puff(entities, position + Vector3(0, 1.0, 0), Color("#ff6a8a"), 12)
 		say("vida máxima: %d" % max_hp)
+	if d.has("mana_max"):   # Mana Crystal: +20 de mana máxima, até 200
+		if max_mana >= MAX_MANA_CAP:
+			say("a mana máxima já é %d" % MAX_MANA_CAP)
+			return false
+		max_mana = mini(max_mana + int(d.mana_max), MAX_MANA_CAP)
+		mana = minf(mana + d.mana_max, max_mana)
+		say("mana máxima: %d" % max_mana)
+	if d.has("mana"):
+		mana = minf(mana + d.mana, max_mana)
 	if d.has("buff"):
 		add_buff(d.buff, d.buff_time)
 	if d.has("recall"):
@@ -536,6 +556,35 @@ func quick_heal() -> void:
 		say("sem poção de cura")
 	else:
 		consume(best)
+
+
+# J: bebe uma poção de mana (a menor que completa o que falta, senão a maior).
+func quick_mana() -> void:
+	var best := -1
+	for i in Inventory.SIZE:
+		var id: int = inv.item[i]
+		if id == -1 or not Items.defs[id].has("mana"):
+			continue
+		if best == -1 or (Items.defs[id].mana >= max_mana - mana and Items.defs[id].mana < Items.defs[inv.item[best]].mana):
+			best = i
+	if best == -1:
+		say("sem poção de mana")
+	else:
+		consume(best)
+
+
+# Magia (wiki Mana): gasta `cost`; sem mana suficiente ainda dá para usar, com 60% de penalidade de velocidade (o ciclo ×1,6).
+func cast(d: Dictionary) -> void:
+	if mana >= d.cost:
+		mana -= d.cost
+	else:
+		mana = 0.0
+		cooldown *= 1.6
+		use_len = cooldown
+	mana_use = 0.0
+	var forward := -cam.global_basis.z
+	entities.spawn_projectile(d.shoot, eye() + forward * 0.6, forward, d.shoot_speed, d.damage, d.get("knockback", 0.0), d.get("crit", Combat.CRIT))
+	Sfx.play(entities, "bow", position + Vector3.UP, -8.0, 1.6)
 
 
 # B: bebe uma poção de cada buff que não está ativo.
@@ -582,8 +631,11 @@ func use_item() -> void:
 	if d.has("summon"):
 		summon(d)
 		return
-	if d.has("heal") or d.has("buff") or d.has("recall") or d.has("life"):
+	if d.has("heal") or d.has("buff") or d.has("recall") or d.has("life") or d.has("mana") or d.has("mana_max"):
 		consume(slot)
+		return
+	if d.has("cost"):
+		cast(d)
 		return
 	if d.has("ammo"):
 		shoot(d, eye(), -cam.global_basis.z)
