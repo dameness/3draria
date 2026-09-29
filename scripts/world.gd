@@ -6,6 +6,7 @@ extends Node3D
 const C := WorldGen.CHUNK
 const H := WorldGen.HEIGHT
 const NB: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]  # ordem do ChunkMesher
+const DIAG: Array[Vector2i] = [Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]   # vizinhos de canto: só fontes de luz
 
 @export var render_distance := 6  # em chunks; teclas [ e ] mudam em jogo
 @export var world_seed := 1337
@@ -79,6 +80,7 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 		return
 	var lx := posmod(x, C)
 	var lz := posmod(z, C)
+	var reach := maxi(Blocks.light[id], Blocks.light[chunks[c][lx + lz * C + y * C * C]])   # tocha (nova ou tirada): a luz alcança os chunks em volta
 	chunks[c][lx + lz * C + y * C * C] = id
 	if y + 1 < H and Blocks.shape[chunks[c][lx + lz * C + (y + 1) * C * C]] == "plant" and not Blocks.solid[id]:
 		chunks[c][lx + lz * C + (y + 1) * C * C] = 0  # planta sem chão some
@@ -90,6 +92,17 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 	if lx == C - 1: _rebuild(c + Vector2i(1, 0))
 	if lz == 0: _rebuild(c + Vector2i(0, -1))
 	if lz == C - 1: _rebuild(c + Vector2i(0, 1))
+	if reach > 0:   # refaz também os vizinhos (e os de canto) que a luz alcança, não só os da borda
+		for dz in [-1, 0, 1]:
+			for dx in [-1, 0, 1]:
+				var k := c + Vector2i(dx, dz)
+				if (dx != 0 or dz != 0) and in_world(k) and _lit_side(lx, dx, reach) and _lit_side(lz, dz, reach):
+					_rebuild(k)
+
+
+# A luz de raio `reach` de um bloco na posição local l (0..15) chega ao chunk vizinho na direção d (−1, 0 ou 1)?
+static func _lit_side(l: int, d: int, reach: int) -> bool:
+	return d == 0 or (d < 0 and l < reach) or (d > 0 and l + reach >= C)
 
 
 # Líquido (id do cheio: water, lava) que contém o ponto p, ou 0: o ponto tem de estar abaixo da superfície do bloco.
@@ -267,7 +280,7 @@ func _has_data(k: Vector2i) -> bool:
 
 func _mesh_job(k: Vector2i) -> Dictionary:
 	var r := {"k": k, "chunks": {}, "version": versions.get(k, 0)}
-	for o in [Vector2i.ZERO] + NB:
+	for o in [Vector2i.ZERO] + NB + DIAG:
 		if chunks.has(k + o):
 			r.chunks[k + o] = chunks[k + o]
 	return r
@@ -314,7 +327,8 @@ func _job(r: Dictionary) -> void:
 		return
 	var k: Vector2i = r.k
 	r.water = []
-	r.arrays = ChunkMesher.build(r.chunks[k], NB.map(func(o): return r.chunks.get(k + o, PackedByteArray())), Blocks.textures.size(), r.water)
+	r.arrays = ChunkMesher.build(r.chunks[k], NB.map(func(o): return r.chunks.get(k + o, PackedByteArray())), Blocks.textures.size(), r.water,
+		DIAG.map(func(o): return r.chunks.get(k + o, PackedByteArray())))
 
 
 func _apply(r: Dictionary) -> void:

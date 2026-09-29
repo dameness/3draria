@@ -70,7 +70,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   blocks.gd          carrega blocks.json/textures.json (id = posição na lista, 0 = ar)
   atlas.gd           gera o atlas 16x16 procedural
   world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128)
-  chunk_mesher.gd    faces visíveis → arrays de mesh com luz (céu pela altura da coluna + tochas); thread-safe
+  chunk_mesher.gd    faces visíveis → arrays de mesh com luz (céu pela altura da coluna + tochas dos 8 chunks em volta); thread-safe
                      shaders/chunk.gdshader: atlas × luz (+ direção do sol, balanço das plantas, lava, tocha); o dia/noite muda só a luz do céu
                      shaders/water.gdshader: água translúcida com ondas   shaders/sky.gdshader: céu, sol, lua, estrelas, nuvens, montanhas
   world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool

@@ -503,6 +503,35 @@ func test_lighting():
 	w.set_block(20, 11, 20, Blocks.ids.torch)
 	check(w.raycast(Vector3(20.5, 15.5, 20.5), Vector3.DOWN, 10).get("pos") == Vector3i(20, 11, 20), "mira acerta a tocha")
 	w.free()
+	# Tocha entre chunks: a do chunk diagonal também acende o canto (a luz de 10 blocos cruza a quina)
+	var flat := chunk(0)
+	for i in C * C * (Y + 1):
+		flat[i] = Blocks.ids.stone
+	var lamp := chunk(0)
+	lamp[0 + 0 * C + (Y + 1) * C * C] = Blocks.ids.torch   # canto (0,0) do chunk (+X,+Z): em (16,Y+1,16) no quadro do chunk
+	var E := PackedByteArray()
+	var seam_off := face_light(ChunkMesher.build(flat, [E, E, E, E], n), Vector3i(15, Y, 15), Vector3.UP)
+	var seam_on := face_light(ChunkMesher.build(flat, [E, E, E, E], n, [], [lamp, E, E, E]), Vector3i(15, Y, 15), Vector3.UP)
+	check(seam_off.g == 0.0 and seam_on.g > 0.6, "tocha no chunk diagonal ilumina o canto (%.2f, sem ela %.2f)" % [seam_on.g, seam_off.g])
+	# pôr ou tirar tocha refaz os chunks que a luz alcança (raio 10), não só os da borda
+	var lw := floor_world()   # 3x3 chunks
+	var touched := func(ids: Array) -> Array:   # quais chunks foram marcados para refazer
+		var out := []
+		for z in 3:
+			for x in 3:
+				if lw.versions.get(Vector2i(x, z), 0) > 0:
+					out.append(Vector2i(x, z))
+		lw.versions.clear()
+		return out
+	lw.set_block(21, 11, 21, Blocks.ids.torch)   # chunk (1,1), local (5,5): a luz chega ao chunk −X, ao −Z e ao canto −X−Z
+	check(touched.call([]) == [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)], "tocha a 5 blocos da borda: refaz o chunk, os dois vizinhos e o de canto que ela alcança")
+	lw.set_block(21, 11, 21, 0)
+	check(touched.call([]).size() == 4, "tirar a tocha refaz os mesmos chunks")
+	lw.set_block(21, 11, 21, Blocks.ids.dirt)
+	check(touched.call([]) == [Vector2i(1, 1)], "bloco comum no meio do chunk só refaz o próprio chunk")
+	lw.set_block(24, 11, 24, Blocks.ids.torch)   # local (8,8): alcança −X (8 < 10) e +X (8+10 >= 16): todos os 8 em volta
+	check(touched.call([]).size() == 9, "tocha no meio do chunk alcança os 8 vizinhos")
+	lw.free()
 	# Submundo: brilho quente de fundo sem tocha nenhuma.
 	var low := chunk(0)
 	for i in C * C * 11:
@@ -1870,6 +1899,28 @@ func integration():
 			player.cam.rotation.x = -0.2
 			player._update_camera(0.0)
 			check(player.lens_clear(player.cam.global_position), "3ª pessoa: junto de uma parede do lado do ombro a câmera para antes dela")
+			# modelos (mão, corpo, inimigos): o sol e o ambiente escurecem sob a terra e voltam na superfície
+			var dn: Node = main.get_node("DayNight")
+			var sun: DirectionalLight3D = main.get_node("Sun")
+			var env: Environment = world.get_world_3d().environment
+			player.third_person = false
+			player.position = Vector3(px + 0.5, gy + 2, pz + 0.5)
+			player._update_camera(0.0)
+			dn.time = 300.0
+			dn.depth_timer = 0.0
+			dn._process(0.0)
+			var sun_up: float = sun.light_energy
+			var amb_up: float = env.ambient_light_energy
+			player.position.y = 40.0
+			player._update_camera(0.0)
+			dn.depth_timer = 0.0
+			dn._process(0.0)
+			check(sun.light_energy < sun_up * 0.5 and env.ambient_light_energy < amb_up * 0.5, "caverna: sol e ambiente dos modelos caem a ~1/3 (%.2f → %.2f)" % [sun_up, sun.light_energy])
+			player.position.y = gy + 2
+			player._update_camera(0.0)
+			dn.depth_timer = 0.0
+			dn._process(0.0)
+			check(is_equal_approx(sun.light_energy, sun_up), "…e voltam ao cheio na superfície")
 			return true
 	return false
 

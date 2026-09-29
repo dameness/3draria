@@ -93,9 +93,10 @@ static func _padded(d: PackedByteArray, nb: Array) -> PackedByteArray:
 
 
 # d: blocos do chunk. nb: vizinhos [+X, -X, +Z, -Z]; PackedByteArray vazio = fora do mundo (ar).
+# corners: vizinhos de canto [+X+Z, +X-Z, -X+Z, -X-Z], só como fontes de luz (vazio ou ausente = sem tocha de lá).
 # Retorna os arrays da superfície opaca para ArrayMesh.add_surface_from_arrays, ou [] se não houver faces.
 # water_out (opcional) recebe os arrays da superfície da água, se houver.
-static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := []) -> Array:
+static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [], corners := []) -> Array:
 	var solid := Blocks.solid
 	var special := Blocks.special
 	var liquid := Blocks.liquid
@@ -109,7 +110,7 @@ static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [
 	var a := _new()   # formas especiais e lava, juntadas à superfície opaca no fim
 	var wd := _new()  # água
 	var tw := 1.0 / tile_count
-	var lights := _lights(d, nb)
+	var lights := _lights(d, nb, corners)
 	var hts := PackedInt32Array()   # por coluna da cópia com margem: [0, PP) primeiro y livre acima do chão, [PP, 2 PP) acima da copa; -1 = ainda não calculado
 	hts.resize(PP * 2)
 	hts.fill(-1)
@@ -342,11 +343,13 @@ static func tiles_of(b: int, face: int) -> int:
 
 
 # Fontes de luz (tochas) no chunk e nos vizinhos: [[centro local, raio], ...].
-# ponytail: luz atravessa paredes (sem oclusão) e não passa dos vizinhos diretos; trocar por
+# ponytail: luz atravessa paredes (sem oclusão) e só vem do chunk e dos 8 em volta; trocar por
 # propagação em BFS se ficar estranho em cavernas. Lava não entra aqui (seriam milhares de fontes): só brilha nas próprias faces.
-static func _lights(d: PackedByteArray, nb: Array) -> Array:
+static func _lights(d: PackedByteArray, nb: Array, corners: Array) -> Array:
 	var out := []
 	var sources := [[d, Vector3.ZERO], [nb[0], Vector3(C, 0, 0)], [nb[1], Vector3(-C, 0, 0)], [nb[2], Vector3(0, 0, C)], [nb[3], Vector3(0, 0, -C)]]
+	for k in corners.size():   # a tocha do chunk diagonal também acende o canto
+		sources.append([corners[k], Vector3(C if k < 2 else -C, 0, C if k % 2 == 0 else -C)])
 	for id in Blocks.light.size():
 		if Blocks.light[id] == 0:
 			continue

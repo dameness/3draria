@@ -8,7 +8,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | B1 | Minimapa "teleporta" (+ Tab/M) | ✅ |
 | B2 | Verme (Eater of Worlds) bugado | ✅ |
 | B3 | Brain: fase 1 não fica translúcida; barra e nº de Creepers | ✅ |
-| B4 | Iluminação estranha (tochas cortam na borda do chunk; mão clara em caverna) | ⬜ |
+| B4 | Iluminação estranha (tochas cortam na borda do chunk; mão clara em caverna) | ✅ |
 | 1 | Árvore cai inteira (madeira por bloco, acorn, muda) | ⬜ |
 | 2 | Binds do Terraria (Esc, Settings, botão esquerdo coloca, Shift, H/J/B) | ⬜ |
 | 3 | Ataque: use time, autoswing só onde a wiki diz, mira exata, tool speed | ⬜ |
@@ -93,7 +93,7 @@ superfície, cabeça 65 e rabo 220/def 8. Velocidade da cabeça **15 blocos/s** 
 **Teste/print:** `test_brain`: `set_ghost(true)` deixa `albedo.a < 1` e `false` volta a 1; `boss_max` cai ao entrar na fase 2; 20 Creepers.
 Prints `cerebro` (fase 1 translúcido) e `cerebro_fase2` (sólido).
 
-## B4 — Iluminação estranha
+## B4 — Iluminação estranha ✅
 
 Reproduzido em `caverna` e `noite_tochas`: a luz da tocha **acaba numa linha reta na borda do chunk**. Causas:
 1. `world.gd:set_block` só refaz o chunk vizinho se o bloco está **na borda** (`lx == 0` ou `15`), mas a tocha ilumina **10 blocos**
