@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -3841,6 +3841,93 @@ func test_smart_cursor():
 	p.inventory_open = true
 	p._unhandled_input(key(KEY_CTRL))
 	check(not p.smart_cursor, "com o inventário aberto o Ctrl é da lixeira: não liga")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Gancho (wiki Hooks/Grappling Hook): tecla E lança a corrente (alcance 18,75 tiles ≈ 11,25 blocos, 43 tiles/s de lançamento, puxa a ~41 tiles/s), que prende num
+# bloco sólido, puxa o jogador até ficar pendurado; Espaço, E de novo ou a âncora quebrada soltam.
+func test_hook():
+	var w := floor_world()
+	var p := make_player(w)
+	var dt := 1.0 / 60
+	p._unhandled_input(key(KEY_E))
+	check(p.hook_state == "" and p.message.contains("sem gancho"), "E sem gancho no inventário avisa")
+	var hook: Dictionary = Items.defs[Items.ids.grappling_hook].hook
+	check(absf(hook.range - 18.75 * 0.6) < 0.01 and absf(hook.launch - 43.0 * 0.6) < 0.5 and absf(hook.pull - 41.25 * 0.6) < 0.05, "números da wiki: alcance 18,75 tiles, lançamento 11,5 px/quadro, puxão 11 px/quadro (em blocos)")
+	p.inv.add(Items.ids.grappling_hook, 1)
+	p.position = Vector3(24.5, 11.0, 24.5)
+	for y in range(14, 17):
+		w.set_block(32, y, 24, Blocks.ids.stone)   # a âncora: uma parede a ~8 blocos
+	var aim: Vector3 = (Vector3(32.0, 15.5, 24.5) - (p.position + Vector3.UP * p.EYE)).normalized()
+	p.use_hook(aim)
+	check(p.hook_state == "fly" and absf(p.hook_time - p.hook_at.distance_to(p.hook_from) / hook.launch) < 0.001, "a corrente sai e leva distância / velocidade para chegar")
+	for i in 10:
+		p.step(dt, Vector3.ZERO, false)
+	check(p.hook_state == "fly", "ainda voando aos 0,17 s")
+	for i in 12:
+		p.step(dt, Vector3.ZERO, false)
+	check(p.hook_state == "pull", "prendeu")
+	var d0: float = p.hook_at.distance_to(p.position + Vector3.UP)
+	for i in 5:
+		p.step(dt, Vector3.ZERO, false)
+	var d1: float = p.hook_at.distance_to(p.position + Vector3.UP)
+	check(absf((d0 - d1) / (5 * dt) - hook.pull) < 1.5, "puxa na velocidade do gancho (%.1f de %.1f blocos/s)" % [(d0 - d1) / (5 * dt), hook.pull])
+	for i in 60:
+		p.step(dt, Vector3.ZERO, false)
+	var hang: float = p.hook_at.distance_to(p.position + Vector3.UP)
+	check(p.hook_state == "pull" and hang < 1.6 and p.velocity == Vector3.ZERO and not p.overlaps_solid(p.position), "chega e fica pendurado a ~1,4 bloco da âncora (%.2f)" % hang)
+	var y0 := p.position.y
+	for i in 30:
+		p.step(dt, Vector3.ZERO, false)
+	check(absf(p.position.y - y0) < 0.01, "pendurado não cai")
+	p.step(dt, Vector3.ZERO, true)
+	check(p.hook_state == "" and p.velocity.y > 0.0, "Espaço solta com um pulinho")
+	# E de novo solta; âncora quebrada solta; fora do alcance não prende
+	p.position = Vector3(24.5, 11.0, 24.5)
+	p.velocity = Vector3.ZERO
+	p.jump_was = false
+	p.use_hook(aim)
+	p.use_hook(aim)
+	check(p.hook_state == "", "E com o gancho solto")
+	p.use_hook(aim)
+	for i in 30:
+		p.step(dt, Vector3.ZERO, false)
+	w.set_block(32, 15, 24, 0)
+	w.set_block(32, 14, 24, 0)
+	w.set_block(32, 16, 24, 0)
+	p.step(dt, Vector3.ZERO, false)
+	check(p.hook_state == "", "a âncora quebrada solta o gancho")
+	p.position = Vector3(24.5, 11.0, 24.5)
+	w.set_block(40, 12, 24, Blocks.ids.stone)   # 15 blocos: fora do alcance
+	p.use_hook(Vector3.RIGHT)
+	check(p.hook_state == "" and p.message.contains("alcance"), "fora do alcance não prende")
+	p.use_hook(Vector3.UP)
+	check(p.hook_state == "", "para o céu (nenhum bloco) não prende")
+	w.set_block(28, 12, 24, Blocks.ids.torch)
+	p.use_hook(Vector3.RIGHT)
+	check(p.hook_state == "", "tocha não segura o gancho (só bloco sólido)")
+	# queda: o gancho zera a queda
+	p.position = Vector3(24.5, 11.0 + 40.0, 24.5)
+	p.last_pos = p.position
+	p.hp = float(p.max_hp)
+	p.hook_state = ""
+	p.step(dt, Vector3.ZERO, false)
+	p.hook_state = "pull"
+	p.hook_at = Vector3(24.5, 11.0 + 39.0, 25.5)
+	w.set_block(24, 50, 25, Blocks.ids.stone)
+	p.hook_at = Vector3(24.5, 50.5, 25.5)
+	for i in 5:
+		p.step(dt, Vector3.ZERO, false)
+	check(p.fall_top == p.position.y, "puxado pelo gancho a queda recomeça")
+	# receitas e onde achar o gancho
+	var chain: Array = Crafting.recipes.filter(func(r): return r.result == Items.ids.chain)
+	var grapple: Array = Crafting.recipes.filter(func(r): return r.result == Items.ids.grappling_hook)
+	check(chain.size() == 1 and chain[0].count == 15 and chain[0].needs == {Items.ids.iron_bar: 1} and grapple.size() == 1 and grapple[0].needs == {Items.ids.chain: 3, Items.ids.hook: 1}, "receitas da wiki: 15 correntes por barra de ferro; gancho = 3 correntes + 1 Hook")
+	var bones := enemy_def("angry_bones")
+	check(bones.drops.any(func(d): return d.item == "hook" and absf(d.chance - 0.04) < 0.001), "o Hook cai dos esqueletos (Angry Bones)")
+	check(Ui.item_tip(Items.ids.grappling_hook).contains("Tecla E"), "a dica ensina a tecla")
 	free_player(p)
 	w.free()
 	return true

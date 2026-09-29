@@ -23,6 +23,7 @@ const CLICK_BUFFER := 0.12   # um clique durante o fim do golpe anterior vale pa
 const FAN := deg_to_rad(20.0)   # o golpe corpo a corpo testa a mira e mais dois raios a ±20°
 const PAD := 0.25            # ...contra a caixa do inimigo alargada em tanto (dá folga ao mirar)
 const REACH := 5.0
+const HOOK_HANG := 1.4                 # gancho: a esta distância da âncora o jogador fica pendurado
 const SMART_CONE := deg_to_rad(12.0)   # cursor inteligente: até onde da mira ele procura um bloco
 const SWIM_UP := 4.5       # Espaço na água: sobe a esta velocidade
 const SWIM_SINK := 3.0     # sem Espaço: afunda devagar
@@ -75,6 +76,11 @@ var auto_prev := -1           # slot de antes do Auto Select (Shift); -1 = não 
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
+var hook_state := ""          # gancho (E): "" sem gancho, "fly" a corrente indo, "pull" preso e puxando
+var hook_at := Vector3.ZERO   # onde a corrente prende (o ponto da face do bloco)
+var hook_time := 0.0          # segundos que faltam para a corrente chegar
+var hook_from := Vector3.ZERO # de onde a corrente saiu
+var hook_rope: MeshInstance3D
 var smart_cursor := false     # Ctrl liga o cursor inteligente (find_target)
 var message := ""             # aviso curto para o HUD
 var message_until := 0
@@ -147,6 +153,21 @@ func _ready() -> void:
 	add_child(highlight)
 	crack = BlockCrack.new()
 	add_child(crack)
+	hook_rope = MeshInstance3D.new()   # a corrente do gancho: um cilindro fino esticado entre a mão e a âncora
+	var rope := CylinderMesh.new()
+	rope.top_radius = 0.06
+	rope.bottom_radius = 0.06
+	rope.height = 1.0
+	rope.radial_segments = 6
+	rope.rings = 1
+	var rope_mat := StandardMaterial3D.new()
+	rope_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rope_mat.albedo_color = Color("#e6e9ef")
+	rope.material = rope_mat
+	hook_rope.mesh = rope
+	hook_rope.top_level = true
+	hook_rope.visible = false
+	add_child(hook_rope)
 	spelunker = Spelunker.new()   # os brilhos do Espeleólogo (só aparecem com o buff)
 	spelunker.world = world
 	spelunker.player = self
@@ -213,6 +234,8 @@ func _unhandled_input(e: InputEvent) -> void:
 			var show: bool = not (inventory_open and hud.test_open)
 			set_inventory(show)
 			hud.test_open = show
+		elif e.physical_keycode == KEY_E and not inventory_open:   # gancho (wiki Controls: a tecla de gancho usa o primeiro gancho do inventário)
+			use_hook()
 		elif e.physical_keycode == KEY_CTRL and not inventory_open:   # (com o inventário aberto o Ctrl é o atalho da lixeira)
 			smart_cursor = not smart_cursor
 			say("Cursor inteligente: %s" % ("ligado" if smart_cursor else "desligado"))
@@ -274,6 +297,7 @@ func _process(delta: float) -> void:
 		crack.show_at(mine_pos, mine_damage / 100.0)
 	else:
 		crack.visible = false
+	_update_rope()
 	var free := not (inventory_open or menu_open or map_open)   # mãos livres: sem painel na frente
 	auto_pick(free and Input.is_physical_key_pressed(KEY_SHIFT))
 	if not free:
@@ -378,6 +402,8 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 		fall_top = position.y
 		last_pos = position
 		return
+	if hook_state != "" and _hook_step(delta, jump):   # preso ao gancho: ele manda no movimento (o resto do passo não roda)
+		return
 	depth = liquid_depth()
 	var kind := liquid_kind_below()
 	if velocity.y >= 0.0 or depth > 0.0 or position.distance_to(last_pos) > 4.0:   # sobe, está na água ou foi teletransportado: a queda recomeça daqui (wiki: zera com a velocidade vertical)
@@ -462,6 +488,101 @@ func _breathe(delta: float) -> void:
 		Sfx.play(entities, "hurt", position + Vector3.UP, -4.0)
 	if hp <= 0.0:
 		die()
+
+
+# Gancho (tecla E): o 1º item com "hook" do inventário. Solta a corrente na mira; se ela prende num bloco sólido dentro do alcance, chega depois de distância /
+# velocidade de lançamento e puxa o jogador em linha reta até o bloco (fica pendurado a HOOK_HANG dele). E de novo ou Espaço solta; a âncora quebrada também.
+func use_hook(aim := Vector3.ZERO) -> void:
+	if hook_state != "":
+		_hook_release()
+		return
+	var h := _hook_def()
+	if h.is_empty():
+		say("sem gancho")
+		return
+	var dir := aim if aim != Vector3.ZERO else -cam.global_basis.z
+	var from := position + Vector3.UP * EYE
+	var hit: Dictionary = world.raycast(from, dir, h.range)
+	if hit.is_empty() or not Blocks.solid[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]:
+		say("nada ao alcance do gancho")
+		return
+	hook_from = from
+	hook_at = from + dir * hit.t + dir * 0.02
+	hook_state = "fly"
+	hook_time = hit.t / h.launch
+	Sfx.play(entities, "swing", position + Vector3.UP, -6.0, 1.6)
+
+
+# Os números ({range, launch, pull}) do primeiro gancho do inventário, ou {}.
+func _hook_def() -> Dictionary:
+	for id in inv.item:
+		if id != -1 and Items.defs[id].has("hook"):
+			return Items.defs[id].hook
+	return {}
+
+
+func _hook_release() -> void:
+	hook_state = ""
+	if hook_rope:
+		hook_rope.visible = false
+
+
+# Um passo com o gancho. Retorna true se ele controlou o movimento deste passo (puxando ou pendurado).
+func _hook_step(delta: float, jump: bool) -> bool:
+	var anchor := Vector3i(hook_at.floor())
+	if hook_state == "fly":
+		hook_time -= delta
+		if hook_time > 0.0:
+			return false
+		hook_state = "pull"
+		hook_time = 0.0
+		Sfx.play(entities, "place", hook_at, -4.0, 1.5)
+	if not Blocks.solid[world.get_block(anchor.x, anchor.y, anchor.z)] or _hook_def().is_empty():
+		_hook_release()   # a âncora foi quebrada (ou o gancho saiu do inventário)
+		return false
+	if jump and not jump_was:   # Espaço solta com um pulinho
+		_hook_release()
+		velocity = Vector3(velocity.x, JUMP * 0.7, velocity.z)
+		jump_was = jump
+		return false
+	var to := hook_at - (position + Vector3.UP * 1.0)
+	velocity = Vector3.ZERO if to.length() < HOOK_HANG else to.normalized() * _hook_def().pull
+	knock = Vector3.ZERO
+	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta)
+	if to.length() >= HOOK_HANG and (r[0] - position).length() < velocity.length() * delta * 0.25:
+		hook_time -= delta   # encostou em algo no caminho (hook_time conta o tempo preso): 0,4 s assim e solta
+		if hook_time < -0.4:
+			_hook_release()
+			return false
+	else:
+		hook_time = 0.0
+	position = r[0]
+	on_floor = r[1].y < 0
+	hit_wall = r[1].x != 0 or r[1].z != 0
+	fall_top = position.y
+	last_pos = position
+	jump_was = jump
+	return true
+
+
+# A corrente entre a mão e a âncora (ou a ponta que está indo).
+func _update_rope() -> void:
+	if hook_state == "" or hook_rope == null:
+		return
+	var hand := position + Vector3(0, 1.25, 0)
+	var end := hook_at
+	if hook_state == "fly":
+		var total := maxf(hook_at.distance_to(hook_from), 0.01)
+		var sent := clampf(1.0 - hook_time * 25.8 / total, 0.0, 1.0)
+		end = hook_from.lerp(hook_at, sent)
+	var dir := end - hand
+	if dir.length() < 0.05:
+		hook_rope.visible = false
+		return
+	hook_rope.visible = true
+	var up := dir.normalized()
+	var basis := Basis(Vector3.RIGHT, PI) if up.dot(Vector3.UP) < -0.9999 else Basis(Quaternion(Vector3.UP, up))
+	hook_rope.global_transform = Transform3D(basis * Basis.from_scale(Vector3(1, dir.length(), 1)), (hand + end) / 2.0)
 
 
 # Partículas do movimento: poeira dos passos e do pouso (na cor do chão), respingo ao entrar ou sair da água e bolhas nadando.

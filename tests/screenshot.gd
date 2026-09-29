@@ -38,6 +38,7 @@ const SHOTS := [
 	{"name": "ilha_ceu", "sky": "top", "look": Vector2(0, -0.08), "creative": true},
 	{"name": "ilha_ceu_baixo", "sky": "below", "look": Vector2(0, 0.35), "creative": true},
 	{"name": "ilha_ceu_bau", "sky": "top", "look": Vector2(0, -0.2), "creative": true, "inventory": true, "sky_chest": true},
+	{"name": "gancho", "look": Vector2(0.9, 0.25), "hook": true, "third": true, "creative": false},
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
@@ -186,6 +187,8 @@ func _process(_delta: float) -> bool:
 
 func _setup(s: Dictionary) -> void:
 	s = s.duplicate()   # SHOTS é constante: a cena pode acertar o olhar (ex.: árvore)
+	player.set_physics_process(true)
+	player.hook_state = ""
 	player.creative = s.has("up") or s.has("cave") or s.get("creative", false)
 	player.position = player.spawn + Vector3.UP * s.get("up", 0.0)
 	if s.has("from"):
@@ -295,6 +298,12 @@ func _setup(s: Dictionary) -> void:
 			var q: Vector3 = player.position + f * 4.0 + r * (k - s.row.size() / 2.0) * 1.15
 			var y: int = world.surface_y(int(q.x), int(q.z))
 			world.set_block(int(q.x), y, int(q.z), Blocks.ids[s.row[k]])
+	if s.get("hook", false):   # o gancho preso numa pedra à frente (uma parede a 7 blocos, acima da cabeça)
+		var f := Vector3(-sin(s.look.x), 0, -cos(s.look.x))
+		var wall: Vector3 = player.position + f * 7.0
+		for dy in range(2, 8):
+			for dz in range(-2, 3):
+				world.set_block(int(wall.x + dz * f.z), int(player.position.y) + dy, int(wall.z - dz * f.x), Blocks.ids.stone)
 	var sp := Vector3i(player.spawn.floor())
 	if s.get("cave", false):  # sala escavada 12 blocos abaixo, com tochas no chão
 		for x in range(-5, 6):
@@ -472,6 +481,13 @@ func _setup(s: Dictionary) -> void:
 		player.slot = player.inv.item.find(Items.ids[s.item])
 	else:
 		player.slot = 0
+	if s.get("hook", false):   # lança o gancho na parede: a mira é a da tela
+		player.inv.add(Items.ids.grappling_hook, 1)
+		var pitch: float = s.look.y
+		player.use_hook(Vector3(-sin(s.look.x) * cos(pitch), sin(pitch), -cos(s.look.x) * cos(pitch)).normalized())
+		player.rotation.y = s.look.x + 1.1   # a câmera de lado: a corrente não fica de ponta para o olhar
+		player.hook_time = 0.12   # congelado no meio do voo da corrente (a física do jogador fica parada para o print)
+		player.set_physics_process(false)
 	if s.has("mine"):   # um bloco à frente, na mira, já com `mine` golpes
 		player.pitch = -0.75
 		player.cam.rotation.x = -0.75

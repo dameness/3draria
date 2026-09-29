@@ -262,5 +262,8 @@
 	"chair_item": {"wiki": "Wooden_Chair"},
 	"door": {"pattern": "planks", "colors": ["#94683c", "#7a5230", "#a87a4a"]},
 	"door_item": {"wiki": "Wooden_Door"},
+	"chain": {"wiki": "Chain", "pattern": "blob", "colors": ["#9aa0a8", "#5a6068", "#d0d4d8"]},
+	"hook": {"wiki": "Hook", "pattern": "blob", "colors": ["#9aa0a8", "#5a6068", "#d0d4d8"]},
+	"grappling_hook": {"wiki": "Grappling_Hook", "pattern": "blob", "colors": ["#9aa0a8", "#5a6068", "#d0d4d8"]},
 	"lucky_horseshoe": {"wiki": "Lucky_Horseshoe", "pattern": "blob", "colors": ["#d8d8e0", "#8a8a98", "#ffffff"]}
 }

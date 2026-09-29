@@ -163,6 +163,8 @@ static func item_tip(id: int) -> String:
 		lines.append("%d%% de poder de martelo" % Items.hammer_power[id])
 	if d.has("bucket"):
 		lines.append({"empty": "Botão esquerdo pega água ou lava", "water": "Botão esquerdo derrama a água", "lava": "Botão esquerdo derrama a lava"}[d.bucket])
+	if d.has("hook"):
+		lines.append("Tecla E: lança o gancho (alcance de %d blocos) e puxa você" % roundi(d.hook.range))
 	if d.has("summon"):
 		lines.append("Invoca um chefe (só à noite)" if d.get("night", false) else "Invoca um chefe")
 	if d.has("set"):

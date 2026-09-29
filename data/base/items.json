@@ -151,5 +151,8 @@
 	{"name": "panic_necklace", "icon": "panic_necklace", "accessory": {"panic": 1}, "stack": 1, "rarity": 1},
 	{"name": "the_rotted_fork", "icon": "the_rotted_fork", "damage": 17, "use_time": 0.517, "reach": 3.6, "knockback": 5, "stack": 1, "rarity": 1, "use_style": "thrust", "shoot": "fork_wave", "shoot_speed": 22, "sprite_angle": 45},
 	{"name": "lucky_horseshoe", "icon": "lucky_horseshoe", "accessory": {"no_fall": 1}, "stack": 1, "rarity": 1},
+	{"name": "chain", "icon": "chain", "rarity": 0},
+	{"name": "hook", "icon": "hook", "rarity": 0},
+	{"name": "grappling_hook", "icon": "grappling_hook", "hook": {"range": 11.25, "launch": 25.8, "pull": 24.75}, "stack": 1, "rarity": 0},
 	{"name": "crimson_rod", "icon": "crimson_rod", "damage": 12, "cost": 30, "use_time": 0.4, "cloud": 24, "shoot": "blood_drop", "shoot_speed": 0, "knockback": 0, "stack": 1, "rarity": 1, "sprite_angle": 45}
 ]
