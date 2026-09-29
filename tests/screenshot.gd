@@ -47,6 +47,8 @@ const SHOTS := [
 	{"name": "pocoes", "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "ironskin_potion", "regeneration_potion", "swiftness_potion", "mining_potion", "archery_potion", "recall_potion", "magic_mirror"], "buffs": ["ironskin", "regeneration", "swiftness", "potion_sickness"], "hp": 60},
 	{"name": "pocoes_inv", "inventory": true, "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "cloud_in_a_bottle", "life_crystal"], "buffs": ["ironskin", "potion_sickness"], "gear": true, "max_hp": 260},
 	{"name": "magia", "look": Vector2(0.4, -0.2), "give": ["wand_of_sparking", "space_gun", "vilethorn", "mana_potion", "mana_crystal"], "item": "wand_of_sparking", "max_mana": 100, "mana": 70, "shoot": "spark"},
+	{"name": "guia", "look": Vector2(0, -0.1), "npc": "guide", "third": false},
+	{"name": "loja", "look": Vector2(0, -0.1), "npc": "merchant", "inventory": true},
 	{"name": "criativo", "look": Vector2(0.4, -0.3), "up": 6.0},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
 	{"name": "cristal", "cave": true, "crystal": true, "look": Vector2(0.15, -0.3), "item": "copper_pickaxe", "time": 1100.0},
@@ -320,6 +322,14 @@ func _setup(s: Dictionary) -> void:
 		ent.remove_enemy(e)
 	ent.spawn_timer = 999.0  # sem spawns aleatórios no print
 	var fwd := Vector3(-sin(s.look.x), 0, -cos(s.look.x))
+	if s.has("npc"):   # o habitante à frente e o painel de conversa aberto
+		var np: Vector3 = player.position + fwd * 3.0
+		np.y = world.surface_y(int(np.x), int(np.z), true) + 0.1
+		var ne: Node3D = ent.spawn_enemy(ent.def_named(s.npc), np)
+		ne.set_physics_process(false)
+		player.inv.coin = PackedInt32Array([50, 30, 1, 0])
+		player.set_inventory(true)
+		main.get_node("HUD").open_npc(s.npc)
 	var side := fwd.cross(Vector3.UP)
 	var i := 0
 	for n in s.get("enemies", []):

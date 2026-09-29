@@ -272,6 +272,19 @@ func coin_value() -> int:
 	return coin[0] + coin[1] * 100 + coin[2] * 10000 + coin[3] * 1000000
 
 
+# Paga `copper` de cobre com as moedas (o troco volta em moedas maiores). false = não tem.
+func pay(copper: int) -> bool:
+	var total := coin_value()
+	if total < copper:
+		return false
+	total -= copper
+	for k in 4:
+		coin[k] = total % 100 if k < 3 else total
+		total /= 100
+	version += 1
+	return true
+
+
 # Primeira munição da classe pedida (slots de munição primeiro), tirando 1. Retorna o id ou -1.
 func take_ammo(ammo_class: String) -> int:
 	for k in AMMO:

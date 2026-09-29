@@ -24,6 +24,7 @@ var pending: Array[Vector2i] = []   # chunks no alcance que ainda esperam a mesh
 var meshable: Array[Vector2i] = []     # desses, os que já têm dados (e os dos vizinhos) e podem virar mesh
 var need_gen: Array[Vector2i] = []  # chunks a gerar para os pending (o mais perto no fim)
 var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
+var npcs := {}      # habitantes que já chegaram (guide, merchant, nurse): nome -> true; salvo no mundo
 var chests := {}    # Vector3i -> {item: PackedInt32Array, count: PackedInt32Array}; só os baús já abertos (os outros ainda não têm conteúdo)
 var evil_boss_down := false   # Eater of Worlds / Brain já derrotado: libera o meteorito e, depois, o Wall of Flesh vale
 var hardmode := false       # Wall of Flesh derrotado: cobalto/paládio e Hallow (start_hardmode)
@@ -184,6 +185,7 @@ func set_seed(s: int) -> void:
 	chunks.clear()
 	edited.clear()
 	chests.clear()
+	npcs.clear()
 	orbs_broken = 0
 	evil_boss_down = false
 	meteor_due = false

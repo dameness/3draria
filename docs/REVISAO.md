@@ -16,7 +16,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | 5 | Voo: modo criativo (F) separado das asas (acessório) | ✅ |
 | 6 | Loot: baús por camada, Life Crystal, poções e buffs | ✅ |
 | 7 | Mana e magia | ✅ |
-| 8 | NPCs (Guide, Merchant, Nurse) | ⬜ |
+| 8 | NPCs (Guide, Merchant, Nurse) | ✅ |
 
 Como mapeei: li o código (arquivo:função), baixei da wiki pela API (Controls, Damage, Defense, Tree, Axe power, Tool speed, Autoswing,
 Use time, Minimap, Wings, Mana, Chest/Shadow Chest, Life/Mana Crystal, poções, Guide/Merchant/Nurse, Eater of Worlds, Brain of Cthulhu)
@@ -306,7 +306,7 @@ segundo), estrelas azuis (uma por 20) à direita dos corações. Magia: item com
 autoswing), Vilethorn (10, 10, perfura 2; 20% da Shadow Orb); sem mana ainda usa, ciclo ×1,6. Mana Potion (100) e Lesser (50), J bebe. Fallen Star cai à noite e some de
 dia; Mana Crystal = 5 estrelas. Wand/Lesser Mana nos baús, Space Gun 8% nos baús fundos. Testes `test_mana`; print `magia`. Meteor armor zerando o custo do Space Gun fica para "Depois".
 
-## 8 — NPCs
+## 8 — NPCs ✅
 
 **Wiki (Guide, Merchant, Nurse, Housing):** o **Guide** nasce com o mundo (Help: dicas; Crafting: mostra receitas do item dado), depois
 se muda para a 1ª casa; o **Merchant** chega com > 50 de prata no inventário (loja: Copper Pickaxe 5 prata, Copper Axe 4, Torch 50
@@ -319,6 +319,10 @@ e Nurse chegam com as condições da wiki e ficam perto do spawn; a loja cobra d
 a outro, param e olham para o jogador ao falar. Moradia (casa válida) fica para "Depois".
 **Teste/print:** `test_npc`: Merchant não chega com 49 de prata e chega com 51; compra tira moedas certas; Nurse cura o custo certo. Prints
 `guia` (diálogo) e `loja`.
+
+**Feito:** `guide`, `merchant`, `nurse` em enemies.json (ai npc, viram para o jogador). `Entities._town`: o Guide já existe, o Merchant chega com mais de 50 de prata, a Nurse com
+vida máxima > 100 (salvos em `world.npcs`; voltam se sumirem). Botão direito abre o painel de conversa da HUD (`open_npc`): Guide com dicas, loja do Merchant (preços da wiki, `Inventory.pay`
+com troco), Nurse cura o que falta por 1 cobre/ponto. Sem casa/moradia (fica em "Depois"). `test_npc` + integração; prints `guia`, `loja`.
 
 ---------------------------------------------------------------------------------------------------------------------------------
 

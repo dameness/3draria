@@ -31,6 +31,11 @@ var trash_slot: Slot
 var hearts: Array[TextureRect] = []
 var heart_rows: Array[HBoxContainer] = []
 var hearts_shown := 0                 # corações visíveis (a vida máxima sobe com Life Crystals: 20 por coração, 10 por fileira)
+var npc_panel: PanelContainer
+var npc_kind := ""                    # quem está falando (guide, merchant, nurse); vazio = ninguém
+var npc_text: Label
+var npc_buttons: HFlowContainer
+var tip_index := 0
 var buff_row: HBoxContainer
 var buff_key := ""                    # quais buffs a fileira mostra (refaz quando muda)
 var life_label: Label
@@ -137,6 +142,7 @@ func _ready() -> void:
 	_build_chest()
 	_build_boss()
 	_build_pause()
+	_build_npc()
 	cross = _label("+", 22)
 	cross.set_anchors_preset(Control.PRESET_CENTER)
 	cross.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -615,6 +621,83 @@ func _setting(box: Control, text: String, lo: float, hi: float, step: float, uni
 	box.add_child(s)
 
 
+const TIPS := ["Bem-vindo! Use o machado nas árvores para juntar madeira e faça uma bancada de trabalho.", "Ache Life Crystals nas cavernas: cada um dá +20 de vida máxima.",
+	"Quebre 3 Shadow Orbs ou Crimson Hearts com um martelo para despertar um chefe.", "Fallen Stars caem à noite; 5 delas fazem um Mana Crystal.",
+	"Segure Shift para escolher a ferramenta certa sozinho.", "Poções de cura deixam a Doença da poção por 1 minuto."]
+const SHOP := [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5]]   # preços em cobre (wiki Merchant)
+
+
+# Painel de conversa (abaixo do inventário, no meio): nome, fala e botões do que o habitante faz. Fecha com o inventário.
+func _build_npc() -> void:
+	npc_panel = PanelContainer.new()
+	npc_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	npc_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	npc_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	npc_panel.offset_bottom = -30
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(520, 0)
+	box.add_theme_constant_override("separation", 8)
+	npc_text = _label("", 18)
+	npc_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(npc_text)
+	npc_buttons = HFlowContainer.new()   # quebra em linhas dentro dos 520 do painel
+	npc_buttons.custom_minimum_size = Vector2(520, 0)
+	npc_buttons.add_theme_constant_override("h_separation", 8)
+	npc_buttons.add_theme_constant_override("v_separation", 6)
+	box.add_child(npc_buttons)
+	npc_panel.add_child(box)
+	npc_panel.visible = false
+	root.add_child(npc_panel)
+
+
+func _npc_button(text: String, action: Callable) -> void:
+	var b := Button.new()
+	b.text = text
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(action)
+	npc_buttons.add_child(b)
+
+
+func _price(copper: int) -> String:
+	return ("%dp" % (copper / 100)) + (" %dc" % (copper % 100) if copper % 100 else "") if copper >= 100 else "%dc" % copper
+
+
+# Chamado ao falar com um habitante (botão direito): abre o painel com as opções dele.
+func open_npc(kind: String) -> void:
+	npc_kind = kind
+	for c in npc_buttons.get_children():
+		npc_buttons.remove_child(c)
+		c.queue_free()
+	match kind:
+		"guide":
+			npc_text.text = "Guia: \"%s\"" % TIPS[tip_index % TIPS.size()]
+			_npc_button("Ajuda", func():
+				tip_index += 1
+				open_npc("guide"))
+		"merchant":
+			npc_text.text = "Comerciante: \"Boa escolha! O que vai levar?\""
+			for g in SHOP:
+				var id: int = Items.ids[g[0]]
+				_npc_button("%s (%s)" % [Items.label(id).capitalize(), _price(g[1])], func():
+					if player.inv.pay(g[1]):
+						player.inv.add(id, 1)
+						Sfx.play(player.entities, "coin", player.position, -6.0)
+					else:
+						player.say("faltam moedas"))
+		"nurse":
+			var cost := maxi(ceili(player.max_hp - player.hp), 0)
+			npc_text.text = "Enfermeira: \"%s\"" % ("Você está bem!" if cost == 0 else "Posso curar você por %s." % _price(cost))
+			if cost > 0:
+				_npc_button("Curar (%s)" % _price(cost), func():
+					if player.inv.pay(cost):
+						player.hp = player.max_hp
+						Sfx.play(player.entities, "drink", player.position, -4.0)
+						open_npc("nurse")
+					else:
+						player.say("faltam moedas"))
+	_npc_button("Fechar", func(): player.set_inventory(false))
+
+
 # Com o jogo pausado o jogador não recebe teclas: é o HUD que fecha o Configurações com Esc. F10 esconde o FPS e F11 o HUD (wiki Controls).
 func _unhandled_input(e: InputEvent) -> void:
 	if player.menu_open and e.is_action_pressed("ui_cancel"):
@@ -775,6 +858,9 @@ func _show_buffs() -> void:
 func _process(delta: float) -> void:
 	var open: bool = player.inventory_open
 	pause.visible = player.menu_open
+	if not open:
+		npc_kind = ""
+	npc_panel.visible = open and npc_kind != ""
 	cross.visible = not (open or player.menu_open or player.map_open)   # com o mouse solto a mira não faz sentido
 	creative_label.visible = player.creative
 	var wings: Dictionary = player.inv.wings()

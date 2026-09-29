@@ -1,13 +1,13 @@
 # Contexto para continuar numa sessão nova
 
-Repo `dameness/3draria`, branch **`claude/upbeat-ramanujan-ab3kfm`** (commit e push nela; **não abra PR** sem o dono pedir; se o ambiente
+Repo `dameness/3draria`, branch **`claude/vigilant-babbage-nv53lx`** (commit e push nela; **não abra PR** sem o dono pedir; se o ambiente
 sugerir outra branch, siga o dono). Jogo voxel 3D com o conteúdo e a progressão do Terraria (Godot 4.7.2, GDScript, renderer
 Compatibility). Uso pessoal. O dono joga num PC Ubuntu modesto e testa localmente; a sessão remota **não tem GPU nem tela**: valide com
 testes headless e com prints via Xvfb (e **olhe as imagens**). Respostas curtas, em português, com guia de teste no fim.
 
 ## Prompt pronto para colar numa sessão nova
 ```
-Repo dameness/3draria, branch claude/upbeat-ramanujan-ab3kfm (commit e push nela; NÃO abra PR). Jogo voxel 3D em Godot 4.7.2 com o
+Repo dameness/3draria, branch claude/vigilant-babbage-nv53lx (commit e push nela; NÃO abra PR). Jogo voxel 3D em Godot 4.7.2 com o
 conteúdo do Terraria; o dono testa local num PC Ubuntu modesto, você não tem GPU: valide com testes headless e prints via xvfb, e olhe
 as imagens. Leia primeiro CLAUDE.md (diretrizes do dono), docs/HANDOFF.md (estado, pendências, armadilhas), docs/UI.md, docs/VISUAL.md
 e docs/ROADMAP.md; rode scripts/update.sh antes de tudo.
@@ -20,6 +20,11 @@ Regras do dono: Terraria em 3D, não copiar Minecraft (pode se basear); GUI e jo
 bom (manter). Ao fim de cada passo: testes verdes (.tools/godot --headless -s tests/run.gd), commit, push, e diga como rebuildar
 (git pull && scripts/update.sh && .tools/godot) e se precisa de mundo novo. Respostas curtas, em português.
 ```
+
+## Revisão pré-hardmode (feita)
+`docs/REVISAO.md` tem, item a item, o diagnóstico, a wiki e o que foi feito: minimapa, verme, Brain, iluminação, árvores, binds (Esc = inventário,
+Configurações), ataque (autoswing/tool speed/mira), danos (variância/crítico/martelos), asas e modo criativo, loot/Life Crystal/poções/buffs, mana e magia,
+NPCs (Guide, Merchant, Nurse). Mundo novo necessário. Pendências em "Depois" do REVISAO.
 
 ## Comandos
 ```sh

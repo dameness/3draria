@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1412,6 +1412,40 @@ func test_mana():
 	p.clock.time = 60.0
 	ent._stars()
 	check(ent.get_children().filter(func(n): return n.get("item") == Items.ids.fallen_star and not n.is_queued_for_deletion()).is_empty(), "de dia elas somem")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Habitantes (wiki Guide/Merchant/Nurse): o Guide já está no mundo, o Merchant chega com mais de 50 de prata, a Nurse com mais de 100 de vida máxima;
+# loja cobra as moedas certas e a Nurse cura pelo que falta.
+func test_npc():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var has := func(n: String) -> bool: return ent.enemies.any(func(e): return e.def.name == n)
+	ent._town()
+	check(has.call("guide") and not has.call("merchant") and not has.call("nurse"), "o Guide está no mundo; os outros ainda não chegaram")
+	p.inv.coin = PackedInt32Array([0, 49, 0, 0])
+	ent._town()
+	check(not has.call("merchant"), "com 49 de prata o Merchant não chega")
+	p.inv.coin = PackedInt32Array([1, 50, 0, 0])
+	ent._town()
+	check(has.call("merchant") and w.npcs.has("merchant"), "com mais de 50 de prata o Merchant chega")
+	p.max_hp = 120
+	ent._town()
+	check(has.call("nurse"), "com mais de 100 de vida máxima a Nurse chega")
+	var guide: Node3D = ent.enemies.filter(func(e): return e.def.name == "guide")[0]
+	ent.remove_enemy(guide)
+	ent._town()
+	check(has.call("guide"), "quem some volta a aparecer perto do spawn")
+	# pagar e o troco
+	p.inv.coin = PackedInt32Array([0, 0, 1, 0])   # 1 de ouro = 10000 cobre
+	check(p.inv.pay(500) and p.inv.coin_value() == 9500 and p.inv.coin[1] == 95 and not p.inv.pay(9999), "pagar 5 de prata de 1 de ouro sobra 95 de prata; sem saldo recusa")
+	# a loja: preço da wiki (Copper Pickaxe 5 de prata) e a Nurse
+	var hud: CanvasLayer = load("res://scripts/hud.gd").new()
+	check(hud.SHOP[0] == ["copper_pickaxe", 500] and Items.ids.has(hud.SHOP[3][0]), "loja: Copper Pickaxe a 5 de prata")
+	hud.free()
 	free_player(p)
 	w.free()
 	return true
@@ -2834,6 +2868,21 @@ func integration():
 			player.hp = 100.0
 			hud._process(0.0)
 			check(hud.hearts_shown == 5 and not hud.heart_rows[1].visible and hud.minimap.corner_y == 74.0, "volta a 5 corações")
+			player.set_inventory(true)
+			hud.open_npc("merchant")
+			player.inv.coin = PackedInt32Array([0, 30, 0, 0])
+			hud._process(0.0)
+			var picks: int = player.inv.total(Items.ids.copper_pickaxe)
+			hud.npc_buttons.get_child(0).pressed.emit()
+			check(hud.npc_panel.visible and player.inv.total(Items.ids.copper_pickaxe) == picks + 1 and player.inv.coin_value() == 2500, "loja: clicar compra a Copper Pickaxe por 5 de prata")
+			hud.open_npc("nurse")
+			player.hp = 40.0
+			hud.open_npc("nurse")
+			hud.npc_buttons.get_child(0).pressed.emit()
+			check(player.hp == player.max_hp and player.inv.coin_value() == 2500 - 60, "Nurse: cura o que falta por 60 de cobre (hp %s/%s, moedas %d)" % [player.hp, player.max_hp, player.inv.coin_value()])
+			player.set_inventory(false)
+			hud._process(0.0)
+			check(not hud.npc_panel.visible, "fechar o inventário fecha a conversa")
 			player.creative = true
 			hud._process(0.0)
 			check(hud.creative_label.visible and not hud.flight_bar.visible, "modo criativo: aviso fixo na tela")

@@ -63,9 +63,30 @@ func _physics_process(delta: float) -> void:
 		spawn_timer = 1.0
 		try_spawn()
 		_stars()
+		_town()
 	for e in enemies.duplicate():
 		if not e.def.get("boss") and e.position.distance_to(player.position) > DESPAWN:
 			remove_enemy(e)
+
+
+# Habitantes (wiki Guide/Merchant/Nurse): o Guide já está no mundo; o Merchant chega com mais de 50 de prata e a Nurse com mais de 100 de vida máxima.
+# Chegam perto do spawn e, se sumirem por estar longe, voltam quando o jogador está perto de novo.
+func _town() -> void:
+	var want := {"guide": true, "merchant": player.inv.coin_value() > 5000, "nurse": player.max_hp > 100}
+	for n in want:
+		if want[n]:
+			world.npcs[n] = true
+	if player.position.distance_to(player.spawn) > 60.0:
+		return
+	var i := 0
+	for n in ["guide", "merchant", "nurse"]:
+		if world.npcs.has(n) and not enemies.any(func(e): return e.def.name == n):
+			var x: float = player.spawn.x + 3.0 + i * 2.0
+			var z: float = player.spawn.z + 3.0
+			var e := spawn_enemy(def_named(n), Vector3(x, world.surface_y(int(x), int(z), true) + 0.1, z))
+			if n == "merchant" or n == "nurse":
+				player.say("%s chegou!" % n.capitalize())
+		i += 1
 
 
 # Estrela cadente (wiki Fallen Star): à noite cai perto do jogador, de vez em quando; ao amanhecer as que sobraram somem.
@@ -148,7 +169,10 @@ func npc_aimed(reach: float) -> Node3D:
 
 # Falar com um NPC (botão direito). O Velho: à noite amaldiçoa e vira o Skeletron.
 func talk(e: Node3D) -> void:
-	if e.def.talk == "skeletron":
+	if e.def.talk in ["guide", "merchant", "nurse"]:
+		player.set_inventory(true)
+		player.get_parent().get_node("HUD").open_npc(e.def.talk)
+	elif e.def.talk == "skeletron":
 		if not clock.is_night():
 			player.say("O Velho: \"Volte à noite... se tiver coragem.\"")
 		elif boss == null:

@@ -130,9 +130,11 @@ func think(delta: float) -> void:
 			skeletron(delta, to)
 		"wall":
 			wall(delta, flat)
-		"npc":
+		"npc":   # fica parado e vira para o jogador quando ele chega perto
 			velocity.x = 0.0
 			velocity.z = 0.0
+			if to.length() < 7.0:
+				flat = Vector3(to.x, 0, to.z)
 	if flat != Vector3.ZERO:
 		rotation.y = atan2(flat.x, flat.z)
 
