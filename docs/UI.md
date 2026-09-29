@@ -41,3 +41,8 @@ dicas com fade, cursor balança.
 Mundo de teste: **F9** abre o painel de atalhos (modal: esconde o inventário; hora, vida/mana, hardmode, chefes, viagem) e um rodapé lista as teclas.
 Criação: o botão do martelo alterna a lista completa. Ctrl (inventário fechado) liga o cursor inteligente: com ferramenta na mão e a mira no vazio, pega o bloco mais perto da linha de visada (mira dourada).
 Pendente: vanity/dye.
+
+## Menu inicial (sessão 4, a partir das imagens do dono)
+Título com o logo do Terraria (wiki, `logo` em textures.json) e lista "Um Jogador / Multijogador / Sair"; "Selecionar Personagem" e "Selecionar Mundo" com a placa azul no topo,
+cartões (retrato, nome, plaquinhas PV/PM/Defesa ou Clássico/Mundo Pequeno/Salvo, linha Jogar + apagar) e os botões Voltar / Novo (+ Mundo de teste); "Novo" abre "Criar Personagem"/"Criar Mundo".
+Configurações (pausa): "Menu de Configurações" com Geral / Vídeo / Controle à esquerda. Prints: tests/menu_flow.gd → textures/menu_*.png.

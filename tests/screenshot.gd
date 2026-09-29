@@ -16,6 +16,8 @@ const SHOTS := [
 	{"name": "estrela_chao", "look": Vector2(0, -0.2), "stars": 0},
 	{"name": "bau", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "chest": true},
 	{"name": "config", "look": Vector2(0, -0.2), "settings": true},
+	{"name": "config_video", "look": Vector2(0, -0.2), "settings": true, "page": "Vídeo"},
+	{"name": "config_controle", "look": Vector2(0, -0.2), "settings": true, "page": "Controle"},
 	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true},
 	{"name": "minimapa", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "map": "portrait", "zoom": 1},
 	{"name": "minimapa_overlay", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "map": "overlay"},
@@ -366,6 +368,9 @@ func _setup(s: Dictionary) -> void:
 	player.inventory_open = s.get("inventory", false)
 	if s.get("settings", false):   # o Configurações do inventário (pausa o jogo)
 		player.set_menu(true)
+		for cb in main.get_node("HUD").pause.find_children("*", "Button", true, false):
+			if cb.text == s.get("page", "Geral"):
+				cb.pressed.emit()
 	if s.get("gear", false):   # moedas, munição, acessórios e um favorito, para a GUI do inventário
 		player.inv.add(Items.ids.copper_coin, 37)
 		player.inv.add(Items.ids.gold_coin, 4)

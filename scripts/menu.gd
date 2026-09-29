@@ -128,6 +128,25 @@ func _build_ui() -> void:
 
 # Logo em blocos: três camadas do mesmo texto (sombra, terra, grama) dão a espessura, como o logo do Terraria.
 func _make_logo() -> Control:
+	var img := Atlas.wiki_image(Blocks.textures.get("logo", {}))   # o logo do Terraria (wiki, fora do git); sem ele, o logo em texto
+	if img:
+		var pic := TextureRect.new()
+		pic.texture = ImageTexture.create_from_image(img)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		pic.set_anchors_preset(Control.PRESET_FULL_RECT)
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var frame := Control.new()
+		frame.set_anchors_preset(Control.PRESET_CENTER_TOP)
+		frame.offset_left = -380
+		frame.offset_right = 380
+		frame.offset_top = 28
+		frame.offset_bottom = 218
+		frame.pivot_offset = Vector2(380, 0)
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		frame.add_child(pic)
+		return frame
 	var holder := Control.new()
 	holder.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	holder.offset_left = -380
@@ -236,6 +255,7 @@ func _clear(title: String, framed: bool, ax: float, ay: float, size := 26) -> vo
 		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		l.add_theme_font_size_override("font_size", size)
 		box.add_child(l)
+	box.custom_minimum_size.x = 560 if framed else 440
 	panel.add_theme_stylebox_override("panel", Ui.box(Ui.NAVY, Ui.EDGE, 3, 8) if framed else StyleBoxEmpty.new())
 	var tw := create_tween().set_parallel().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	for a in ["anchor_left", "anchor_right"]:
@@ -275,7 +295,7 @@ func show_title() -> void:
 	_hide_avatar()
 	_clear("", false, 0.5, 0.68)
 	_go(TITLE_VIEW, 1.0)
-	for b in [["Um jogador", show_players, false], ["Multijogador (em breve)", func(): pass, true], ["Sair", func(): get_tree().quit(), false]]:
+	for b in [["Um Jogador", show_players, false], ["Multijogador (em breve)", func(): pass, true], ["Sair", func(): get_tree().quit(), false]]:
 		var btn := Ui.menu_button(b[0], 34)
 		btn.disabled = b[2]
 		btn.pressed.connect(b[1])
@@ -283,65 +303,154 @@ func show_title() -> void:
 	_pop_in()
 
 
-# Lista de saves: nome, uma linha de informação e "apagar" (que pede um segundo clique). `hover` (opcional) recebe a entrada
-# quando o mouse passa por cima.
+# Placa azul com o título da tela (como "Selecionar Personagem" do Terraria).
+func _plate(text: String) -> void:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", Ui.box(Color("#3f52a0"), Ui.EDGE, 3, 8))
+	p.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 26)
+	p.add_child(l)
+	box.add_child(p)
+
+
+# Lista de saves em cartões como a do Terraria: retrato, nome, plaquinhas de informação e a linha Jogar / apagar (com segundo clique).
+# `hover` (opcional) recebe a entrada quando o mouse passa por cima do cartão.
 func _save_list(dir: String, pick: Callable, hover := Callable()) -> void:
 	var entries := SaveGame.list(dir)
-	if entries.is_empty():
-		var none := Label.new()
-		none.text = "Nada aqui ainda. Crie um abaixo."
-		none.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		box.add_child(none)
-		return
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 6)
 	for s in entries:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", Ui.box(Color("#4a5cad"), Ui.EDGE, 2, 6))
 		var col := VBoxContainer.new()
-		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		col.add_theme_constant_override("separation", -2)
-		var b := _button(s.name, pick.bind(s.path), false, col)
-		b.add_theme_font_size_override("font_size", 21)
-		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		var info := Label.new()
-		info.text = _info(dir, s.info)
-		info.add_theme_font_size_override("font_size", 13)
-		info.modulate = Color(1, 1, 1, 0.72)
-		col.add_child(info)
-		if hover.is_valid():
-			b.mouse_entered.connect(hover.bind(s))
-		row.add_child(col)
+		col.add_theme_constant_override("separation", 4)
+		var top := HBoxContainer.new()
+		top.add_theme_constant_override("separation", 8)
+		top.add_child(_portrait(dir, s))
+		var right := VBoxContainer.new()
+		right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		right.add_theme_constant_override("separation", 3)
+		var name_l := Label.new()
+		name_l.text = s.name
+		name_l.add_theme_font_size_override("font_size", 19)
+		right.add_child(name_l)
+		var chips := HBoxContainer.new()
+		chips.add_theme_constant_override("separation", 4)
+		_chips(dir, s, chips)
+		right.add_child(chips)
+		top.add_child(right)
+		col.add_child(top)
+		var bottom := HBoxContainer.new()
+		bottom.add_theme_constant_override("separation", 6)
+		var play_btn := Button.new()
+		play_btn.text = "▶ Jogar"
+		play_btn.pressed.connect(pick.bind(s.path))
+		bottom.add_child(play_btn)
+		var gap := Control.new()
+		gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bottom.add_child(gap)
 		var del := Button.new()
 		del.text = "apagar"
-		del.custom_minimum_size = Vector2(86, 40)
-		del.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		del.pressed.connect(func():
 			if del.text == "apagar":
 				del.text = "confirmar?"
 			else:
 				SaveGame.delete(s.path)
 				_refresh(dir))
-		row.add_child(del)
-		list.add_child(row)
+		bottom.add_child(del)
+		col.add_child(bottom)
+		card.add_child(col)
+		if hover.is_valid():
+			card.mouse_entered.connect(hover.bind(s))
+		list.add_child(card)
 	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(0, mini(entries.size(), 4) * LIST_ROW)
+	scroll.custom_minimum_size = Vector2(0, 300)   # a moldura tem sempre o mesmo tamanho, com ou sem saves
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.add_child(list)
 	box.add_child(scroll)
 
 
-func _info(dir: String, data: Dictionary) -> String:
+# Plaquinha escura de informação: glifo colorido opcional + texto.
+func _chip(parent: Control, text: String, glyph := "", glyph_color := Color.WHITE) -> void:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", Ui.box(Color("#22306b"), Ui.EDGE, 2, 4))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 4)
+	if glyph != "":
+		var g := Label.new()
+		g.text = glyph
+		g.add_theme_font_size_override("font_size", 14)
+		g.add_theme_color_override("font_color", glyph_color)
+		h.add_child(g)
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", 14)
+	h.add_child(l)
+	p.add_child(h)
+	parent.add_child(p)
+
+
+func _chips(dir: String, s: Dictionary, chips: Control) -> void:
+	var d: Dictionary = s.info
 	if dir == SaveGame.players_dir:
 		var inv := Inventory.new()
-		var equip: Array = data.get("equip", [])
+		var equip: Array = d.get("equip", [])
 		for k in mini(equip.size(), 3):
 			inv.equip[k] = Items.ids.get(equip[k], -1)
-		return "Vida %d · Defesa %d" % [data.get("hp", 100), inv.defense()] if not data.get("new", false) else "Personagem novo"
-	if data.get("test", false):
-		return "Mundo de teste · arena com todos os itens e blocos, chefes e atalhos (F9)"
-	return "Seed %d · %d chunks editados" % [data.seed, data.get("chunks", {}).size()]
+		_chip(chips, "%d PV" % d.get("max_hp", 100), "♥", Color("#ff5a5a"))
+		_chip(chips, "%d PM" % d.get("max_mana", 20), "★", Color("#6aa8ff"))
+		_chip(chips, "Defesa %d" % inv.defense())
+	else:
+		_chip(chips, "Teste" if d.get("test", false) else "Clássico")
+		_chip(chips, "Mundo Pequeno")
+		var t := Time.get_datetime_dict_from_unix_time(FileAccess.get_modified_time(s.path))
+		_chip(chips, "Salvo: %02d/%02d/%d" % [t.day, t.month, t.year])
+
+
+# Retrato do cartão: o boneco em pixels com as cores do personagem, ou uma árvore para o mundo.
+func _portrait(dir: String, s: Dictionary) -> Control:
+	var img := Image.create(16, 22, false, Image.FORMAT_RGBA8)
+	if dir == SaveGame.players_dir:
+		var look := SaveGame.look_of(s.info, s.name)
+		img.fill_rect(Rect2i(4, 0, 8, 3), look.hair)
+		img.fill_rect(Rect2i(4, 3, 8, 6), look.skin)
+		img.set_pixel(6, 5, Color.BLACK)
+		img.set_pixel(9, 5, Color.BLACK)
+		img.fill_rect(Rect2i(3, 9, 10, 7), look.shirt)
+		img.fill_rect(Rect2i(1, 9, 2, 6), look.skin)
+		img.fill_rect(Rect2i(13, 9, 2, 6), look.skin)
+		img.fill_rect(Rect2i(4, 16, 8, 4), look.pants)
+		img.fill_rect(Rect2i(4, 20, 3, 2), Color("#5a3a1a"))
+		img.fill_rect(Rect2i(9, 20, 3, 2), Color("#5a3a1a"))
+	else:
+		img.fill_rect(Rect2i(7, 10, 2, 10), Color("#7a4a22"))
+		img.fill_rect(Rect2i(3, 2, 10, 8), Color("#3f9a3a"))
+		img.fill_rect(Rect2i(5, 1, 6, 2), Color("#3f9a3a"))
+		img.fill_rect(Rect2i(4, 3, 3, 2), Color("#63c65a"))
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", Ui.box(Color("#1a2450"), Ui.EDGE, 2, 6))
+	var tr := TextureRect.new()
+	tr.texture = ImageTexture.create_from_image(img)
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.custom_minimum_size = Vector2(52, 60)
+	p.add_child(tr)
+	return p
+
+
+# Fileira de botões largos no fim da tela: [texto, ação].
+func _bottom_row(buttons: Array) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	for b in buttons:
+		var btn := _button(b[0], b[1], false, row)
+		btn.custom_minimum_size = Vector2(0, 46)
+		btn.add_theme_font_size_override("font_size", 24)
+	box.add_child(row)
 
 
 func _refresh(dir: String) -> void:
@@ -409,16 +518,29 @@ func _swatches(label: String, key: String, colors: Array) -> void:
 
 func show_players() -> void:
 	screen = "players"
-	_clear("Escolha o personagem", true, 0.74, 0.58)
+	_clear("", true, 0.74, 0.55)
+	_plate("Selecionar Personagem")
 	_go(AVATAR_VIEW, 0.62)
 	var entries := SaveGame.list(SaveGame.players_dir)
 	if new_look.is_empty():
 		new_look = SaveGame.look_for(str(randi()))
 	if entries.is_empty():
-		_show_avatar("?", [], new_look)   # sem saves: o boneco é o que está sendo criado
+		_show_avatar("?", [], new_look)   # sem saves: o boneco é o que será criado
 	elif avatar == null:
 		_avatar_of(entries[0])
 	_save_list(SaveGame.players_dir, pick_player, _avatar_of)
+	_bottom_row([["Voltar", show_title], ["Novo", show_new_player]])
+	_pop_in()
+
+
+func show_new_player() -> void:
+	screen = "new_player"
+	_clear("", true, 0.74, 0.55)
+	_plate("Criar Personagem")
+	_go(AVATAR_VIEW, 0.62)
+	if new_look.is_empty():
+		new_look = SaveGame.look_for(str(randi()))
+	_show_avatar("?", [], new_look)
 	_create_row("nome do novo personagem", func(n): return SaveGame.create_player(n, new_look), func(_p):
 		new_look = {}
 		new_name = ""
@@ -428,9 +550,7 @@ func show_players() -> void:
 			_show_avatar("?", [], new_look), new_name)
 	for part in [["pele", "skin", SaveGame.SKINS], ["cabelo", "hair", SaveGame.HAIRS], ["camisa", "shirt", SaveGame.SHIRTS], ["calça", "pants", SaveGame.PANTS]]:
 		_swatches(part[0], part[1], part[2])
-	var back := Ui.menu_button("Voltar", 24)
-	back.pressed.connect(show_title)
-	box.add_child(back)
+	_bottom_row([["Voltar", show_players]])
 	_pop_in()
 
 
@@ -444,15 +564,23 @@ func pick_player(path: String) -> void:
 
 func show_worlds() -> void:
 	screen = "worlds"
-	_clear("Escolha o mundo", true, 0.74, 0.58)
+	_clear("", true, 0.74, 0.55)
+	_plate("Selecionar Mundo")
 	_go(AVATAR_VIEW, 0.62)
 	_save_list(SaveGame.worlds_dir, play)
+	var test_hint := "Arena plana com baús de todos os itens, todos os blocos, NPCs, inimigos e atalhos de chefes/hora (F9)."   # abre (ou cria) o mundo com todos os itens à mão
+	_bottom_row([["Voltar", show_players], ["Novo", show_new_world], ["Mundo de teste", func(): play(SaveGame.test_world())]])
+	box.get_child(box.get_child_count() - 1).get_child(2).tooltip_text = test_hint
+	_pop_in()
+
+
+func show_new_world() -> void:
+	screen = "new_world"
+	_clear("", true, 0.74, 0.55)
+	_plate("Criar Mundo")
+	_go(AVATAR_VIEW, 0.62)
 	_create_row("nome do novo mundo", func(n): return SaveGame.create_world(n, randi()), func(_p): show_worlds())
-	var test_button := _button("Mundo de teste", func(): play(SaveGame.test_world()))   # abre (ou cria) o mundo com todos os itens à mão
-	test_button.tooltip_text = "Arena plana com baús de todos os itens, todos os blocos, NPCs, inimigos e atalhos de chefes/hora (F9)."
-	var back := Ui.menu_button("Voltar", 24)
-	back.pressed.connect(show_players)
-	box.add_child(back)
+	_bottom_row([["Voltar", show_worlds]])
 	_pop_in()
 
 
@@ -466,6 +594,10 @@ func play(world_path: String) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("ui_cancel"):
 		match screen:
+			"new_world":
+				show_worlds()
+			"new_player":
+				show_players()
 			"worlds":
 				show_players()
 			"players":
