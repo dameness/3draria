@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -3765,6 +3765,46 @@ func test_housing():
 	check(faces(a) == 6 and not Blocks.solid[Blocks.door_open] and Items.drop[Blocks.door_open] == Items.ids.door and not Items.ids.has("door_open"), "porta aberta: 6 faces do painel, sem colisão, solta a porta e não é item")
 	# receitas
 	check(Crafting.recipes.any(func(r): return r.result == Items.ids.chair and r.needs == {Items.ids.wood: 4}) and Crafting.recipes.any(func(r): return r.result == Items.ids.door and r.needs == {Items.ids.wood: 6}), "cadeira 4 de madeira, porta 6 (wiki)")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Sons que faltavam ligados (pickup, coin, swing, bow, splash): cada ação pede o som certo (Sfx.last), e todos existem.
+func test_sounds():
+	for n in ["dig", "stone", "break", "place", "swing", "hit", "hurt", "die", "pickup", "coin", "splash", "boss", "bow", "flap", "drink"]:
+		check(Sfx.build(n).size() > 500, "o som %s existe" % n)
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var tell := func() -> String:
+		var s := Sfx.last
+		Sfx.last = ""
+		return s
+	# apanhar item e moeda
+	var drop: Node3D = ent.spawn_drop(Items.ids.iron_bar, 3, p.position + Vector3.UP * 0.5)
+	drop.icon = Sprite3D.new()   # (fora da árvore o _ready não rodou)
+	drop.age = 1.0
+	drop._physics_process(0.016)
+	check(tell.call() == "pickup" and p.inv.total(Items.ids.iron_bar) == 3, "apanhar um item toca pickup")
+	var coin: Node3D = ent.spawn_drop(Items.ids.silver_coin, 2, p.position + Vector3.UP * 0.5)
+	coin.icon = Sprite3D.new()
+	coin.age = 1.0
+	coin._physics_process(0.016)
+	check(tell.call() == "coin", "apanhar moeda toca coin")
+	# golpe e flecha
+	p.inv.add(Items.ids.iron_broadsword, 1)
+	p.slot = p.inv.item.find(Items.ids.iron_broadsword)
+	p.cooldown = 0.0
+	p.use_item()
+	check(tell.call() == "swing", "golpear toca swing")
+	p.inv.add(Items.ids.wooden_bow, 1)
+	p.inv.add(Items.ids.wooden_arrow, 10)
+	p.shoot(Items.defs[Items.ids.wooden_bow], p.position + Vector3.UP * 1.6, Vector3.RIGHT)
+	check(tell.call() == "bow", "atirar toca bow")
+	# respingo (entrar na água, balde, etc. usam Fx.splash)
+	Fx.splash(ent, Vector3(24, 12, 24))
+	check(tell.call() == "splash", "Fx.splash toca splash")
 	free_player(p)
 	w.free()
 	return true

@@ -739,6 +739,7 @@ func use_item() -> void:
 	elif d.get("damage", 0) > 0 or Items.pick_power[id] > 0 or Items.axe_power[id] > 0:   # a lâmina (ou a picareta) só acerta quando o arco chega à frente (~1/3 do golpe)
 		swing_item = d
 		swing_timer = cooldown * (0.42 if d.get("use_style") == "thrust" else 0.3)
+		Sfx.play(entities, "swing", position + Vector3.UP, -10.0, 1.15 if d.get("use_style") == "thrust" else 0.9)
 
 
 # Balde: vazio pega o líquido da mira (um bloco); cheio derrama um bloco cheio no ar junto do alvo. O líquido depois flui sozinho (liquid.gd).
@@ -832,6 +833,7 @@ func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
 		dmg = roundi(dmg * (1.0 + buff_sum("arrow_damage")))
 		speed *= 1.0 + buff_sum("arrow_speed")
 	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, speed, dmg, kb)
+	Sfx.play(entities, "bow", position + Vector3.UP, -8.0, 1.0 if d.ammo == "arrow" else 2.2)   # a flecha estala, a bala é um estampido agudo
 
 
 # Um golpe da picareta no bloco da mira, como no Terraria: cada golpe soma ao bloco (poder da picareta × dureza dele) e ele racha
@@ -911,6 +913,7 @@ func interact() -> void:
 		return
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
 		set_inventory(true)   # o baú abre o inventário com o painel do baú
+		Sfx.play(entities, "place", Vector3(target.pos) + Vector3.ONE * 0.5, -6.0, 1.6)
 		get_parent().get_node("HUD").open_chest(world.chest_at(target.pos))
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) in [Blocks.door_closed, Blocks.door_open]:
 		toggle_door(target.pos)

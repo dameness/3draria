@@ -10,6 +10,7 @@ const MAX_ACTIVE := 12
 static var enabled := true
 static var _cache := {}
 static var active := 0
+static var last := ""   # o último som pedido (os testes conferem sem precisar de áudio)
 
 
 # Ruído passa-baixa (k perto de 0 = grave e abafado, 1 = chiado) com decaimento exponencial; `tone` soma um seno (freq, ganho).
@@ -89,6 +90,7 @@ static func stream(name: String) -> AudioStreamWAV:
 
 
 static func play(parent: Node3D, name: String, pos: Vector3, volume_db := -6.0, pitch := 1.0) -> void:
+	last = name
 	if not enabled or Settings.volume <= 0.0 or parent == null or not parent.is_inside_tree() or active >= MAX_ACTIVE:
 		return
 	var p := AudioStreamPlayer3D.new()

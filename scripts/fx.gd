@@ -90,6 +90,7 @@ static func puff(parent: Node3D, pos: Vector3, color: Color, n := 14) -> void:
 
 
 static func splash(parent: Node3D, pos: Vector3, n := 16) -> void:
+	Sfx.play(parent, "splash", pos, -8.0)
 	burst(parent, pos, Color("#9cc8ff"), n, {"size": 0.1, "life": 0.7, "speed": 4.6, "spread": 38.0, "gravity": 13.0})
 	burst(parent, pos, Color(1, 1, 1, 0.9), n / 3, {"size": 0.16, "life": 0.5, "speed": 1.8, "spread": 90.0, "gravity": 1.0})
 

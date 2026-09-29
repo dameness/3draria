@@ -52,7 +52,10 @@ func _physics_process(delta: float) -> void:
 	var to: Vector3 = p.position + Vector3.UP * 0.9 - position
 	if age > DELAY and to.length() < MAGNET:
 		if to.length() < PICKUP:
+			var before := count
 			count = p.inv.add(item, count)
+			if count < before:
+				Sfx.play(entities, "coin" if Inventory.coin_kind(item) != -1 else "pickup", p.position + Vector3.UP, -8.0)
 			if count == 0:
 				queue_free()
 				return
