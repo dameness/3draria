@@ -45,6 +45,8 @@ const SHOTS := [
 	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "inimigos_voadores", "look": Vector2(0, -0.1), "enemies": ["eater_of_souls", "crimera", "voodoo_demon", "hellbat", "pixie", "unicorn"]},
+	{"name": "inimigos_cavernas", "look": Vector2(0, -0.1), "enemies": ["red_slime", "yellow_slime", "black_slime", "cave_bat", "skeleton"]},
+	{"name": "inimigos_submundo", "look": Vector2(0, -0.1), "enemies": ["lava_slime", "meteor_head", "demon", "hellbat"]},
 	{"name": "inimigos_masmorra", "look": Vector2(0, -0.1), "enemies": ["the_hungry", "creeper", "dark_caster", "angry_bones", "cursed_skull"]},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},

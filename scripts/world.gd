@@ -27,6 +27,7 @@ var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
 var npcs := {}      # habitantes que já chegaram (guide, merchant, nurse): nome -> true; salvo no mundo
 var homes := {}     # onde cada habitante mora (housing.gd): nome -> Vector3i (a célula em cima da cadeira); sem casa, fica perto do nascimento; salvo no mundo
 var chests := {}    # Vector3i -> {item: PackedInt32Array, count: PackedInt32Array}; só os baús já abertos (os outros ainda não têm conteúdo)
+var eoc_down := false        # Olho de Cthulhu já derrotado: ele deixa de nascer sozinho ao anoitecer
 var evil_boss_down := false   # Eater of Worlds / Brain já derrotado: libera o meteorito e, depois, o Wall of Flesh vale
 var hardmode := false       # Wall of Flesh derrotado: cobalto/paládio e Hallow (start_hardmode)
 var test_world := false     # mundo de teste (test_world.gd): arena com baús de todos os itens; vai no save
@@ -210,6 +211,7 @@ func set_seed(s: int, test := false) -> void:
 	homes.clear()
 	orbs_broken = 0
 	evil_boss_down = false
+	eoc_down = false
 	meteor_due = false
 	skeletron_down = false
 	hardmode = false

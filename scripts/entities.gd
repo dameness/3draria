@@ -28,6 +28,8 @@ var boss_max := 0           # vida total do chefe ao nascer (a de todos os segme
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
 var town_tick := 0
+var last_time := -1.0      # relógio no quadro anterior (o anoitecer é a passagem por DAY_SECONDS)
+var eye_watch := -1.0      # contagem até o Olho de Cthulhu nascer sozinho (-1 = sem contagem)
 
 
 func _ready() -> void:
@@ -86,9 +88,27 @@ func _physics_process(delta: float) -> void:
 		try_spawn()
 		_stars()
 		_town()
+		_eye_watch()
 	for e in enemies.duplicate():
 		if not e.def.get("boss") and not e.display and e.position.distance_to(player.position) > DESPAWN:
 			remove_enemy(e)
+
+
+# Olho de Cthulhu natural (wiki Eye of Cthulhu, Random): ao anoitecer, até ele cair uma vez, com 200 de vida máxima, 11 de defesa e habitantes na vila,
+# há 1/3 de chance de a mensagem sair; 81 s depois ele nasce se ninguém chamou outro chefe e o jogador está na superfície.
+# ponytail: a wiki pede 4 habitantes; o jogo tem 3 (Guide, Merchant, Nurse), então pede os 3. Teto: quando houver mais, subir para 4.
+func _eye_watch() -> void:
+	var t: float = clock.time
+	var dusk: bool = last_time >= 0.0 and last_time < clock.DAY_SECONDS and t >= clock.DAY_SECONDS
+	last_time = t
+	if dusk and not world.eoc_down and not world.test_world and boss == null and player.max_hp >= 200 and player.defense() >= 11 and world.npcs.size() >= 3 and rng.randf() < 1.0 / 3.0:
+		eye_watch = 81.0
+		player.say("você sente uma presença maligna te observando...")
+	elif eye_watch >= 0.0:
+		eye_watch -= 1.0
+		if eye_watch < 0.0 and boss == null and clock.is_night() and player.position.y >= world.surface_y(floori(player.position.x), floori(player.position.z), true) - 3.0:
+			spawn_boss("eye_of_cthulhu")
+			player.say("Eye of Cthulhu despertou!")
 
 
 # Habitantes (wiki Guide/Merchant/Nurse): o Guide já está no mundo; o Merchant chega com mais de 50 de prata e a Nurse com mais de 100 de vida máxima.
@@ -154,7 +174,8 @@ func _stars() -> void:
 				n.queue_free()
 
 
-# Bioma sob os pés de pos: dungeon, underworld (submundo), o mal do mundo (corruption/crimson), hallow (só no hardmode) ou "".
+# Bioma sob os pés de pos: dungeon, underworld (submundo), o mal do mundo (corruption/crimson), hallow (só no hardmode), cavern (rocha) e
+# underground (terra) a partir de 8 blocos abaixo da superfície, meteorite (perto de uma cratera) ou "" (superfície comum).
 func biome_at(pos: Vector3) -> String:
 	var x := floori(pos.x)
 	var z := floori(pos.z)
@@ -164,7 +185,21 @@ func biome_at(pos: Vector3) -> String:
 		return "underworld"
 	if world.gen.evil_weight(x, z) >= 0.5:
 		return world.gen.evil
-	return "hallow" if world.hardmode and world.gen.hallow_weight(x, z) >= 0.5 else ""
+	if world.hardmode and world.gen.hallow_weight(x, z) >= 0.5:
+		return "hallow"
+	if pos.y < world.surface_y(x, z, true) - 8.0:
+		return "cavern" if pos.y < WorldGen.CAVERN_TOP else "underground"
+	return "meteorite" if _meteorite_near(x, z) else ""
+
+
+# Cratera por perto (wiki Meteor Head: bioma do meteorito): 12 ou mais de 121 colunas amostradas num quadrado de 21 blocos têm meteorito no topo.
+func _meteorite_near(x: int, z: int) -> bool:
+	var n := 0
+	for dz in range(-10, 11, 2):
+		for dx in range(-10, 11, 2):
+			if world.get_block(x + dx, world.surface_y(x + dx, z + dz, true) - 1, z + dz) == Blocks.ids.meteorite:
+				n += 1
+	return n >= 12
 
 
 func try_spawn() -> void:
@@ -173,12 +208,12 @@ func try_spawn() -> void:
 		return
 	var when := "night" if night else "day"
 	var biome := biome_at(player.position)
-	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (d.biome == biome if d.has("biome") else not biome in ["dungeon", "underworld"]) \
+	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (d.biome == biome if d.has("biome") else not biome in ["dungeon", "underworld", "underground", "cavern", "meteorite"]) \
 			and (world.hardmode or not d.get("hardmode", false)))
 	if options.is_empty():
 		return
 	var d: Dictionary = options[rng.randi() % options.size()]
-	if biome in ["dungeon", "underworld"]:   # sem superfície: numa sala/caverna perto do jogador (voadores em qualquer ar, os outros com chão)
+	if biome in ["dungeon", "underworld", "underground", "cavern"]:   # sem superfície: numa sala/caverna perto do jogador (voadores em qualquer ar, os outros com chão)
 		for attempt in 12:
 			var p := Vector3i(floori(player.position.x) + rng.randi_range(-14, 14), floori(player.position.y) + rng.randi_range(-2, 4), floori(player.position.z) + rng.randi_range(-14, 14))
 			if world.get_block(p.x, p.y, p.z) == 0 and world.get_block(p.x, p.y + 1, p.z) == 0 and (d.ai == "fly" or Blocks.solid[world.get_block(p.x, p.y - 1, p.z)]) \
@@ -335,6 +370,27 @@ func talk(e: Node3D) -> void:
 			player.say("O Velho: \"Você foi amaldiçoado!\"")
 
 
+# Corações e estrelas de quem morre (wiki Heart e Star): só inimigos que soltam moedas, e só se o jogador precisa. Estrela: 13/24 com a mana
+# incompleta. Coração: 1/12 (1/24 com a mana incompleta, as estrelas têm prioridade). "heart" no dado troca a chance (Creeper 50%, segmento do
+# Eater of Worlds 25%, The Hungry 100%). O chefe inteiro solta 5 a 9 corações (boss_hearts).
+func drop_pickups(d: Dictionary, at: Vector3) -> void:
+	var need_hp: bool = player.hp < player.max_hp
+	if d.get("boss") and not d.has("heart"):
+		return
+	if not d.has("heart") and not d.drops.any(func(x): return x.item == "copper_coin"):
+		return
+	var need_mana: bool = player.mana < player.mana_cap()
+	if need_mana and not d.has("heart") and rng.randf() < 13.0 / 24.0:
+		spawn_drop(Items.ids.star, 1, at)
+	if need_hp and rng.randf() < d.get("heart", 1.0 / 24.0 if need_mana else 1.0 / 12.0):
+		spawn_drop(Items.ids.heart, 1, at)
+
+
+func boss_hearts(at: Vector3) -> void:
+	for i in rng.randi_range(5, 9):
+		spawn_drop(Items.ids.heart, 1, at + Vector3(rng.randf_range(-1.5, 1.5), 0.5, rng.randf_range(-1.5, 1.5)))
+
+
 # Primeira vez que um chefe morre: o do mal libera o meteorito, o Skeletron abre o dungeon.
 func boss_down(group: String) -> void:
 	if group in ["eater_of_worlds", "brain_of_cthulhu"] and not world.evil_boss_down:
@@ -458,8 +514,11 @@ func spawn_worm(d: Dictionary, pos: Vector3) -> Node3D:
 	var prev := spawn_enemy(d, pos)
 	prev.heading = dir
 	var head := prev
+	var back := Vector3(dir.x, 0, dir.z).normalized()   # a fila (67 segmentos = ~80 blocos) se estica na horizontal: na diagonal o rabo cairia para fora do mundo
+	if back == Vector3.ZERO:
+		back = Vector3.BACK
 	for i in range(1, int(d.worm.segments)):
-		var e := spawn_enemy(def_named(d.worm.tail if i == d.worm.segments - 1 else d.worm.body), pos - dir * d.size[0] * 0.8 * i)
+		var e := spawn_enemy(def_named(d.worm.tail if i == d.worm.segments - 1 else d.worm.body), pos - back * d.size[0] * 0.8 * i)
 		e.follow = prev
 		prev = e
 	return head

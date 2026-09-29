@@ -480,6 +480,11 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false) -> int:
 			for o in entities.enemies.duplicate():
 				if o != self and o.def.get("group") == def.group:
 					entities.remove_enemy(o)
+		entities.drop_pickups(def, position + Vector3.UP * 0.3)
+		if def.ai == "eye_of_cthulhu":
+			entities.world.eoc_down = true
+		if def.get("boss") and (not def.has("group") or entities.group_count(def.group) <= 1):
+			entities.boss_hearts(position)   # o chefe inteiro caiu (o último segmento, se for grupo)
 		if def.has("group") and entities.group_count(def.group) <= 1:   # o último segmento solta o prêmio do chefe
 			entities.boss_down(def.group)
 			for d in entities.final_drops(def.group):

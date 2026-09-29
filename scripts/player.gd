@@ -42,7 +42,6 @@ const FALL_SAFE := 25          # queda segura em tiles (≈ 15 blocos); acima, 1
 const BREATH := 23.3           # fôlego debaixo d'água: 200 de fôlego a 1 a cada 7 quadros (wiki Breath meter)
 const BREATH_REFILL := 21.0    # fôlego por segundo ao respirar: 3 de 200 por quadro, cheio em ~1,1 s
 const DROWN := 17.14           # vida por segundo sem fôlego: 2 a cada 7 quadros, direto (sem defesa; wiki Drowning)
-const REGEN_DELAY := 5.0
 const MINE_DECAY := 2.5        # sem golpear o bloco por este tempo, as rachaduras somem
 const TPP_DISTANCE := 4.0      # câmera em 3ª pessoa: distância atrás da cabeça
 const TPP_SHOULDER := 0.6      # e deslocada para a direita, para a mira não ficar sobre a cabeça
@@ -391,8 +390,7 @@ func tick(delta: float) -> void:
 	var rate := (cap / 3.0 + 1.0) * still * (mana / cap * 0.5 + 0.5) * (0.05 if mana_use < 0.5 else 1.0)
 	mana = minf(mana + rate / 2.0 * delta, cap)
 	since_hit += delta
-	if since_hit > REGEN_DELAY:
-		hp = minf(hp + delta * (1.0 + inv.acc_sum("regen") + buff_sum("regen")), max_hp)  # ponytail: 1 de vida/s; a regeneração do Terraria é mais complexa
+	hp = minf(hp + delta * regen_rate(), max_hp)
 
 
 func step(delta: float, wish: Vector3, jump: bool) -> void:
@@ -686,8 +684,26 @@ func hurt(damage: int, dir: Vector3, bounce := true) -> int:   # bounce = false:
 	return taken
 
 
-# Morreu: volta ao spawn com a vida cheia (o mapa marca onde foi).
+# Coração ou estrela pegos do chão (pickup em items.json): curam na hora e não vão para o inventário.
+func pickup(pk: Dictionary) -> void:
+	if pk.has("heal"):
+		var got := mini(int(pk.heal), ceili(max_hp - hp))
+		hp = minf(hp + pk.heal, max_hp)
+		if got > 0 and entities:
+			entities.spawn_text(position + Vector3.UP * (TALL + 0.4), "+%d" % got, Color("#5aff6a"))
+	if pk.has("mana"):
+		mana = minf(mana + pk.mana, mana_cap())
+
+
+# Morreu: solta metade das moedas de cada tipo no lugar (wiki Death, Classic), volta ao spawn com a vida cheia (o mapa marca onde foi).
 func die() -> void:
+	if entities:
+		for k in Inventory.COINS.size():
+			var lost := ceili(inv.coin[k] / 2.0)
+			if lost > 0:
+				inv.coin[k] -= lost
+				entities.spawn_drop(Items.ids[Inventory.COINS[k]], lost, position + Vector3.UP * 0.5)
+		inv.version += 1
 	hp = max_hp
 	death = position
 	position = spawn
@@ -696,6 +712,17 @@ func die() -> void:
 	breath = BREATH
 	fall_top = position.y
 	say("você morreu")
+
+
+# Regeneração de vida em vida/s (wiki Life regeneration): R = arredonda((vidaMax/400 × 0,85 + 0,15) × eRT × (1,25 parado | 0,5 andando)),
+# onde eRT sobe 1 a cada 5 s sem levar dano (até 6 em 30 s) e depois 1 a cada 10 s (9 em 60 s); acessórios e buffs somam por fora (regen em
+# vida/s = R+2 por 1 vida/s) e valem desde o golpe. Vida/s = R / 2.
+func regen_rate() -> float:
+	var t := since_hit * 60.0   # quadros sem dano
+	var ert := floorf(t / 300.0) if t <= 1800.0 else minf(6.0 + floorf((t - 1800.0) / 600.0), 9.0)
+	var moving := Vector2(velocity.x, velocity.z).length() > 0.1 and hook_state != "pull"
+	var r := roundf((max_hp / 400.0 * 0.85 + 0.15) * ert * (0.5 if moving else 1.25))
+	return r / 2.0 + inv.acc_sum("regen") + buff_sum("regen")
 
 
 # Mana máxima de verdade: a de base mais o que os acessórios dão (Band of Starpower +40).

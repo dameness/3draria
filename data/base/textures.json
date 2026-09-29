@@ -276,5 +276,17 @@
 	"hellbat": {"wiki": "Hellbat"},
 	"pixie": {"wiki": "Pixie"},
 	"unicorn": {"wiki": "Unicorn"},
+	"heart": {"wiki": "Heart", "pattern": "blob", "colors": ["#e83a3a", "#a01818", "#ffb0b0"]},
+	"star": {"wiki": "Star", "pattern": "star", "colors": ["#bfe4ff", "#7ab8f0", "#ffffff"], "top_colors": ["#ffffff"]},
+	"healing_potion": {"wiki": "Healing_Potion", "pattern": "blob", "colors": ["#e83a3a", "#a01818", "#d8e8f8"]},
+	"pwnhammer": {"wiki": "Pwnhammer", "pattern": "pickaxe", "colors": ["#e8a040", "#a06820"], "top_colors": ["#6e4b2a"]},
+	"red_slime": {"wiki": "Red_Slime"},
+	"yellow_slime": {"wiki": "Yellow_Slime"},
+	"black_slime": {"wiki": "Black_Slime"},
+	"lava_slime": {"wiki": "Lava_Slime"},
+	"cave_bat": {"wiki": "Cave_Bat"},
+	"skeleton": {"wiki": "Skeleton"},
+	"meteor_head": {"wiki": "Meteor_Head"},
+	"demon": {"wiki": "Demon"},
 	"logo": {"wiki": "Terraria_Steam_Library_logo"}
 }

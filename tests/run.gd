@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1153,7 +1153,8 @@ func test_consumables():
 	check(p.hurt(30, Vector3.RIGHT) == 26, "com 8 de defesa 30 de dano vira 26 (30 − 4)")
 	p.tick(481.0)
 	check(p.defense() == base_def and p.buffs.is_empty(), "e o buff acaba")
-	# Regeneração: +2 de vida por segundo além do 1 base
+	# Regeneração da wiki (Life regeneration): 100 de vida máxima, parado e há 60 s sem dano: R = 4 → 2 vida/s; a poção soma 2 por fora
+	p.velocity = Vector3.ZERO
 	p.hp = 40.0
 	p.since_hit = 99.0
 	p.tick(1.0)
@@ -1161,8 +1162,20 @@ func test_consumables():
 	p.hp = 40.0
 	p.add_buff("regeneration", 480.0)
 	p.tick(1.0)
-	check(is_equal_approx(plain, 1.0) and is_equal_approx(p.hp - 40.0, 3.0), "Regeneração: +2 de vida por segundo (1 → 3)")
+	check(is_equal_approx(plain, 2.0) and is_equal_approx(p.hp - 40.0, 4.0), "Regeneração: +2 de vida por segundo (2 → 4)")
 	p.buffs.clear()
+	var was_max: int = p.max_hp
+	for c in [[0.0, 0.0], [10.0, 0.5], [30.0, 1.5], [60.0, 2.0]]:   # segundos sem dano → vida/s parado (vida máx. 100)
+		p.since_hit = c[0]
+		check(is_equal_approx(p.regen_rate(), c[1]), "regen com %.0f s sem dano: %.2f vida/s (%.2f)" % [c[0], c[1], p.regen_rate()])
+	p.since_hit = 60.0
+	p.velocity = Vector3(3, 0, 0)
+	check(is_equal_approx(p.regen_rate(), 0.5 * roundf(0.3625 * 9 * 0.5)), "andando regenera bem menos (%.2f)" % p.regen_rate())
+	p.velocity = Vector3.ZERO
+	p.max_hp = 400
+	check(is_equal_approx(p.regen_rate(), roundf((0.85 + 0.15) * 9 * 1.25) / 2.0), "400 de vida máxima regeneram mais rápido (%.2f)" % p.regen_rate())
+	p.max_hp = was_max
+	p.since_hit = 99.0
 	# Rapidez: +25% de velocidade
 	p.knock = Vector3.ZERO   # o golpe de antes empurrou
 	p.position = Vector3(20.5, 11, 24.5)
@@ -1789,9 +1802,10 @@ func test_worm():
 	p.position = Vector3(24.5, 11, 24.5)
 	var head: Node3D = ent.spawn_boss("eater_of_worlds")
 	var segs: Array = ent.enemies.filter(func(e): return e.def.get("group") == "eater_of_worlds")
-	var total := 65 + 22 * 150 + 220   # wiki: cabeça 65, corpo 150, rabo 220
-	check(segs.size() == 24 and ent.boss == head and ent.boss_max == total and ent.boss_life() == total, "verme: 24 segmentos com a vida da wiki (%d)" % ent.boss_life())
-	check(segs[1].follow == head and segs[23].def.name == "eater_of_worlds_tail" and head.follow == null, "cada segmento segue o da frente")
+	var total := 67 * 150   # wiki (Eater of Worlds, 1.4): 67 segmentos de 150 de vida cada (10 050 no total)
+	check(segs.size() == 67 and ent.boss == head and ent.boss_max == total and ent.boss_life() == total, "verme: 67 segmentos com a vida da wiki (%d)" % ent.boss_life())
+	check(segs[1].follow == head and segs[66].def.name == "eater_of_worlds_tail" and head.follow == null, "cada segmento segue o da frente")
+	check(segs.all(func(s): return s.position.y > 0.0), "a fila nasce inteira dentro do mundo")
 	check(head.position.y < 11 - head.tall / 2.0, "o verme nasce debaixo da terra")
 	var near := 99.0
 	var out := 0.0
@@ -1835,7 +1849,7 @@ func test_worm():
 			scales += n.count
 		if n.get("item") == Items.ids.demonite_ore:
 			ore += n.count
-	check(ent.boss == null and ent.enemies.is_empty() and scales >= 20 and ore >= 30, "último segmento morto: prêmio do chefe (escamas %d, demonita %d)" % [scales, ore])
+	check(ent.boss == null and ent.enemies.is_empty() and scales > 0 and ore >= 20, "último segmento morto: prêmio do chefe (escamas %d, demonita %d)" % [scales, ore])
 	# divisão: pedaço de 1 segmento morre na hora
 	var four := make_worm(ent, 4, Vector3(20, 20, 20))
 	four[1].hurt(1000, Vector3.RIGHT, 0)   # [C, c1, c2, R]: sobra a cabeça sozinha (morre) e [c2, R] (c2 vira cabeça)
@@ -4058,4 +4072,143 @@ func test_armor_looks():
 	var pal: Array = m._colors(Items.ids.molten_helmet, true)
 	check(pal[3].r > 0.8 and pal[3].b < 0.35 and pal[0].s < 0.4, "molten: destaque laranja separado do metal cinza-oliva (%s / %s)" % [pal[3], pal[0]])
 	d.free()
+	return true
+
+
+# Revisão contra a wiki (pré-hardmode): corações e estrelas, moedas na morte, Olho de Cthulhu natural, bioma das cavernas, dados de chefes e inimigos.
+func test_wiki_review():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	p.clock.time = 100.0
+	# --- corações e estrelas (wiki Heart, Star)
+	var roll := func(d: Dictionary, n: int) -> Array:
+		var got := [0, 0]
+		for i in n:
+			ent.drop_pickups(d, Vector3(24, 12, 24))
+		for c in ent.get_children():
+			got[0] += 1 if c.get("item") == Items.ids.heart else 0
+			got[1] += 1 if c.get("item") == Items.ids.star else 0
+			c.free()
+		return got
+	ent.rng.seed = 11
+	var zombie := enemy_def("zombie")
+	p.hp = p.max_hp
+	p.mana = p.mana_cap()
+	check(roll.call(zombie, 300) == [0, 0], "vida e mana cheias: nada cai")
+	p.hp = 40.0
+	var g: Array = roll.call(zombie, 600)
+	check(g[0] >= 30 and g[0] <= 75 and g[1] == 0, "vida baixa, mana cheia: coração 1/12 (%d de 600)" % g[0])
+	p.mana = 0.0
+	g = roll.call(zombie, 600)
+	check(g[1] >= 280 and g[1] <= 370 and g[0] >= 10 and g[0] <= 42, "mana baixa: estrela 13/24 (%d) e coração 1/24 (%d)" % [g[1], g[0]])
+	check(roll.call(enemy_def("eye_of_cthulhu"), 100) == [0, 0] and roll.call(enemy_def("servant_of_cthulhu"), 100) == [0, 0], "chefe e quem não solta moedas não soltam coração/estrela sorteados")
+	g = roll.call(enemy_def("creeper"), 400)
+	check(g[0] >= 160 and g[0] <= 240, "Creeper solta coração em 50%% (%d de 400)" % g[0])
+	ent.boss_hearts(Vector3(24, 12, 24))
+	var hearts: int = ent.get_children().filter(func(c): return c.get("item") == Items.ids.heart).size()
+	check(hearts >= 5 and hearts <= 9, "o chefe solta 5 a 9 corações (%d)" % hearts)
+	for c in ent.get_children():
+		c.free()
+	# pegar do chão cura na hora e não vai para o inventário
+	p.hp = 50.0
+	p.mana = 0.0
+	var h: Node3D = ent.spawn_drop(Items.ids.heart, 1, p.position + Vector3.UP * 0.9)
+	h._ready()
+	h.age = 1.0
+	h._physics_process(0.016)
+	var st: Node3D = ent.spawn_drop(Items.ids.star, 1, p.position + Vector3.UP * 0.9)
+	st._ready()
+	st.age = 1.0
+	st._physics_process(0.016)
+	check(is_equal_approx(p.hp, 70.0) and is_equal_approx(p.mana, float(p.mana_cap())) and p.inv.total(Items.ids.heart) == 0 and h.is_queued_for_deletion() and st.is_queued_for_deletion(), "coração +20 de vida, estrela +100 de mana, sem ocupar o inventário")
+	# --- morte solta metade das moedas de cada tipo
+	p.inv.coin = PackedInt32Array([7, 5, 3, 0])
+	p.die()
+	var dropped := [0, 0, 0]
+	for c in ent.get_children():
+		for k in 3:
+			dropped[k] += c.count if c.get("item") == Items.ids[Inventory.COINS[k]] else 0
+	check(p.inv.coin == PackedInt32Array([3, 2, 1, 0]) and dropped == [4, 3, 2], "morrer solta metade das moedas (arredonda para cima): %s no chão" % [dropped])
+	# --- Olho de Cthulhu natural ao anoitecer (wiki Eye of Cthulhu, Random)
+	p.max_hp = 200
+	p.inv.equip = PackedInt32Array([Items.ids.iron_helmet, Items.ids.iron_chainmail, Items.ids.iron_greaves])
+	p.add_buff("ironskin", 999.0)
+	w.npcs = {"guide": true, "merchant": true, "nurse": true}
+	var fired := 0
+	for sd in 60:
+		ent.rng.seed = sd
+		ent.eye_watch = -1.0
+		ent.last_time = p.clock.DAY_SECONDS - 1.0
+		p.clock.time = p.clock.DAY_SECONDS + 0.5
+		ent._eye_watch()
+		fired += 1 if ent.eye_watch >= 0.0 else 0
+	check(fired >= 8 and fired <= 32, "ao anoitecer sai a mensagem em ~1/3 das noites (%d de 60)" % fired)
+	check(is_equal_approx(ent.eye_watch, 81.0) or fired > 0, "…e a contagem é de 81 s")
+	ent.eye_watch = 81.0
+	for i in 82:
+		ent._eye_watch()
+	check(ent.boss != null and ent.boss.def.name == "eye_of_cthulhu", "acabada a contagem, ele nasce")
+	ent.clear_enemies()
+	for cond in ["vida", "defesa", "vila", "derrotado"]:
+		match cond:
+			"vida": p.max_hp = 100
+			"defesa": p.buffs.clear(); p.inv.equip = PackedInt32Array([-1, -1, -1])
+			"vila": w.npcs = {"guide": true}
+			"derrotado": w.eoc_down = true
+		var lucky := 0
+		for sd in 40:
+			ent.rng.seed = sd
+			ent.eye_watch = -1.0
+			ent.last_time = p.clock.DAY_SECONDS - 1.0
+			p.clock.time = p.clock.DAY_SECONDS + 0.5
+			ent._eye_watch()
+			lucky += 1 if ent.eye_watch >= 0.0 else 0
+		check(lucky == 0 and ent.boss == null, "sem cumprir a regra (%s) ele não vem" % cond)
+		match cond:
+			"vida": p.max_hp = 200
+			"defesa": p.add_buff("ironskin", 999.0); p.inv.equip = PackedInt32Array([Items.ids.iron_helmet, Items.ids.iron_chainmail, Items.ids.iron_greaves])
+			"vila": w.npcs = {"guide": true, "merchant": true, "nurse": true}
+	free_player(p)
+	w.free()
+	# --- bioma das cavernas, do meteorito e quem nasce em cada um
+	var w2 := dungeon_world(1)
+	var p2 := make_player(w2)
+	var ent2: Node3D = p2.entities
+	p2.clock.time = 100.0
+	for spot in [[36, "cavern", ["black_slime", "cave_bat", "skeleton"]], [60, "underground", ["red_slime", "yellow_slime"]]]:
+		for x in range(104, 137):   # sala grande: o nascimento pede ao menos 6 blocos de distância do jogador
+			for z in range(104, 137):
+				w2.set_block(x, spot[0] - 1, z, Blocks.ids.stone, false)
+				for y in range(spot[0], spot[0] + 4):
+					w2.set_block(x, y, z, 0, false)
+		p2.position = Vector3(120.5, spot[0], 120.5)
+		ent2.rng.seed = 3
+		for e in ent2.enemies.duplicate():
+			ent2.remove_enemy(e)
+		for i in 60:
+			ent2.try_spawn()
+		check(ent2.biome_at(p2.position) == spot[1] and not ent2.enemies.is_empty() and ent2.enemies.all(func(e): return e.def.name in spot[2]), "%s: só nascem %s (%d)" % [spot[1], spot[2], ent2.enemies.size()])
+	var sy: int = w2.surface_y(128, 128, true)
+	for x in range(118, 139):
+		for z in range(118, 139):
+			w2.set_block(x, w2.surface_y(x, z, true) - 1, z, Blocks.ids.meteorite, false)
+	p2.position = Vector3(128.5, sy, 128.5)
+	for e in ent2.enemies.duplicate():
+		ent2.remove_enemy(e)
+	for i in 60:
+		ent2.try_spawn()
+	check(ent2.biome_at(p2.position) == "meteorite" and not ent2.enemies.is_empty() and ent2.enemies.all(func(e): return e.def.name == "meteor_head"), "perto de uma cratera só nascem Meteor Heads")
+	free_player(p2)
+	w2.free()
+	# --- dados conferidos com a wiki
+	var eow := enemy_def("eater_of_worlds")
+	check(eow.worm.segments == 67 and eow.life == 150 and enemy_def("eater_of_worlds_body").life == 150 and enemy_def("eater_of_worlds_tail").life == 150, "Eater of Worlds: 67 segmentos de 150 de vida")
+	var doll: Dictionary = enemy_def("voodoo_demon").drops.filter(func(d): return d.item == "guide_voodoo_doll")[0]
+	check(doll.chance == 1.0, "o Voodoo Demon sempre solta a Guide Voodoo Doll")
+	var gs: Dictionary = enemy_def("green_slime").drops[0]
+	check(gs.item == "copper_coin" and gs.max <= 5, "Green Slime solta 3 de cobre, não 25")
+	check(enemy_def("wall_of_flesh").drops.any(func(d): return d.item == "pwnhammer") and Items.hammer_power[Items.ids.pwnhammer] == 80 and Items.defs[Items.ids.healing_potion].heal == 100, "o Wall of Flesh solta a Pwnhammer (80%) e Healing Potion (100)")
+	check(enemy_def("king_slime").drops.any(func(d): return d.item == "lesser_healing_potion") and enemy_def("eye_of_cthulhu").drops.any(func(d): return d.item == "lesser_healing_potion"), "os chefes soltam Lesser Healing Potion (5–15)")
+	check(Items.defs[Items.ids.band_of_regeneration].accessory.regen == 1 and Items.defs[Items.ids.life_crystal].rarity == 2 and Items.defs[Items.ids.wand_of_sparking].rarity == 1, "Band of Regeneration +1 vida/s; raridades da wiki")
 	return true

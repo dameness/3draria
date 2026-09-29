@@ -152,7 +152,7 @@ static func save_world(world, player, clock, path: String) -> Error:
 	for k in world.edited:
 		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
 	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed,
-		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
+		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "eoc_down": world.eoc_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
 		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "npcs": world.npcs, "homes": world.homes, "test": world.test_world})
 
 
@@ -175,6 +175,7 @@ static func load_world(world, player, clock, path: String) -> bool:
 	clock.time = data.time
 	world.orbs_broken = data.get("orbs", 0)
 	world.evil_boss_down = data.get("evil_down", false)
+	world.eoc_down = data.get("eoc_down", false)
 	world.meteor_due = data.get("meteor_due", false)
 	world.skeletron_down = data.get("skeletron_down", false)
 	world.hardmode = data.get("hardmode", false)

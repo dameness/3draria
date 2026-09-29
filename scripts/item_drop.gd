@@ -52,6 +52,12 @@ func _physics_process(delta: float) -> void:
 	var to: Vector3 = p.position + Vector3.UP * 0.9 - position
 	if age > DELAY and to.length() < MAGNET:
 		if to.length() < PICKUP:
+			var pk: Dictionary = Items.defs[item].get("pickup", {})
+			if not pk.is_empty():   # coração / estrela: curam na hora
+				p.pickup(pk)
+				Sfx.play(entities, "pickup", p.position + Vector3.UP, -8.0)
+				queue_free()
+				return
 			var before := count
 			count = p.inv.add(item, count)
 			if count < before:
