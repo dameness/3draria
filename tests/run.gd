@@ -2609,6 +2609,7 @@ func test_item_model():
 	var H = load("res://scripts/held_item.gd")
 	check(H.style(Items.ids.copper_shortsword) == "thrust" and H.style(Items.ids.wooden_bow) == "shoot", "estilo: espada curta estoca, arco atira")
 	check(H.style(Items.ids.copper_pickaxe) == "swing" and H.style(Items.ids.dirt) == "hold", "estilo: picareta golpeia, bloco só segura")
+	check(H.style(Items.ids.musket) == "shoot" and H.style(Items.ids.space_gun) == "shoot", "estilo: arma de fogo e Space Gun atiram (sem arco de golpe)")
 	check(H.pose("swing", 0) != H.pose("swing", 0.5) and H.pose("swing", 1).origin == H.REST, "golpe anima e volta à mão")
 	check(H.pose("hold", 0.3) == Transform3D(Basis(), H.REST), "segurar não anima")
 	Atlas.texture_cache.clear()

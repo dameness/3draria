@@ -77,7 +77,7 @@ static func style(id: int) -> String:
 	var d: Dictionary = Items.defs[id]
 	if d.has("use_style"):
 		return d.use_style
-	if d.has("ammo"):
+	if d.has("ammo") or (d.get("sprite_angle", 45.0) == 0.0 and d.get("damage", 0) > 0):   # arco, arma de fogo (sprite deitado)
 		return "shoot"
 	if d.get("damage", 0) > 0 or Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or d.has("bucket"):
 		return "swing"
@@ -206,4 +206,7 @@ func _show(id: int) -> void:
 			mesh.transform = Transform3D(Basis(Vector3.BACK, deg_to_rad(90.0 - ang)), Vector3.ZERO)
 			mesh.rotate_object_local(Vector3.UP, deg_to_rad(-25))
 		_:
-			mesh.transform = Transform3D(Basis(Vector3.UP, deg_to_rad(-25)), -aabb.get_center().rotated(Vector3.UP, deg_to_rad(-25)))
+			# arma de fogo: o cano aponta para a mira (o sprite visto por trás, espelhado); arco/poção/gancho: sobem para não sair da tela
+			var yaw := 150.0 if Items.defs[id].get("sprite_angle", 45.0) == 0.0 and st == "shoot" else -25.0
+			var basis := Basis(Vector3.UP, deg_to_rad(yaw))
+			mesh.transform = Transform3D(basis, -(basis * aabb.get_center()) + Vector3(0, aabb.size.y * 0.22 + 0.04, 0))

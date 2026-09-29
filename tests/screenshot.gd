@@ -92,6 +92,7 @@ const SHOTS := [
 	{"name": "mao_gancho", "item": "grappling_hook", "look": Vector2(0.5, -0.12)},
 	{"name": "mao_pocao", "item": "mana_potion", "look": Vector2(0.5, -0.12)},
 	{"name": "mao_espingarda", "item": "musket", "look": Vector2(0.5, -0.12)},
+	{"name": "mao_space_gun", "item": "space_gun", "look": Vector2(0.5, -0.12)},
 	{"name": "mao_vilethorn", "item": "vilethorn", "look": Vector2(0.5, -0.12)},
 	{"name": "teste_spawn", "testworld": true, "look": Vector2(0, -0.12)},
 	{"name": "teste_baus", "testworld": true, "from": Vector3(0, 0, -2), "look": Vector2(0, -0.05)},
