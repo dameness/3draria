@@ -261,6 +261,7 @@ func spawn_boss(n: String) -> Node3D:
 			var c := spawn_enemy(def_named(d.minion), boss.position + Vector3(rng.randf_range(-3, 3), rng.randf_range(-1, 3), rng.randf_range(-3, 3)))
 			c.follow = boss
 	boss_max = boss_life()
+	Sfx.play(self, "boss", player.position, 0.0)
 	return boss
 
 

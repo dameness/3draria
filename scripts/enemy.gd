@@ -376,6 +376,7 @@ func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 	var taken := maxi(1, dmg - ceili(defense / 2.0))
 	hp -= taken
 	flash = FLASH_TIME
+	Sfx.play(entities, "die" if hp <= 0 else "hit", position)
 	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ffa050"))
 	var blood := Color(def.get("blood", def.color))
 	var away := Vector3(dir.x, 0.4, dir.z).normalized()

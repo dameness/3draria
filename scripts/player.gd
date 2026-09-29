@@ -359,6 +359,7 @@ func hurt(damage: int, dir: Vector3) -> int:
 	iframes = IFRAMES
 	since_hit = 0.0
 	shake = 1.0
+	Sfx.play(entities, "hurt", position + Vector3.UP, 0.0)
 	knock = Vector3(dir.x, 0, dir.z).normalized() * 6.0
 	velocity.y = 5.0
 	if hp <= 0:
@@ -509,6 +510,7 @@ func break_target() -> void:
 	mine_damage += damage
 	if mine_damage < 100.0:
 		Fx.dust(entities, face, color, 7, normal)
+		Sfx.play(entities, "stone" if Blocks.mine[b] <= 1.0 else "dig", face)
 		if hard:
 			Fx.sparks(entities, face, Color("#ffe27a"), 2, normal)
 		shake = maxf(shake, 0.15)
@@ -522,6 +524,7 @@ func break_target() -> void:
 	if Items.drop[b] != -1:
 		entities.spawn_drop(Items.drop[b], 1, Vector3(p) + Vector3(0.5, 0.2, 0.5))
 	Fx.chips(entities, Vector3(p) + Vector3.ONE * 0.5, color, 12)
+	Sfx.play(entities, "break", Vector3(p) + Vector3.ONE * 0.5)
 	if hard:
 		Fx.sparks(entities, face, Color("#ffe27a"), 5, normal)
 	shake = maxf(shake, 0.3)
@@ -545,6 +548,7 @@ func place_target() -> void:
 	var inside := p.x >= lo.x and p.x <= hi.x and p.y >= lo.y and p.y <= hi.y and p.z >= lo.z and p.z <= hi.z
 	var there: int = world.get_block(p.x, p.y, p.z)
 	if not inside and (there == 0 or Blocks.soft[there]):  # ar, planta ou líquido: o bloco novo substitui
+		Sfx.play(entities, "place", Vector3(p) + Vector3.ONE * 0.5)
 		world.set_block(p.x, p.y, p.z, Items.places[held()])
 		inv.take_one(slot)
 		place_anim = 0.18

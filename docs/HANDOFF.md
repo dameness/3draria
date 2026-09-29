@@ -100,3 +100,10 @@ com poder mínimo 55, meteorito 50 (wiki *Pickaxe power*). Água + lava deve for
 - Prints rodam a ~8 quadros/s: partículas (0,5–0,9 s) e arco (0,17 s) precisam ser disparados 1–4 quadros antes do print (ver `tests/screenshot.gd`).
 - O classificador de comandos do ambiente às vezes falha de forma transitória: tente de novo.
 - `textures/` e `assets/wiki/` ficam fora do git; `docs/img/` tem os prints de antes/depois (V6–V8).
+
+
+## Atualização (sessão pré-hardmode)
+Feito e testado (commits na branch `claude/vigilant-babbage-nv53lx`; a "claude" pura não pôde ser criada: conflita com `claude/...`): GUI completa (minimapa,
+moedas, munição, acessórios, baús, favoritar, ordenar, animações), Corrupção/Carmesim + Eater of Worlds + Brain, Nightmare/Deathbringer/Molten,
+obsidiana, King Slime, meteorito, Skeletron + dungeon + Velho, Wall of Flesh + hardmode (cobalto/paládio, Hallow), machados, baldes, olhos piscam,
+cores na criação de personagem, sons procedurais. **Precisa de mundo novo** (mudou a geração). Próximo: docs/REVISAO.md.
