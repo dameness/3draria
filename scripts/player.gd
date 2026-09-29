@@ -13,6 +13,9 @@ const JUMP := 9.0        # sobe ~1,4 bloco
 const WALK := 6.6        # 11 tiles/s da wiki (1 bloco = 1,67 tile); não há corrida
 const FLY := 13.5        # voo livre (F)
 const LOOK := 0.003      # radianos por pixel do mouse, vezes Settings.mouse_sens
+const CLICK_BUFFER := 0.12   # um clique durante o fim do golpe anterior vale para o próximo
+const FAN := deg_to_rad(20.0)   # o golpe corpo a corpo testa a mira e mais dois raios a ±20°
+const PAD := 0.25            # ...contra a caixa do inimigo alargada em tanto (dá folga ao mirar)
 const REACH := 5.0
 const SWIM_UP := 4.5       # Espaço na água: sobe a esta velocidade
 const SWIM_SINK := 3.0     # sem Espaço: afunda devagar
@@ -49,6 +52,8 @@ var slot := 0                 # slot da hotbar na mão
 var inventory_open := false
 var menu_open := false        # Configurações (pausa): botão do inventário
 var auto_prev := -1           # slot de antes do Auto Select (Shift); -1 = não trocou
+var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
+var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
 var message := ""             # aviso curto para o HUD
 var message_until := 0
@@ -133,15 +138,21 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseMotion:
 		if not inventory_open and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 			look(e.relative)
-	elif e is InputEventMouseButton and e.pressed:
-		if e.button_index == MOUSE_BUTTON_WHEEL_UP:
-			slot = posmod(slot - 1, Inventory.HOTBAR)
-		elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
-			slot = posmod(slot + 1, Inventory.HOTBAR)
-		elif not inventory_open:
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED   # clique com o mouse solto (voltou do Alt+Tab) recaptura
-			if e.button_index == MOUSE_BUTTON_RIGHT:
-				interact()
+	elif e is InputEventMouseButton:
+		if e.button_index == MOUSE_BUTTON_LEFT:
+			attack_held = e.pressed and not inventory_open
+			if attack_held:
+				attack_buffer = CLICK_BUFFER
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED   # clique com o mouse solto (voltou do Alt+Tab) recaptura
+		elif e.pressed:
+			if e.button_index == MOUSE_BUTTON_WHEEL_UP:
+				slot = posmod(slot - 1, Inventory.HOTBAR)
+			elif e.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				slot = posmod(slot + 1, Inventory.HOTBAR)
+			elif not inventory_open:
+				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+				if e.button_index == MOUSE_BUTTON_RIGHT:
+					interact()
 	elif e is InputEventKey and e.pressed and not e.echo:
 		if e.physical_keycode >= KEY_0 and e.physical_keycode <= KEY_9:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
@@ -189,8 +200,12 @@ func _process(delta: float) -> void:
 		crack.visible = false
 	var free := not (inventory_open or menu_open or map_open)   # mãos livres: sem painel na frente
 	auto_pick(free and Input.is_physical_key_pressed(KEY_SHIFT))
-	if free and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) and cooldown <= 0:
-		use_item()
+	if not free:
+		attack_held = false
+		attack_buffer = 0.0
+	elif attack_held and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		attack_held = false   # o soltar do botão se perdeu (ex.: foi solto sobre um painel)
+	attack(delta)
 
 
 # 1ª pessoa: câmera nos olhos e item na mão da câmera. 3ª pessoa: câmera atrás da cabeça e ao lado do ombro, mais perto se
@@ -383,13 +398,23 @@ func hurt(damage: int, dir: Vector3) -> int:
 	return taken
 
 
-# Botão esquerdo: picareta minera, arma com munição atira, arma golpeia, bloco coloca.
+# Botão esquerdo (wiki Autoswing): cada clique usa o item uma vez (o clique durante o fim do golpe anterior espera até CLICK_BUFFER);
+# segurando, só repete o que tem autoswing (ferramentas, blocos, espadas marcadas), no ritmo do use time / tool speed.
+func attack(delta: float) -> void:
+	attack_buffer = maxf(attack_buffer - delta, 0.0)
+	var id := held()
+	if cooldown <= 0.0 and (attack_buffer > 0.0 or (attack_held and id != -1 and Items.autoswing(id))):
+		attack_buffer = 0.0
+		use_item()
+
+
+# Usa o item da mão: picareta minera, arma com munição atira, arma golpeia, bloco coloca.
 func use_item() -> void:
 	var id := held()
 	if id == -1:
 		return
 	var d: Dictionary = Items.defs[id]
-	cooldown = d.get("use_time", 0.25)
+	cooldown = Items.use_dur(id)
 	if d.has("summon"):
 		summon(d)
 		return
@@ -401,7 +426,7 @@ func use_item() -> void:
 		place_block()
 	elif d.get("damage", 0) > 0 or Items.pick_power[id] > 0 or Items.axe_power[id] > 0:   # a lâmina (ou a picareta) só acerta quando o arco chega à frente (~1/3 do golpe)
 		swing_item = d
-		swing_timer = d.get("use_time", 0.25) * (0.42 if d.get("use_style") == "thrust" else 0.3)
+		swing_timer = cooldown * (0.42 if d.get("use_style") == "thrust" else 0.3)
 
 
 # Balde: vazio pega o líquido da mira (um bloco); cheio derrama um bloco cheio no ar junto do alvo. O líquido depois flui sozinho (liquid.gd).
@@ -428,25 +453,34 @@ func use_bucket(d: Dictionary) -> void:
 		Fx.splash(entities, Vector3(p) + Vector3(0.5, 0.8, 0.5), 8)
 
 
-# Acerta todos os inimigos que a lâmina varre: à frente no plano horizontal (cone de ~75°) na altura do corpo, como o
-# arco do Terraria, ou dentro do cone 3D da mira (para mirar em voadores). O feixe das espadas mágicas sai junto.
+# Inimigos que um golpe corpo a corpo alcança: 3 raios (a mira e ±FAN na horizontal) contra a caixa de cada um (alargada em PAD), até `reach`
+# do olho. Só vale o que está na mira: sem cone largo e sem acertar quem está atrás; quem os raios atravessam em fila leva junto.
+func melee_targets(eye: Vector3, forward: Vector3, reach: float) -> Array:
+	var rays := [forward, forward.rotated(Vector3.UP, FAN), forward.rotated(Vector3.UP, -FAN)]
+	var found := []
+	for e in entities.enemies:
+		var w: float = e.half + PAD
+		var box := AABB(e.position + Vector3(-w, -PAD, -w), Vector3(2.0 * w, e.tall + 2.0 * PAD, 2.0 * w))
+		if box.has_point(eye):   # encostado: vale se olha para ele
+			if forward.dot(box.get_center() - eye) > 0.0:
+				found.append(e)
+			continue
+		for r in rays:
+			var at = box.intersects_ray(eye, r)
+			if at != null and eye.distance_to(at) <= reach:
+				found.append(e)
+				break
+	return found
+
+
+# O golpe acerta o que melee_targets acha. O feixe das espadas mágicas (Terra Blade) sai junto, na direção da mira.
 func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
-	var hits := 0
-	var flat := Vector3(forward.x, 0, forward.z)
-	flat = flat.normalized() if flat.length() > 0.01 else forward
-	for e in entities.enemies.duplicate():
-		var to: Vector3 = e.position + Vector3.UP * e.tall / 2 - eye
-		var flat_to := Vector3(to.x, 0, to.z)
-		var reach: float = d.reach + e.half
-		var in_arc: bool = flat_to.length() < reach and flat.dot(flat_to.normalized()) > 0.25 \
-			and e.position.y < position.y + TALL + 0.5 and e.position.y + e.tall > position.y - 0.4
-		var in_cone: bool = to.length() < reach and forward.dot(to.normalized()) > 0.5
-		if in_arc or in_cone:
-			e.hurt(d.damage, forward, d.knockback)
-			hits += 1
-	if d.has("shoot"):  # espadas como a Terra Blade disparam um feixe a cada golpe
+	var hits := melee_targets(eye, forward, d.reach)
+	for e in hits:
+		e.hurt(d.damage, forward, d.knockback)
+	if d.has("shoot"):
 		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, d.damage, d.knockback)
-	return hits
+	return hits.size()
 
 
 # Invocador de chefe (ex.: Suspicious Looking Eye): só à noite e com um chefe por vez.
@@ -480,7 +514,8 @@ func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
 		say("sem munição (%s)" % d.ammo)
 		return
 	var dmg: int = d.damage + Items.defs[ammo].get("damage", 0)
-	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, d.shoot_speed, dmg, d.knockback)
+	var kb: float = d.knockback + Items.defs[ammo].get("knockback", 0.0)   # wiki Knockback: arma + munição
+	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, d.shoot_speed, dmg, kb)
 
 
 # Um golpe da picareta no bloco da mira, como no Terraria: cada golpe soma ao bloco (poder da picareta × dureza dele) e ele racha

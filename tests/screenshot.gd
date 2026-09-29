@@ -99,7 +99,7 @@ func _process(_delta: float) -> bool:
 		if shots[shot].get("arc", false) and wait == 19:   # um golpe inteiro de uma vez (o print roda a poucos quadros por segundo)
 			var hand: Node3D = player.get_node("Camera/Hand")
 			var model: Node3D = player.get_node("Model")
-			var use: float = Items.defs[player.held()].use_time
+			var use: float = Items.use_dur(player.held())
 			for i in 10:
 				player.cooldown = use * (1.0 - 0.75 * i / 9.0)
 				if player.third_person:

@@ -11,7 +11,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | B4 | Iluminação estranha (tochas cortam na borda do chunk; mão clara em caverna) | ✅ |
 | 1 | Árvore cai inteira (madeira por bloco, acorn, muda) | ✅ |
 | 2 | Binds do Terraria (Esc, Settings, botão esquerdo coloca, Shift; H/Q/J/B vêm com poções e mana) | ✅ |
-| 3 | Ataque: use time, autoswing só onde a wiki diz, mira exata, tool speed | ⬜ |
+| 3 | Ataque: use time, autoswing só onde a wiki diz, mira exata, tool speed | ✅ |
 | 4 | Danos da wiki (variância, crítico, defesa, recuo) + martelos | ⬜ |
 | 5 | Voo: modo criativo (F) separado das asas (acessório) | ⬜ |
 | 6 | Loot: baús por camada, Life Crystal, poções e buffs | ⬜ |
@@ -172,7 +172,7 @@ Ctrl+clique joga no lixo (`Inventory.quick_trash`, favorito não vai); F10 escon
 `test_binds` (eventos sintéticos, Auto Select, lixeira, sensibilidade, gravar/ler/limitar as opções) e, na integração, baú com botão
 direito + Esc, painel Configurações com os controles, F10/F11. Prints: `inventario` (botão Configurações) e `config`.
 
-## 3 — Ataque: use time, autoswing e mira
+## 3 — Ataque: use time, autoswing e mira ✅
 
 **Ponto do dono:** rápido demais, sem mirar onde aponto → use time da wiki, só clicando, cone/raycast da mira.
 **Hoje:** `player.gd:_process` chama `use_item()` a cada quadro enquanto o botão esquerdo está apertado e `cooldown <= 0`: **tudo repete**.
@@ -192,6 +192,16 @@ quadros = 0,25 s, hoje 0,383; ferro 13, prata 11, platina 15, nightmare 15, molt
 4. Recuo de projétil = recuo da arma + recuo da munição.
 **Teste/print:** `test_attack`: segurar o botão com espada larga dá 1 golpe; com picareta repete a cada `tool_speed`; inimigo a 40° da
 mira não é acertado, na mira sim; 3 raios pegam 2 inimigos alinhados. Print `arco` de novo.
+
+**Feito:** `items.json`: `autoswing: true` só nas picaretas, machados, Enchanted Sword, Terra Blade e espadas de cobalto/paládio (tabela Cargo da
+wiki; blocos, tochas, mudas e baldes têm por padrão) e `tool_speed` (quadros da tabela Tool speed: cobre 15, estanho 14, ferro 13, chumbo 12, prata 11,
+tungstênio 19, ouro 17, platina 15, Nightmare 15, Deathbringer 14, Molten 18, cobalto 13, paládio 12; machados 21/20/19/19/18/18/18/17); recuo do
+arco de madeira 0 e da flecha 2. `Items.use_dur` (tool speed ou use time) é o ciclo do golpe e da animação; `Items.autoswing`. `player.gd`: o botão
+esquerdo é evento (`attack_held`, `attack_buffer` de 0,12 s) e `attack()` usa o item uma vez por clique e repete só com autoswing; o golpe corpo a corpo
+(`melee_targets`) usa 3 raios (mira e ±20°) contra a caixa do inimigo alargada em 0,25, dentro do alcance da arma: sem cone largo, nada atrás; recuo do
+projétil = arma + munição. Como o Terraria, a picareta/machado também bate em inimigo no ritmo do tool speed (a wiki usa o use time para isso; dano
+de ferramenta é baixo, sem ajuste). Testes: `test_attack` (autoswing/use_dur pela wiki, segurar dá 1 uso sem autoswing, 8 golpes em 2 s com a picareta de
+cobre, buffer, mira/leque/fila/slime baixo, recuo 2 e 4) + o botão esquerdo de verdade na integração. Prints: `arco`, `minera`.
 
 ## 4 — Danos da wiki
 

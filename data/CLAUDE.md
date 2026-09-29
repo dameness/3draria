@@ -35,12 +35,15 @@ Todo bloco sólido e quebrável vira item automaticamente (ícone = textura late
 `breakable: false`: não viram item.
 
 ## items.json (itens que não são bloco)
-`{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
+`{name, icon, stack?=9999, rarity?=0, pick_power?, use_time? (s), tool_speed? (quadros de 1/60 s), autoswing? (bool), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
 `ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
 `sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
 flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glow, trail, particles} (cores).
 `use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).
-Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` golpeia.
+Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` golpeia; `places` coloca. Um clique = um uso; segurar repete só com
+`autoswing` (padrão true para quem coloca bloco e para baldes; picaretas, machados e as espadas da wiki marcam no dado). `use_time` é o use time da wiki
+(dica e ciclo das armas); `tool_speed` é o intervalo entre golpes no bloco (picareta/machado) e vira o ciclo da ferramenta (`Items.use_dur`).
+Recuo de flecha soma ao da arma (`knockback` na munição).
 
 Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus}}`.
 

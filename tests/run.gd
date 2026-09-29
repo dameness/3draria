@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1043,6 +1043,109 @@ func test_binds():
 	Settings.volume = 1.0
 	Settings.mouse_sens = 1.0
 	p.cam.free()
+	free_player(p)
+	w.free()
+	return true
+
+
+# Usos que o item dá com o botão esquerdo apertado (só o clique inicial, sem soltar) durante `seconds`.
+func hold_uses(p: Node3D, item: String, seconds: float) -> int:
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids[item], 1)
+	p.slot = 0
+	p.cooldown = 0.0
+	p.attack_held = true
+	p.attack_buffer = p.CLICK_BUFFER
+	var n := 0
+	for i in int(seconds * 60):
+		var before: float = p.cooldown
+		p.attack(1.0 / 60)
+		n += int(p.cooldown > before)
+		p.cooldown -= 1.0 / 60
+	p.attack_held = false
+	p.attack_buffer = 0.0
+	return n
+
+
+# Ataque como o do Terraria: um clique = um uso (com buffer de 0,12 s), segurar só repete o que tem autoswing, no ritmo do use time (armas)
+# ou do tool speed (picareta e machado), e a mira decide quem apanha (3 raios em leque contra a caixa do inimigo).
+func test_attack():
+	for n in ["copper_pickaxe", "copper_axe", "platinum_pickaxe", "terra_blade", "enchanted_sword", "cobalt_sword", "dirt", "torch", "empty_bucket", "acorn"]:
+		check(Items.autoswing(Items.ids[n]), n + " tem autoswing (wiki)")
+	for n in ["wooden_sword", "copper_shortsword", "iron_broadsword", "lights_bane", "blood_butcherer", "wooden_bow", "demon_bow", "suspicious_looking_eye"]:
+		check(not Items.autoswing(Items.ids[n]), n + " exige um clique por uso (wiki)")
+	check(is_equal_approx(Items.use_dur(Items.ids.copper_pickaxe), 15.0 / 60.0) and is_equal_approx(Items.use_dur(Items.ids.copper_axe), 21.0 / 60.0) and is_equal_approx(Items.use_dur(Items.ids.wooden_sword), 0.33), "ciclo: tool speed nas ferramentas (15 e 21 quadros), use time no resto")
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	check(hold_uses(p, "iron_broadsword", 3.0) == 1 and hold_uses(p, "wooden_sword", 3.0) == 1, "sem autoswing: segurar o botão dá um uso só")
+	var n := hold_uses(p, "copper_pickaxe", 2.0)
+	check(n >= 7 and n <= 8, "picareta de cobre segurada: um golpe a cada 15 quadros, ~8 em 2 s (%d)" % n)
+	n = hold_uses(p, "copper_axe", 2.0)
+	check(n >= 5 and n <= 6, "machado de cobre: um golpe a cada 21 quadros, ~6 em 2 s (%d)" % n)
+	n = hold_uses(p, "terra_blade", 2.0)
+	check(n >= 6 and n <= 7, "Terra Blade (autoswing): a cada 18 quadros, ~7 em 2 s (%d)" % n)
+	# clique no fim do golpe anterior espera (buffer); cedo demais se perde
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.iron_broadsword, 1)
+	p.slot = 0
+	for lag in [[0.08, 1], [0.30, 0]]:
+		p.cooldown = lag[0]
+		p.attack_buffer = p.CLICK_BUFFER
+		n = 0
+		for i in 40:
+			var before: float = p.cooldown
+			p.attack(1.0 / 60)
+			n += int(p.cooldown > before)
+			p.cooldown -= 1.0 / 60
+		check(n == lag[1], "clique %.2f s antes de o golpe acabar: %s (buffer de %.2f s)" % [lag[0], "atendido" if lag[1] == 1 else "perdido", p.CLICK_BUFFER])
+	# clique e soltar no mesmo quadro ainda bate uma vez, mesmo com autoswing
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.cooldown = 0.0
+	p.attack_held = false
+	p.attack_buffer = p.CLICK_BUFFER
+	p.attack(1.0 / 60)
+	check(p.cooldown > 0.0, "um clique rápido (soltou antes do quadro) ainda usa o item")
+	# mira: quem está na frente, dentro do alcance, apanha; o resto não
+	p.position = Vector3(24.5, 11, 24.5)
+	var eye: Vector3 = p.position + Vector3.UP * p.EYE
+	var at := func(v: Vector3, n: String = "zombie") -> Node3D:
+		var e: Node3D = ent.spawn_enemy(enemy_def(n), v)
+		e._ready()
+		return e
+	var z: Node3D = at.call(Vector3(26.5, 11, 24.5))
+	check(p.melee_targets(eye, Vector3.RIGHT, 2.5) == [z], "o inimigo na mira, a 2 blocos, é acertado")
+	check(p.melee_targets(eye, Vector3.LEFT, 2.5).is_empty(), "o que está atrás não é")
+	check(p.melee_targets(eye, Vector3.RIGHT, 1.2).is_empty(), "e o que está além do alcance também não")
+	z.position = eye + Vector3.RIGHT.rotated(Vector3.UP, deg_to_rad(15)) * 2.0
+	z.position.y = 11
+	check(p.melee_targets(eye, Vector3.RIGHT, 2.5) == [z], "15° fora da mira ainda é acertado (o leque)")
+	z.position = eye + Vector3.RIGHT.rotated(Vector3.UP, deg_to_rad(45)) * 2.0
+	z.position.y = 11
+	check(p.melee_targets(eye, Vector3.RIGHT, 2.5).is_empty(), "45° fora da mira não é (sem cone largo)")
+	z.position = Vector3(26.5, 11, 24.5)
+	var z2: Node3D = at.call(Vector3(27.5, 11, 24.5))
+	check(p.melee_targets(eye, Vector3.RIGHT, 3.2).size() == 2 and p.melee_targets(eye, Vector3.RIGHT, 2.0) == [z], "dois em fila: o alcance da arma decide quantos")
+	var hp0: int = z.hp
+	var hp1: int = z2.hp
+	p.swing(Items.defs[Items.ids.terra_blade], eye, Vector3.RIGHT)
+	check(z.hp < hp0 and z2.hp < hp1, "o golpe fere todos os alcançados")
+	ent.remove_enemy(z)
+	ent.remove_enemy(z2)
+	var s: Node3D = at.call(Vector3(27.0, 11, 24.5), "green_slime")
+	check(p.melee_targets(eye, Vector3.RIGHT, 3.2).is_empty(), "slime baixinho a 2,5 blocos: mirando reto por cima dele não acerta")
+	check(p.melee_targets(eye, (s.position + Vector3(0, 0.4, 0) - eye).normalized(), 3.2) == [s], "olhando para ele, acerta")
+	ent.remove_enemy(s)
+	# recuo do projétil = arma + munição (wiki Knockback)
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.wooden_arrow, 2)
+	p.inv.add(Items.ids.unholy_arrow, 2)
+	p.shoot(Items.defs[Items.ids.wooden_bow], eye, Vector3.RIGHT)
+	check(is_equal_approx(ent.get_children().back().knockback, 2.0), "arco de madeira (0) + flecha de madeira (2) = recuo 2")
+	p.inv.take_ammo("arrow")
+	p.shoot(Items.defs[Items.ids.demon_bow], eye, Vector3.RIGHT)
+	check(is_equal_approx(ent.get_children().back().knockback, 4.0), "Demon Bow (1) + Unholy Arrow (3) = recuo 4")
 	free_player(p)
 	w.free()
 	return true
@@ -2078,6 +2181,18 @@ func integration():
 			for i in 4:
 				player.break_target()
 			check(world.get_block(below.x, below.y, below.z) == 0, "quebrar tira o bloco com a picareta inicial (grama: 3 golpes)")
+			var lmb := InputEventMouseButton.new()   # botão esquerdo de verdade: evento → _process → golpe no bloco da mira, no ritmo do tool speed
+			lmb.button_index = MOUSE_BUTTON_LEFT
+			lmb.pressed = true
+			player._unhandled_input(lmb)
+			player._process(1.0 / 60)
+			check(player.attack_held and is_equal_approx(player.cooldown, 15.0 / 60.0) and player.swing_timer > 0.0, "clicar com a picareta de cobre começa um golpe de 15 quadros")
+			player.tick(0.1)
+			check(player.mine_damage > 0.0 and player.swing_item.is_empty(), "o golpe chega ao bloco da mira no impacto")
+			lmb.pressed = false
+			player._unhandled_input(lmb)
+			check(not player.attack_held, "soltar o botão para de repetir")
+			player.cooldown = 0.0
 			var closed: CanvasLayer = main.get_node("HUD")
 			check(closed.slots[0].visible and not closed.slots[Inventory.HOTBAR].visible and not closed.craft_root.visible and not closed.equip_root.visible and not closed.trash_slot.visible, "inventário fechado: só a hotbar aparece")
 			player.inventory_open = true  # exercita a janela de inventário/criação

@@ -106,7 +106,7 @@ func _process(delta: float) -> void:
 		if id != -1:
 			_show(id)
 	var st := style(id) if id != -1 else "hold"
-	var dur: float = Items.defs[id].get("use_time", 0.25) if id != -1 else 0.25
+	var dur: float = Items.use_dur(id) if id != -1 else 0.25
 	var t: float = 1.0 - player.cooldown / dur if player.cooldown > 0 else 1.0
 	var tr := pose(st, clampf(t, 0, 1))
 	# inércia ao girar a câmera, balanço ao andar e o empurrão de colocar bloco

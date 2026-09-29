@@ -67,6 +67,19 @@ static func _add(def: Dictionary, ic: int, pl: int) -> void:
 	defs.append(def)
 
 
+# Duração de um uso em segundos (o ciclo do golpe e da animação): picareta e machado usam o tool speed da wiki (o intervalo entre golpes
+# no bloco; o use time da ficha é só a dica), o resto o use time.
+static func use_dur(id: int) -> float:
+	var d := defs[id]
+	return d.tool_speed / 60.0 if d.has("tool_speed") else d.get("use_time", 0.25)
+
+
+# Segurar o botão repete o uso (wiki Autoswing): só as ferramentas e armas marcadas nos dados, blocos, tochas, mudas e baldes; o resto exige um clique por uso.
+static func autoswing(id: int) -> bool:
+	var d := defs[id]
+	return d.get("autoswing", places[id] != -1 or d.has("bucket"))
+
+
 static func label(id: int) -> String:
 	return names[id].replace("_", " ")
 
