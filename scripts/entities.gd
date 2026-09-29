@@ -254,7 +254,9 @@ func spawn_boss(n: String) -> Node3D:
 		var at := player.position + Vector3(cos(ang), 0, sin(ang)) * 45.0
 		boss = spawn_enemy(d, Vector3(clampf(at.x, 8.0, 248.0), 0.0, clampf(at.z, 8.0, 248.0)))
 	elif d.has("worm"):
-		boss = spawn_worm(d, player.position + Vector3(cos(ang) * 22, 2, sin(ang) * 22))
+		var at := player.position + Vector3(cos(ang) * 22, 0, sin(ang) * 22)   # nasce debaixo da terra e sobe atrás do jogador
+		at.y = maxf(world.surface_y(floori(at.x), floori(at.z), true) - 6.0, 3.0)
+		boss = spawn_worm(d, at)
 	else:
 		boss = spawn_enemy(d, player.position + Vector3(cos(ang) * 20, 15, sin(ang) * 20))
 		for i in int(d.get("creepers", 0)):   # servos que orbitam o chefe e o protegem

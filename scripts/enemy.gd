@@ -6,6 +6,9 @@ extends Node3D
 const GRAVITY := 28.0
 const JUMP := 8.0
 const FLASH_TIME := 0.25   # o inimigo fica vermelho e volta ao normal neste tempo depois de levar um golpe
+const WORM_GRAVITY := 14.85   # verme no ar: 0,11 px/quadro² da wiki (24,75 tiles/s²) × 0,6 bloco por tile
+const WORM_FREE := 37.0       # a wiki: cabeça a mais de 62,5 tiles (~37 blocos) do jogador voa livre
+const WORM_TURN := 3.0        # rad/s da cabeça dentro do terreno (a wiki não dá o número; tirado do jogo)
 
 var def: Dictionary
 var entities: Node3D
@@ -77,7 +80,7 @@ func _process(delta: float) -> void:
 	if def.ai == "worm":
 		var ahead := (follow.position - position) if follow else velocity   # a frente do segmento: para quem ele segue
 		if ahead.length() > 0.01:
-			model.basis = Basis.looking_at(ahead.normalized(), Vector3.UP)
+			model.basis = orient(model.basis, ahead.normalized(), delta)
 	EnemyModel.animate(model, self, entities.player.eye(), Time.get_ticks_msec() / 1000.0)
 
 
@@ -333,19 +336,90 @@ func creeper(delta: float, to: Vector3) -> void:
 		timer = 0.9
 
 
-# Cabeça: vira devagar para o jogador e atravessa os blocos (por isso circula ao errar). Corpo: mantém a distância do da frente.
+# Cabeça: dentro do terreno escava e vira para o jogador (giro limitado); fora dele, no ar, só cai (arco balístico, gravidade da wiki) até
+# voltar a escavar; a mais de WORM_FREE do jogador voa livre. Corpo: mantém a distância do segmento da frente (a fila segue a cabeça).
 func worm(delta: float, to: Vector3) -> void:
 	if follow == null:
+		var world: Node3D = entities.world
+		var inside: bool = Blocks.solid[world.get_block(floori(position.x), floori(position.y + tall / 2.0), floori(position.z))]
 		if heading == Vector3.ZERO:
-			heading = to.normalized()
-		heading = heading.lerp(to.normalized(), clampf(delta * 1.6, 0.0, 1.0))
-		heading = heading.normalized() if heading.length() > 0.05 else to.normalized()
-		velocity = heading * def.speed
+			heading = to.normalized() if to.length() > 0.01 else Vector3.FORWARD
+		if inside or to.length() > WORM_FREE:
+			if to.length() > 0.01:
+				heading = turn(heading, to.normalized(), WORM_TURN * (1.0 if inside else 0.5) * delta)
+			velocity = heading * def.speed
+		else:
+			velocity.y -= WORM_GRAVITY * delta
+			velocity = velocity.limit_length(def.speed * 1.6)
+			if velocity.length() > 0.5:
+				heading = velocity.normalized()
 		return
 	velocity = Vector3.ZERO
 	var d := position - follow.position
 	var spacing: float = def.size[0] * 0.8
 	position = follow.position + (d.normalized() if d.length() > 0.001 else Vector3.BACK) * spacing
+
+
+# Gira `from` na direção de `to` por no máximo `max_angle` (radianos), pelo menor arco; de frente para trás escolhe um eixo qualquer.
+static func turn(from: Vector3, to: Vector3, max_angle: float) -> Vector3:
+	var ang := from.angle_to(to)
+	if ang < 0.0001:
+		return to
+	var axis := from.cross(to)
+	if axis.length() < 0.001:
+		axis = from.cross(Vector3.UP if absf(from.y) < 0.99 else Vector3.RIGHT)
+	return from.rotated(axis.normalized(), minf(ang, max_angle))
+
+
+# Gira o modelo `b` para a frente `fwd` pelo menor arco, sem rolagem em volta do eixo (`looking_at` com UP dá um flip de ~155° quando a
+# frente fica vertical), e devolve devagar o "cima" do modelo para o do mundo, para a placa das costas ficar por cima.
+static func orient(b: Basis, fwd: Vector3, delta: float) -> Basis:
+	b = Basis(Quaternion((-b.z).normalized(), fwd)) * b
+	var up := Vector3.UP - fwd * fwd.y
+	if up.length() > 0.3:
+		b = Basis(fwd, clampf(b.y.signed_angle_to(up.normalized(), fwd), -delta * 3.0, delta * 3.0)) * b
+	return b.orthonormalized()
+
+
+# Troca o papel do segmento (head, body, tail) pelo def do papel: dano/defesa da wiki e o modelo com a boca ou a ponta do rabo.
+func set_role(role: String) -> void:
+	var head_def: Dictionary = entities.def_named(def.group)   # a cabeça tem o nome do grupo e a tabela `worm`
+	def = head_def if role == "head" else entities.def_named(head_def.worm[role])
+	damage = def.damage
+	defense = def.defense
+	half = def.size[0] / 2.0
+	tall = def.size[1]
+	if model:   # (fora da árvore, nos testes, o modelo ainda não existe)
+		model.queue_free()
+		model = EnemyModel.build(def)
+		model.position.y = tall / 2.0
+		add_child(model)
+		flashing = false
+
+
+# Morreu um segmento: a fila se divide como na wiki. Cabeça morta: quem vinha atrás vira cabeça; corpo morto: a frente vira rabo e o de
+# trás vira cabeça; rabo morto: o da frente vira rabo. Pedaço de um segmento só não sobrevive: morre na hora e solta o prêmio.
+func split_worm() -> void:
+	var back: Node3D = null
+	for o in entities.enemies:
+		if o.follow == self:
+			back = o
+	var lone := []
+	if back:
+		back.follow = null
+		if entities.enemies.any(func(o): return o.follow == back):
+			back.set_role("head")
+			back.velocity = Vector3.ZERO   # a cabeça nova perde o embalo e cai até escavar de novo
+			back.heading = Vector3.ZERO
+		else:
+			lone.append(back)
+	if follow:
+		if follow.follow == null:
+			lone.append(follow)
+		else:
+			follow.set_role("tail")
+	for o in lone:
+		o.hurt(o.hp + o.defense * 2 + 10, Vector3.ZERO, 0.0)
 
 
 func move(delta: float) -> void:
@@ -389,9 +463,8 @@ func hurt(dmg: int, dir: Vector3, knockback: float) -> int:
 		stun = 0.25
 	if hp <= 0:
 		Fx.puff(entities, position + Vector3.UP * tall * 0.5, blood, 12 if not def.get("boss") else 40)
-		for o in entities.enemies:   # verme: quem seguia este segmento vira cabeça de um verme novo
-			if o.follow == self:
-				o.follow = null
+		if def.ai == "worm":
+			split_worm()
 		if def.ai == "skeletron":   # matar a cabeça acaba a luta: as mãos somem
 			for o in entities.enemies.duplicate():
 				if o != self and o.def.get("group") == def.group:

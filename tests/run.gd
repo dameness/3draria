@@ -754,6 +754,14 @@ func test_minimap():
 	return true
 
 
+# Verme com n segmentos (cabeça, corpos e rabo) em fila reta a partir de pos.
+func make_worm(ent: Node3D, n: int, pos: Vector3) -> Array:
+	var d: Dictionary = ent.def_named("eater_of_worlds").duplicate(true)
+	d.worm.segments = n
+	ent.spawn_worm(d, pos)
+	return ent.enemies.filter(func(e): return e.def.get("group") == "eater_of_worlds")
+
+
 func test_worm():
 	var w := floor_world()
 	var p := make_player(w)
@@ -761,22 +769,42 @@ func test_worm():
 	p.position = Vector3(24.5, 11, 24.5)
 	var head: Node3D = ent.spawn_boss("eater_of_worlds")
 	var segs: Array = ent.enemies.filter(func(e): return e.def.get("group") == "eater_of_worlds")
-	check(segs.size() == 24 and ent.boss == head and ent.boss_max == 24 * 150 and ent.boss_life() == 24 * 150, "verme: 24 segmentos de 150 de vida")
+	var total := 65 + 22 * 150 + 220   # wiki: cabeça 65, corpo 150, rabo 220
+	check(segs.size() == 24 and ent.boss == head and ent.boss_max == total and ent.boss_life() == total, "verme: 24 segmentos com a vida da wiki (%d)" % ent.boss_life())
 	check(segs[1].follow == head and segs[23].def.name == "eater_of_worlds_tail" and head.follow == null, "cada segmento segue o da frente")
-	var start := head.position.distance_to(p.position)
-	for i in 60 * 3:
+	check(head.position.y < 11 - head.tall / 2.0, "o verme nasce debaixo da terra")
+	var near := 99.0
+	var out := 0.0
+	var airborne := 0
+	var gravity_ok := true
+	var last_vy := 0.0
+	var turn_ok := true
+	var last_dir: Vector3 = head.heading
+	for i in 60 * 4:
 		for s in segs:
 			s._physics_process(1.0 / 60)
-	check(head.position.distance_to(p.position) < start - 10.0 or head.hp < 150, "a cabeça vai atrás do jogador")
+		near = minf(near, head.position.distance_to(p.position))
+		out = maxf(out, head.position.y)
+		var inside: bool = Blocks.solid[w.get_block(floori(head.position.x), floori(head.position.y + head.tall / 2.0), floori(head.position.z))]
+		if not inside and head.position.distance_to(p.position) < head.WORM_FREE:
+			airborne += 1
+			gravity_ok = gravity_ok and head.velocity.y < last_vy + 0.001   # no ar só cai: a velocidade vertical nunca sobe
+		if not head.heading.is_zero_approx() and not last_dir.is_zero_approx():
+			turn_ok = turn_ok and head.heading.angle_to(last_dir) <= head.WORM_TURN / 60.0 + 0.001
+		last_vy = head.velocity.y
+		last_dir = head.heading
+	check(near < 4.0, "escavando, a cabeça chega ao jogador (%.1f)" % near)
+	check(out > 11 and airborne > 20 and gravity_ok, "sai do chão e no ar só cai, em arco (%d quadros no ar)" % airborne)
+	check(turn_ok, "dentro do terreno o giro da cabeça é limitado")
 	var gap := 0.0
 	for i in range(1, segs.size()):
 		gap = maxf(gap, absf(segs[i].position.distance_to(segs[i].follow.position) - segs[i].def.size[0] * 0.8))
 	check(gap < 0.05, "o corpo mantém a distância do segmento da frente (%.3f)" % gap)
 	segs[10].hurt(1000, Vector3.RIGHT, 5)
-	check(segs[11].follow == null and not ent.enemies.has(segs[10]) and ent.boss == head, "segmento do meio morto: a fila se divide, o de trás vira cabeça")
-	check(ent.boss_life() == 23 * 150, "a barra soma os segmentos vivos")
+	check(segs[11].follow == null and segs[11].def.head and segs[9].def.tail and not ent.enemies.has(segs[10]) and ent.boss == head, "segmento do meio morto: o de trás vira cabeça (com boca), o da frente vira rabo")
+	check(segs[11].damage == 22 and segs[9].defense == 8 and ent.boss_life() == total - 150, "e trocam de papel: dano/defesa da wiki; a barra soma os vivos")
 	head.hurt(1000, Vector3.RIGHT, 5)
-	check(segs[1].follow == null and ent.boss != head and ent.boss != null, "cabeça morta: outro segmento vira o chefe da barra")
+	check(segs[1].follow == null and segs[1].def.head and ent.boss != head and ent.boss != null, "cabeça morta: outro segmento vira cabeça e o chefe da barra")
 	for s in segs:
 		if ent.enemies.has(s):
 			s.hurt(1000, Vector3.RIGHT, 0)
@@ -788,6 +816,44 @@ func test_worm():
 		if n.get("item") == Items.ids.demonite_ore:
 			ore += n.count
 	check(ent.boss == null and ent.enemies.is_empty() and scales >= 20 and ore >= 30, "último segmento morto: prêmio do chefe (escamas %d, demonita %d)" % [scales, ore])
+	# divisão: pedaço de 1 segmento morre na hora
+	var four := make_worm(ent, 4, Vector3(20, 20, 20))
+	four[1].hurt(1000, Vector3.RIGHT, 0)   # [C, c1, c2, R]: sobra a cabeça sozinha (morre) e [c2, R] (c2 vira cabeça)
+	check(not ent.enemies.has(four[0]) and four[2].def.head and four[2].follow == null and ent.enemies.has(four[3]) and ent.enemies.size() == 2, "corpo morto que deixa a cabeça sozinha: ela morre; o outro pedaço ganha cabeça")
+	four[3].hurt(1000, Vector3.RIGHT, 0)   # rabo morto: c2 fica sozinho e morre
+	check(ent.enemies.is_empty(), "rabo morto que deixa um segmento sozinho: ele morre")
+	var two := make_worm(ent, 2, Vector3(20, 20, 20))
+	two[0].hurt(1000, Vector3.RIGHT, 0)
+	check(ent.enemies.is_empty(), "cabeça morta em verme de 2 segmentos: o rabo sozinho morre")
+	var five := make_worm(ent, 5, Vector3(20, 20, 20))
+	five[4].hurt(1000, Vector3.RIGHT, 0)
+	check(five[3].def.tail and ent.enemies.size() == 4, "rabo morto: o segmento da frente vira rabo")
+	for e in ent.enemies.duplicate():
+		ent.remove_enemy(e)
+	# orientação: a frente sobe por cima da vertical e desce do outro lado (a cabeça saindo do chão e voltando): o modelo não pode dar
+	# flip (`looking_at` com UP gira ~180° num quadro quando a frente passa rente à vertical)
+	var EnemyScript = load("res://scripts/enemy.gd")
+	var b := Basis()
+	var old_b := Basis()
+	var worst := 0.0
+	var old_worst := 0.0
+	var prev_q := Quaternion(b)
+	var old_prev := Quaternion(old_b)
+	for i in 361:
+		var phi := deg_to_rad(i * 0.5)   # de 0° a 180° no plano X–Y, com 1 mm de desvio em Z: passa rente à vertical
+		var f := Vector3(cos(phi), sin(phi), 0.001).normalized()
+		if i == 180:
+			f = Vector3.UP   # e uma vez exatamente nela
+		b = EnemyScript.orient(b, f, 1.0 / 60)
+		if i != 180:
+			old_b = Basis.looking_at(f, Vector3.UP)
+		if i > 1:   # os primeiros quadros só alinham o modelo com a frente inicial
+			worst = maxf(worst, prev_q.angle_to(Quaternion(b)))
+			old_worst = maxf(old_worst, old_prev.angle_to(Quaternion(old_b)))
+		prev_q = Quaternion(b)
+		old_prev = Quaternion(old_b)
+	check(worst < deg_to_rad(8.0), "orientação do segmento sem flip (%.1f° por passo)" % rad_to_deg(worst))
+	check(old_worst > deg_to_rad(90.0), "(o looking_at antigo dava flip: %.0f° num passo)" % rad_to_deg(old_worst))
 	w.world_seed = 1
 	p.world.orbs_broken = 0
 	for i in 3:

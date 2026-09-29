@@ -6,7 +6,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | # | Item | Status |
 |---|------|--------|
 | B1 | Minimapa "teleporta" (+ Tab/M) | ✅ |
-| B2 | Verme (Eater of Worlds) bugado | ⬜ |
+| B2 | Verme (Eater of Worlds) bugado | ✅ |
 | B3 | Brain: fase 1 não fica translúcida; barra e nº de Creepers | ⬜ |
 | B4 | Iluminação estranha (tochas cortam na borda do chunk; mão clara em caverna) | ⬜ |
 | 1 | Árvore cai inteira (madeira por bloco, acorn, muda) | ⬜ |
@@ -48,7 +48,7 @@ momento em que foi lida (faixas horizontais quando se sobe/desce) e nada é lemb
 marcador aparece a `(marcador − jogador) × escala` do centro (erro < 1 px) antes e depois de trocar de janela; explorado persiste.
 Prints: `minimapa` (retrato), `minimapa_overlay`, `mapa_cheio`.
 
-## B2 — Verme (Eater of Worlds) "meio bugado"
+## B2 — Verme (Eater of Worlds) "meio bugado" ✅
 
 **Hoje** (`enemy.gd:_process` linhas ~77-80): `Basis.looking_at(frente, Vector3.UP)`. Com a frente quase vertical (cabeça subindo ou
 descendo até o jogador) a rolagem em torno do eixo é indefinida. **Medido** (simulação de 20 s, `worm_view`): o modelo de um segmento
@@ -74,6 +74,11 @@ se o jogador morre ou sai do bioma; cospe Vile Spit (cabeça 1/390 → 1/90 por 
 
 **Teste/print:** `test_worm`: nenhum segmento gira mais de 20° por quadro em 60 s com o jogador andando; a cabeça nova tem boca e a ponta
 tem cone; a cabeça, sob o chão, sai, descreve arco balístico e volta a escavar. Print `verme_vivo` (simulado, câmera de perseguição).
+**Feito:** `Enemy.orient` (menor arco + rolagem devolvida ao "cima" a 3 rad/s; o teste varre a frente rente à vertical: novo 2,9°/passo,
+`looking_at` antigo 178°), `set_role`/`split_worm` (cabeça com boca, rabo com ponta, dano/defesa por papel, pedaço de 1 segmento morre),
+`worm()` com escavação (dentro: giro ≤ 3 rad/s; fora: gravidade 14,85 blocos/s²; >37 blocos: voa livre), o verme nasce a 6 blocos sob a
+superfície, cabeça 65 e rabo 220/def 8. Velocidade da cabeça **15 blocos/s** (wiki ≈ 22,5; abaixo por causa da mira em 3D — só dado em
+`enemies.json`). Vile Spit e "foge se o jogador morre" ficam para depois.
 
 ## B3 — Brain of Cthulhu
 

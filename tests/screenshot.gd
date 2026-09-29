@@ -18,6 +18,7 @@ const SHOTS := [
 	{"name": "mapa_cheio", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "full", "explore": true},
 	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "flying": true},
 	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "flying": true},
+	{"name": "verme_vivo", "look": Vector2(0, 0.3), "worm_sim": true, "time": 300.0},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
 	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
 	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},
@@ -273,6 +274,27 @@ func _setup(s: Dictionary) -> void:
 			k += 1
 			if e.follow:
 				e.velocity = Vector3.ZERO
+	if s.get("worm_sim", false):   # simulação de verdade: o verme escava até o jogador e salta; o print sai no ápice do primeiro salto
+		var wh: Node3D = ent.spawn_boss("eater_of_worlds")
+		var group: Array = ent.enemies.filter(func(e): return e.def.get("group") == "eater_of_worlds")
+		var left := false
+		for step in 60 * 30:
+			for e in group:
+				e._physics_process(1.0 / 60)
+				e._process(1.0 / 60)
+			var c: Vector3 = wh.position + Vector3.UP * wh.tall / 2.0
+			left = left or not Blocks.solid[world.get_block(floori(c.x), floori(c.y), floori(c.z))]
+			if left and wh.velocity.y <= 0.0 and wh.position.y > world.surface_y(floori(c.x), floori(c.z), true) + 2.0:
+				break
+		for e in group:
+			e.set_physics_process(false)
+		player.flying = true   # a câmera se afasta para ver o arco e a fila inteira
+		player.position = wh.position + Vector3(18, -1, 12)
+		var to: Vector3 = (wh.position + group[8].position) / 2.0 - player.eye()
+		player.rotation.y = atan2(-to.x, -to.z)
+		player.pitch = asin(clampf(to.y / to.length(), -1.0, 1.0))
+		player.cam.rotation.x = player.pitch
+		print("  verme no ápice: %s (jogador %s)" % [wh.position.snapped(Vector3.ONE * 0.1), player.position.snapped(Vector3.ONE * 0.1)])
 	if s.has("boss"):
 		var b: Node3D = ent.spawn_boss(s.boss)
 		b.position = player.position + fwd * 12 + Vector3.UP * (0.2 if b.def.ai == "king_slime" else 5.0)
