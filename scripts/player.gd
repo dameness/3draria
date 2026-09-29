@@ -204,6 +204,8 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseButton:
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			attack_held = e.pressed and not inventory_open
+			if e.pressed and inventory_open and inv.cursor_id != -1 and Items.defs[inv.cursor_id].get("consumable", false):
+				consume(0, true)   # Terraria: poção no cursor + clique esquerdo fora dos painéis = bebe
 			if attack_held:
 				attack_buffer = CLICK_BUFFER
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED   # clique com o mouse solto (voltou do Alt+Tab) recaptura
@@ -731,8 +733,8 @@ func use_time(id: int) -> float:
 
 
 # Poção ou espelho do slot i faz o efeito e, sendo consumível, gasta um. false = não deu (Doença da poção).
-func consume(i: int) -> bool:
-	var id: int = inv.item[i]
+func consume(i: int, from_cursor := false) -> bool:   # from_cursor: bebe a poção presa ao mouse (o slot i é ignorado)
+	var id: int = inv.cursor_id if from_cursor else inv.item[i]
 	var d: Dictionary = Items.defs[id]
 	if d.has("heal"):
 		if has_buff("potion_sickness"):
@@ -767,7 +769,12 @@ func consume(i: int) -> bool:
 		say("indo para casa...")
 	if d.get("consumable", false):
 		Sfx.play(entities, "drink", position + Vector3.UP, -4.0)
-		inv.take_one(i)
+		if from_cursor:
+			inv.cursor_count -= 1
+			if inv.cursor_count == 0:
+				inv.cursor_id = -1
+		else:
+			inv.take_one(i)
 	return true
 
 

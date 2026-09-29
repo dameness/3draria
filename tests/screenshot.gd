@@ -85,6 +85,11 @@ const SHOTS := [
 	# na mão (1ª pessoa): uma arma de cada tipo; "swing" congela o golpe
 	{"name": "mao_espada", "item": "copper_shortsword", "look": Vector2(0.5, -0.12)},
 	{"name": "mao_espada_golpe", "item": "iron_broadsword", "look": Vector2(0.5, -0.12), "swing": 0.1},
+	{"name": "golpe_0", "item": "iron_broadsword", "look": Vector2(0.5, -0.12), "swing": 0.38},
+	{"name": "golpe_1", "item": "iron_broadsword", "look": Vector2(0.5, -0.12), "swing": 0.30},
+	{"name": "golpe_2", "item": "iron_broadsword", "look": Vector2(0.5, -0.12), "swing": 0.22},
+	{"name": "golpe_3", "item": "iron_broadsword", "look": Vector2(0.5, -0.12), "swing": 0.14},
+	{"name": "golpe_4", "item": "iron_broadsword", "look": Vector2(0.5, -0.12), "swing": 0.06},
 	{"name": "mao_picareta", "item": "copper_pickaxe", "look": Vector2(0.5, -0.12)},
 	{"name": "mao_machado", "item": "iron_axe", "look": Vector2(0.5, -0.12)},
 	{"name": "mao_arco", "item": "copper_bow", "look": Vector2(0.5, -0.12)},
@@ -149,6 +154,7 @@ func _process(_delta: float) -> bool:
 	wait += 1
 	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
+			player.use_len = 0.4
 			player.cooldown = shots[shot].swing
 		if shots[shot].get("wings", false):   # batendo as asas (a física zera a cada passo; aqui só para o print)
 			player.flapping = true

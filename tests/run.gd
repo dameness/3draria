@@ -1125,6 +1125,18 @@ func test_consumables():
 	p.quick_heal()
 	check(p.message.contains("sem poção"), "sem poção, avisa")
 	p.max_hp = 100
+	# poção presa ao cursor: consome do cursor (clique esquerdo fora dos painéis no jogo)
+	give.call("lesser_healing_potion", 2)
+	p.inv.cursor_id = Items.ids.lesser_healing_potion
+	p.inv.cursor_count = 2
+	p.buffs.clear()
+	p.hp = 30.0
+	p.consume(0, true)
+	check(is_equal_approx(p.hp, 80.0) and p.inv.cursor_count == 1 and p.inv.cursor_id == Items.ids.lesser_healing_potion and p.inv.total(Items.ids.lesser_healing_potion) == 2, "poção no cursor: bebe do cursor, sobra 1")
+	p.buffs.clear()
+	p.consume(0, true)
+	check(p.inv.cursor_id == -1 and p.inv.cursor_count == 0, "a última poção do cursor some")
+	p.buffs.clear()
 	# Ironskin: +8 de defesa, some no fim
 	var base_def: int = p.defense()
 	give.call("ironskin_potion")

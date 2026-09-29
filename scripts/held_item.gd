@@ -88,8 +88,11 @@ static func style(id: int) -> String:
 static func pose(st: String, t: float) -> Transform3D:
 	var tr := Transform3D(Basis(), REST)
 	match st:
-		"swing":
-			tr.basis = Basis(Vector3.RIGHT, lerpf(0.9, -1.3, ease(t, 0.5)))
+		"swing":   # golpe em diagonal: da direita/alto (lâmina de pé, inclinada para fora) para a esquerda/baixo, cruzando a mira em t≈0.3; nos últimos 30% volta ao descanso
+			var w := 1.0 - smoothstep(0.7, 1.0, t)
+			var e := smoothstep(0.0, 0.7, t)
+			tr.basis = Basis(Vector3.BACK, lerpf(-0.6, 1.2, e) * w) * Basis(Vector3.RIGHT, lerpf(0.2, -0.9, e) * w - 1.3 * (1.0 - w))
+			tr.origin += Vector3(lerpf(0.08, -0.3, e), lerpf(0.16, -0.08, e), -0.15 * sin(PI * e)) * w
 		"thrust":
 			tr.origin += Vector3(-0.1, 0.08, -0.35) * sin(PI * t)
 		"shoot":

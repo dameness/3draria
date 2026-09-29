@@ -386,3 +386,10 @@ com troco), Nurse cura o que falta por 1 cobre/ponto. Sem casa/moradia (fica em 
 - Editar personagem existente na tela de criação; mobs mais "adultos" além do boneco (slimes/olhos são de outro estilo).
 - Casa: habitantes andando pelo cômodo e voltando para casa à noite; mais habitantes (Demolitionist etc.); parede de fundo (o jogo não tem).
 - Hardmode/Calamity (docs/ROADMAP.md).
+
+## Feedback do dono (sessão 4)
+- Unicórnio está com cara de pessoa e o Pixie de olho: refazer os modelos dos inimigos (mais tarde, junto com "mobs mais adultos").
+- Golpe da espada torto → golpe diagonal direita/alto → esquerda/baixo (feito, `held_item.gd`).
+- Poção presa ao cursor + clique esquerdo fora dos painéis bebe (feito, `player.consume(_, true)`).
+- Descrições dos itens não idênticas às do Terraria: conferir tooltip a tooltip com a wiki (`ui.gd item_tip`) — pendente.
+- FPS bom; Life Crystal e Mana Star funcionam.
