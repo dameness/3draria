@@ -64,6 +64,14 @@ const SHOTS := [
 	{"name": "escoa", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "creative": true, "breach": 8, "flow": 14},
 	{"name": "escoa_depois", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "creative": true, "breach": 8, "flow": 60},
 	{"name": "submundo", "find": "lava", "find_y": 4, "at": Vector3(6, 6, 0), "look": Vector2(PI / 2, -0.25), "creative": true},
+	{"name": "teste_spawn", "testworld": true, "look": Vector2(0, -0.12)},
+	{"name": "teste_baus", "testworld": true, "from": Vector3(0, 0, -2), "look": Vector2(0, -0.05)},
+	{"name": "teste_blocos", "testworld": true, "from": Vector3(0, 7, -9), "look": Vector2(0, -0.6), "creative": true},
+	{"name": "teste_vitrine", "testworld": true, "from": Vector3(0, 0, 7), "look": Vector2(PI, -0.05)},
+	{"name": "teste_npcs", "testworld": true, "look": Vector2(-2.0, -0.1), "npcs": true},
+	{"name": "teste_painel", "testworld": true, "look": Vector2(0, -0.12), "inventory": true, "test_panel": true},
+	{"name": "teste_bau", "testworld": true, "look": Vector2(0, -0.12), "inventory": true, "test_chest": 0},
+	{"name": "teste_noite", "testworld": true, "time": 1100.0, "look": Vector2(0, -0.12)},
 	{"name": "ceu_manha", "time": 25.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.12},
 	{"name": "ceu_por_do_sol", "time": 850.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.08},
 	{"name": "ceu_lua", "time": 1000.0, "look": Vector2.ZERO, "aim": "moon", "tilt": -0.1},
@@ -79,13 +87,17 @@ var tree_base := Vector3i.ZERO
 
 
 func _initialize() -> void:
+	var only := Array(OS.get_cmdline_user_args())
+	shots = SHOTS.filter(func(s): return only.is_empty() or only.any(func(o): return s.name.contains(o)))
+	if shots.any(func(s): return s.get("testworld", false)):   # as cenas "teste_*" rodam no mundo de teste (um save temporário)
+		SaveGame.worlds_dir = "user://shot_worlds/"
+		DirAccess.make_dir_recursive_absolute(SaveGame.worlds_dir)
+		SaveGame.world_path = SaveGame.test_world()
 	main = load("res://game.tscn").instantiate()
 	world = main.get_node("World")
 	player = main.get_node("Player")
 	root.add_child(main)
 	DirAccess.make_dir_recursive_absolute("res://textures")
-	var only := Array(OS.get_cmdline_user_args())
-	shots = SHOTS.filter(func(s): return only.is_empty() or only.any(func(o): return s.name.contains(o)))
 
 
 func _process(_delta: float) -> bool:
@@ -158,6 +170,8 @@ func _setup(s: Dictionary) -> void:
 	s = s.duplicate()   # SHOTS é constante: a cena pode acertar o olhar (ex.: árvore)
 	player.creative = s.has("up") or s.has("cave") or s.get("creative", false)
 	player.position = player.spawn + Vector3.UP * s.get("up", 0.0)
+	if s.has("from"):
+		player.position = player.spawn + s.from
 	if s.has("find"):  # junto do bloco pedido (água, lava) mais perto do meio do mundo
 		var best := Vector3i.ZERO
 		var bd := 1 << 40
@@ -319,8 +333,15 @@ func _setup(s: Dictionary) -> void:
 	player.inv.add(Items.ids.stone, 40)
 	var ent: Node3D = main.get_node("Entities")
 	for e in ent.enemies.duplicate():
-		ent.remove_enemy(e)
+		if not s.get("testworld", false):   # no mundo de teste ficam os habitantes e a vitrine
+			ent.remove_enemy(e)
 	ent.spawn_timer = 999.0  # sem spawns aleatórios no print
+	if s.get("npcs", false):
+		ent._town()
+		ent._old_man()
+	main.get_node("HUD").test_open = s.get("test_panel", false)
+	if s.has("test_chest"):
+		main.get_node("HUD").open_chest(world.chest_at(TestWorld.chests[s.test_chest].pos))
 	var fwd := Vector3(-sin(s.look.x), 0, -cos(s.look.x))
 	if s.has("npc"):   # o habitante à frente e o painel de conversa aberto
 		var np: Vector3 = player.position + fwd * 3.0

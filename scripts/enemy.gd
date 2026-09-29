@@ -11,6 +11,7 @@ const WORM_FREE := 37.0       # a wiki: cabeça a mais de 62,5 tiles (~37 blocos
 const WORM_TURN := 3.0        # rad/s da cabeça dentro do terreno (a wiki não dá o número; tirado do jogo)
 
 var def: Dictionary
+var display := false   # vitrine do mundo de teste: parado, sem IA nem dano (ainda leva golpe e solta os drops)
 var entities: Node3D
 var hp: int
 var damage: int
@@ -85,6 +86,8 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if display:
+		return
 	think(delta)
 	move(delta)
 	var p: Node3D = entities.player

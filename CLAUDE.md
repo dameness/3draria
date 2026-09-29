@@ -88,6 +88,8 @@ scripts/             setup-godot.sh e um .gd por sistema:
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly/eye_of_cthulhu)
   enemy_model.gd     modelos 3D dos inimigos (eye/slime/humanoid; senão sprite extrudado)
   day_night.gd       ciclo 15+9 min
+  test_world.gd      mundo de teste (menu → "Mundo de teste", flag `test` no .wld): arena plana no nascimento com um baú por categoria (a partir de Items),
+                     todos os blocos no chão, tochas, letreiros; o painel F9 (hud.gd) chama chefes, hora, hardmode, viagem; vitrine de inimigos parados (entities.gd)
   save_game.gd       user://players/*.plr e user://worlds/*.wld (seed, hora, spawn, chunks editados)
   menu.gd            menu inicial com o mundo real ao fundo (câmera girando, dia passando) e o personagem escolhido de pé
                      no gramado: Um jogador → personagem → mundo; no jogo o botão Configurações do inventário pausa (Continuar / Salvar e sair)

@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -2953,6 +2953,68 @@ func integration():
 			dn.depth_timer = 0.0
 			dn._process(0.0)
 			check(is_equal_approx(sun.light_energy, sun_up), "…e voltam ao cheio na superfície")
+			# próxima fase: a cena de novo, agora com o mundo de teste (o save só existe durante o teste)
+			SaveGame.worlds_dir = "user://test_worlds/"
+			DirAccess.make_dir_recursive_absolute(SaveGame.worlds_dir)
+			SaveGame.world_path = SaveGame.test_world()
+			main.free()
+			main = load("res://game.tscn").instantiate()
+			root.add_child(main)
+			world = main.get_node("World")
+			player = main.get_node("Player")
+			started = Time.get_ticks_msec()
+			phase = 4
+		4:   # mundo de teste na cena do jogo: habitantes, vitrine parada, painel F9 e atalhos
+			var pl := player
+			var ent: Node3D = main.get_node("Entities")
+			var hud: CanvasLayer = main.get_node("HUD")
+			var clock: Node = main.get_node("DayNight")
+			check(world.test_world and pl.spawn.is_equal_approx(Vector3(128.5, TestWorld.FLAT + 1, 128.5)), "o jogador nasce na arena de teste")
+			var show: Array = ent.enemies.filter(func(e): return e.display)
+			var want: int = ent.defs.filter(func(d): return not d.get("boss") and d.ai != "npc").size()
+			check(show.size() == want and want >= 13, "vitrine com um de cada inimigo que não é chefe (%d)" % want)
+			var before: Array = show.map(func(e): return e.position)
+			for i in 30:
+				for e in show:
+					e._physics_process(1.0 / 60)
+			check(show.map(func(e): return e.position) == before and pl.hp == pl.max_hp, "a vitrine fica parada e não fere")
+			var dummy: Node3D = show[0]
+			dummy.hurt(3, Vector3.RIGHT, 2.0)
+			check(dummy.hp < dummy.def.life, "quem está na vitrine ainda leva golpe")
+			ent._town()
+			ent._old_man()
+			var has_npc := func(n: String) -> bool: return ent.enemies.any(func(e): return e.def.name == n)
+			check(has_npc.call("guide") and has_npc.call("merchant") and has_npc.call("nurse") and has_npc.call("old_man"), "Guide, Merchant, Nurse e Velho já estão perto do nascimento")
+			check(ent.boss_names().size() == 6 and ent.boss_names().has("wall_of_flesh") and not ent.boss_names().has("creeper"), "o painel lista os 6 chefes (%s)" % str(ent.boss_names()))
+			pl._unhandled_input(key(KEY_F9))
+			check(pl.inventory_open and hud.test_open, "F9 abre o painel de teste")
+			pl._unhandled_input(key(KEY_F9))
+			check(not pl.inventory_open and not hud.test_open, "F9 de novo fecha")
+			var chest_hud: Dictionary = pl.world.chest_at(TestWorld.chests[1].pos)
+			hud.open_chest(chest_hud)
+			check(hud.chest_title.text == TestWorld.chests[1].title, "o painel do baú mostra a categoria")
+			clock.time = 100.0
+			ent.test_boss("eye_of_cthulhu")
+			check(ent.boss != null and clock.is_night(), "chamar o Eye de dia vira noite")
+			ent.test_boss("king_slime")
+			check(ent.boss.def.name == "eye_of_cthulhu", "com um chefe vivo não chama outro")
+			ent.clear_enemies()
+			check(ent.boss == null and ent.enemies.filter(func(e): return not e.display and e.def.ai != "npc").is_empty() and ent.enemies.any(func(e): return e.display), "limpar tira chefes e monstros, deixa habitantes e vitrine")
+			ent.test_boss("wall_of_flesh")
+			check(ent.boss != null and pl.position.y < WorldGen.UNDERWORLD_TOP, "o Wall of Flesh leva o jogador ao submundo")
+			ent.clear_enemies()
+			ent.goto("dungeon")
+			var de: Vector3i = pl.world.gen.dungeon_entrance
+			check(Vector2(pl.position.x, pl.position.z).distance_to(Vector2(de.x, de.z)) < 8.0 and pl.position.y > 40.0, "viagem à entrada do dungeon")
+			ent.goto("spawn")
+			check(pl.position.distance_to(pl.spawn + Vector3.UP * 0.1) < 0.01, "viagem ao nascimento")
+			ent.showcase()
+			check(ent.enemies.filter(func(e): return e.display).size() == want, "chamar a vitrine de novo não duplica")
+			print("mundo de teste: %d baús, %d blocos, %d tochas, %d na vitrine, %d letreiros" % [TestWorld.chests.size(), TestWorld.blocks.size(), TestWorld.torches.size(), want, TestWorld.labels.size()])
+			SaveGame.world_path = ""
+			for f in DirAccess.get_files_at(SaveGame.worlds_dir):
+				DirAccess.remove_absolute(SaveGame.worlds_dir + f)
+			SaveGame.worlds_dir = "user://worlds/"
 			return true
 	return false
 
@@ -3042,4 +3104,92 @@ func test_gen():
 	t = Time.get_ticks_usec()
 	ChunkMesher.build(d, nb, Blocks.textures.size())
 	print("chunk: geração %.1f ms, mesh %.1f ms" % [gen_ms, (Time.get_ticks_usec() - t) / 1000.0])
+	return true
+
+
+# Mundo de teste (menu → "Mundo de teste"): a arena entra na geração, os baús trazem TODOS os itens (por categoria, a partir de Items.names) e a fileira
+# TODOS os blocos; habitantes, vitrine parada e os atalhos do painel F9.
+func test_testworld():
+	TestWorld.build()
+	var seen := {}
+	var titles := {}
+	for k in TestWorld.chests:
+		check(k.item.size() == TestWorld.CHEST_SLOTS and k.count.size() == TestWorld.CHEST_SLOTS, "baú de teste com 40 slots")
+		titles[k.title] = true
+		for i in k.item.size():
+			if k.item[i] != -1:
+				seen[k.item[i]] = seen.get(k.item[i], 0) + 1
+				check(k.count[i] >= 1 and k.count[i] <= Items.stack[k.item[i]], "quantidade dentro da pilha: " + Items.names[k.item[i]])
+	var missing := []
+	for id in Items.names.size():
+		if seen.get(id, 0) != 1:
+			missing.append(Items.names[id])
+	check(missing.is_empty(), "todo item de Items.names está em exatamente um baú (fora do lugar: %s)" % str(missing))
+	check(titles.size() == TestWorld.chests.size() and TestWorld.chests.size() >= 8, "cada baú tem um título próprio (%d baús)" % TestWorld.chests.size())
+	check(TestWorld.category(Items.ids.terra_blade) == "Armas" and TestWorld.category(Items.ids.iron_pickaxe) == "Ferramentas" and TestWorld.category(Items.ids.gold_helmet) == "Armaduras" \
+		and TestWorld.category(Items.ids.hermes_boots) == "Acessórios" and TestWorld.category(Items.ids.mana_potion) == "Poções e consumíveis" and TestWorld.category(Items.ids.wooden_arrow) == "Moedas e munição" \
+		and TestWorld.category(Items.ids.gold_coin) == "Moedas e munição" and TestWorld.category(Items.ids.slime_crown) == "Chefes e invocadores" and TestWorld.category(Items.ids.iron_ore) == "Blocos e minérios" \
+		and TestWorld.category(Items.ids.gold_bar) == "Materiais e barras", "categorias de exemplo")
+	var placed := {}
+	for b in TestWorld.blocks:
+		placed[b.id] = true
+	var absent := []
+	for id in range(1, Blocks.ids.size()):
+		if not placed.has(id) and not (Blocks.liquid_level[id] in [1, 2, 3, 4, 5, 6, 7]):
+			absent.append(Blocks.ids.keys()[id])
+	check(absent.is_empty(), "todo bloco está na fileira (faltam: %s)" % str(absent))
+	check(placed.has(Blocks.ids.life_crystal) and placed.has(Blocks.ids.shadow_orb) and placed.has(Blocks.ids.crimson_heart) and placed.has(Blocks.ids.demon_altar) and placed.has(Blocks.ids.hellforge) \
+		and placed.has(Blocks.ids.water) and placed.has(Blocks.ids.lava) and placed.has(Blocks.sapling), "Life Crystal, orbes, altar, forja, água, lava e muda estão na fileira")
+	# a geração carimba a arena: gramado plano e limpo, baús, blocos e tochas nos lugares
+	var w := dungeon_world(SaveGame.TEST_SEED)
+	w.set_test(true)
+	var normal := WorldGen.new(SaveGame.TEST_SEED)
+	check(w.gen.generate(1, 1) == normal.generate(1, 1) and w.gen.generate(6, 6) != normal.generate(6, 6), "fora da arena o mundo é o de sempre; dentro, é carimbado")
+	var used := {}
+	for k in TestWorld.chests:
+		used[Vector2i(k.pos.x, k.pos.z)] = true
+		check(w.get_block(k.pos.x, k.pos.y, k.pos.z) == Blocks.ids.chest and TestWorld.ARENA.has_point(Vector2i(k.pos.x, k.pos.z)), "baú de teste no lugar: " + k.title)
+	for b in TestWorld.blocks:
+		used[Vector2i(b.pos.x, b.pos.z)] = true
+		check(w.get_block(b.pos.x, b.pos.y, b.pos.z) == b.id, "bloco no chão: " + Blocks.ids.keys()[b.id])
+	for t in TestWorld.torches:
+		used[Vector2i(t.x, t.z)] = true
+		check(w.get_block(t.x, t.y, t.z) == Blocks.ids.torch, "tocha no lugar")
+	var flat := true
+	for z in range(TestWorld.ARENA.position.y, TestWorld.ARENA.end.y, 3):
+		for x in range(TestWorld.ARENA.position.x, TestWorld.ARENA.end.x, 3):
+			if not used.has(Vector2i(x, z)) and (w.surface_y(x, z) != TestWorld.FLAT + 1 or w.get_block(x, TestWorld.FLAT, z) != Blocks.ids.grass or w.get_block(x, TestWorld.FLAT + 1, z) != 0):
+				flat = false
+	check(flat, "a arena é um gramado plano (y %d) e limpo" % TestWorld.FLAT)
+	check(used.has(Vector2i(128, 128)) == false and w.surface_y(128, 128) == TestWorld.FLAT + 1, "o nascimento fica livre no gramado")
+	var c0: Vector3i = TestWorld.chests[0].pos
+	var got: Dictionary = w.chest_at(c0)
+	check(got.item == TestWorld.chests[0].item and got.title == TestWorld.chests[0].title, "chest_at devolve o baú de teste com o título")
+	got.item[0] = -1
+	check(TestWorld.chests[0].item[0] != -1 and w.chest_at(Vector3i(5, 30, 5)).get("title") == null, "mexer no baú não estraga o molde; baú comum não tem título")
+	check(TestWorld.underworld_spot(w).y < WorldGen.UNDERWORLD_TOP and w.get_block(int(TestWorld.underworld_spot(w).x), int(TestWorld.underworld_spot(w).y), int(TestWorld.underworld_spot(w).z)) == 0, "há onde ficar de pé no submundo")
+	# save: o mundo de teste tem nome e seed fixos, a flag vai no .wld e um mundo comum não a tem
+	var saved_dirs := [SaveGame.players_dir, SaveGame.worlds_dir]
+	SaveGame.players_dir = "user://test_players/"
+	SaveGame.worlds_dir = "user://test_worlds/"
+	for d in [SaveGame.players_dir, SaveGame.worlds_dir]:
+		DirAccess.make_dir_recursive_absolute(d)
+		for f in DirAccess.get_files_at(d):
+			DirAccess.remove_absolute(d + f)
+	var path := SaveGame.test_world()
+	check(path != "" and SaveGame.test_world() == path and SaveGame.list(SaveGame.worlds_dir).size() == 1, "o mundo de teste abre o que existe em vez de criar outro")
+	var normal_path := SaveGame.create_world("Comum", 5)
+	var w2: Node3D = load("res://scripts/world.gd").new()
+	w2.gen = WorldGen.new(1)
+	var p2 := make_player(w2)
+	check(SaveGame.load_world(w2, p2, p2.clock, path) and w2.test_world and w2.gen.test_world and w2.world_seed == SaveGame.TEST_SEED, "carregar o mundo de teste liga a flag e a arena")
+	check(SaveGame.load_world(w2, p2, p2.clock, normal_path) and not w2.test_world and not w2.gen.test_world, "carregar um mundo comum desliga")
+	free_player(p2)
+	w2.free()
+	for d in [SaveGame.players_dir, SaveGame.worlds_dir]:
+		for f in DirAccess.get_files_at(d):
+			DirAccess.remove_absolute(d + f)
+	SaveGame.players_dir = saved_dirs[0]
+	SaveGame.worlds_dir = saved_dirs[1]
+	w.free()
 	return true

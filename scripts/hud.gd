@@ -34,6 +34,11 @@ var hearts_shown := 0                 # corações visíveis (a vida máxima sob
 var npc_panel: PanelContainer
 var npc_kind := ""                    # quem está falando (guide, merchant, nurse); vazio = ninguém
 var npc_text: Label
+var test_panel: PanelContainer         # painel de atalhos do mundo de teste (F9)
+var test_open := false
+var test_footer: Label
+var test_syncs: Array[Callable] = []   # textos dos botões que dependem do estado (relógio, hardmode)
+var chest_title: Label
 var npc_buttons: HFlowContainer
 var tip_index := 0
 var buff_row: HBoxContainer
@@ -143,6 +148,7 @@ func _ready() -> void:
 	_build_boss()
 	_build_pause()
 	_build_npc()
+	_build_test()
 	cross = _label("+", 22)
 	cross.set_anchors_preset(Control.PRESET_CENTER)
 	cross.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -522,7 +528,8 @@ func _build_chest() -> void:
 	chest_root.position = Vector2(X0, Y0 + 5 * PITCH + 14)
 	chest_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(chest_root)
-	chest_root.add_child(_label("Baú", 18))
+	chest_title = _label("Baú", 18)
+	chest_root.add_child(chest_title)
 	var g := _grid(10)
 	g.position = Vector2(0, 30)
 	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -550,6 +557,7 @@ func _build_chest() -> void:
 # Chamado pelo jogador ao clicar num baú: mostra o painel (e abre o inventário).
 func open_chest(c: Dictionary) -> void:
 	chest = c
+	chest_title.text = c.get("title", "Baú")
 	shown_version = -1
 	_animate_open()
 
@@ -619,6 +627,87 @@ func _setting(box: Control, text: String, lo: float, hi: float, step: float, uni
 		show.call(v))
 	box.add_child(label)
 	box.add_child(s)
+
+
+# Painel do mundo de teste (F9): atalhos de hora, jogador, hardmode, chefes, inimigos, viagem e baús. Só aparece em mundo de teste.
+func _build_test() -> void:
+	test_panel = PanelContainer.new()
+	test_panel.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	test_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	test_panel.offset_top = 70
+	test_panel.visible = false
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(500, 0)
+	box.add_theme_constant_override("separation", 5)
+	box.add_child(_label("Painel de teste  (F9 fecha)", 22, HORIZONTAL_ALIGNMENT_CENTER))
+	var ent: Node3D = player.entities
+	_test_row(box, "Hora", [["Dia", func(): clock.time = 60.0], ["Meio-dia", func(): clock.time = 450.0], ["Noite", func(): clock.time = clock.DAY_SECONDS + 60.0],
+		["Relógio", func(): clock.hold = not clock.hold, func(): return "Relógio: %s" % ("parado" if clock.hold else "correndo")]])
+	_test_row(box, "Jogador", [["Vida e mana máximas", func():
+			player.max_hp = player.MAX_HP_CAP
+			player.max_mana = player.MAX_MANA_CAP
+			player.hp = player.max_hp
+			player.mana = player.max_mana], ["Curar", func():
+			player.hp = player.max_hp
+			player.mana = player.max_mana], ["+10 de ouro", func(): player.inv.add(Items.ids.gold_coin, 10)],
+		["Criativo", func(): player.creative = not player.creative, func(): return "Criativo: %s" % ("sim" if player.creative else "não")]])
+	_test_row(box, "Hardmode", [["Hardmode", func():
+			if world.hardmode:
+				world.hardmode = false   # ponytail: desligar só volta os spawns e a geração; o terreno já convertido fica
+				world.gen.hardmode = false
+			else:
+				world.start_hardmode(), func(): return "Hardmode: %s" % ("ligado" if world.hardmode else "desligado")]])
+	var bosses := []
+	for n in ent.boss_names():
+		bosses.append([n.replace("_", " ").capitalize(), func():
+			ent.test_boss(n)
+			player.set_inventory(false)])
+	_test_row(box, "Chefes", bosses)
+	_test_row(box, "Inimigos", [["Chamar vitrine", ent.showcase], ["Limpar inimigos", ent.clear_enemies], ["Meteorito", func():
+			ent.start_meteor()
+			player.set_inventory(false)], ["Reabastecer baús", func():
+			for k in TestWorld.chests:
+				world.chests.erase(k.pos)
+			player.say("baús reabastecidos")]])
+	var trips := []
+	for t in [["Nascimento", "spawn"], ["Submundo", "underworld"], ["Dungeon", "dungeon"], ["Bioma do mal", "evil"], ["Hallow", "hallow"]]:
+		trips.append([t[0], func():
+			ent.goto(t[1])
+			player.set_inventory(false)])
+	_test_row(box, "Ir para", trips)
+	test_panel.add_child(box)
+	root.add_child(test_panel)
+	test_footer = _label("MUNDO DE TESTE  ·  F9 painel  ·  F8 kit  ·  F criativo  ·  V 3ª pessoa  ·  F5 salvar", 13, HORIZONTAL_ALIGNMENT_CENTER)
+	test_footer.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	test_footer.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	test_footer.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	test_footer.offset_bottom = -26
+	test_footer.add_theme_color_override("font_color", Ui.GOLD)
+	test_footer.visible = false
+	root.add_child(test_footer)
+
+
+# Uma linha do painel de teste: nome e botões [texto, ação, texto_vivo?]; o texto vivo (uma função) é recalculado a cada clique e ao abrir.
+func _test_row(box: Control, title: String, buttons: Array) -> void:
+	box.add_child(_label(title, 14))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 4)
+	for b in buttons:
+		var btn := Button.new()
+		btn.text = b[0]
+		btn.focus_mode = Control.FOCUS_NONE
+		var act: Callable = b[1]
+		var live: Callable = b[2] if b.size() > 2 else Callable()
+		btn.pressed.connect(func():
+			act.call()
+			if live.is_valid():
+				btn.text = live.call())
+		if live.is_valid():
+			btn.text = live.call()
+			test_syncs.append(func(): btn.text = live.call())
+		flow.add_child(btn)
+	box.add_child(flow)
 
 
 const TIPS := ["Bem-vindo! Use o machado nas árvores para juntar madeira e faça uma bancada de trabalho.", "Ache Life Crystals nas cavernas: cada um dá +20 de vida máxima.",
@@ -856,11 +945,18 @@ func _show_buffs() -> void:
 
 
 func _process(delta: float) -> void:
-	var open: bool = player.inventory_open
+	var open: bool = player.inventory_open and not test_open   # o painel de teste é modal: esconde o inventário
 	pause.visible = player.menu_open
-	if not open:
+	if not player.inventory_open:
 		npc_kind = ""
+		test_open = false
 	npc_panel.visible = open and npc_kind != ""
+	var show_test: bool = player.inventory_open and test_open and world.test_world
+	if show_test and not test_panel.visible:   # ao abrir, os botões de estado leem o valor atual
+		for f in test_syncs:
+			f.call()
+	test_panel.visible = show_test
+	test_footer.visible = world.test_world and root.visible
 	cross.visible = not (open or player.menu_open or player.map_open)   # com o mouse solto a mira não faz sentido
 	creative_label.visible = player.creative
 	var wings: Dictionary = player.inv.wings()
@@ -991,6 +1087,9 @@ func _process(delta: float) -> void:
 	flash.color = Color(0.9, 0.05, 0.05, clampf((player.iframes - (player.IFRAMES - 0.3)) / 0.3, 0.0, 1.0) * 0.3)
 	note_label.text = player.message if now < player.message_until else ""
 	var p: Vector3 = player.position
+	var aimed := ""
+	if world.test_world and not player.target.is_empty():
+		aimed = "  |  mira: %s" % Blocks.ids.keys()[world.get_block(player.target.pos.x, player.target.pos.y, player.target.pos.z)]
 	debug_label.text = "FPS %d  |  distância %d chunks ([ ])  |  %s%s  |  %s  |  %s  |  pos %d %d %d" % [
 		Engine.get_frames_per_second(), world.render_distance, clock.clock(), " (noite)" if clock.is_night() else "",
-		("modo criativo (F)" if player.creative else "andando (F: criativo)"), "3ª pessoa (V)" if player.third_person else "1ª pessoa (V)", p.x, p.y, p.z]
+		("modo criativo (F)" if player.creative else "andando (F: criativo)"), "3ª pessoa (V)" if player.third_person else "1ª pessoa (V)", p.x, p.y, p.z] + aimed

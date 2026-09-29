@@ -65,7 +65,7 @@ func _physics_process(delta: float) -> void:
 		_stars()
 		_town()
 	for e in enemies.duplicate():
-		if not e.def.get("boss") and e.position.distance_to(player.position) > DESPAWN:
+		if not e.def.get("boss") and not e.display and e.position.distance_to(player.position) > DESPAWN:
 			remove_enemy(e)
 
 
@@ -84,7 +84,7 @@ func _town() -> void:
 			var x: float = player.spawn.x + 3.0 + i * 2.0
 			var z: float = player.spawn.z + 3.0
 			var e := spawn_enemy(def_named(n), Vector3(x, world.surface_y(int(x), int(z), true) + 0.1, z))
-			if n == "merchant" or n == "nurse":
+			if (n == "merchant" or n == "nurse") and not world.test_world:
 				player.say("%s chegou!" % n.capitalize())
 		i += 1
 
@@ -116,7 +116,7 @@ func biome_at(pos: Vector3) -> String:
 
 func try_spawn() -> void:
 	var night: bool = clock.is_night()
-	if enemies.size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
+	if enemies.filter(func(e): return not e.display).size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
 		return
 	var when := "night" if night else "day"
 	var biome := biome_at(player.position)
@@ -146,6 +146,10 @@ func try_spawn() -> void:
 func _old_man() -> void:
 	if old_man and not enemies.has(old_man):
 		old_man = null
+	if world.test_world:   # mundo de teste: o Velho fica sempre ao lado dos outros habitantes (à noite, falar com ele chama o Skeletron)
+		if old_man == null and player.position.distance_to(player.spawn) < 60.0:
+			old_man = spawn_enemy(def_named("old_man"), Vector3(player.spawn.x + 9.0, player.spawn.y + 0.1, player.spawn.z + 3.0))
+		return
 	var e: Vector3i = world.gen.dungeon_entrance
 	var near := Vector2(player.position.x, player.position.z).distance_to(Vector2(e.x, e.z)) < 90.0
 	if old_man and (not clock.is_night() or world.skeletron_down):
@@ -153,6 +157,91 @@ func _old_man() -> void:
 		old_man = null
 	elif old_man == null and near and clock.is_night() and not world.skeletron_down and boss == null:
 		old_man = spawn_enemy(def_named("old_man"), Vector3(e.x + 0.5, world.surface_y(e.x, e.z + 3, true) + 0.1, e.z + 3.5))
+
+
+# ---- Mundo de teste (test_world.gd): letreiros, habitantes, vitrine e os atalhos do painel F9 ----
+
+func _label3d(text: String, size: float, pos: Vector3) -> Label3D:
+	var l := Label3D.new()
+	l.text = text
+	l.font_size = 64
+	l.pixel_size = size
+	l.outline_size = 16
+	l.outline_modulate = Color(0.05, 0.02, 0.0)
+	l.modulate = Color("#ffe89a")
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.shaded = false
+	l.visibility_range_end = 45.0   # longe demais some (são muitos letreiros)
+	l.position = pos
+	return l
+
+
+# Chamado pelo jogador ao carregar um mundo de teste: letreiros, os habitantes de uma vez e a vitrine de inimigos.
+func setup_test() -> void:
+	for l in TestWorld.labels:
+		add_child(_label3d(l.text, l.size, l.pos))
+	for n in ["guide", "merchant", "nurse"]:
+		world.npcs[n] = true
+	showcase()
+
+
+# Um exemplar parado de cada inimigo que não é chefe (nem habitante), em fileira com o nome em cima. Chamar de novo refaz a fileira.
+func showcase() -> void:
+	for e in enemies.duplicate():
+		if e.display:
+			remove_enemy(e)
+	var list := defs.filter(func(d): return not d.get("boss") and d.ai != "npc")
+	for i in list.size():
+		var e := spawn_enemy(list[i], TestWorld.showcase_pos(i, list.size()) + Vector3.UP * (0.8 if list[i].ai == "fly" else 0.0))
+		e.display = true
+		e.rotation.y = PI   # olha para o nascimento
+		e.add_child(_label3d(list[i].name.replace("_", " "), TestWorld.NAME, Vector3(0, e.tall + 0.5 + 0.6 * (i % 2), 0)))   # alternam a altura: os nomes não se cobrem
+
+
+# Bosses que o painel chama: a cabeça de cada grupo (sem segmentos, mãos, servos).
+func boss_names() -> Array:
+	return defs.filter(func(d): return d.get("boss") and d.get("group", d.name) == d.name).map(func(d): return d.name)
+
+
+# Chama o chefe n. O Eye vai embora de dia (vira noite); o Wall of Flesh só vive no submundo (leva o jogador para lá).
+func test_boss(n: String) -> void:
+	if boss:
+		player.say("já há um chefe (limpe os inimigos)")
+		return
+	var d := def_named(n)
+	if d.ai == "eye_of_cthulhu" and not clock.is_night():
+		clock.time = clock.DAY_SECONDS + 60.0
+	if d.ai == "wall":
+		goto("underworld")
+	spawn_boss(n)
+	player.say("%s despertou!" % n.replace("_", " "))
+
+
+# Tira todos os inimigos que não são habitantes nem vitrine (chefes e servos incluídos).
+func clear_enemies() -> void:
+	for e in enemies.duplicate():
+		if not e.display and e.def.ai != "npc":
+			remove_enemy(e)
+	boss = null
+
+
+# Viagem do painel: spawn, underworld, dungeon, evil (bioma do mal), hallow. Cai no chão do lugar.
+func goto(where: String) -> void:
+	var p: Vector3 = player.spawn
+	var g: WorldGen = world.gen
+	match where:
+		"underworld":
+			p = TestWorld.underworld_spot(world)
+		"dungeon":
+			p = Vector3(g.dungeon_entrance.x + 0.5, world.surface_y(g.dungeon_entrance.x, g.dungeon_entrance.z + 3, true), g.dungeon_entrance.z + 3.5)
+		"evil":
+			p = Vector3(g.evil_center.x, world.surface_y(int(g.evil_center.x), int(g.evil_center.y), true), g.evil_center.y)
+		"hallow":
+			p = Vector3(g.hallow_center.x, world.surface_y(int(g.hallow_center.x), int(g.hallow_center.y), true), g.hallow_center.y)
+	Fx.puff(self, player.position + Vector3.UP, Color("#a8e8f8"), 12)
+	player.position = p + Vector3.UP * 0.1
+	player.velocity = Vector3.ZERO
+	Fx.puff(self, player.position + Vector3.UP, Color("#a8e8f8"), 12)
 
 
 # Inimigo "npc" na mira (até `reach`), ou null.

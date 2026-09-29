@@ -28,6 +28,7 @@ var npcs := {}      # habitantes que já chegaram (guide, merchant, nurse): nome
 var chests := {}    # Vector3i -> {item: PackedInt32Array, count: PackedInt32Array}; só os baús já abertos (os outros ainda não têm conteúdo)
 var evil_boss_down := false   # Eater of Worlds / Brain já derrotado: libera o meteorito e, depois, o Wall of Flesh vale
 var hardmode := false       # Wall of Flesh derrotado: cobalto/paládio e Hallow (start_hardmode)
+var test_world := false     # mundo de teste (test_world.gd): arena com baús de todos os itens; vai no save
 var skeletron_down := false   # Skeletron derrotado: o dungeon abre para qualquer picareta
 var meteor_due := false       # cai um meteorito à meia-noite
 var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do mal); vai no save do mundo
@@ -171,17 +172,29 @@ func start_hardmode() -> void:
 
 # Conteúdo do baú em p; na primeira vez sorteia o tesouro pela camada (Loot; determinístico pela seed e posição).
 func chest_at(p: Vector3i) -> Dictionary:
+	var k: int = TestWorld.chest_at_pos.get(p, -1) if test_world else -1
 	if not chests.has(p):
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash([world_seed, p.x, p.y, p.z])
-		chests[p] = Loot.chest(Loot.layer_of(p.y), rng)
+		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest(Loot.layer_of(p.y), rng)
+	if k != -1:
+		chests[p].title = TestWorld.chests[k].title   # o painel mostra o nome da categoria (não vai no save: sai da posição)
 	return chests[p]
 
 
+# Liga ou desliga o mundo de teste (antes de gerar chunks: a arena entra na geração).
+func set_test(on: bool) -> void:
+	test_world = on
+	gen.test_world = on
+	if on:
+		TestWorld.build()
+
+
 # Troca a seed e descarta tudo o que foi gerado (usado ao carregar um save).
-func set_seed(s: int) -> void:
+func set_seed(s: int, test := false) -> void:
 	world_seed = s
 	gen = WorldGen.new(s)
+	set_test(test)
 	chunks.clear()
 	edited.clear()
 	chests.clear()

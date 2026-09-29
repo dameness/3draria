@@ -62,6 +62,7 @@ var chasm_heights := PackedInt32Array()   # altura da superfície em cada abismo
 var dungeon_x := 0                # canto (x, z) do dungeon, do lado oposto ao bioma do mal
 var dungeon_z := 0
 var dungeon_entrance := Vector3i.ZERO   # torre de entrada (centro, altura da superfície)
+var test_world := false           # mundo de teste: generate carimba a arena (test_world.gd)
 var hardmode := false             # Wall of Flesh derrotado: minérios novos e o Hallow entram na geração (world.start_hardmode converte o que já existe)
 var hm_ores: Array = []           # ores.json com "hardmode": true (um por grupo, escolhido pela seed)
 var hallow_center := Vector2.ZERO
@@ -232,6 +233,8 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_crystal(d, rng)
 	if hardmode:
 		hardmode_pass(d, cx, cz)
+	if test_world:
+		TestWorld.stamp(d, cx, cz)
 	return d
 
 

@@ -9,6 +9,8 @@ const SKINS := ["#f0b890", "#e0a070", "#c98a5c", "#a86a44", "#f6cfae"]
 const HAIRS := ["#5a3220", "#2a1c14", "#d6a94a", "#a83a1e", "#8a8a90", "#3a2a5a"]
 const SHIRTS := ["#c0503c", "#3f8f4f", "#3e6fbf", "#c9a13a", "#8a4fb0", "#4fa8a8", "#b0b0b8"]
 const PANTS := ["#3c4c98", "#3a3a48", "#6a4a2a", "#2a5a4a", "#5a2a3a"]
+const TEST_NAME := "Mundo de teste"
+const TEST_SEED := 1337
 static var players_dir := "user://players/"
 static var worlds_dir := "user://worlds/"
 static var player_path := ""
@@ -47,11 +49,17 @@ static func _look_out(look: Dictionary) -> Dictionary:
 	return out
 
 
-static func create_world(name: String, seed: int) -> String:
+static func create_world(name: String, seed: int, test := false) -> String:
 	var path := _path(worlds_dir, name, ".wld")
-	if path == "" or _write(path, {"version": VERSION, "name": name.strip_edges(), "seed": seed, "time": 60.0, "chunks": {}}) != OK:
+	if path == "" or _write(path, {"version": VERSION, "name": name.strip_edges(), "seed": seed, "time": 60.0, "chunks": {}, "test": test}) != OK:
 		return ""
 	return path
+
+
+# O mundo de teste (test_world.gd): sempre o mesmo nome e a mesma seed; abre o que existe ou cria um novo.
+static func test_world() -> String:
+	var path := worlds_dir + TEST_NAME + ".wld"
+	return path if FileAccess.file_exists(path) else create_world(TEST_NAME, TEST_SEED, true)
 
 
 # Aparência (cores) do personagem, tirada do nome: cada personagem tem a sua sem guardar nada no save.
@@ -145,7 +153,7 @@ static func save_world(world, player, clock, path: String) -> Error:
 		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
 	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed,
 		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
-		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "npcs": world.npcs})
+		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "npcs": world.npcs, "test": world.test_world})
 
 
 static func _chests_out(chests: Dictionary) -> Dictionary:
@@ -159,7 +167,7 @@ static func load_world(world, player, clock, path: String) -> bool:
 	var data := _read(path)
 	if data.is_empty():
 		return false
-	world.set_seed(data.seed)
+	world.set_seed(data.seed, data.get("test", false))
 	var size := WorldGen.CHUNK * WorldGen.CHUNK * WorldGen.HEIGHT
 	for k in data.chunks:
 		world.chunks[k] = data.chunks[k].decompress(size, FileAccess.COMPRESSION_ZSTD)

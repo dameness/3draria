@@ -5,7 +5,7 @@ extends Node3D
 # Botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira, bloco coloca, poção bebe); o direito interage (baú, NPC).
 # H/Q bebem a poção de cura, J a de mana, B as de buff (wiki Controls).
 # Só do jogo (não do Terraria): F liga/desliga o modo criativo (atravessa blocos, invulnerável; Espaço sobe, C desce), V troca 1ª/3ª pessoa,
-# F5 salva (também salva ao fechar), F8 dá o kit de teste. Voar de verdade é com asas (acessório): segurar Espaço no ar.
+# F5 salva (também salva ao fechar), F8 dá o kit de teste, F9 abre o painel do mundo de teste (só nele: hora, chefes, hardmode, viagem). Voar de verdade é com asas (acessório): segurar Espaço no ar.
 
 const HALF := 0.3        # meia largura da caixa
 const TALL := 1.8
@@ -118,6 +118,8 @@ func _ready() -> void:
 		inv.add(Items.ids.copper_shortsword, 1)
 		inv.add(Items.ids.copper_axe, 1)
 	cam.position.y = EYE
+	if world.test_world:   # mundo de teste: letreiros, habitantes e vitrine (F9 abre o painel de atalhos)
+		entities.setup_test()
 	if SaveGame.player_path != "":   # a aparência (cores) do personagem escolhido no menu
 		get_node("Model").restyle(SaveGame.look(SaveGame.player_path))
 	highlight = MeshInstance3D.new()
@@ -189,6 +191,11 @@ func _unhandled_input(e: InputEvent) -> void:
 			creative = not creative
 		elif e.physical_keycode == KEY_V:
 			third_person = not third_person
+		elif e.physical_keycode == KEY_F9 and world.test_world:   # painel de atalhos do mundo de teste
+			var hud: Node = get_parent().get_node("HUD")
+			var show: bool = not (inventory_open and hud.test_open)
+			set_inventory(show)
+			hud.test_open = show
 		elif e.physical_keycode == KEY_F8:
 			for n in TEST_KIT:
 				inv.add(Items.ids[n], TEST_KIT[n])

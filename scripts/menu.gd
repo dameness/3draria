@@ -339,6 +339,8 @@ func _info(dir: String, data: Dictionary) -> String:
 		for k in mini(equip.size(), 3):
 			inv.equip[k] = Items.ids.get(equip[k], -1)
 		return "Vida %d · Defesa %d" % [data.get("hp", 100), inv.defense()] if not data.get("new", false) else "Personagem novo"
+	if data.get("test", false):
+		return "Mundo de teste · arena com todos os itens e blocos, chefes e atalhos (F9)"
 	return "Seed %d · %d chunks editados" % [data.seed, data.get("chunks", {}).size()]
 
 
@@ -441,6 +443,8 @@ func show_worlds() -> void:
 	_go(AVATAR_VIEW, 0.62)
 	_save_list(SaveGame.worlds_dir, play)
 	_create_row("nome do novo mundo", func(n): return SaveGame.create_world(n, randi()), func(_p): show_worlds())
+	var test_button := _button("Mundo de teste", func(): play(SaveGame.test_world()))   # abre (ou cria) o mundo com todos os itens à mão
+	test_button.tooltip_text = "Arena plana com baús de todos os itens, todos os blocos, NPCs, inimigos e atalhos de chefes/hora (F9)."
 	var back := Ui.menu_button("Voltar", 24)
 	back.pressed.connect(show_players)
 	box.add_child(back)
