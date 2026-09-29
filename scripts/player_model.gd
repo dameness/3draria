@@ -23,6 +23,8 @@ var held_id := -2
 var trail: Trail            # arco do golpe da arma na mão
 var trail_on := false
 var worn := PackedInt32Array([-2, -2, -2])
+var wing_id := -2
+var wing_sprites: Array[Sprite3D] = []
 var phase := 0.0
 var blink := 0.0
 var hair_nodes: Array[Node3D] = []
@@ -48,6 +50,8 @@ func restyle(look: Dictionary) -> void:
 	eyes.clear()
 	hair_nodes.clear()
 	worn = PackedInt32Array([-2, -2, -2])   # o próximo quadro veste a armadura de novo
+	wing_id = -2
+	wing_sprites.clear()
 	held_id = -2
 	_build()
 
@@ -248,9 +252,44 @@ func _process(delta: float) -> void:
 	if id != held_id:
 		held_id = id
 		_show_held(id)
+	_wings(t)
 	if player.inv.equip != worn:
 		worn = player.inv.equip.duplicate()
 		_dress()
+
+
+# Asas (acessório): duas cópias espelhadas do sprite do item nas costas, presas aos ombros (o sprite tem a raiz no canto de cima, junto do corpo) e
+# translúcidas (as Fledgling são). Fechadas em pé, abertas em V planando, batendo ao subir.
+func _wings(t: float) -> void:
+	var id: int = player.inv.wing_id()
+	if id != wing_id:
+		wing_id = id
+		for w in wing_sprites:
+			w.queue_free()
+		wing_sprites.clear()
+		if id != -1:
+			for side in [-1, 1]:
+				var sp := Sprite3D.new()
+				sp.texture = player.entities.icon(id)
+				var w: float = sp.texture.get_width()
+				sp.pixel_size = 1.1 / maxf(sp.texture.get_height(), 1.0)
+				sp.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				sp.flip_h = side > 0   # o sprite tem a raiz à direita: a asa do lado esquerdo fica como está e a do direito espelha
+				sp.centered = false
+				sp.offset = Vector2(0.0 if side > 0 else -w, 0.0)   # a origem no canto da raiz (em cima, junto do corpo)
+				sp.shaded = false
+				sp.double_sided = true
+				sp.modulate = Color(1, 1, 1, 0.9)
+				sp.position = Vector3(side * 0.1, 0.46, 0.15)
+				parts.upper.add_child(sp)
+				wing_sprites.append(sp)
+	var spread := 0.3   # ângulo da asa em relação às costas
+	if player.get("flapping") == true:
+		spread = 0.85 + 0.55 * sin(t * 24.0)
+	elif player.get("gliding") == true:
+		spread = 1.35
+	for i in wing_sprites.size():
+		wing_sprites[i].rotation.z = spread * (-1.0 if i == 0 else 1.0)
 
 
 # Item na mão: o cabo na mão e a lâmina saindo dela (inclinada para a frente em `swing`, no eixo do braço em `thrust`);

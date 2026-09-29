@@ -13,12 +13,12 @@ const SHOTS := [
 	{"name": "inventario_cheio", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "hp": 22},
 	{"name": "bau", "inventory": true, "look": Vector2(0, -0.2), "gear": true, "chest": true},
 	{"name": "config", "look": Vector2(0, -0.2), "settings": true},
-	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true},
-	{"name": "minimapa", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "portrait", "zoom": 1},
-	{"name": "minimapa_overlay", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "overlay"},
-	{"name": "mapa_cheio", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "map": "full", "explore": true},
-	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "flying": true},
-	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "flying": true},
+	{"name": "mal", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true},
+	{"name": "minimapa", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "map": "portrait", "zoom": 1},
+	{"name": "minimapa_overlay", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "map": "overlay"},
+	{"name": "mapa_cheio", "evil": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "map": "full", "explore": true},
+	{"name": "abismo", "evil": "chasm", "look": Vector2(0.3, -1.2), "creative": true},
+	{"name": "verme", "evil": true, "up": 4.0, "look": Vector2(0, -0.1), "worm": true, "creative": true},
 	{"name": "verme_vivo", "look": Vector2(0, 0.3), "worm_sim": true, "time": 300.0},
 	{"name": "arvore", "tree": true, "item": "copper_axe"},
 	{"name": "arvore_cai", "tree": true, "fell": 15, "item": "copper_axe"},
@@ -27,11 +27,11 @@ const SHOTS := [
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
 	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
 	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},
-	{"name": "dungeon_fora", "dungeon": "out", "look": Vector2(0, -0.25), "flying": true, "time": 1100.0},
-	{"name": "dungeon_sala", "dungeon": "in", "look": Vector2(-PI / 2, -0.05), "flying": true, "time": 300.0},
+	{"name": "dungeon_fora", "dungeon": "out", "look": Vector2(0, -0.25), "creative": true, "time": 1100.0},
+	{"name": "dungeon_sala", "dungeon": "in", "look": Vector2(-PI / 2, -0.05), "creative": true, "time": 300.0},
 	{"name": "skeletron", "look": Vector2(0, 0.2), "boss": "skeletron", "time": 1100.0, "item": "terra_blade"},
-	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "flying": true, "time": 300.0},
-	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "flying": true, "hallow": true},
+	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
+	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "slime", "look": Vector2(0, -0.35), "enemies": ["green_slime", "blue_slime"], "item": "wooden_sword"},
 	{"name": "minera", "look": Vector2(0.5, -0.5), "item": "copper_pickaxe", "mine": 1, "mine_late": true},
@@ -43,6 +43,8 @@ const SHOTS := [
 	{"name": "golpe_slime", "look": Vector2(0, -0.3), "enemies": ["green_slime"], "item": "wooden_sword", "hurt_late": true},
 	{"name": "flash", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "hurt": true},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
+	{"name": "asas", "third": true, "look": Vector2(0.4, -0.2), "wings": true, "item": "copper_pickaxe"},
+	{"name": "criativo", "look": Vector2(0.4, -0.3), "up": 6.0},
 	{"name": "3a_pessoa_golpe", "third": true, "look": Vector2(-0.6, -0.15), "item": "platinum_broadsword", "swing": 0.1, "armor": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"]},
 	{"name": "caverna", "cave": true, "look": Vector2(0.3, -0.25), "item": "copper_pickaxe"},
 	{"name": "noite_tochas", "time": 1100.0, "torches": true, "look": Vector2(0, -0.3), "third": true},
@@ -52,10 +54,10 @@ const SHOTS := [
 	{"name": "chefe_fase2", "time": 1100.0, "look": Vector2(0, 0.25), "boss": "eye_of_cthulhu", "phase2": true, "third": true},
 	{"name": "lago", "find": "water", "at": Vector3(14, 5, 0), "look": Vector2(PI / 2, -0.3)},
 	{"name": "respingo", "find": "water", "find_y": 70, "at": Vector3(-5, 5.5, 0), "look": Vector2(-PI / 2, -0.35), "splash": true},
-	{"name": "agua", "find": "water", "find_y": 66, "at": Vector3(0, 2.3, 0), "look": Vector2(PI / 2, 0.1), "flying": true},
-	{"name": "escoa", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "flying": true, "breach": 8, "flow": 14},
-	{"name": "escoa_depois", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "flying": true, "breach": 8, "flow": 60},
-	{"name": "submundo", "find": "lava", "find_y": 4, "at": Vector3(6, 6, 0), "look": Vector2(PI / 2, -0.25), "flying": true},
+	{"name": "agua", "find": "water", "find_y": 66, "at": Vector3(0, 2.3, 0), "look": Vector2(PI / 2, 0.1), "creative": true},
+	{"name": "escoa", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "creative": true, "breach": 8, "flow": 14},
+	{"name": "escoa_depois", "find": "water", "find_y": 70, "at": Vector3(-6, 4, 0), "look": Vector2(-PI / 2, -0.4), "creative": true, "breach": 8, "flow": 60},
+	{"name": "submundo", "find": "lava", "find_y": 4, "at": Vector3(6, 6, 0), "look": Vector2(PI / 2, -0.25), "creative": true},
 	{"name": "ceu_manha", "time": 25.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.12},
 	{"name": "ceu_por_do_sol", "time": 850.0, "look": Vector2.ZERO, "aim": "sun", "tilt": -0.08},
 	{"name": "ceu_lua", "time": 1000.0, "look": Vector2.ZERO, "aim": "moon", "tilt": -0.1},
@@ -89,6 +91,8 @@ func _process(_delta: float) -> bool:
 	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.cooldown = shots[shot].swing
+		if shots[shot].get("wings", false):   # batendo as asas (a física zera a cada passo; aqui só para o print)
+			player.flapping = true
 		if shots[shot].get("fell", -1) == wait:   # derruba a árvore de longe: o print sai no meio da queda
 			var right := Vector3(cos(player.rotation.y), 0, -sin(player.rotation.y))   # tomba para a direita da câmera: dá para ver de lado
 			Timber.fell(main.get_node("Entities"), tree_base, 35, Vector3(tree_base.x + 0.5, 0, tree_base.z + 0.5) - right * 10.0)
@@ -124,7 +128,7 @@ func _process(_delta: float) -> bool:
 					"splash": Fx.splash(ent, at, 16)
 					"bubbles": Fx.bubbles(ent, at, 6)
 		if shots[shot].get("splash", false) and wait == 12:
-			player.flying = false
+			player.creative = false
 			player.velocity = Vector3(0, -8, 0)
 		if shots[shot].get("numbers", false) and wait == 15:  # números de dano no ar (duram menos de 1 s); o do meio é um crítico
 			var ents: Array = main.get_node("Entities").enemies
@@ -146,7 +150,7 @@ func _process(_delta: float) -> bool:
 
 func _setup(s: Dictionary) -> void:
 	s = s.duplicate()   # SHOTS é constante: a cena pode acertar o olhar (ex.: árvore)
-	player.flying = s.has("up") or s.has("cave") or s.get("flying", false)
+	player.creative = s.has("up") or s.has("cave") or s.get("creative", false)
 	player.position = player.spawn + Vector3.UP * s.get("up", 0.0)
 	if s.has("find"):  # junto do bloco pedido (água, lava) mais perto do meio do mundo
 		var best := Vector3i.ZERO
@@ -284,6 +288,9 @@ func _setup(s: Dictionary) -> void:
 		player.inv.add(Items.ids.torch, 40)
 		player.inv.add(Items.ids.gold_bar, 12)
 		player.inv.fav[3] = 1
+	if s.get("wings", false):
+		player.inv.acc[0] = Items.ids.fledgling_wings
+		player.flight_left = 0.2   # a barra de voo aparece
 	player.hp = s.get("hp", 100)
 	if s.get("chest", false):
 		var c: Dictionary = world.chest_at(Vector3i(1, 2, 3))
@@ -331,7 +338,7 @@ func _setup(s: Dictionary) -> void:
 				break
 		for e in group:
 			e.set_physics_process(false)
-		player.flying = true   # a câmera se afasta para ver o arco e a fila inteira
+		player.creative = true   # a câmera se afasta para ver o arco e a fila inteira
 		player.position = wh.position + Vector3(18, -1, 12)
 		var to: Vector3 = (wh.position + group[8].position) / 2.0 - player.eye()
 		player.rotation.y = atan2(-to.x, -to.z)

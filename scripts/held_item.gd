@@ -117,7 +117,7 @@ func _process(delta: float) -> void:
 	sway = sway.lerp((vel * 0.012).limit_length(0.22), 1.0 - exp(-10.0 * delta))
 	tr.origin += Vector3(sway.x, -sway.y, 0) * 0.9
 	tr.basis = Basis(Vector3.UP, sway.x * 0.6) * Basis(Vector3.RIGHT, -sway.y * 0.6) * tr.basis
-	var walk: float = clampf(Vector2(player.velocity.x, player.velocity.z).length() / player.WALK, 0.0, 1.4) if player.on_floor and not player.flying else 0.0
+	var walk: float = clampf(Vector2(player.velocity.x, player.velocity.z).length() / player.WALK, 0.0, 1.4) if player.on_floor and not player.creative else 0.0
 	tr.origin += Vector3(cos(player.bob * 0.5) * 0.012, -absf(sin(player.bob)) * 0.02, 0) * walk
 	if player.place_anim > 0.0:
 		tr.origin += Vector3(0, 0.03, -0.14) * sin(PI * (1.0 - player.place_anim / PLACE_TIME))

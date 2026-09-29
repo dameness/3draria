@@ -13,7 +13,7 @@ Foco: fechar a pré-hardmode antes de hardmode/Calamity. Cada item: **Hoje** (c�
 | 2 | Binds do Terraria (Esc, Settings, botão esquerdo coloca, Shift; H/Q/J/B vêm com poções e mana) | ✅ |
 | 3 | Ataque: use time, autoswing só onde a wiki diz, mira exata, tool speed | ✅ |
 | 4 | Danos da wiki (variância, crítico, defesa, recuo) + martelos | ✅ |
-| 5 | Voo: modo criativo (F) separado das asas (acessório) | ⬜ |
+| 5 | Voo: modo criativo (F) separado das asas (acessório) | ✅ |
 | 6 | Loot: baús por camada, Life Crystal, poções e buffs | ⬜ |
 | 7 | Mana e magia | ⬜ |
 | 8 | NPCs (Guide, Merchant, Nurse) | ⬜ |
@@ -229,7 +229,7 @@ martelo"; `Items.power_on` e o Auto Select escolhem o martelo. Sprites novos: ro
 100; crítico 4%; (20−3)×2 = 34; recuo 3 e 4,2; tabela de recuos da wiki; jogador com 4 conjuntos de armadura; martelos e orbes) e as flechas/feixe agora
 conferem a faixa da variância. Prints: `inimigos` (números normais e um crítico) e `martelo`.
 
-## 5 — Voo: modo criativo separado das asas
+## 5 — Voo: modo criativo separado das asas ✅
 
 **Wiki (Wings, Fledgling Wings):** asas são acessório; **segurar Espaço** dá voo enquanto houver *flight time* e depois **plana**
 (gravidade e queda máx. 1/3); o tempo volta ao tocar o chão; **sem dano de queda**; Down+Espaço paira (só asas melhores); a única asa
@@ -240,6 +240,17 @@ pré-hardmode, Fledgling, voa **0,42 s**, 15 mph na horizontal e 22 na vertical 
 `flight_left` recarrega no chão; `fall_immune` (o dano de queda em si fica para "Depois"); (3) HUD mostra a barra de voo.
 **Teste/print:** `test_wings`: consome só segurando, recarrega no chão, planeio cai a 1/3, sem asas cai normal; modo criativo não
 atravessa nada se desligado. Print `voo` (asas e planando).
+
+**Feito:** `player.flying` virou `player.creative` (F): atravessa blocos, não leva dano, Espaço sobe e C desce, com o aviso fixo "MODO CRIATIVO" no topo da
+tela (o rodapé diz "modo criativo (F)"). Asas de verdade: `Fledgling Wings` (item novo no fim de items.json, `accessory.wings {time: 0.42, lift: 9.7}` = 22 mph
+da wiki ÷ 0,733 tiles/s por mph ÷ 1,67 tiles por bloco; sprite da wiki, entra no kit F8). `player.step`: com asas vestidas (`Inventory.wings()`), segurar Espaço no ar
+sobe até `lift` (`WING_ACCEL`) gastando `flight_left` (voa mesmo logo depois de sair do chão); acabado o tempo, Espaço apertado com velocidade descendo **planeia**
+(gravidade e queda máxima em 1/3: `GLIDE`, `GLIDE_FALL` = 7,5 blocos/s); o chão (ou a água) recarrega. Sem asas nada muda. A barra de voo (azul) aparece sob a
+mira enquanto o tempo não está cheio. Animação: 2 asas espelhadas do sprite da wiki nas costas (translúcidas, fechadas em pé, batendo ao subir e abertas
+planando), sopro/penas e som `flap` a cada batida. **Não há dano de queda no jogo** (fica em "Depois"), então "sem dano de queda" das asas ainda não muda nada.
+Medido: pulo simples 1,52 blocos; segurando Espaço com as asas ~5,95 (26 quadros de batida); planeio a −7,5 blocos/s. Testes: `test_wings` (sem asas nada muda, 24-27
+quadros de voo, sobe ~3-4 blocos a mais, planeio a 1/3, sem Espaço cai normal, tempo só gasta segurando, F liga/desliga o criativo, atravessa e não leva dano) e HUD
+(aviso e barra) na integração. Prints: `asas` (3ª pessoa de costas, batendo) e `criativo`.
 
 ## 6 — Loot de cavernas/baús e consumíveis
 

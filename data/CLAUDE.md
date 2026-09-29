@@ -46,6 +46,7 @@ Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` 
 (dica e ciclo das armas); `tool_speed` é o intervalo entre golpes no bloco (picareta/machado) e vira o ciclo da ferramenta (`Items.use_dur`).
 Recuo de flecha soma ao da arma (`knockback` na munição).
 
+Acessório: `accessory: {speed?, jump?, regen?, defense?, wings?: {time (s de voo), lift (blocos/s)}}` (bônus somam; só um par de asas vale).
 Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus}}`.
 
 ## recipes.json

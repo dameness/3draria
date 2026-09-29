@@ -3,7 +3,8 @@ extends Node3D
 # Teclas como no Terraria (wiki Controls): WASD anda, Espaço pula, 1-0 ou a roda escolhem o slot, Esc abre/fecha o inventário (a pausa é o botão
 # Configurações dele), Tab/M/+/- são do minimapa (minimap.gd), Shift segurado = Auto Select (a ferramenta certa para o alvo, senão a tocha).
 # Botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira, bloco coloca); o direito interage (baú, NPC).
-# Só do jogo (não do Terraria): F liga/desliga voo (Espaço sobe, C desce), V troca 1ª/3ª pessoa, F5 salva (também salva ao fechar), F8 dá o kit de teste.
+# Só do jogo (não do Terraria): F liga/desliga o modo criativo (atravessa blocos, invulnerável; Espaço sobe, C desce), V troca 1ª/3ª pessoa,
+# F5 salva (também salva ao fechar), F8 dá o kit de teste. Voar de verdade é com asas (acessório): segurar Espaço no ar.
 
 const HALF := 0.3        # meia largura da caixa
 const TALL := 1.8
@@ -11,7 +12,11 @@ const EYE := 1.62
 const GRAVITY := 28.0
 const JUMP := 9.0        # sobe ~1,4 bloco
 const WALK := 6.6        # 11 tiles/s da wiki (1 bloco = 1,67 tile); não há corrida
-const FLY := 13.5        # voo livre (F)
+const FLY := 13.5        # modo criativo (F): blocos/s
+const WING_ACCEL := 45.0   # asas: quanto sobe a velocidade vertical por segundo enquanto voa
+const GLIDE := 1.0 / 3.0   # planando (asas sem tempo de voo, Espaço apertado): gravidade e queda máxima em 1/3 (wiki Wings)
+const FALL_MAX := 50.0
+const GLIDE_FALL := 7.5    # 1/3 da queda máxima da wiki (37,5 tiles/s ≈ 22,5 blocos/s)
 const LOOK := 0.003      # radianos por pixel do mouse, vezes Settings.mouse_sens
 const CLICK_BUFFER := 0.12   # um clique durante o fim do golpe anterior vale para o próximo
 const FAN := deg_to_rad(20.0)   # o golpe corpo a corpo testa a mira e mais dois raios a ±20°
@@ -31,7 +36,7 @@ const TPP_DISTANCE := 4.0      # câmera em 3ª pessoa: distância atrás da cab
 const TPP_SHOULDER := 0.6      # e deslocada para a direita, para a mira não ficar sobre a cabeça
 const TPP_MARGIN := 0.4        # a câmera para antes do bloco que está no caminho (a lente vê ~0,1 além do ponto)
 const EPS := VoxelBody.EPS
-const TEST_KIT := {"hermes_boots": 1, "shiny_red_balloon": 1, "band_of_regeneration": 1, "terra_blade": 1, "enchanted_sword": 1, "wooden_bow": 1, "wooden_arrow": 200, "iron_pickaxe": 1}  # F8, para playtest
+const TEST_KIT := {"hermes_boots": 1, "shiny_red_balloon": 1, "band_of_regeneration": 1, "terra_blade": 1, "enchanted_sword": 1, "wooden_bow": 1, "wooden_arrow": 200, "iron_pickaxe": 1, "fledgling_wings": 1}  # F8, para playtest
 const LO := Vector3(-HALF, 0, -HALF)
 const HI := Vector3(HALF, TALL, HALF)
 
@@ -44,7 +49,11 @@ var on_floor := false
 var hit_wall := false         # o último passo bateu numa parede (usado para sair da água)
 var depth := 0.0              # blocos de líquido acima dos pés
 var swimming := false         # mais fundo que SWIM_DEPTH
-var flying := false
+var creative := false         # modo criativo (F): sem colisão, sem dano
+var flight_left := 0.0        # segundos de voo que restam às asas; volta ao máximo no chão
+var gliding := false          # planando com as asas (a animação usa)
+var flapping := false         # batendo as asas agora (subindo)
+var flap_timer := 0.0
 var map_open := false         # mapa cheio (M) aberto: o jogador fica parado (minimap.gd liga e desliga)
 var death := Vector3.INF      # onde morreu por último (o mapa marca)
 var inv := Inventory.new()
@@ -157,7 +166,7 @@ func _unhandled_input(e: InputEvent) -> void:
 		if e.physical_keycode >= KEY_0 and e.physical_keycode <= KEY_9:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
 		elif e.physical_keycode == KEY_F:
-			flying = not flying
+			creative = not creative
 		elif e.physical_keycode == KEY_V:
 			third_person = not third_person
 		elif e.physical_keycode == KEY_F8:
@@ -178,7 +187,7 @@ func look(rel: Vector2) -> void:
 func _physics_process(delta: float) -> void:
 	var k := func(key): return 1.0 if Input.is_physical_key_pressed(key) and not map_open else 0.0   # com o mapa cheio aberto fica parado
 	var wish := Vector3(k.call(KEY_D) - k.call(KEY_A), 0, k.call(KEY_S) - k.call(KEY_W)).rotated(Vector3.UP, rotation.y)
-	if flying:
+	if creative:
 		wish.y = k.call(KEY_SPACE) - k.call(KEY_C)
 	step(delta, wish.normalized(), k.call(KEY_SPACE) > 0.0)
 	tick(delta)
@@ -222,7 +231,7 @@ func _update_camera(delta := 0.0) -> void:
 			k *= 0.7
 		offset = want * k
 	cam.position = Vector3(0, EYE, 0) + offset
-	var walk := clampf(Vector2(velocity.x, velocity.z).length() / WALK, 0.0, 1.4) if on_floor and not flying else 0.0
+	var walk := clampf(Vector2(velocity.x, velocity.z).length() / WALK, 0.0, 1.4) if on_floor and not creative else 0.0
 	bob += delta * (7.0 + walk * 3.0) * walk
 	shake = maxf(shake - delta * 2.5, 0.0)
 	if not third_person and delta > 0.0:   # em 1ª pessoa a câmera balança ao andar e treme nos golpes
@@ -273,9 +282,9 @@ func tick(delta: float) -> void:
 func step(delta: float, wish: Vector3, jump: bool) -> void:
 	var boots := 1.0 + inv.acc_sum("speed")
 	var speed := WALK * boots
-	if flying:
+	if creative:
 		velocity = Vector3.ZERO
-		position += wish * FLY * boots * delta  # voo atravessa blocos
+		position += wish * FLY * boots * delta  # atravessa blocos
 		return
 	depth = liquid_depth()
 	var kind := liquid_kind_below()
@@ -289,7 +298,20 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 		if jump and depth < HOP_DEPTH and (hit_wall or on_floor):
 			velocity.y = JUMP * (1.0 + inv.acc_sum("jump"))
 	else:
-		velocity.y = maxf(velocity.y - GRAVITY * delta, -50.0)
+		var wings := inv.wings()
+		flapping = false
+		gliding = false
+		if not wings.is_empty():   # asas (wiki Wings): segurar Espaço no ar voa enquanto houver tempo de voo; depois plana; o chão recarrega
+			if on_floor or depth > 0.0:
+				flight_left = wings.time
+			elif jump and flight_left > 0.0:
+				flight_left = maxf(flight_left - delta, 0.0)
+				velocity.y = move_toward(velocity.y, wings.lift, WING_ACCEL * delta)
+				flapping = true
+			elif jump and velocity.y < 0.0:
+				gliding = true
+		if not flapping:
+			velocity.y = maxf(velocity.y - GRAVITY * (GLIDE if gliding else 1.0) * delta, -(GLIDE_FALL if gliding else FALL_MAX))
 		if jump and on_floor:
 			velocity.y = JUMP * (1.0 + inv.acc_sum("jump"))
 	if depth > 0.0 and kind == Blocks.ids.lava:
@@ -319,6 +341,12 @@ func _effects(delta: float) -> void:
 			stride = 0.0
 			Fx.dust(entities, position + Vector3(0, 0.08, 0), _ground_color(), 2)
 	was_on_floor = on_floor
+	if flapping:   # bate as asas: sopro e penas a cada batida
+		flap_timer -= delta
+		if flap_timer <= 0.0:
+			flap_timer = 0.17
+			Fx.puff(entities, position + Vector3(0, 1.1, 0), Color("#e8f0ff"), 2)
+			Sfx.play(entities, "flap", position + Vector3.UP, -8.0)
 	if (depth > 0.3) != (last_depth > 0.3) and absf(velocity.y) > 2.0:
 		Fx.splash(entities, position + Vector3(0, maxf(depth, 0.3), 0), 14)
 	last_depth = depth
@@ -376,7 +404,7 @@ func say(text: String) -> void:
 
 # Dano como no Terraria (modo normal): dano − defesa/2 (armadura + bônus de conjunto), mínimo 1.
 func hurt(damage: int, dir: Vector3) -> int:
-	if iframes > 0 or flying:
+	if iframes > 0 or creative:
 		return 0
 	var taken := maxi(1, damage - ceili(inv.defense() / 2.0))
 	hp -= taken

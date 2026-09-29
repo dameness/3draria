@@ -223,5 +223,6 @@
 	"silver_hammer": {"wiki": "Silver_Hammer", "pattern": "pickaxe", "colors": ["#d8d8e0", "#b0b0b8"], "top_colors": ["#6e4b2a"]},
 	"tungsten_hammer": {"wiki": "Tungsten_Hammer", "pattern": "pickaxe", "colors": ["#8fb08a", "#6a8a66"], "top_colors": ["#6e4b2a"]},
 	"gold_hammer": {"wiki": "Gold_Hammer", "pattern": "pickaxe", "colors": ["#f2cf3a", "#d4a81e"], "top_colors": ["#6e4b2a"]},
-	"platinum_hammer": {"wiki": "Platinum_Hammer", "pattern": "pickaxe", "colors": ["#c8d8e8", "#a0b0c0"], "top_colors": ["#6e4b2a"]}
+	"platinum_hammer": {"wiki": "Platinum_Hammer", "pattern": "pickaxe", "colors": ["#c8d8e8", "#a0b0c0"], "top_colors": ["#6e4b2a"]},
+	"fledgling_wings": {"wiki": "Fledgling_Wings", "pattern": "blob", "colors": ["#e8f0ff", "#b8c8e8", "#ffffff"]}
 }

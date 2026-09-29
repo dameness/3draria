@@ -22,7 +22,7 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -80,7 +80,7 @@ func test_player():
 		p.step(1.0 / 60, Vector3(1, 0, 0), false)
 	check(absf(p.position.x - (27 - 0.3)) < 0.01, "parede de 2 blocos para o jogador (x=%.3f)" % p.position.x)
 	check(not p.overlaps_solid(p.position), "jogador nunca fica dentro de bloco")
-	p.flying = true
+	p.creative = true
 	p.step(1.0, Vector3(1, 0, 0), false)
 	check(p.position.x > 28, "voo atravessa blocos")
 	p.free()
@@ -1050,6 +1050,88 @@ func test_binds():
 	Settings.volume = 1.0
 	Settings.mouse_sens = 1.0
 	p.cam.free()
+	free_player(p)
+	w.free()
+	return true
+
+
+# Voo como o Terraria: asas (acessório) dão voo enquanto se segura Espaço no ar e há tempo de voo (Fledgling: 0,42 s), depois planam (gravidade e queda
+# em 1/3); o chão recarrega. O modo criativo (F) é à parte: atravessa blocos e não leva dano.
+func test_wings():
+	var w := floor_world()
+	var p := make_player(w)
+	var dt := 1.0 / 60
+	var land := func():
+		p.position = Vector3(24.5, 11.0, 24.5)
+		p.velocity = Vector3.ZERO
+		for i in 5:
+			p.step(dt, Vector3.ZERO, false)
+	var jump_peak := func(hold_frames: int) -> float:   # pico da altura pulando com Espaço apertado nos primeiros hold_frames quadros
+		land.call()
+		var top := 0.0
+		for i in 240:
+			p.step(dt, Vector3.ZERO, i < hold_frames)
+			top = maxf(top, p.position.y - 11.0)
+		return top
+	var base: float = jump_peak.call(1)
+	check(absf(float(jump_peak.call(240)) - base) < 0.05 and p.flight_left == 0.0 and not p.flapping, "sem asas, segurar Espaço no ar não muda nada (pulo de %.2f)" % base)
+	var id: int = Items.ids.fledgling_wings
+	p.inv.acc[0] = id
+	var data: Dictionary = Items.defs[id].accessory.wings
+	check(is_equal_approx(data.time, 0.42) and absf(data.lift - 22.0 * 0.733 / 1.667) < 0.3 and p.inv.wing_id() == id and p.inv.wings() == data, "Fledgling: 0,42 s de voo e 22 mph de subida (≈ 9,7 blocos/s)")
+	check(Ui.item_tip(id).contains("voar") and Items.autoswing(id) == false, "a dica diz que permite voar")
+	land.call()
+	check(is_equal_approx(p.flight_left, 0.42), "no chão o tempo de voo está cheio")
+	# segurando Espaço: sobe mais que o pulo, gasta 0,42 s e planeia
+	land.call()
+	var flap_frames := 0
+	var top := 0.0
+	var glide_speed := 0.0
+	for i in 300:
+		p.step(dt, Vector3.ZERO, true)
+		flap_frames += int(p.flapping)
+		top = maxf(top, p.position.y - 11.0)
+		if p.gliding:
+			glide_speed = minf(glide_speed, p.velocity.y)
+		if p.on_floor and i > 5:   # pousou: segurando Espaço pularia de novo
+			break
+	p.step(dt, Vector3.ZERO, false)
+	print("voo: pulo de %.2f blocos, com as asas %.2f, %d quadros de batida, planeio a %.2f blocos/s" % [base, top, flap_frames, glide_speed])
+	check(flap_frames >= 24 and flap_frames <= 27, "o voo dura 0,42 s (%d quadros de batida)" % flap_frames)
+	check(top > base + 1.5 and top < base + 5.0, "voando sobe ~3 blocos acima do pulo simples (%.2f contra %.2f)" % [top, base])
+	check(absf(glide_speed + p.GLIDE_FALL) < 0.15, "depois planeia: a queda para em 1/3 da máxima (%.2f blocos/s)" % glide_speed)
+	check(p.on_floor and is_equal_approx(p.flight_left, 0.42), "e o chão recarrega o tempo de voo")
+	# sem segurar Espaço cai normal, mais rápido que o planeio
+	land.call()
+	p.position.y += 20.0
+	var free_fall := 0.0
+	for i in 60:
+		p.step(dt, Vector3.ZERO, false)
+		free_fall = minf(free_fall, p.velocity.y)
+	check(free_fall < -14.0 and is_equal_approx(p.flight_left, 0.42) and not p.gliding, "sem Espaço cai de verdade (%.1f blocos/s) e o tempo de voo não gasta" % free_fall)
+	# o tempo só gasta segurando
+	land.call()
+	for i in 12:
+		p.step(dt, Vector3.ZERO, true)
+	var after_hold: float = p.flight_left
+	for i in 30:
+		p.step(dt, Vector3.ZERO, false)
+	check(after_hold < 0.42 - 0.1 and is_equal_approx(p.flight_left, after_hold), "o tempo de voo gasta só enquanto Espaço está apertado (%.2f)" % after_hold)
+	# tirar as asas: volta a gravidade normal
+	p.inv.acc[0] = -1
+	p.step(dt, Vector3.ZERO, true)
+	check(not p.flapping and p.inv.wings().is_empty(), "sem as asas não voa")
+	# modo criativo: F liga e desliga, atravessa blocos e ninguém machuca
+	land.call()
+	p._unhandled_input(key(KEY_F))
+	check(p.creative, "F liga o modo criativo")
+	p.iframes = 0.0
+	check(p.hurt(50, Vector3.RIGHT) == 0, "no modo criativo não leva dano")
+	w.set_block(26, 11, 24, Blocks.ids.stone)
+	p.step(1.0, Vector3(1, 0, 0), false)
+	check(p.position.x > 30.0, "e atravessa blocos")
+	p._unhandled_input(key(KEY_F))
+	check(not p.creative, "F de novo desliga")
 	free_player(p)
 	w.free()
 	return true
@@ -2336,7 +2418,7 @@ func integration():
 			check(hand.arm != null and hand.arm.get_child_count() == 3, "braço em 1ª pessoa (antebraço, manga e punho)")
 			player.cooldown = 0
 			player.third_person = true
-			player.flying = true
+			player.creative = true
 			player.position += Vector3.UP * 20  # céu aberto: nada entre a cabeça e a câmera
 			player._process(0)
 			var model: Node3D = player.get_node("Model")
@@ -2378,6 +2460,16 @@ func integration():
 			hud._unhandled_input(esc)
 			hud._process(0.0)
 			check(not main.get_tree().paused and not player.menu_open, "Esc dentro do Configurações: o HUD despausa")
+			player.creative = true
+			hud._process(0.0)
+			check(hud.creative_label.visible and not hud.flight_bar.visible, "modo criativo: aviso fixo na tela")
+			player.creative = false
+			player.inv.acc[0] = Items.ids.fledgling_wings
+			player.flight_left = 0.2
+			hud._process(0.0)
+			check(hud.flight_bar.visible and is_equal_approx(hud.flight_bar.value, 0.2) and not hud.creative_label.visible, "asas: a barra de voo aparece gastando o tempo")
+			player.inv.acc[0] = -1
+			player.flight_left = 0.0
 			hud._unhandled_input(key(KEY_F10))
 			check(not hud.debug_label.visible, "F10 esconde o FPS")
 			hud._unhandled_input(key(KEY_F10))
@@ -2387,7 +2479,7 @@ func integration():
 			check(hud.root.visible and hud.debug_label.visible, "F10 e F11 de novo mostram tudo")
 			phase = 3
 		3:   # câmera em 3ª pessoa: nunca dentro de bloco, em qualquer ângulo (ver abaixo da terra era a câmera atravessando o chão)
-			player.flying = false
+			player.creative = false
 			player.third_person = true
 			var rng := RandomNumberGenerator.new()
 			rng.seed = 7

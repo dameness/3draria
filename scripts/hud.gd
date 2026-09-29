@@ -35,6 +35,8 @@ var item_label: Label
 var note_label: Label
 var debug_label: Label
 var cross: Label
+var creative_label: Label
+var flight_bar: ProgressBar
 var craft_root: Control
 var craft_list: VBoxContainer
 var craft_info: HBoxContainer
@@ -139,6 +141,22 @@ func _ready() -> void:
 	note_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	note_label.offset_top = -150
 	root.add_child(note_label)
+	creative_label = _label("MODO CRIATIVO  ·  atravessa blocos e não leva dano  ·  Espaço sobe, C desce, F sai", 16, HORIZONTAL_ALIGNMENT_CENTER)
+	creative_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	creative_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	creative_label.offset_top = 8
+	creative_label.add_theme_color_override("font_color", Ui.GOLD)
+	root.add_child(creative_label)
+	flight_bar = ProgressBar.new()   # tempo de voo das asas: só aparece enquanto não está cheio
+	flight_bar.set_anchors_preset(Control.PRESET_CENTER)
+	flight_bar.offset_left = -50
+	flight_bar.offset_right = 50
+	flight_bar.offset_top = 30
+	flight_bar.offset_bottom = 40
+	flight_bar.show_percentage = false
+	flight_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flight_bar.add_theme_stylebox_override("fill", Ui.box(Color("#9ad0ff"), Ui.EDGE, 1, 3))
+	root.add_child(flight_bar)
 	debug_label = _label("", 12)
 	debug_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	debug_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -695,6 +713,12 @@ func _process(delta: float) -> void:
 	var open: bool = player.inventory_open
 	pause.visible = player.menu_open
 	cross.visible = not (open or player.menu_open or player.map_open)   # com o mouse solto a mira não faz sentido
+	creative_label.visible = player.creative
+	var wings: Dictionary = player.inv.wings()
+	flight_bar.visible = not wings.is_empty() and not player.creative and player.flight_left < wings.time - 0.001
+	if flight_bar.visible:
+		flight_bar.max_value = wings.time
+		flight_bar.value = player.flight_left
 	if player.menu_open != was_menu:   # abrir recarrega os valores; fechar grava as opções
 		was_menu = player.menu_open
 		if was_menu:
@@ -804,4 +828,4 @@ func _process(delta: float) -> void:
 	var p: Vector3 = player.position
 	debug_label.text = "FPS %d  |  distância %d chunks ([ ])  |  %s%s  |  %s  |  %s  |  pos %d %d %d" % [
 		Engine.get_frames_per_second(), world.render_distance, clock.clock(), " (noite)" if clock.is_night() else "",
-		("voo (F)" if player.flying else "andando (F voa)"), "3ª pessoa (V)" if player.third_person else "1ª pessoa (V)", p.x, p.y, p.z]
+		("modo criativo (F)" if player.creative else "andando (F: criativo)"), "3ª pessoa (V)" if player.third_person else "1ª pessoa (V)", p.x, p.y, p.z]

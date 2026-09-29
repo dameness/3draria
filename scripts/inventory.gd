@@ -204,6 +204,20 @@ func click_trash() -> void:
 	version += 1
 
 
+# O item das asas vestidas (só um par vale), ou -1.
+func wing_id() -> int:
+	for id in acc:
+		if id != -1 and Items.defs[id].get("accessory", {}).has("wings"):
+			return id
+	return -1
+
+
+# As asas vestidas: {time (s de voo), lift (blocos/s de subida)} ou {} sem asas.
+func wings() -> Dictionary:
+	var id := wing_id()
+	return Items.defs[id].accessory.wings if id != -1 else {}
+
+
 # Ctrl+clique: manda o item do slot direto para a lixeira (o que estava lá é destruído). Favorito e slot vazio não vão.
 func quick_trash(i: int) -> bool:
 	if item[i] == -1 or fav[i] == 1:

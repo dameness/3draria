@@ -135,6 +135,7 @@ static func item_tip(id: int) -> String:
 		if a.has("speed"): lines.append("+%d%% de velocidade" % roundi(a.speed * 100))
 		if a.has("jump"): lines.append("+%d%% de altura do pulo" % roundi(a.jump * 100))
 		if a.has("regen"): lines.append("Regeneração de vida mais rápida")
+		if a.has("wings"): lines.append("Permite voar e planar (%.2f s de voo)" % a.wings.time)
 		if a.has("defense"): lines.append("+%d de defesa" % a.defense)
 		lines.append("Acessório")
 	if Inventory.coin_kind(id) != -1:

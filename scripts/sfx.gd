@@ -2,7 +2,7 @@ class_name Sfx
 # Sons gerados por código (sem arquivos de áudio): rajadas de ruído filtrado e tons com envelope, como os efeitos curtos do Terraria.
 # Sfx.play(entities, "dig", pos) toca em 3D no ponto; fora da árvore (testes) ou com o volume das Configurações em zero nada acontece.
 #   dig / stone (picareta em terra / pedra)  break (bloco quebrou)  place  swing  hit  hurt (o jogador)  die (inimigo)
-#   pickup / coin  splash  boss  bow
+#   pickup / coin  splash  boss  bow  flap
 
 const RATE := 22050
 const MAX_ACTIVE := 12
@@ -68,6 +68,7 @@ static func build(name: String) -> PackedFloat32Array:
 		"splash": return _burst(0.32, 0.3, 4.0)
 		"boss": return _mix(_sweep(1.3, 55.0, 38.0, 1.6, 0.8), _sweep(1.3, 82.0, 50.0, 1.8, 0.6))
 		"bow": return _mix(_sweep(0.10, 300.0, 120.0, 8.0), _burst(0.08, 0.6, 9.0))
+		"flap": return _burst(0.14, 0.3, 7.0)   # batida de asas: um sopro grave
 	return PackedFloat32Array()
 
 
