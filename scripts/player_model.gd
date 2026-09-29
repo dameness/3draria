@@ -31,6 +31,7 @@ var hair_nodes: Array[Node3D] = []
 var eyes: Array[Node3D] = []
 static var _mats := {}
 static var _outline: StandardMaterial3D
+static var _plate: ImageTexture
 
 
 func _ready() -> void:
@@ -162,6 +163,41 @@ static func _mat(c: Color, outline := true) -> StandardMaterial3D:
 				_outline.grow = true
 				_outline.grow_amount = OUTLINE
 			m.next_pass = _outline
+		_mats[key] = m
+	return _mats[key]
+
+
+# Placas de metal em tons de cinza (16x16 pixel a pixel, filtro "nearest"): luz na borda de cima/esquerda, sombra embaixo/direita,
+# junta escura entre as placas, rebites e risco. Multiplicada pela cor da peça, dá a textura pixelada do Terraria.
+static func _plate_tex() -> ImageTexture:
+	if _plate == null:
+		var img := Image.create(16, 16, false, Image.FORMAT_RGB8)
+		for y in 16:
+			for x in 16:
+				var v := 0.9 + 0.05 * float((x * 7 + y * 13) % 5 - 2)   # grão
+				if x == 0 or y == 0:
+					v = 0.5   # junta entre placas
+				elif x == 1 or y == 1:
+					v = 1.0    # brilho
+				elif x == 15 or y == 15:
+					v = 0.6    # sombra
+				elif (x == 4 or x == 11) and (y == 4 or y == 11):
+					v = 1.0 if x == 4 and y == 4 else 0.45   # rebites
+				elif y == 8 and x > 5 and x < 11:
+					v = 0.66   # risco
+				img.set_pixel(x, y, Color(v, v, v))
+		_plate = ImageTexture.create_from_image(img)
+	return _plate
+
+
+# Material da armadura: placa × cor, repetida pelo tamanho da peça (placas de ~17 cm).
+static func _plate_mat(c: Color, uv: Vector3) -> StandardMaterial3D:
+	var key := [c, uv]
+	if not _mats.has(key):
+		var m: StandardMaterial3D = _mat(c).duplicate()
+		m.albedo_texture = _plate_tex()
+		m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		m.uv1_scale = uv
 		_mats[key] = m
 	return _mats[key]
 
@@ -363,7 +399,10 @@ func _dress() -> void:
 		var c := [pal[0], pal[0].lightened(0.28), pal[1]]   # principal, brilho, sombra/detalhe (contraste alto como o sprite)
 		var list := []
 		var add := func(parent: String, mesh: Mesh, col: Color, pos: Vector3, size := Vector3.ONE, rot := Vector3.ZERO):
-			list.append(_part(parts[parent], mesh, col, pos, size, rot))
+			var mi := _part(parts[parent], mesh, col, pos, size, rot)
+			var box := mesh.get_aabb().size * size
+			mi.material_override = _plate_mat(col, Vector3(snappedf(PI * maxf(box.x, box.z) / 0.17, 1.0), maxf(1.0, snappedf(box.y / 0.17, 1.0)), 1.0))
+			list.append(mi)
 		match Inventory.ARMOR[k]:
 			"head":
 				add.call("head", _sphere(), c[0], Vector3(0, 0.42, 0.03), Vector3(0.72, 0.46, 0.7))          # calota (deixa o rosto aberto)
