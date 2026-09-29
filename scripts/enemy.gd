@@ -38,6 +38,7 @@ var follow: Node3D = null
 var heading := Vector3.ZERO
 var summoned_timer := 3.0   # king slime: espera até soltar mais um slime
 var teleport_timer := 9.0
+var spin_timer := 13.33   # skeletron: segundos até trocar de fase (mãos ↔ giro)
 var angle := 0.0    # creeper: fase da órbita em volta do cérebro (follow = o cérebro)
 
 
@@ -274,11 +275,14 @@ func skeletron(delta: float, to: Vector3) -> void:
 					entities.remove_enemy(o)
 		return
 	timer -= delta
-	if phase == 1 and (hp < def.life * 0.5 or entities.group_count(def.group) <= 1):
-		phase = 2
-		damage = 60
-		defense = 0
-		entities.player.say("o Skeletron gira, furioso!")
+	spin_timer -= delta   # wiki Skeletron: ~13,3 s com as mãos atacando, ~6,7 s girando atrás do jogador (+30% de dano, defesa −10), em ciclo até o fim
+	if spin_timer <= 0.0:
+		phase = 3 - phase
+		spin_timer = 6.67 if phase == 2 else 13.33
+		damage = roundi(def.damage * 1.3) if phase == 2 else def.damage
+		defense = maxi(def.defense - 10, 0) if phase == 2 else def.defense
+		if phase == 2:
+			entities.player.say("o Skeletron gira, furioso!")
 	if phase == 2:
 		velocity = velocity.lerp(to.normalized() * def.speed * 1.4, delta * 3.0)
 		return

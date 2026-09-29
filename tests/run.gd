@@ -2121,6 +2121,7 @@ func test_dungeon():
 	p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i(0, 1, 0)}
 	p.inv.add(Items.ids.copper_pickaxe, 1)
 	p.inv.add(Items.ids.nightmare_pickaxe, 1)
+	p.inv.add(Items.ids.molten_pickaxe, 1)
 	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
 	for i in 10:
 		p.break_target()
@@ -2128,7 +2129,11 @@ func test_dungeon():
 	p.slot = p.inv.item.find(Items.ids.nightmare_pickaxe)
 	for i in 10:
 		p.break_target()
-	check(w.get_block(20, 11, 20) == 0, "…mas cede à Nightmare (65)")
+	check(w.get_block(20, 11, 20) == Blocks.ids.dungeon_brick, "…e à Nightmare (65): a wiki pede 100% de poder")
+	p.slot = p.inv.item.find(Items.ids.molten_pickaxe)
+	for i in 10:
+		p.break_target()
+	check(w.get_block(20, 11, 20) == 0, "…mas cede à Molten (100)")
 	w.set_block(20, 11, 20, Blocks.ids.dungeon_brick)
 	w.skeletron_down = true
 	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
@@ -2176,9 +2181,12 @@ func test_skeletron():
 	for h in hands:
 		far = maxf(far, h.position.distance_to(head.position))
 	check(far < 14.0, "as mãos giram em volta da cabeça (%.1f)" % far)
-	head.hp = 2000
+	head.spin_timer = 0.0   # wiki: depois de ~13 s de mãos, gira ~6,7 s (dano +30%, defesa −10) e volta, em ciclo
 	head.think(1.0 / 60)
-	check(head.phase == 2 and head.damage == 60 and head.defense == 0 and head.hurt(50, Vector3.RIGHT, 0) == 50, "abaixo de 50%: gira, dano 60 e defesa 0")
+	check(head.phase == 2 and head.damage == 42 and head.defense == 0 and head.hurt(50, Vector3.RIGHT, 0) == 50, "girando: dano 32 × 1,3 = 42 e defesa 0")
+	head.spin_timer = 0.0
+	head.think(1.0 / 60)
+	check(head.phase == 1 and head.damage == 32 and head.defense == 10 and is_equal_approx(head.spin_timer, 13.33), "e depois volta às mãos: dano 32, defesa 10")
 	head.hurt(9999, Vector3.RIGHT, 0)
 	var gold := 0
 	for n in ent.get_children():
