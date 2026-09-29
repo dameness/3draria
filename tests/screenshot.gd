@@ -520,7 +520,7 @@ func _setup(s: Dictionary) -> void:
 			player.cast(wd, dir)
 		else:
 			player.swing(wd, eye0, dir)
-		var pr: Node3D = ent.get_children().back()
+		var pr: Node3D = ent.get_children().filter(func(n): return n.get_script() != null and n.get_script().resource_path.ends_with("projectile.gd")).back()   # o último filho pode ser o som do disparo
 		var steps := 0
 		while is_instance_valid(pr) and pr.position.distance_to(aim_at) > s.fire and steps < 600:
 			pr._physics_process(1.0 / 60.0)
