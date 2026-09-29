@@ -7,6 +7,7 @@ const MAX_NIGHT := 8
 const SPAWN_MIN := 24.0
 const SPAWN_MAX := 40.0
 const DESPAWN := 64.0
+const TOWN := ["guide", "merchant", "nurse", "demolitionist", "arms_dealer"]   # habitantes, na ordem em que ocupam os lugares perto do nascimento
 const Enemy := preload("res://scripts/enemy.gd")
 const ItemDrop := preload("res://scripts/item_drop.gd")
 const Projectile := preload("res://scripts/projectile.gd")
@@ -96,12 +97,11 @@ func _physics_process(delta: float) -> void:
 
 # Olho de Cthulhu natural (wiki Eye of Cthulhu, Random): ao anoitecer, até ele cair uma vez, com 200 de vida máxima, 11 de defesa e habitantes na vila,
 # há 1/3 de chance de a mensagem sair; 81 s depois ele nasce se ninguém chamou outro chefe e o jogador está na superfície.
-# ponytail: a wiki pede 4 habitantes; o jogo tem 3 (Guide, Merchant, Nurse), então pede os 3. Teto: quando houver mais, subir para 4.
 func _eye_watch() -> void:
 	var t: float = clock.time
 	var dusk: bool = last_time >= 0.0 and last_time < clock.DAY_SECONDS and t >= clock.DAY_SECONDS
 	last_time = t
-	if dusk and not world.eoc_down and not world.test_world and boss == null and player.max_hp >= 200 and player.defense() >= 11 and world.npcs.size() >= 3 and rng.randf() < 1.0 / 3.0:
+	if dusk and not world.eoc_down and not world.test_world and boss == null and player.max_hp >= 200 and player.defense() >= 11 and world.npcs.size() >= 4 and rng.randf() < 1.0 / 3.0:
 		eye_watch = 81.0
 		player.say("você sente uma presença maligna te observando...")
 	elif eye_watch >= 0.0:
@@ -111,10 +111,13 @@ func _eye_watch() -> void:
 			player.say("Eye of Cthulhu despertou!")
 
 
-# Habitantes (wiki Guide/Merchant/Nurse): o Guide já está no mundo; o Merchant chega com mais de 50 de prata e a Nurse com mais de 100 de vida máxima.
+# Habitantes (wiki): o Guide já está no mundo; o Merchant chega com mais de 50 de prata, a Nurse com mais de 100 de vida máxima, o Demolitionist com um explosivo
+# no inventário e o Arms Dealer com uma bala ou arma de bala.
 # Chegam perto do spawn e, se sumirem por estar longe, voltam quando o jogador está perto de novo.
 func _town() -> void:
-	var want := {"guide": true, "merchant": player.inv.coin_value() > 5000, "nurse": player.max_hp > 100}
+	var want := {"guide": true, "merchant": player.inv.coin_value() > 5000, "nurse": player.max_hp > 100,
+			"demolitionist": _carries(func(d): return d.has("throw")),
+			"arms_dealer": _carries(func(d): return d.get("ammo") == "bullet" or d.get("ammo_class") == "bullet")}
 	for n in want:
 		if want[n]:
 			world.npcs[n] = true
@@ -122,13 +125,18 @@ func _town() -> void:
 	if town_tick % 3 == 0:
 		_homes()
 	var i := 0
-	for n in ["guide", "merchant", "nurse"]:
+	for n in TOWN:
 		var where := _npc_spot(n, i)
 		if world.npcs.has(n) and player.position.distance_to(where) <= 60.0 and not enemies.any(func(e): return e.def.name == n):
 			spawn_enemy(def_named(n), where)
-			if (n == "merchant" or n == "nurse") and not world.test_world and not world.homes.has(n):
+			if n != "guide" and not world.test_world and not world.homes.has(n):
 				player.say("%s chegou!" % Items.title(n))
 		i += 1
+
+
+# O inventário (com os slots de munição) tem um item cujo dado satisfaz `pred`?
+func _carries(pred: Callable) -> bool:
+	return (Array(player.inv.item) + Array(player.inv.ammo)).any(func(id): return id != -1 and pred.call(Items.defs[id]))
 
 
 # Onde o habitante n (o i-ésimo da lista) fica: na casa, se tem, senão perto do nascimento.
@@ -144,7 +152,7 @@ func _npc_spot(n: String, i: int) -> Vector3:
 # Moradia (housing.gd): quem já tem casa confere se ela ainda vale (só perto do jogador: longe os chunks nem estão gerados); quem não tem procura uma casa
 # válida e livre em volta do jogador e se muda para ela.
 func _homes() -> void:
-	for n in ["guide", "merchant", "nurse"]:
+	for n in TOWN:
 		if not world.npcs.has(n):
 			continue
 		if world.homes.has(n):
@@ -278,7 +286,7 @@ func _label3d(text: String, size: float, pos: Vector3) -> Label3D:
 func setup_test() -> void:
 	for l in TestWorld.labels:
 		add_child(_label3d(l.text, l.size, l.pos))
-	for n in ["guide", "merchant", "nurse"]:
+	for n in TOWN:
 		world.npcs[n] = true
 	showcase()
 
@@ -359,7 +367,7 @@ func npc_aimed(reach: float) -> Node3D:
 
 # Falar com um NPC (botão direito). O Velho: à noite amaldiçoa e vira o Skeletron.
 func talk(e: Node3D) -> void:
-	if e.def.talk in ["guide", "merchant", "nurse"]:
+	if e.def.talk in TOWN:
 		player.set_inventory(true)
 		player.get_parent().get_node("HUD").open_npc(e.def.talk)
 	elif e.def.talk == "skeletron":

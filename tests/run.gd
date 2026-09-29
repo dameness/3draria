@@ -1499,7 +1499,7 @@ func test_npc():
 	check(p.inv.pay(500) and p.inv.coin_value() == 9500 and p.inv.coin[1] == 95 and not p.inv.pay(9999), "pagar 5 de prata de 1 de ouro sobra 95 de prata; sem saldo recusa")
 	# a loja: preço da wiki (Copper Pickaxe 5 de prata) e a Nurse
 	var hud: CanvasLayer = load("res://scripts/hud.gd").new()
-	check(hud.SHOP[0] == ["copper_pickaxe", 500] and Items.ids.has(hud.SHOP[3][0]), "loja: Copper Pickaxe a 5 de prata")
+	check(hud.SHOPS.merchant[0] == ["copper_pickaxe", 500] and Items.ids.has(hud.SHOPS.merchant[3][0]), "loja: Copper Pickaxe a 5 de prata")
 	hud.free()
 	free_player(p)
 	w.free()
@@ -4170,7 +4170,7 @@ func test_wiki_review():
 	p.max_hp = 200
 	p.inv.equip = PackedInt32Array([Items.ids.iron_helmet, Items.ids.iron_chainmail, Items.ids.iron_greaves])
 	p.add_buff("ironskin", 999.0)
-	w.npcs = {"guide": true, "merchant": true, "nurse": true}
+	w.npcs = {"guide": true, "merchant": true, "nurse": true, "demolitionist": true}
 	var fired := 0
 	for sd in 60:
 		ent.rng.seed = sd
@@ -4190,7 +4190,7 @@ func test_wiki_review():
 		match cond:
 			"vida": p.max_hp = 100
 			"defesa": p.buffs.clear(); p.inv.equip = PackedInt32Array([-1, -1, -1])
-			"vila": w.npcs = {"guide": true}
+			"vila": w.npcs = {"guide": true, "merchant": true, "nurse": true}
 			"derrotado": w.eoc_down = true
 		var lucky := 0
 		for sd in 40:
@@ -4204,7 +4204,7 @@ func test_wiki_review():
 		match cond:
 			"vida": p.max_hp = 200
 			"defesa": p.add_buff("ironskin", 999.0); p.inv.equip = PackedInt32Array([Items.ids.iron_helmet, Items.ids.iron_chainmail, Items.ids.iron_greaves])
-			"vila": w.npcs = {"guide": true, "merchant": true, "nurse": true}
+			"vila": w.npcs = {"guide": true, "merchant": true, "nurse": true, "demolitionist": true}
 	free_player(p)
 	w.free()
 	# --- bioma das cavernas, do meteorito e quem nasce em cada um
@@ -4280,6 +4280,22 @@ func test_wiki_review():
 	check(cent.def_named("fire_imp").shoot.projectile == "burning_sphere" and cent.projectiles.water_sphere.ghost and cent.def_named("tim").rare == 0.1, "Fire Imp, Tim (raro) e esferas que atravessam blocos")
 	free_player(cp)
 	cw.free()
+	# --- habitantes que chegam pelo que o jogador carrega (wiki Demolitionist, Arms Dealer)
+	var tw := floor_world()
+	var tp := make_player(tw)
+	var tent: Node3D = tp.entities
+	tent._town()
+	check(tw.npcs.has("guide") and not tw.npcs.has("demolitionist") and not tw.npcs.has("arms_dealer"), "sem explosivo nem bala só o Guide está lá")
+	tp.inv.add(Items.ids.bomb, 1)
+	tent._town()
+	check(tw.npcs.has("demolitionist") and tent.enemies.any(func(e): return e.def.name == "demolitionist"), "com uma bomba no inventário o Demolitionist chega")
+	tp.inv.add(Items.ids.musket_ball, 10)
+	tent._town()
+	check(tw.npcs.has("arms_dealer"), "com balas (slot de munição) o Arms Dealer chega")
+	var shops: Dictionary = load("res://scripts/hud.gd").SHOPS
+	check(shops.demolitionist == [["bomb", 300], ["dynamite", 2000]] and shops.arms_dealer[0] == ["musket_ball", 7], "lojas: Bomb 3 de prata, Dynamite 20, Musket Ball 7 de cobre")
+	free_player(tp)
+	tw.free()
 	# --- bomba e dinamite (wiki Bomb, Dynamite)
 	var bw := floor_world()
 	var bp := make_player(bw)

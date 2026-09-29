@@ -773,7 +773,11 @@ func _test_row(box: Control, title: String, buttons: Array) -> void:
 const TIPS := ["Bem-vindo! Use o machado nas árvores para juntar madeira e faça uma bancada de trabalho.", "Ache Life Crystals nas cavernas: cada um dá +20 de vida máxima.",
 	"Quebre 3 Shadow Orbs ou Crimson Hearts com um martelo para despertar um chefe.", "Fallen Stars caem à noite; 5 delas fazem um Mana Crystal.",
 	"Segure Shift para escolher a ferramenta certa sozinho.", "Poções de cura deixam a Doença da poção por 1 minuto."]
-const SHOP := [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5], ["anvil", 5000]]   # preços em cobre (wiki Merchant)
+const SHOPS := {   # preços em cobre (wiki)
+	"merchant": [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5], ["anvil", 5000]],
+	"demolitionist": [["bomb", 300], ["dynamite", 2000]],
+	"arms_dealer": [["musket_ball", 7], ["flintlock_pistol", 50000]],
+}
 
 
 # Painel de conversa (abaixo do inventário, no meio): nome, fala e botões do que o habitante faz. Fecha com o inventário.
@@ -958,9 +962,12 @@ func open_npc(kind: String) -> void:
 			_npc_button("Criação", func():
 				guide_craft = true
 				open_npc("guide"))
-		"merchant":
-			npc_text.text = "Comerciante: \"Boa escolha! O que vai levar?\""
-			for g in SHOP:
+		"merchant", "demolitionist", "arms_dealer":
+			npc_text.text = {"merchant": "Comerciante: \"Boa escolha! O que vai levar?\"", "demolitionist": "Demolitionist: \"Quer explodir alguma coisa?\"", "arms_dealer": "Arms Dealer: \"Bala não falta por aqui.\""}[kind]
+			var goods: Array = SHOPS[kind].duplicate()
+			if kind == "arms_dealer" and world.evil_boss_down and clock.is_night():   # wiki: Unholy Arrow só à noite e depois do Eater/Brain
+				goods.append(["unholy_arrow", 40])
+			for g in goods:
 				var id: int = Items.ids[g[0]]
 				_npc_button("%s (%s)" % [Items.title(Items.label(id)), _price(g[1])], func():
 					if player.inv.pay(g[1]):
