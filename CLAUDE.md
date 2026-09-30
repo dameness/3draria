@@ -50,7 +50,9 @@ Godot 4.7.2-stable (fixado em scripts/setup-godot.sh), GDScript, renderer Compat
 scripts/setup-godot.sh                        # baixa o Godot em .tools/godot (idempotente; roda sozinho no SessionStart remoto)
 scripts/update.sh                             # após cada git pull: Godot + sprites + cache de classes (depois: .tools/godot)
 scripts/fetch-sprites.sh                      # baixa os sprites da wiki em assets/wiki/ (idempotente, respeita o 429; opcional)
-scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki (tabelas Cargo) para montar data/
+scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki, lidos do snapshot data/ref/ (sem rede; commitado)
+scripts/wiki.py dump                          # refaz o snapshot (Items/Recipes/NPCs inteiros, ~3 MB; rode de vez em quando)
+scripts/audit.py                              # data/base × snapshot: dano, use time, poder, raridade, receitas, vida/dano/defesa (roda também em tests/run.gd)
 # Referência em vídeo (rede liberada pelo dono): `yt-dlp <url do post do r/Terraria>` baixa v.redd.it (ok); busca de posts por `reddit.com/r/Terraria/search.rss?q=...`
 # (JSON dá 403, RSS passa); vídeo do YouTube dá 403 nos dados (só busca/metadados). Quadros: `ffmpeg -i v.mp4 -vf fps=2,scale=640:-1 f_%03d.png`.
 # Clipes de usuário podem ter mod/zoom (a Terra Blade "laser" era mod): confira o vanilla na wiki antes de copiar.

@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -297,6 +297,14 @@ func test_save():
 	w.free()
 	w2.free()
 	return true
+
+# Números de data/base contra o snapshot da wiki (data/ref/): scripts/audit.py lista o que diverge.
+func test_wiki_audit():
+	var out := []
+	var code := OS.execute("python3", [ProjectSettings.globalize_path("res://scripts/audit.py")], out, true)
+	check(code == 0, "audit.py: dados batem com a wiki\n" + (out[0] if out.size() > 0 else "python3 indisponível"))
+	return true
+
 
 # Sprites da wiki: com arquivo usa o recorte/ícone original; sem arquivo cai no procedural. Não depende de rede.
 func test_wiki_sprites():

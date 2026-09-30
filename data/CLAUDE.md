@@ -86,4 +86,6 @@ Um principal pode pesar menos: `{"item", "weight"}` (os outros pesam 1). `bundle
 ## rarities.json
 `raridade: cor` (valores do código do Terraria, −1 a 11). Pinta o feixe do item solto.
 
-Números: conferir na wiki (links no CLAUDE.md da raiz) antes de criar conteúdo.
+Números: `scripts/wiki.py` (snapshot em `data/ref/`) antes de criar conteúdo; `scripts/audit.py` confere tudo depois.
+Em qualquer entrada de items/enemies/recipes: `"wiki": "Nome"` quando o nome na wiki não é o title case do jogo (ex.: `"Skeletron Head"`, `"Iron Anvil"`);
+`"wiki_ok": ["campo", ...]` para divergência deliberada (`recipe` = a receita). Sem isso o audit falha o teste. Só compara o que a wiki tem (NPC com variantes: vale qualquer uma).
