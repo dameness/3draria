@@ -40,6 +40,8 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
 - Terraria: https://terraria.wiki.gg (ex.: /wiki/Pickaxe_power, /wiki/Ores)
 - Calamity: https://calamitymod.wiki.gg
 Consulte antes de criar itens, receitas, minérios, inimigos e chefes; adapte os números, não copie texto.
+**Números vêm de `scripts/wiki.py` (snapshot em `data/ref/`); depois de mexer em `data/`, rode `scripts/audit.py` (o teste também falha se divergir).**
+Divergência de propósito = `"wiki_ok"` na entrada (`grep -n wiki_ok data/base/*.json` lista as que existem); nunca esconda uma divergência sem motivo. O curl abaixo é para mecânica/prosa (IA, drops, efeitos), que o snapshot não cobre.
 Leia pela API com curl (WebFetch é bloqueado; curl passa): `curl -sS "https://terraria.wiki.gg/api.php?action=parse&page=Iron_Bar&prop=text&format=json&formatversion=2"`.
 
 ## Stack
