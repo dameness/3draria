@@ -43,7 +43,7 @@ Lava (wiki Lava): o item solto de raridade 0 (branca, moedas incluídas) ou −1
 `{name, icon, stack?=9999, rarity?=0, lava_safe?, pick_power?, axe_power?, hammer_power?, use_time? (s), tool_speed? (quadros de 1/60 s), autoswing? (bool), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
 `plants`: bloco de grama em que a semente transforma a terra da mira (Grass/Corrupt/Crimson Seeds). `ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
 `sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
-flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glow, trail, particles} (cores).
+flecha = −90). `shoot`/`projectile`: nome em projectiles.json. Espada com feixe: `shoot_damage`/`shoot_knockback` (se a wiki separa; senão vale os da lâmina); `decay` no projétil = fração do dano perdida a cada alvo atravessado. `effects`: {glow, trail, particles} (cores).
 `use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).
 Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` golpeia; `places` coloca. Um clique = um uso; segurar repete só com
 `autoswing` (padrão true para quem coloca bloco; picaretas, machados e as espadas da wiki marcam no dado). `use_time` é o use time da wiki

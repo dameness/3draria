@@ -295,6 +295,11 @@ func _physics_process(delta: float) -> void:
 		if e.def.ai != "npc" and not e in hit and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
 			hit.append(e)
 			e.hurt(Combat.vary(damage, entities.rng), velocity, knockback, Combat.is_crit(entities.rng, crit))
+			if def.has("decay"):   # Terra Beam: cada alvo atravessado tira 25% do dano atual; chegou a 0, some
+				damage = int(damage * (1.0 - def.decay))
+				if damage <= 0:
+					queue_free()
+					return
 			if hit.size() >= def.get("pierce", 1):
 				queue_free()
 				return

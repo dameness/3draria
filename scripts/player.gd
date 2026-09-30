@@ -1148,7 +1148,7 @@ func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 		if n.get("def") is Dictionary and n.def.get("destroy", false) and eye.distance_to(n.position) <= d.reach + 0.5 and forward.dot((n.position - eye).normalized()) > 0.5:
 			entities.pop_sphere(n)
 	if d.has("shoot"):
-		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, d.damage, d.knockback)
+		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, d.get("shoot_damage", d.damage), d.get("shoot_knockback", d.knockback))   # o feixe tem dano/recuo próprios quando a wiki os separa
 	return hits.size()
 
 

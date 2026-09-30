@@ -12,7 +12,7 @@
 	{"name": "wooden_bow", "icon": "wooden_bow", "damage": 4, "use_time": 0.5, "ammo": "arrow", "shoot_speed": 22.9, "knockback": 0, "stack": 1},
 	{"name": "wooden_arrow", "icon": "wooden_arrow", "damage": 5, "projectile": "wooden_arrow", "sprite_angle": -90, "ammo_class": "arrow", "knockback": 2},
 	{"name": "enchanted_sword", "tip": "Dispara um feixe de espada encantada","icon": "enchanted_sword", "damage": 23, "use_time": 0.35, "autoswing": true, "reach": 2.8, "knockback": 4.25, "stack": 1, "rarity": 2, "shoot": "enchanted_beam", "shoot_speed": 35, "effects": {"glow": "#8fd3ff", "trail": "#8fd3ff"}},
-	{"name": "terra_blade", "icon": "terra_blade", "damage": 85, "use_time": 0.3, "autoswing": true, "reach": 3.2, "knockback": 6.5, "stack": 1, "rarity": 8, "shoot": "terra_beam", "shoot_speed": 45, "effects": {"glow": "#7dff5a", "trail": "#7dff5a", "particles": "#b6ff8a"}},
+	{"name": "terra_blade", "icon": "terra_blade", "damage": 85, "use_time": 0.3, "autoswing": true, "reach": 3.2, "knockback": 6.5, "stack": 1, "rarity": 8, "shoot": "terra_beam", "shoot_damage": 127, "shoot_speed": 45, "effects": {"glow": "#7dff5a", "trail": "#7dff5a", "particles": "#b6ff8a"}},
 	{"name": "copper_broadsword", "icon": "copper_broadsword", "damage": 9, "use_time": 0.35, "reach": 2.6, "knockback": 5.5, "stack": 1},
 	{"name": "copper_bow", "icon": "copper_bow", "damage": 6, "use_time": 0.483, "ammo": "arrow", "shoot_speed": 24.8, "knockback": 0, "stack": 1},
 	{"name": "tin_bar", "icon": "tin_bar", "rarity": 0},

@@ -380,6 +380,8 @@ func test_projectiles():
 	var terra: Node3D = ent.get_children().back()
 	run(terra, 1.0)
 	check(z1.hp < 1000 and z2.hp < 45, "Terra Beam atravessa e acerta os dois zumbis")
+	check(Items.defs[Items.ids.terra_blade].shoot_damage == 127 and terra.damage == 71, "o feixe da Terra Blade nasce com 1,5x o dano da lâmina (127) e perde 25%% por alvo atravessado (%d após 2)" % terra.damage)
+	check(beam.damage == 23 and Items.defs[Items.ids.enchanted_sword].get("shoot_damage", 23) == 23, "o feixe da Enchanted Sword usa o dano da arma")
 	p.inv = Inventory.new()
 	p.inv.add(Items.ids.musket_ball, 5)
 	p.shoot(Items.defs[Items.ids.musket], eye, Vector3.RIGHT)
