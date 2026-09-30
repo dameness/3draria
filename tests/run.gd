@@ -1040,29 +1040,74 @@ func test_binds():
 	check(w.get_block(24, 11, 24) == 0 and p.inv.total(Items.ids.dirt) == 5, "botão direito não coloca bloco")
 	p.use_item()
 	check(w.get_block(24, 11, 24) == Blocks.ids.dirt and p.inv.total(Items.ids.dirt) == 4 and is_equal_approx(p.cooldown, 0.25), "botão esquerdo coloca o bloco da mão (a cada 0,25 s segurando)")
-	# Auto Select
+	# Auto Select (wiki Cursor modes): o inventário inteiro, num slot extra; o slot da hotbar não muda
 	p.inv = Inventory.new()
 	for n in ["copper_pickaxe", "copper_axe", "iron_pickaxe", "torch"]:
 		p.inv.add(Items.ids[n], 1)
 	p.slot = 1
 	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}   # pedra
 	p.auto_pick(true)
-	check(p.slot == 2 and p.auto_prev == 1, "Shift em pedra: a melhor picareta (ferro), lembrando o slot da mão")
+	check(p.auto_slot == 2 and p.slot == 1 and p.auto_on and p.held() == Items.ids.iron_pickaxe, "Shift em pedra: a melhor picareta (ferro) na mão, sem mexer no slot da hotbar")
 	w.set_block(24, 11, 24, Blocks.ids.wood)
 	p.target = {"pos": Vector3i(24, 11, 24), "normal": Vector3i.UP}
 	p.auto_pick(true)
-	check(p.slot == 1 and p.auto_prev == 1, "segurando Shift e mirando o tronco: o machado (o slot de antes não se perde)")
+	check(p.auto_slot == 1 and p.held() == Items.ids.copper_axe, "segurando Shift e mirando o tronco: o machado")
+	w.set_block(24, 11, 24, Blocks.ids.cactus)
+	p.auto_pick(true)
+	check(p.auto_slot == 1, "mirando um cacto: o machado (wiki Cursor modes)")
+	w.set_block(24, 11, 24, 0)
 	p.target = {}
 	p.auto_pick(true)
-	check(p.slot == 3, "Shift sem bloco na mira: a tocha")
+	check(p.auto_slot == 3, "Shift sem bloco na mira: a tocha")
+	p.inv.item[20] = Items.ids.glowstick   # fora da hotbar: vale o inventário inteiro, e o glowstick vence a tocha
+	p.inv.count[20] = 5
+	p.auto_pick(true)
+	check(p.auto_slot == 20 and p.held() == Items.ids.glowstick, "Shift sem bloco na mira: o glowstick do inventário (mira longe) antes da tocha")
 	p.auto_pick(false)
-	check(p.slot == 1 and p.auto_prev == -1, "soltar o Shift devolve o slot de antes")
+	check(p.auto_slot == -1 and not p.auto_on and p.held() == Items.ids.copper_axe, "soltar o Shift devolve a mão ao slot da hotbar")
 	p.inv = Inventory.new()
 	p.inv.add(Items.ids.dirt, 1)
 	p.slot = 0
 	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
 	p.auto_pick(true)
-	check(p.slot == 0 and p.auto_prev == -1, "sem ferramenta adequada na hotbar o Auto Select não troca")
+	check(p.auto_slot == -1 and p.auto_on and p.slot == 0, "sem ferramenta adequada o Auto Select não escolhe nada")
+	p.auto_pick(false)
+	# glowstick (wiki): voa sem ferir e vira o bloco aceso na última célula livre; quebrar devolve o item
+	var gl: Node3D = p.entities.spawn_projectile("glowstick", Vector3(24.5, 14.5, 24.5), Vector3.DOWN, 0.0, 0, 0.0)
+	for i in 40:
+		if is_instance_valid(gl) and not gl.is_queued_for_deletion():
+			gl._physics_process(0.05)
+	check(w.get_block(24, 11, 24) == Blocks.ids.glowstick_lit and Blocks.light[Blocks.ids.glowstick_lit] >= 9 and Blocks.drop_names[Blocks.ids.glowstick_lit] == "glowstick", "glowstick: pousa no chão como bloco aceso que devolve o item")
+	w.set_block(24, 11, 24, 0)
+	# cacto: cortar a base derruba o pedaço de cima
+	w.set_block(24, 11, 24, Blocks.ids.cactus)
+	w.set_block(24, 12, 24, Blocks.ids.cactus)
+	w.set_block(24, 11, 24, 0)
+	check(w.get_block(24, 12, 24) == 0, "cacto: tirar o de baixo derruba o de cima")
+	# item no cursor (wiki Inventory + Game controls): esquerdo usa o item (1 bomba), direito joga a pilha
+	p.inv = Inventory.new()
+	p.inventory_open = true
+	p.inv.cursor_id = Items.ids.bomb
+	p.inv.cursor_count = 3
+	check(p.held() == Items.ids.bomb and p.hand() == Inventory.CURSOR, "com o inventário aberto o item do cursor é o da mão")
+	var lmb := InputEventMouseButton.new()
+	lmb.button_index = MOUSE_BUTTON_LEFT
+	lmb.pressed = true
+	p._unhandled_input(lmb)
+	check(p.attack_held, "botão esquerdo com item no cursor começa a usá-lo")
+	p.cooldown = 0.0
+	p.attack(0.016)
+	check(p.inv.cursor_count == 2 and p.inv.cursor_id == Items.ids.bomb, "esquerdo usa o item do cursor: joga 1 bomba e sobram 2")
+	p.attack_held = false
+	var rclick := InputEventMouseButton.new()
+	rclick.button_index = MOUSE_BUTTON_RIGHT
+	rclick.pressed = true
+	p._unhandled_input(rclick)
+	check(p.inv.cursor_id == -1 and p.entities.get_children().any(func(n): return n.get("count") == 2 and n.get("item") == Items.ids.bomb), "direito joga a pilha do cursor no chão")
+	for n in p.entities.get_children():
+		if n.get("count") != null:
+			n.free()
+	p.inventory_open = false
 	# Ctrl+clique: lixeira
 	var inv := Inventory.new()
 	inv.add(Items.ids.dirt, 30)
@@ -2294,7 +2339,7 @@ func test_damage():
 		p.slot = 0
 		p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i.UP}
 		p.auto_pick(true)
-		check(p.slot == 1 and p.auto_prev == 0, "Auto Select em %s escolhe o martelo" % orb)
+		check(p.auto_slot == 1 and p.slot == 0, "Auto Select em %s escolhe o martelo" % orb)
 		p.auto_pick(false)
 		w.set_block(20, 11, 20, 0)
 	free_player(p)
@@ -3233,6 +3278,22 @@ func test_missing_items():
 	bp.inv.add(Items.ids.shuriken, 3)
 	bp.throw_item(Items.ids.shuriken, Items.defs[Items.ids.shuriken], Vector3.RIGHT)
 	check(bp.inv.total(Items.ids.shuriken) == 2 and bent.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "shuriken" and n.def.has("spin")), "Shuriken: joga, gasta um e gira")
+	# faca de arremesso: voa reta até a mira (sem o arco para cima da bomba)
+	bp.inv.add(Items.ids.throwing_knife, 2)
+	bp.inv.add(Items.ids.bomb, 2)
+	for k in bent.get_children():
+		if k.get("def") is Dictionary and k.def.get("name") in ["throwing_knife", "bomb"]:
+			k.free()
+	bp.throw_item(Items.ids.throwing_knife, Items.defs[Items.ids.throwing_knife], Vector3.RIGHT)
+	bp.throw_item(Items.ids.bomb, Items.defs[Items.ids.bomb], Vector3.RIGHT)
+	var kv := 99.0
+	var bv := 0.0
+	for k in bent.get_children():
+		if k.get("def") is Dictionary and k.def.get("name") == "throwing_knife":
+			kv = k.velocity.y
+		elif k.get("def") is Dictionary and k.def.get("name") == "bomb":
+			bv = k.velocity.y
+	check(absf(kv) < 0.001 and bv > 1.0, "a faca voa reta (vy %.2f) e a bomba sobe em arco (vy %.2f)" % [kv, bv])
 	# balde e corda: a corda tem geometria própria (um fio fino)
 	var Y := 60
 	var d := chunk(0)
@@ -3815,7 +3876,7 @@ func integration():
 			check(not main.get_tree().paused and not player.menu_open, "Esc dentro do Configurações: o HUD despausa")
 			player.add_buff("ironskin", 125.0)
 			hud._process(0.0)
-			check(hud.buff_row.get_child_count() == 1 and hud.buff_row.get_child(0).get_node("Time").text == "2:05" and hud.defense_label.text == "Defesa: 8", "buff na HUD: ícone com o tempo (2:05) e a defesa sobe")
+			check(hud.buff_row.get_child_count() == 1 and hud.buff_row.get_child(0).get_node("Time").text == "2:05" and hud.defense_label.text == "8" and hud.defense_shield.tooltip_text == "Defesa: 8", "buff na HUD: ícone com o tempo (2:05) e a defesa sobe")
 			player.buffs.clear()
 			player.max_hp = 240
 			player.hp = 240.0
@@ -5234,6 +5295,16 @@ func test_wiki_review():
 		var dd := dg.generate(dc2.x, dc2.y)
 		check(dd.count(Blocks.ids.hardened_sand) > 40 and dd.count(Blocks.ids.sandstone) > 10, "seed %d: o chunk do deserto tem areia endurecida (%d) e arenito (%d)" % [sd, dd.count(Blocks.ids.hardened_sand), dd.count(Blocks.ids.sandstone)])
 		check(dg.desert_center.distance_to(dg.snow_center) > 30.0 and dg.desert_center.distance_to(dg.evil_center) > 30.0 and dg.desert_center.distance_to(dg.hallow_center) > 30.0, "seed %d: o deserto fica longe dos outros biomas" % sd)
+		var cacti := 0
+		var grounded := true
+		for ddx in range(-1, 2):   # cactos (wiki Cactus): 3-5 blocos sobre areia, só no deserto
+			for ddz in range(-1, 2):
+				var cd := dg.generate(dc2.x + ddx, dc2.y + ddz)
+				for ci in cd.size():
+					if cd[ci] == Blocks.ids.cactus:
+						cacti += 1
+						grounded = grounded and cd[ci - 256] in [Blocks.ids.cactus, Blocks.ids.sand]
+		check(cacti >= 6 and grounded, "seed %d: o deserto tem cactos sobre a areia (%d blocos)" % [sd, cacti])
 		dw.free()
 	var dw2 := dungeon_world(1)
 	var dp2 := make_player(dw2)

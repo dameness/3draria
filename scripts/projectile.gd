@@ -76,6 +76,23 @@ func _ready() -> void:
 		_trail()
 
 
+# Glowstick (wiki): voa em arco sem ferir ninguém e, ao bater num bloco, vira o bloco aceso na última célula livre (quebrar devolve o item).
+func _land(delta: float) -> void:
+	velocity.y -= def.gravity * delta
+	var next := position + velocity * delta
+	var b := Vector3i(next.floor())
+	if age > def.life:
+		queue_free()
+	elif Blocks.solid[entities.world.get_block(b.x, b.y, b.z)]:
+		var c := Vector3i(position.floor())
+		var there: int = entities.world.get_block(c.x, c.y, c.z)
+		if there == 0 or Blocks.soft[there]:
+			entities.world.set_block(c.x, c.y, c.z, Blocks.ids[def.land])
+		queue_free()
+	else:
+		position = next
+
+
 # Flail: bola de ferro com espinhos na ponta de uma corrente de elos (nós soltos no mundo, reposicionados a cada quadro).
 func _flail_build() -> void:
 	var mat := StandardMaterial3D.new()
@@ -235,6 +252,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if def.has("fuse"):
 		_bomb(delta)
+		return
+	if def.has("land"):
+		_land(delta)
 		return
 	if def.has("out"):
 		_boomerang(delta)

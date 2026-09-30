@@ -214,5 +214,6 @@
 	{"name": "crimson_seeds", "tip": "Para plantar grama carmesim em terra", "icon": "crimson_seeds", "plants": "crimson_grass", "use_time": 0.25},
 	{"name": "minecart", "tip": "Carregando-o, o carrinho é mais rápido e bate mais forte", "icon": "minecart", "stack": 1, "rarity": 1},
 	{"name": "living_wood_wand", "tip": "Coloca Living Wood, gastando Wood", "icon": "living_wood_wand", "places": "living_wood", "wand": "wood", "stack": 1, "rarity": 1, "use_time": 0.25},
-	{"name": "leaf_wand", "tip": "Coloca Leaf Blocks, gastando Wood", "icon": "leaf_wand", "places": "leaves", "wand": "wood", "stack": 1, "rarity": 1, "use_time": 0.25}
+	{"name": "leaf_wand", "tip": "Coloca Leaf Blocks, gastando Wood", "icon": "leaf_wand", "places": "leaves", "wand": "wood", "stack": 1, "rarity": 1, "use_time": 0.25},
+	{"name": "glowstick", "tip": "Funciona molhado", "icon": "glowstick", "use_time": 0.25, "throw": "glowstick", "shoot_speed": 9, "consumable": true, "rarity": 0, "sprite_angle": 45}
 ]
