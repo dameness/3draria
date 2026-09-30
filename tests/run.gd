@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1326,7 +1326,7 @@ func test_life_crystal():
 func test_loot():
 	for layer in ["surface", "underground", "cavern", "lava"]:
 		var t: Dictionary = Loot.tables[layer]
-		var ok: bool = t.main.all(func(n): return Items.ids.has(n))
+		var ok: bool = t.main.all(func(n): return Items.ids.has(Loot.main_name(n)))
 		for e in t.common:
 			ok = ok and e.items.all(func(n): return Items.ids.has(n)) and e.min <= e.max and e.chance > 0.0 and e.chance <= 1.0
 		check(ok, "loot %s: todos os itens existem, faixas e chances válidas" % layer)
@@ -1361,8 +1361,8 @@ func test_loot():
 	check(first_is_main, "cada baú tem exatamente 1 item principal, no 1º slot")
 	var even := true
 	for id in main_count:
-		even = even and absf(main_count[id] / float(n) - 0.2) < 0.03
-	check(even and main_count.size() == 5, "os 5 principais saem com ~1/5 cada (renormalizado do 1/6 da wiki)")
+		even = even and absf(main_count[id] / float(n) - 1.0 / 6.0) < 0.03
+	check(even and main_count.size() == 6, "os 6 principais do subsolo saem com ~1/6 cada (wiki)")
 	check(absf(lesser / float(n) - 0.5) < 0.03 and lesser_min == 3 and lesser_max == 5, "Lesser Healing: 3-5 em ~50%% dos baús (%.3f)" % (lesser / float(n)))
 	check(absf(regen / float(n) - 0.667) < 0.03, "Regeneration em ~2/3 (%.3f)" % (regen / float(n)))
 	check(both_bars == 0 and torches_ok, "ferro e chumbo nunca juntos (mesmo conjunto); tochas 10-20 no subsolo")
@@ -2396,6 +2396,210 @@ func test_tools():
 	check(w.liquid.scoop(w, spot) == Blocks.ids.lava and volume(w, lo, hi, Blocks.ids.lava) == 0, "o balde recolhe a lava toda, inclusive a sobra rasa (%d)" % volume(w, lo, hi, Blocks.ids.lava))
 	free_player(p)
 	w.free()
+	return true
+
+
+# Itens de baú e drops de chefe que faltavam (wiki): corda, guarda-chuva, garras, Lava Charm, Radar, Grenade, Flare Gun, King Slime, Olho e Queen Bee.
+func test_missing_items():
+	var dt := 1.0 / 60
+	# --- tabelas de baú
+	var surf: Array = Loot.tables.surface.main.map(Loot.main_name)
+	check(surf.has("climbing_claws") and surf.has("umbrella") and surf.has("radar") and Loot.tables.underground.main.has("shoe_spikes"), "baús de superfície e subsolo ganharam os itens principais da wiki")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var charm := 0
+	var flare_ok := true
+	var flare_guns := 0
+	var rope_ok := true
+	var ropes := 0
+	for i in 2000:
+		var c: Dictionary = Loot.chest("lava", rng)
+		charm += int(c.item[0] == Items.ids.lava_charm)
+		if c.item[0] == Items.ids.flare_gun:
+			flare_guns += 1
+			flare_ok = flare_ok and c.item[1] == Items.ids.flare and c.count[1] >= 25 and c.count[1] <= 50
+	for i in 1000:
+		var c: Dictionary = Loot.chest("surface", rng)
+		var k: int = Array(c.item).find(Items.ids.rope)
+		ropes += int(k != -1)
+		rope_ok = rope_ok and (k == -1 or (c.count[k] >= 50 and c.count[k] <= 100))
+	check(charm > 40 and charm < 170, "Lava Charm sai nos baús da camada de lava (%d em 2000)" % charm)
+	check(flare_guns > 100 and flare_ok, "Flare Gun vem com 25-50 Flares no slot seguinte (%d)" % flare_guns)
+	check(ropes > 420 and ropes < 580 and rope_ok, "corda (50-100) em ~1/2 dos baús de superfície (%d de 1000)" % ropes)
+	check(not Loot.tables.surface.common.any(func(e): return e.items.has("flare_gun")) and Loot.tables.bundle.flare_gun.item == "flare", "a tabela junta Flares à Flare Gun")
+	# --- drops dos chefes
+	var ks: Array = enemy_def("king_slime").drops
+	check(ks.any(func(d): return d.item == "slime_gun" and is_equal_approx(d.chance, 0.6667)) and ks.any(func(d): return d.item == "slime_hook" and is_equal_approx(d.chance, 0.3333)), "King Slime solta Slime Gun (66,67%) e Slime Hook (33,33%)")
+	check(enemy_def("eye_of_cthulhu").drops.any(func(d): return d.item == "binoculars" and is_equal_approx(d.chance, 0.025)), "Olho de Cthulhu solta Binoculars (2,5%)")
+	var qb: Array = enemy_def("queen_bee").drops
+	check(qb.any(func(d): return d.item == "beenade" and d.min == 10 and d.max == 30 and d.chance == 0.75) and qb.any(func(d): return d.item == "honey_comb") and qb.any(func(d): return d.item == "bottled_honey" and d.chance == 1.0), "Queen Bee solta Beenade, Honey Comb e Bottled Honey")
+	check(Items.defs[Items.ids.slime_hook].hook.range >= Items.defs[Items.ids.grappling_hook].hook.range and Items.defs[Items.ids.bottled_honey].heal == 80, "Slime Hook é um gancho ao menos tão bom quanto o comum; Bottled Honey cura 80")
+	# --- corda: Espaço sobe, C desce, sem nada pendura e não machuca
+	var w := floor_world()
+	var p := make_player(w)
+	for y in range(11, 70):
+		w.set_block(24, y, 24, Blocks.ids.rope)
+	check(not Blocks.solid[Blocks.ids.rope] and Items.places[Items.ids.rope] == Blocks.ids.rope, "corda é bloco não sólido e o item a coloca")
+	p.position = Vector3(24.5, 11.0, 24.5)
+	for i in 30:
+		p.step(dt, Vector3.ZERO, true)
+	var up_y: float = p.position.y
+	check(up_y > 12.5, "Espaço sobe a corda (%.2f)" % up_y)
+	for i in 30:
+		p.step(dt, Vector3.ZERO, false)
+	check(absf(p.position.y - up_y) < 0.05, "parado, pendura na corda")
+	p.crouch = true
+	for i in 30:
+		p.step(dt, Vector3.ZERO, false)
+	p.crouch = false
+	check(p.position.y < up_y - 1.5, "C desce a corda (%.2f)" % p.position.y)
+	p.position = Vector3(24.5, 60.0, 24.5)
+	p.velocity = Vector3(0, -30, 0)
+	p.hp = float(p.max_hp)
+	for i in 200:
+		p.step(dt, Vector3.ZERO, false)
+		p.tick(dt)
+	check(p.hp == float(p.max_hp) and p.position.y > 20.0, "cair na corda a segura sem dano de queda")
+	# --- Umbrella: cai devagar e sem dano
+	p.inv.add(Items.ids.umbrella, 1)
+	p.slot = p.inv.item.find(Items.ids.umbrella)
+	p.position = Vector3(30.5, 11.0 + 30.0, 30.5)
+	p.velocity = Vector3.ZERO
+	p.last_pos = p.position
+	p.fall_top = p.position.y
+	var slowest := 0.0
+	for i in 60 * 12:
+		p.step(dt, Vector3.ZERO, false)
+		p.tick(dt)
+		slowest = minf(slowest, p.velocity.y)
+	check(slowest >= -p.UMBRELLA_FALL - 0.01 and p.hp == float(p.max_hp) and p.on_floor, "Umbrella limita a queda a %.0f blocos/s e evita o dano (%.2f)" % [p.UMBRELLA_FALL, slowest])
+	check(Items.defs[Items.ids.umbrella].damage == 10 and Items.defs[Items.ids.umbrella].knockback == 5 and roundi(Items.defs[Items.ids.umbrella].use_time * 60) == 22, "Umbrella também é arma (10 de dano, 22 quadros)")
+	p.inv.item[p.slot] = -1
+	# --- Climbing Claws / Shoe Spikes: escorrega devagar na parede e pula dela
+	for y in range(11, 60):
+		for z in range(20, 30):
+			w.set_block(27, y, z, Blocks.ids.stone)
+	p.position = Vector3(26.5, 40.0, 24.5)
+	p.velocity = Vector3.ZERO
+	p.last_pos = p.position
+	for i in 30:
+		p.step(dt, Vector3.RIGHT, false)
+	check(p.velocity.y < -6.0, "sem as garras a queda na parede acelera (%.1f)" % p.velocity.y)
+	p.inv.acc[0] = Items.ids.climbing_claws
+	p.position = Vector3(26.5, 40.0, 24.5)
+	p.velocity = Vector3.ZERO
+	p.last_pos = p.position
+	var slide_min := 0.0
+	for i in 60:
+		p.step(dt, Vector3.RIGHT, false)
+		slide_min = minf(slide_min, p.velocity.y)
+	check(slide_min >= -p.SLIDE - 0.01 and p.hit_wall, "com as garras a queda na parede fica em %.0f blocos/s (%.2f)" % [p.SLIDE, slide_min])
+	p.step(dt, Vector3.RIGHT, true)
+	check(p.velocity.y > 5.0, "Espaço pula da parede (%.1f)" % p.velocity.y)
+	p.inv.acc[0] = Items.ids.shoe_spikes
+	check(p.inv.has_acc("wall_slide") and Items.defs[Items.ids.climbing_claws].accessory.defense == 1, "Shoe Spikes fazem o mesmo; as garras dão +1 de defesa")
+	p.inv.acc[0] = -1
+	# --- Lava Charm: 7 s de imunidade, depois queima; recarrega fora da lava
+	for y in range(11, 15):
+		w.set_block(33, y, 33, Blocks.ids.lava)
+	var in_lava := func(seconds: float) -> void:
+		for i in int(seconds * 60):
+			p.position = Vector3(33.5, 11.0, 33.5)
+			p.step(dt, Vector3.ZERO, false)
+			p.tick(dt)
+	p.hp = float(p.max_hp)
+	p.iframes = 0.0
+	in_lava.call(0.1)
+	check(p.hp < float(p.max_hp), "sem o Lava Charm a lava queima na hora")
+	p.inv.acc[0] = Items.ids.lava_charm
+	p.hp = float(p.max_hp)
+	p.iframes = 0.0
+	p.lava_left = 99.0
+	in_lava.call(6.5)
+	check(p.hp == float(p.max_hp) and p.lava_left > 0.0 and p.lava_left < 1.0, "com o Lava Charm, 6,5 s na lava não machucam (%.2f s restam)" % p.lava_left)
+	in_lava.call(0.8)
+	check(p.hp < float(p.max_hp) and p.dead == 0.0, "passados os 7 s a lava volta a queimar")
+	p.position = Vector3(40.5, 11.0, 40.5)
+	for i in 180:
+		p.step(dt, Vector3.ZERO, false)
+	check(p.lava_left >= 2.9, "fora da lava a imunidade recarrega (%.1f)" % p.lava_left)
+	p.inv.acc[0] = -1
+	# --- Radar: conta os inimigos hostis a menos de 75 blocos
+	check(p.radar_count() == -1, "sem Radar não há contagem")
+	p.inv.add(Items.ids.radar, 1)
+	p.position = Vector3(24.5, 11.0, 24.5)
+	p.entities.spawn_enemy(p.entities.def_named("zombie"), Vector3(30.5, 11, 24.5))
+	p.entities.spawn_enemy(p.entities.def_named("zombie"), Vector3(40.5, 11, 24.5))
+	check(p.radar_count() == 2, "Radar no inventário conta os inimigos por perto (%d)" % p.radar_count())
+	# --- Honey Comb: ao levar dano, abelhas e o buff de mel
+	p.inv.acc[0] = Items.ids.honey_comb
+	p.iframes = 0.0
+	var before: int = p.entities.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "bee_shot").size()
+	p.hurt(5, Vector3.RIGHT)
+	var bees: int = p.entities.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "bee_shot").size() - before
+	check(bees >= 1 and bees <= 4 and p.has_buff("honey"), "Honey Comb solta 1-4 abelhas e dá Mel ao levar dano (%d)" % bees)
+	p.inv.acc[0] = -1
+	# --- Bottled Honey: cura 80 e dá Mel
+	p.inv.add(Items.ids.bottled_honey, 2)
+	p.hp = 10.0
+	p.buffs.clear()
+	p.consume(p.inv.item.find(Items.ids.bottled_honey))
+	check(p.hp == 90.0 and p.has_buff("honey") and p.has_buff("potion_sickness"), "Bottled Honey cura 80, dá Mel e Doença da poção")
+	free_player(p)
+	w.free()
+	# --- Grenade/Beenade: ferem sem destruir blocos; o sinalizador gruda
+	var bw := floor_world()
+	var bp := make_player(bw)
+	var bent: Node3D = bp.entities
+	bp.max_hp = 300
+	bp.hp = 300.0
+	bp.position = Vector3(24.5, 11, 24.5)
+	bw.set_block(25, 10, 24, Blocks.ids.dirt)
+	bent.explode(Vector3(24.5, 10.5, 24.5), 3.0, 60, true)
+	check(bw.get_block(25, 10, 24) == Blocks.ids.dirt and bw.get_block(24, 9, 24) == Blocks.ids.stone and bp.hp < 300.0, "a granada fere quem está no raio e deixa os blocos (%.0f)" % bp.hp)
+	bp.position = Vector3(45.5, 11, 24.5)
+	var gr: Node3D = bent.spawn_projectile("beenade", Vector3(33.5, 11.3, 24.5), Vector3.ZERO, 0.0, 12, 1.0)
+	var bee_before: int = bent.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "bee_shot").size()
+	gr.age = gr.def.fuse
+	gr._physics_process(dt)
+	var swarm: int = bent.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "bee_shot").size() - bee_before
+	check(gr.is_queued_for_deletion() and swarm == 8 and bw.get_block(33, 10, 24) == Blocks.ids.stone, "a Beenade explode em 8 abelhas sem quebrar o chão (%d)" % swarm)
+	var zc: Node3D = bent.spawn_enemy(bent.def_named("zombie"), Vector3(30.5, 11, 24.5))
+	var gc: Node3D = bent.spawn_projectile("grenade", Vector3(30.5, 11.4, 24.5), Vector3.ZERO, 0.0, 60, 8.0)
+	gc._physics_process(dt)
+	check(gc.is_queued_for_deletion() and zc.hp < zc.def.life, "a granada explode ao tocar num inimigo, sem esperar o pavio")
+	var fl: Node3D = bent.spawn_projectile("flare", Vector3(20.5, 12.0, 24.5), Vector3.RIGHT, 20.0, 1, 1.5)
+	bw.set_block(26, 11, 24, Blocks.ids.stone)
+	bw.set_block(26, 12, 24, Blocks.ids.stone)
+	for i in 60:
+		fl._physics_process(dt)
+	check(fl.stuck and not fl.is_queued_for_deletion() and fl.position.x < 26.0, "o sinalizador gruda no bloco e fica")
+	fl.age = fl.def.life
+	fl._physics_process(dt)
+	check(fl.is_queued_for_deletion(), "e apaga no fim da vida")
+	bp.inv.add(Items.ids.flare_gun, 1)
+	bp.inv.add(Items.ids.flare, 5)
+	bp.shoot(Items.defs[Items.ids.flare_gun], Vector3(24.5, 12.5, 24.5), Vector3.RIGHT)
+	check(bp.inv.total(Items.ids.flare) == 4 and bent.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "flare" and n.damage == 3), "Flare Gun gasta um Flare e dispara o sinalizador (2 + 1 de dano)")
+	# Slime Gun: sem mana nem munição
+	bp.mana = 20.0
+	bp.inv.add(Items.ids.slime_gun, 1)
+	bp.cast(Items.defs[Items.ids.slime_gun], Vector3.RIGHT)
+	check(bp.mana == 20.0 and bent.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "slime_spray"), "Slime Gun esguicha a gosma sem gastar mana")
+	# shuriken: joga e gasta um; gira
+	bp.inv.add(Items.ids.shuriken, 3)
+	bp.throw_item(Items.ids.shuriken, Items.defs[Items.ids.shuriken], Vector3.RIGHT)
+	check(bp.inv.total(Items.ids.shuriken) == 2 and bent.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "shuriken" and n.def.has("spin")), "Shuriken: joga, gasta um e gira")
+	# balde e corda: a corda tem geometria própria (um fio fino)
+	var Y := 60
+	var d := chunk(0)
+	for i in C * C * (Y + 1):
+		d[i] = Blocks.ids.stone
+	d[8 + 8 * C + (Y + 1) * C * C] = Blocks.ids.rope
+	var arr := ChunkMesher.build(d, [d, d, d, d], Blocks.textures.size())
+	check(not arr.is_empty() and arr[Mesh.ARRAY_VERTEX].size() > 0, "a corda entra na malha do chunk")
+	free_player(bp)
+	bw.free()
 	return true
 
 
@@ -4542,7 +4746,7 @@ func test_wiki_review():
 	wp.world.free()
 	free_player(wp)
 	# itens de baú de superfície e drops de inimigos
-	check(Loot.tables.surface.main.all(func(n): return Items.ids.has(n)) and Loot.layer_of(WorldGen.SURFACE) == "surface" and Loot.layer_of(WorldGen.SURFACE - 14) == "underground", "baús de superfície: camada pela altura")
+	check(Loot.tables.surface.main.all(func(n): return Items.ids.has(Loot.main_name(n))) and Loot.layer_of(WorldGen.SURFACE) == "surface" and Loot.layer_of(WorldGen.SURFACE - 14) == "underground", "baús de superfície: camada pela altura")
 	check(Items.defs[Items.ids.spear].damage == 8 and Items.defs[Items.ids.spear].knockback == 6.5 and Items.defs[Items.ids.bone_sword].damage == 19 and Items.defs[Items.ids.aglet].accessory.speed == 0.05 and Items.defs[Items.ids.shackle].accessory.defense == 1, "Spear, Bone Sword, Aglet e Shackle com os números da wiki")
 	check(enemy_def("zombie").drops.any(func(d): return d.item == "shackle" and d.chance == 0.02) and enemy_def("skeleton").drops.any(func(d): return d.item == "bone_sword"), "Zombie solta Shackle (2%), Skeleton Bone Sword")
 	var cavern_heal: bool = Loot.tables.cavern.common.any(func(e): return e.items == ["healing_potion"])

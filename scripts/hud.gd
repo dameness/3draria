@@ -57,6 +57,7 @@ var debug_label: Label
 var cross: Label
 var creative_label: Label
 var flight_bar: ProgressBar
+var radar_label: Label                # Radar: quantos inimigos há por perto, sob o minimapa
 var breath_label: Label               # bolhas de ar (10) sob a mira, só quando o fôlego não está cheio
 var craft_root: Control
 var craft_list: VBoxContainer
@@ -191,6 +192,13 @@ func _ready() -> void:
 	breath_label.add_theme_constant_override("outline_size", 4)
 	breath_label.add_theme_color_override("font_outline_color", Color("#0a2a5a"))
 	root.add_child(breath_label)
+	radar_label = _label("", 16, HORIZONTAL_ALIGNMENT_RIGHT)
+	radar_label.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	radar_label.offset_left = -300.0
+	radar_label.offset_right = -44.0
+	radar_label.add_theme_constant_override("outline_size", 4)
+	radar_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	root.add_child(radar_label)
 	debug_label = _label("", 12)
 	debug_label.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	debug_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -1163,6 +1171,12 @@ func _process(delta: float) -> void:
 	cross.visible = not (open or player.menu_open or player.map_open)   # com o mouse solto a mira não faz sentido
 	cross.add_theme_color_override("font_color", Ui.GOLD if player.smart_cursor else Color.WHITE)   # dourada: cursor inteligente ligado
 	creative_label.visible = player.creative
+	var radar: int = player.radar_count()
+	radar_label.visible = radar >= 0 and not open
+	if radar_label.visible:
+		radar_label.offset_top = minimap.corner_y + minimap.PORTRAIT + 6.0
+		radar_label.text = "%d inimigos por perto" % radar if radar != 1 else "1 inimigo por perto"
+		radar_label.add_theme_color_override("font_color", Color("#ff8a7a") if radar > 0 else Color("#9aff9a"))
 	breath_label.visible = player.breath < player.BREATH - 0.05
 	if breath_label.visible:   # uma bolha por 10% do fôlego; a última treme quando está acabando
 		var bubbles := ceili(player.breath / player.BREATH * 10.0)

@@ -285,6 +285,11 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 			for f in 6:
 				var sh: float = SHADE[f]
 				_face(a, pos, f, Vector3(0.14, 1.0, 1.0), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
+		"rope":   # corda: um fio fino no meio do bloco, com a luz do lugar
+			var u0 := tiles_of(b, 0) * tw
+			for f in 6:
+				var sh: float = SHADE[f]
+				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 1.0, 0.14), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
 		"crystal":   # Life Crystal: dois quadros em cruz do tamanho do bloco, sem balançar e brilhando sozinho (b = 1)
 			var u0 := tiles_of(b, 0) * tw
 			var c := Color(light.x, light.y, 1.0)

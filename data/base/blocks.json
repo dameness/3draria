@@ -75,5 +75,6 @@
 	{"name": "mud", "mine": 2, "icon": "mud_item", "tiles": {"all": "mud"}},
 	{"name": "jungle_grass", "grass": true, "mine": 2, "drop": "mud", "tiles": {"top": "jungle_grass_top", "side": "jungle_grass_side", "bottom": "mud"}},
 	{"name": "hive", "icon": "hive_item", "tiles": {"all": "hive"}},
-	{"name": "bee_larva", "mine": 10, "solid": false, "shape": "crystal", "item": false, "drop": "", "tiles": {"all": "bee_larva"}}
+	{"name": "bee_larva", "mine": 10, "solid": false, "shape": "crystal", "item": false, "drop": "", "tiles": {"all": "bee_larva"}},
+	{"name": "rope", "mine": 100, "solid": false, "shape": "rope", "icon": "rope", "tiles": {"all": "rope_tile"}}
 ]

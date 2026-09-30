@@ -5,12 +5,14 @@
 			"magic_mirror",
 			"cloud_in_a_bottle",
 			"hermes_boots",
-			"mace"
+			"mace",
+			"shoe_spikes"
 		],
 		"common": [
 			{
 				"items": [
-					"wooden_arrow"
+					"wooden_arrow",
+					"shuriken"
 				],
 				"min": 25,
 				"max": 49,
@@ -110,6 +112,22 @@
 				"min": 10,
 				"max": 19,
 				"chance": 0.333
+			},
+			{
+				"items": [
+					"rope"
+				],
+				"min": 50,
+				"max": 100,
+				"chance": 0.333
+			},
+			{
+				"items": [
+					"flare_gun"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.0475
 			}
 		]
 	},
@@ -119,7 +137,9 @@
 			"magic_mirror",
 			"cloud_in_a_bottle",
 			"hermes_boots",
-			"mace"
+			"mace",
+			"shoe_spikes",
+			"flare_gun"
 		],
 		"common": [
 			{
@@ -209,6 +229,14 @@
 				"min": 1,
 				"max": 1,
 				"chance": 0.333
+			},
+			{
+				"items": [
+					"throwing_knife"
+				],
+				"min": 25,
+				"max": 50,
+				"chance": 0.25
 			}
 		]
 	},
@@ -218,7 +246,13 @@
 			"magic_mirror",
 			"cloud_in_a_bottle",
 			"hermes_boots",
-			"sunfury"
+			"sunfury",
+			"shoe_spikes",
+			"flare_gun",
+			{
+				"item": "lava_charm",
+				"weight": 0.4
+			}
 		],
 		"common": [
 			{
@@ -309,6 +343,14 @@
 				"min": 1,
 				"max": 1,
 				"chance": 0.333
+			},
+			{
+				"items": [
+					"throwing_knife"
+				],
+				"min": 25,
+				"max": 50,
+				"chance": 0.25
 			}
 		]
 	},
@@ -411,7 +453,10 @@
 			"spear",
 			"aglet",
 			"wand_of_sparking",
-			"wooden_boomerang"
+			"wooden_boomerang",
+			"climbing_claws",
+			"umbrella",
+			"radar"
 		],
 		"common": [
 			{
@@ -434,7 +479,8 @@
 			},
 			{
 				"items": [
-					"wooden_arrow"
+					"wooden_arrow",
+					"shuriken"
 				],
 				"min": 25,
 				"max": 50,
@@ -491,7 +537,38 @@
 				"min": 50,
 				"max": 99,
 				"chance": 0.5
+			},
+			{
+				"items": [
+					"throwing_knife"
+				],
+				"min": 150,
+				"max": 300,
+				"chance": 0.1667
+			},
+			{
+				"items": [
+					"grenade"
+				],
+				"min": 3,
+				"max": 5,
+				"chance": 0.333
+			},
+			{
+				"items": [
+					"rope"
+				],
+				"min": 50,
+				"max": 100,
+				"chance": 0.5
 			}
 		]
+	},
+	"bundle": {
+		"flare_gun": {
+			"item": "flare",
+			"min": 25,
+			"max": 50
+		}
 	}
 }

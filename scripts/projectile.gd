@@ -17,6 +17,7 @@ var item_id := -1        # flail: o item que o jogador precisa manter na mão
 var spin := 0.0          # flail: ângulo do giro
 var last_hit := {}       # flail: inimigo -> instante do último golpe do giro
 var chain: Array[Node3D] = []
+var stuck := false       # sinalizador: grudou num bloco e fica aceso até o fim da vida
 
 
 func _ready() -> void:
@@ -194,8 +195,14 @@ func _bomb(delta: float) -> void:
 		velocity = Vector3(-velocity.x * 0.35 if hit.x != 0 else velocity.x, velocity.y * 0.5, -velocity.z * 0.35 if hit.z != 0 else velocity.z)
 	if fmod(age, 0.12) < delta:
 		Fx.sparks(entities, position + Vector3.UP * 0.45, Color("#ffb040"), 1, Vector3.UP)
-	if age >= def.fuse:
-		entities.explode(position + Vector3.UP * 0.2, def.radius, damage)
+	var boom: bool = age >= def.fuse
+	if def.get("contact", false) and not boom:   # granada: explode ao tocar num inimigo, sem esperar o pavio
+		boom = entities.enemies.any(func(e): return not e.display and e.def.ai != "npc" and VoxelBody.touches(position, 0.2, 0.4, e.position, e.half, e.tall))
+	if boom:
+		entities.explode(position + Vector3.UP * 0.2, def.radius, damage, def.get("keep_blocks", false))
+		for i in def.get("bees", 0):   # Beenade: um enxame de abelhas sai da explosão
+			var dir := Vector3(entities.rng.randf_range(-1, 1), entities.rng.randf_range(-0.2, 1), entities.rng.randf_range(-1, 1)).normalized()
+			entities.spawn_projectile("bee_shot", position + Vector3.UP * 0.3, dir, 14.0, maxi(1, roundi(damage * 0.5)), 0.25)
 		queue_free()
 
 
@@ -221,6 +228,10 @@ func _boomerang(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	age += delta
+	if stuck:
+		if age > def.get("life", 5.0):
+			queue_free()
+		return
 	if def.has("fuse"):
 		_bomb(delta)
 		return
@@ -233,8 +244,14 @@ func _physics_process(delta: float) -> void:
 	velocity.y -= def.get("gravity", 0.0) * delta
 	var next := position + velocity * delta
 	var b: Vector3i = Vector3i(next.floor())
-	if age > def.get("life", 5.0) or (Blocks.solid[entities.world.get_block(b.x, b.y, b.z)] and not def.get("ghost", false)):
+	if age > def.get("life", 5.0):
 		queue_free()
+		return
+	if Blocks.solid[entities.world.get_block(b.x, b.y, b.z)] and not def.get("ghost", false):
+		if def.get("stick", false) and not def.get("hostile", false):
+			stuck = true
+		else:
+			queue_free()
 		return
 	var r: float = def.get("size", 0.2) * 0.35
 	if def.get("hostile", false):   # laser do chefe: fere o jogador
@@ -263,5 +280,7 @@ func _physics_process(delta: float) -> void:
 				queue_free()
 				return
 	position = next
-	if is_inside_tree() and velocity.normalized().cross(Vector3.UP).length() > 0.01:
+	if def.has("spin"):   # shuriken: gira deitado, como o bumerangue
+		rotation.y += delta * def.spin
+	elif is_inside_tree() and velocity.normalized().cross(Vector3.UP).length() > 0.01:
 		look_at(position + velocity)

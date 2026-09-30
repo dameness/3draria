@@ -188,5 +188,21 @@
 	{"name": "ball_o'_hurt", "icon": "ball_o'_hurt", "damage": 30, "use_time": 0.75, "flail": "balloh_ball", "shoot_speed": 12, "knockback": 5.5, "stack": 1, "rarity": 1, "use_style": "hold"},
 	{"name": "the_meatball", "icon": "the_meatball", "damage": 34, "use_time": 0.75, "flail": "meatball_ball", "shoot_speed": 12, "knockback": 5.5, "stack": 1, "rarity": 1, "use_style": "hold"},
 	{"name": "blue_moon", "icon": "blue_moon", "damage": 54, "use_time": 0.75, "flail": "blue_moon_ball", "shoot_speed": 12, "knockback": 6, "stack": 1, "rarity": 2, "use_style": "hold"},
-	{"name": "sunfury", "icon": "sunfury", "damage": 64, "use_time": 0.75, "flail": "sunfury_ball", "shoot_speed": 12, "knockback": 6.75, "crit": 0.11, "stack": 1, "rarity": 3, "use_style": "hold"}
+	{"name": "sunfury", "icon": "sunfury", "damage": 64, "use_time": 0.75, "flail": "sunfury_ball", "shoot_speed": 12, "knockback": 6.75, "crit": 0.11, "stack": 1, "rarity": 3, "use_style": "hold"},
+	{"name": "grenade", "tip": "Uma pequena explosão que não destrói blocos", "icon": "grenade", "damage": 60, "use_time": 0.75, "knockback": 8, "throw": "grenade", "shoot_speed": 11, "consumable": true, "rarity": 0, "sprite_angle": 45},
+	{"name": "shuriken", "icon": "shuriken", "damage": 10, "use_time": 0.25, "knockback": 0, "throw": "shuriken", "shoot_speed": 33.75, "consumable": true, "rarity": 0, "sprite_angle": 45},
+	{"name": "throwing_knife", "icon": "throwing_knife", "damage": 12, "use_time": 0.25, "knockback": 2, "throw": "throwing_knife", "shoot_speed": 37.5, "consumable": true, "rarity": 0, "sprite_angle": 45},
+	{"name": "flare_gun", "tip": "Dispara sinalizadores que grudam nos blocos", "icon": "flare_gun", "damage": 2, "use_time": 0.3, "ammo": "flare", "shoot_speed": 22.5, "knockback": 0, "stack": 1, "rarity": 1, "sprite_angle": 0},
+	{"name": "flare", "tip": "Ilumina onde gruda", "icon": "flare", "damage": 1, "knockback": 1.5, "ammo_class": "flare", "projectile": "flare", "sprite_angle": -90},
+	{"name": "umbrella", "tip": "Segurado, retarda a queda", "icon": "umbrella", "damage": 10, "use_time": 0.367, "reach": 2.4, "knockback": 5, "stack": 1, "rarity": 1, "slowfall": true},
+	{"name": "climbing_claws", "tip": "Permite deslizar devagar pelas paredes e pular delas\n+1 de defesa", "icon": "climbing_claws", "stack": 1, "rarity": 1, "accessory": {"wall_slide": true, "defense": 1}},
+	{"name": "shoe_spikes", "tip": "Permite deslizar devagar pelas paredes e pular delas", "icon": "shoe_spikes", "stack": 1, "rarity": 1, "accessory": {"wall_slide": true}},
+	{"name": "lava_charm", "tip": "Concede 7 segundos de imunidade à lava", "icon": "lava_charm", "stack": 1, "rarity": 3, "accessory": {"lava": 7}},
+	{"name": "radar", "tip": "Mostra quantos inimigos há por perto", "icon": "radar", "stack": 1, "rarity": 1, "accessory": {"radar": 75}},
+	{"name": "slime_hook", "tip": "Aperte E para lançar o gancho", "icon": "slime_hook", "hook": {"range": 11.25, "launch": 28.9, "pull": 24.75}, "stack": 1, "rarity": 3},
+	{"name": "slime_gun", "tip": "Esguicha um jato de gosma", "icon": "slime_gun", "damage": 1, "cost": 0, "use_time": 0.2, "shoot": "slime_spray", "shoot_speed": 24, "knockback": 0, "stack": 1, "rarity": 0, "autoswing": true, "sprite_angle": 0},
+	{"name": "binoculars", "tip": "Segurado, aproxima a visão", "icon": "binoculars", "stack": 1, "rarity": 4, "zoom": 2.0},
+	{"name": "beenade", "tip": "Explode em um enxame de abelhas", "icon": "beenade", "damage": 12, "use_time": 0.25, "knockback": 1, "throw": "beenade", "shoot_speed": 11, "consumable": true, "rarity": 0, "sprite_angle": 45},
+	{"name": "honey_comb", "tip": "Solta abelhas e cobre você de mel ao levar dano", "icon": "honey_comb", "stack": 1, "rarity": 2, "accessory": {"bees": true}},
+	{"name": "bottled_honey", "icon": "bottled_honey", "consumable": true, "heal": 80, "buff": "honey", "buff_time": 15, "use_time": 0.283, "rarity": 0}
 ]

@@ -8,5 +8,6 @@
 	"night_owl": {"label": "Coruja", "tip": "Visão noturna: aumenta o raio da luz ao seu redor", "owl": 1, "icon": "night_owl_potion"},
 	"spelunker": {"label": "Espeleólogo", "tip": "Destaca minérios, baús e Life Crystals por perto", "spelunker": 1, "icon": "spelunker_potion"},
 	"panic": {"label": "Pânico!", "tip": "+100% de velocidade de movimento", "speed": 1.0, "icon": "panic_necklace"},
-	"potion_sickness": {"label": "Doença da poção", "tip": "Não pode usar mais poções de cura", "debuff": true, "icon": "lesser_healing_potion"}
+	"potion_sickness": {"label": "Doença da poção", "tip": "Não pode usar mais poções de cura", "debuff": true, "icon": "lesser_healing_potion"},
+	"honey": {"label": "Mel", "tip": "Regenera 1 de vida por segundo", "regen": 1.0, "icon": "bottled_honey"}
 }

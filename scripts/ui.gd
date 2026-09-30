@@ -124,7 +124,7 @@ static func item_tip(id: int) -> String:
 	var lines := ["[color=#%s]%s[/color]" % [Items.rarity_color(id).to_html(false), Items.title(Items.label(id))]]
 	# Ordem do balão do Terraria: dano, crítico, velocidade, recuo, defesa, poderes, cura/mana, texto do item, consumível, duração, material.
 	if d.get("damage", 0) > 0:
-		var kind := "à distância" if d.has("ammo") or d.has("ammo_class") else "mágico" if d.has("cost") else "corpo a corpo"
+		var kind := "à distância" if d.has("ammo") or d.has("ammo_class") or d.has("throw") else "mágico" if d.has("cost") else "corpo a corpo"
 		lines.append("%d de dano %s" % [d.damage, kind])
 		if not d.has("ammo_class"):
 			lines.append("%d%% de chance de acerto crítico" % roundi(d.get("crit", Combat.CRIT) * 100))
@@ -146,7 +146,7 @@ static func item_tip(id: int) -> String:
 		lines.append("Restaura %d de vida" % d.heal)
 	if d.has("mana"):
 		lines.append("Restaura %d de mana" % d.mana)
-	if d.has("cost"):
+	if d.get("cost", 0) > 0:
 		lines.append("Usa %d de mana" % d.cost)
 	if d.has("set"):
 		var s: Dictionary = Items.sets.get(d.set, {})

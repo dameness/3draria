@@ -31,6 +31,7 @@ const SHOTS := [
 	{"name": "arvore_cai", "tree": true, "fell": 15, "item": "copper_axe"},
 	{"name": "muda", "sapling": true, "item": "acorn", "look": Vector2(0, -0.6)},
 	{"name": "muda_cresce", "sapling": true, "grow": true, "item": "acorn", "look": Vector2(0, 0.35)},
+	{"name": "corda", "look": Vector2(0, -0.35), "row": ["rope", "torch", "rope", "rope", "sapling"]},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
 	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
 	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},

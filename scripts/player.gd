@@ -30,6 +30,9 @@ const SWIM_SINK := 3.0     # sem Espaço: afunda devagar
 const SWIM_DEPTH := 1.0    # com mais líquido que isto acima dos pés (até a cintura) nada; com menos, vadeia: anda e pula como em terra
 const HOP_DEPTH := 1.5     # perto da superfície, Espaço junto de uma margem dá um pulo inteiro para sair da água
 const LAVA_DAMAGE := 50    # por golpe (há invencibilidade entre um e outro), sem tirar a armadura
+const CLIMB := 6.0         # corda: blocos/s subindo (Espaço) ou descendo (C); parado, pendura
+const SLIDE := 2.0         # Climbing Claws/Shoe Spikes: queda máxima encostado na parede (com C, 3x)
+const UMBRELLA_FALL := 3.0 # Umbrella na mão: queda máxima (sem dano de queda)
 const METEORITE_BURN := 4  # por golpe (há invencibilidade entre um e outro)
 const MAX_HP := 100          # vida máxima inicial (max_hp sobe com Life Crystals)
 const MAX_HP_CAP := 400      # 20 Life Crystals de 20 (wiki)
@@ -114,6 +117,9 @@ var last_depth := 0.0
 var bubble_timer := 0.0
 var was_on_floor := false
 var fall_speed := 0.0
+var crouch := false           # C: desce a corda e acelera o deslize na parede
+var lava_left := 99.0         # Lava Charm: segundos de imunidade que restam (recarrega fora da lava)
+var base_fov := 0.0           # campo de visão sem zoom (Binoculars)
 var fall_top := 0.0           # altura de onde a queda atual começou (o último instante com velocidade vertical >= 0)
 var last_pos := Vector3.ZERO  # posição do passo anterior (um salto grande = teletransporte: a queda recomeça)
 var breath := BREATH          # segundos de fôlego que restam (só cai com a cabeça na água)
@@ -251,7 +257,7 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func look(rel: Vector2) -> void:
-	var sens := LOOK * Settings.mouse_sens
+	var sens := LOOK * Settings.mouse_sens * (cam.fov / base_fov if base_fov > 0.0 else 1.0)   # com zoom a mira gira menos
 	rotation.y -= rel.x * sens
 	pitch = clampf(pitch - rel.y * sens, -1.55, 1.55)
 	cam.rotation.x = pitch
@@ -265,6 +271,7 @@ func _physics_process(delta: float) -> void:
 	var wish := Vector3(k.call(KEY_D) - k.call(KEY_A), 0, k.call(KEY_S) - k.call(KEY_W)).rotated(Vector3.UP, rotation.y)
 	if creative:
 		wish.y = k.call(KEY_SPACE) - k.call(KEY_C)
+	crouch = k.call(KEY_C) > 0.0
 	step(delta, wish.normalized(), k.call(KEY_SPACE) > 0.0)
 	tick(delta)
 
@@ -328,6 +335,10 @@ func _update_camera(delta := 0.0) -> void:
 			k *= 0.7
 		offset = want * k
 	cam.position = Vector3(0, EYE, 0) + offset
+	if base_fov == 0.0:
+		base_fov = cam.fov
+	var zoom: float = Items.defs[held()].get("zoom", 1.0) if held() != -1 else 1.0   # Binoculars na mão: aproxima a visão
+	cam.fov = lerpf(cam.fov, base_fov / zoom, minf(delta * 8.0, 1.0))
 	var walk := clampf(Vector2(velocity.x, velocity.z).length() / WALK, 0.0, 1.4) if on_floor and not creative else 0.0
 	bob += delta * (7.0 + walk * 3.0) * walk
 	shake = maxf(shake - delta * 2.5, 0.0)
@@ -415,7 +426,8 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 	if velocity.y >= 0.0 or depth > 0.0 or position.distance_to(last_pos) > 4.0:   # sobe, está na água ou foi teletransportado: a queda recomeça daqui (wiki: zera com a velocidade vertical)
 		fall_top = position.y
 	swimming = depth > SWIM_DEPTH
-	var slow := 0.55 if swimming else 0.75 if depth > 0.0 else 1.0
+	var rope := not swimming and on_rope()
+	var slow := 0.55 if swimming else 0.75 if depth > 0.0 else 0.6 if rope else 1.0
 	velocity.x = wish.x * speed * slow + knock.x
 	velocity.z = wish.z * speed * slow + knock.z
 	knock = knock.move_toward(Vector3.ZERO, 20.0 * delta)
@@ -423,6 +435,12 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 		velocity.y = move_toward(velocity.y, SWIM_UP if jump else -SWIM_SINK, 30.0 * delta)
 		if jump and depth < HOP_DEPTH and (hit_wall or on_floor):
 			velocity.y = JUMP * (1.0 + inv.acc_sum("jump"))
+	elif rope:   # corda: Espaço sobe, C desce, sem nada pendura
+		flapping = false
+		gliding = false
+		velocity.y = CLIMB * (float(jump) - float(crouch))
+		fall_top = position.y
+		air_jump_ready = inv.has_acc("double_jump")
 	else:
 		var wings := inv.wings()
 		flapping = false
@@ -438,6 +456,9 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 				gliding = true
 		if not flapping:
 			velocity.y = maxf(velocity.y - GRAVITY * (GLIDE if gliding else 1.0) * delta, -(GLIDE_FALL if gliding else FALL_MAX))
+		if held() != -1 and Items.defs[held()].get("slowfall", false) and not on_floor:   # Umbrella: cai devagar e sem dano de queda
+			velocity.y = maxf(velocity.y, -UMBRELLA_FALL)
+			fall_top = position.y
 		if jump and on_floor:
 			velocity.y = JUMP * (1.0 + inv.acc_sum("jump"))
 		if on_floor or depth > 0.0:
@@ -448,9 +469,21 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 			if entities:
 				Fx.puff(entities, position + Vector3(0, 0.2, 0), Color("#e8f0ff"), 8)
 				Sfx.play(entities, "flap", position, -6.0, 1.3)
+	if inv.has_acc("wall_slide") and hit_wall and not on_floor and depth == 0.0 and not rope and wish.length() > 0.01:   # Climbing Claws/Shoe Spikes: gruda na parede e escorrega devagar; Espaço pula dela
+		velocity.y = maxf(velocity.y, -SLIDE * (3.0 if crouch else 1.0))
+		fall_top = position.y
+		if jump and not jump_was:
+			velocity.y = JUMP * (1.0 + inv.acc_sum("jump"))
 	jump_was = jump
+	var charm := inv.acc_sum("lava")   # Lava Charm: a imunidade gasta na lava e recarrega fora dela
+	lava_left = minf(lava_left, charm)
 	if depth > 0.0 and kind == Blocks.ids.lava:
-		hurt(LAVA_DAMAGE, Vector3.ZERO)
+		if lava_left > 0.0:
+			lava_left -= delta
+		else:
+			hurt(LAVA_DAMAGE, Vector3.ZERO)
+	else:
+		lava_left = minf(lava_left + delta, charm)
 	fall_speed = minf(velocity.y, fall_speed)
 	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta)
 	position = r[0]
@@ -659,6 +692,20 @@ func overlaps_solid(p: Vector3) -> bool:
 	return VoxelBody.overlaps(world, p, HALF, TALL)
 
 
+# Dentro de uma corda (os pés ou o meio do corpo no bloco).
+func on_rope() -> bool:
+	var x := floori(position.x)
+	var z := floori(position.z)
+	return world.get_block(x, floori(position.y + 0.1), z) == Blocks.ids.rope or world.get_block(x, floori(position.y + 0.9), z) == Blocks.ids.rope
+
+
+# Radar (vale no inventário ou vestido): inimigos hostis dentro de 75 blocos (125 tiles da wiki); -1 sem o Radar.
+func radar_count() -> int:
+	if inv.acc_sum("radar") == 0.0 and inv.total(Items.ids.radar) == 0:
+		return -1
+	return entities.enemies.filter(func(e): return not e.display and e.def.ai != "npc" and e.position.distance_to(position) < 75.0).size()
+
+
 func held() -> int:
 	return inv.item[slot]
 
@@ -679,6 +726,14 @@ func hurt(damage: int, dir: Vector3, bounce := true) -> int:   # bounce = false:
 	iframes = IFRAMES
 	since_hit = 0.0
 	shake = 1.0
+	if inv.has_acc("bees") and entities:   # Honey Comb: 1 a 4 abelhas atacam quem estiver perto e o mel cobre você por 5 s
+		add_buff("honey", 5.0)
+		for i in entities.rng.randi_range(1, 4):
+			var bee_dir := Vector3(entities.rng.randf_range(-1, 1), entities.rng.randf_range(0, 1), entities.rng.randf_range(-1, 1)).normalized()
+			var near: Array = entities.enemies.filter(func(e): return not e.display and e.def.ai != "npc" and e.position.distance_to(position) < 20.0)
+			if not near.is_empty():
+				bee_dir = (near[entities.rng.randi() % near.size()].position + Vector3.UP * 0.5 - (position + Vector3.UP)).normalized()
+			entities.spawn_projectile("bee_shot", position + Vector3.UP * 1.2, bee_dir, 14.0, 8, 0.25)
 	if inv.has_acc("panic"):   # Panic Necklace: ao levar dano, 8 s com o dobro da velocidade
 		add_buff("panic", 8.0)
 	Sfx.play(entities, "hurt", position + Vector3.UP, 0.0)
@@ -854,7 +909,8 @@ func cast(d: Dictionary, aim := Vector3.ZERO) -> void:   # aim: a direção (os 
 		mana = 0.0
 		cooldown *= 1.6
 		use_len = cooldown
-	mana_use = 0.0
+	if cost > 0.0:
+		mana_use = 0.0
 	var forward := aim if aim != Vector3.ZERO else -cam.global_basis.z
 	var from := position + Vector3.UP * EYE
 	if d.has("cloud"):   # Crimson Rod: uma nuvem no ponto da mira (para antes de um bloco) que chove sangue; uma por vez

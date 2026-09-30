@@ -31,7 +31,7 @@ atravessa e colocar bloco substitui; some se o chão sumir), `"liquid"` (água/l
 translúcida à parte, `"glow": true` = brilha sozinho, como a lava). Líquido flui (scripts/liquid.gd) e tem nível 1-8 por bloco:
 `water`/`lava` são o nível 8 (cheio) e `water_1..7`/`lava_1..7` (`"liquid": "water", "level": n`) os níveis parciais; a altura da
 superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 níveis, no fim da lista.
-`shape: "door"`: painel fino na borda do bloco, sem colisão (porta aberta; `door` é o cubo sólido: as duas contam como parede na moradia). Forma nova = um `match` em `chunk_mesher._shape`.
+`shape: "door"`: painel fino na borda do bloco, sem colisão (porta aberta; `door` é o cubo sólido: as duas contam como parede na moradia). `shape: "rope"`: fio fino não sólido; dentro dele Espaço sobe, C desce, sem tecla pendura (player.gd `on_rope`). Forma nova = um `match` em `chunk_mesher._shape`.
 `light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
 `grass: true`: é grama (a muda de árvore só pega em cima dela).
 `clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
@@ -50,7 +50,8 @@ Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` 
 Recuo de flecha soma ao da arma (`knockback` na munição).
 `tip`: texto do item no balão, traduzido da linha "Tooltip" da wiki (`\n` separa linhas); `crit`: chance de crítico da arma (padrão 0.04). O resto do balão (dano, crítico, velocidade, recuo, "Consumível", "Material" = entra em alguma receita) sai dos campos em `ui.gd item_tip`; só escreva `tip` se o efeito existir no jogo.
 
-Acessório: `accessory: {speed?, jump?, regen?, defense?, max_mana?, panic?, no_fall?, double_jump?, wings?: {time (s de voo), lift (blocos/s)}}` (bônus somam; só um par de asas vale).
+Acessório: `accessory: {speed?, jump?, regen?, defense?, max_mana?, panic?, no_fall?, double_jump?, wall_slide? (desliza e pula da parede), lava? (s de imunidade), radar? (raio; vale também no inventário), bees? (Honey Comb), wings?: {time (s de voo), lift (blocos/s)}}` (bônus somam; só um par de asas vale).
+Na mão: `slowfall` (Umbrella: queda máxima 3 blocos/s, sem dano) e `zoom` (Binoculars). `throw: <projétil>` joga o item consumível (bomba, granada, shuriken...); `cost: 0` = magia sem mana (Slime Gun).
 Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus, free_cost?: [armas sem custo de mana com o conjunto completo]}}`.
 Flail: `flail: <projétil>` (projectiles.json: `flail: true`, `color`, `size`, `length` em blocos, `life`); `shoot_speed` = velocity da wiki. Segurar gira (60% dano, 35% recuo), soltar arremessa e volta; um no ar por vez.
 Magia: `cost` (mana) + `shoot` (projétil); `cloud: alcance` faz a arma soltar uma nuvem que chove (`blood_drop`) em vez de um projétil (Crimson Rod).
@@ -75,10 +76,12 @@ Chefes atravessam blocos e vão embora ao amanhecer; itens com `summon` os invoc
 
 ## projectiles.json
 `{name, sprite? (textura, billboard) | model_item? (ícone extrudado), size, gravity, life (s), pierce, glow?}`.
+Extras: `fuse`+`radius` (bomba; `contact` explode ao tocar inimigo, `keep_blocks` não quebra blocos, `bees` solta abelhas), `spin` (gira deitado), `stick` (gruda no bloco até o fim da vida: sinalizador).
 Dano/velocidade vêm da arma (feixe = dano da espada; flecha = arco + flecha).
 
 ## loot.json
-`{camada: {main: [itens, um por baú], common: [{items, min, max, chance}]}}`, camadas `underground` `cavern` `lava` `sky` (Skyware Chest das ilhas, pela altura; as ilhas dão o item principal na ordem).
+`{camada: {main: [itens, um por baú], common: [{items, min, max, chance}]}}`, camadas `surface` `underground` `cavern` `lava` `sky` (Skyware Chest das ilhas, pela altura; as ilhas dão o item principal na ordem).
+Um principal pode pesar menos: `{"item", "weight"}` (os outros pesam 1). `bundle: {item: {item, min, max}}` põe outro item junto (Flare Gun + Flares).
 
 ## rarities.json
 `raridade: cor` (valores do código do Terraria, −1 a 11). Pinta o feixe do item solto.
