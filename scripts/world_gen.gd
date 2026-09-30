@@ -67,6 +67,7 @@ var SAND: int
 var WATER: int
 var LAVA: int
 var TUFT: int
+var CACTUS: int
 var FLOWERS: Array
 var MUSHROOM: int
 var seed: int
@@ -148,6 +149,7 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	WATER = Blocks.ids.water
 	LAVA = Blocks.ids.lava
 	TUFT = Blocks.ids.grass_tuft
+	CACTUS = Blocks.ids.cactus
 	FLOWERS = [Blocks.ids.flower_yellow, Blocks.ids.flower_red, Blocks.ids.flower_pink]
 	MUSHROOM = Blocks.ids.mushroom
 	var er := RandomNumberGenerator.new()   # bioma do mal: tipo, posição e abismos só dependem da seed
@@ -310,6 +312,7 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_ores(d, rng)
 	_trees(d, hs, W, cx, cz)
 	_plants(d, hs, W, rng)
+	_cactus(d, hs, W, cx, cz)
 	rng.seed = hash([seed, cx, cz, "altar"])
 	_altar(d, rng)
 	rng.seed = hash([seed, cx, cz, "chest"])
@@ -1003,6 +1006,27 @@ func _plants(d: PackedByteArray, hs: PackedInt32Array, W: int, rng: RandomNumber
 			if d[i] != GRASS or d[i + CHUNK * CHUNK] != AIR or r > 0.34:
 				continue
 			d[i + CHUNK * CHUNK] = TUFT if r < 0.27 else MUSHROOM if r < 0.275 else FLOWERS[rng.randi() % FLOWERS.size()]
+
+
+# Cactos (wiki Cactus): colunas de 3 a 5 blocos sobre a areia da superfície do deserto, com ar livre no topo; um por ~60 colunas.
+func _cactus(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	if not _near_ring(ox, oz, 0.22, 0.5):
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed, cx, cz, "cactus"])
+	var layer := CHUNK * CHUNK
+	for z in CHUNK:
+		for x in CHUNK:
+			var r := rng.randf()
+			var n := rng.randi_range(3, 5)
+			if r > 0.016 or desert_weight(ox + x, oz + z) < 0.5 or evil_weight(ox + x, oz + z) >= 0.5 or snow_weight(ox + x, oz + z) >= 0.5:
+				continue
+			var i := x + z * CHUNK + hs[(x + MARGIN) + (z + MARGIN) * W] * layer
+			if d[i] == SAND and range(1, n + 1).all(func(k): return d[i + k * layer] == AIR):
+				for k in range(1, n + 1):
+					d[i + k * layer] = CACTUS
 
 
 # Árvores estilo Terraria: tronco alto e fino, raízes na base, galhos com tufos e a copa fofa no topo.

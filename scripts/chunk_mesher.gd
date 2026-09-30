@@ -325,6 +325,15 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 			for f in 6:
 				var sh: float = SHADE[f]
 				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 1.0, 0.14), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
+		"glowstick":   # graveto luminoso: uma barrinha no meio do bloco, acesa sozinha (b = 1)
+			var u0 := tiles_of(b, 0) * tw
+			for f in 6:
+				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 0.45, 0.14), u0, tw, Color(light.x, light.y, 1.0))
+		"cactus":   # cacto: coluna de 0,6 de largura, com a luz do lugar (atravessável, como no Terraria)
+			var u0 := tiles_of(b, 0) * tw
+			for f in 6:
+				var sh: float = SHADE[f]
+				_face(a, pos + Vector3(0.2, 0, 0.2), f, Vector3(0.6, 1.0, 0.6), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
 		"crystal":   # Life Crystal: dois quadros em cruz do tamanho do bloco, sem balançar e brilhando sozinho (b = 1)
 			var u0 := tiles_of(b, 0) * tw
 			var c := Color(light.x, light.y, 1.0)

@@ -53,6 +53,8 @@ const SHOTS := [
 	{"name": "gancho", "look": Vector2(0.9, 0.25), "hook": true, "third": true, "creative": false},
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "neve", "snow": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
+	{"name": "deserto_cacto", "cactus": true, "creative": true, "look": Vector2(0, -0.12)},
+	{"name": "auto_select", "look": Vector2(0, 0.5), "give": ["glowstick", "torch"], "auto": true},
 	{"name": "deserto", "desert": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "selva", "jungle": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "colmeia", "hive": true, "look": Vector2(0.4, -0.1), "creative": true},
@@ -211,6 +213,12 @@ func _process(_delta: float) -> bool:
 					model._process(0.016)
 				else:
 					hand._process(0.016)
+		if shots[shot].get("auto", false) and wait == 1:   # segura o Shift de mentira (Auto Select)
+			var sh := InputEventKey.new()
+			sh.keycode = KEY_SHIFT
+			sh.physical_keycode = KEY_SHIFT
+			sh.pressed = true
+			Input.parse_input_event(sh)
 		if shots[shot].has("free") and wait == 1:   # olhar livre: aperta o Alt de mentira e gira
 			var alt := InputEventKey.new()
 			alt.keycode = KEY_ALT
@@ -324,6 +332,19 @@ func _setup(s: Dictionary) -> void:
 	if s.get("desert", false):
 		var dc := Vector2i(world.gen.desert_center)
 		player.position = Vector3(dc.x + 0.5, world.surface_y(dc.x, dc.y) + s.get("up", 0.0), dc.y + 0.5)
+	if s.get("cactus", false):   # 7 blocos ao sul do cacto mais perto do meio do deserto, olhando para ele
+		var cc := Vector2i(world.gen.desert_center)
+		var best := Vector3i.ZERO
+		var bd := 1e9
+		for z in range(cc.y - 60, cc.y + 60):
+			for x in range(cc.x - 60, cc.x + 60):
+				var cy: int = world.surface_y(x, z)
+				if world.get_block(x, cy, z) == Blocks.ids.cactus and Vector2(x - cc.x, z - cc.y).length() < bd:
+					bd = Vector2(x - cc.x, z - cc.y).length()
+					best = Vector3i(x, cy, z)
+		print("  cacto em ", best)
+		player.position = Vector3(best.x + 0.5, best.y + 3.0, best.z + 9.5)
+		player.rotation.y = 0.0
 	if s.get("jungle", false):
 		var jc := Vector2i(world.gen.jungle_center)
 		player.position = Vector3(jc.x + 0.5, world.surface_y(jc.x, jc.y) + s.get("up", 0.0), jc.y + 0.5)

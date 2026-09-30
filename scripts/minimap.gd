@@ -7,8 +7,8 @@ extends Control
 
 const REVEAL := 56          # raio revelado em volta do jogador, em blocos (passa da janela do retrato)
 const ROWS_PER_FRAME := 2
-const PORTRAIT := 160       # lado do retrato, em pixels
-const ZOOMS := [1.0, 2.0, 4.0]   # pixels por bloco no retrato: 160, 80 e 40 blocos de lado
+const PORTRAIT := 300       # lado do retrato, em pixels (o do print do Terraria)
+const ZOOMS := [1.0, 2.0, 4.0]   # pixels por bloco no retrato: 300, 150 e 75 blocos de lado
 const OVERLAY_SCALE := 3.0
 enum {STYLE_PORTRAIT, STYLE_OVERLAY, STYLE_HIDDEN}
 
@@ -36,15 +36,25 @@ func setup(w: Node3D, p: Node3D) -> void:
 	world = w
 	player = p
 	tex = ImageTexture.create_from_image(world.map_img)
-	frame = Panel.new()   # moldura do retrato
+	frame = Panel.new()   # moldura dourada do retrato (por dentro da borda: o mapa recorta o que sai dele) e os botões de zoom, como no Terraria
 	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
-	frame.offset_left = -3
-	frame.offset_top = -3
-	frame.offset_right = 3
-	frame.offset_bottom = 3
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_theme_stylebox_override("panel", Ui.box(Color.TRANSPARENT, Ui.EDGE, 3, 4))
+	frame.add_theme_stylebox_override("panel", Ui.box(Color.TRANSPARENT, Color("#b98a2a"), 5, 10))
 	add_child(frame)
+	for k in 2:
+		var b := Button.new()
+		b.text = ["+", "−"][k]
+		b.focus_mode = Control.FOCUS_NONE
+		b.custom_minimum_size = Vector2(26, 26)
+		b.add_theme_font_size_override("font_size", 16)
+		b.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+		b.offset_left = -62.0 + 28.0 * k
+		b.offset_right = b.offset_left + 26.0
+		b.offset_top = -34.0
+		b.offset_bottom = -8.0
+		b.pressed.connect(func():
+			zoom = clampi(zoom + (1 if k == 0 else -1), 0, ZOOMS.size() - 1))
+		frame.add_child(b)
 	_layout()
 
 

@@ -105,6 +105,11 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 	chunks[c][lx + lz * C + y * C * C] = id
 	if y + 1 < H and Blocks.shape[chunks[c][lx + lz * C + (y + 1) * C * C]] == "plant" and not Blocks.solid[id]:
 		chunks[c][lx + lz * C + (y + 1) * C * C] = 0  # planta sem chão some
+	if Blocks.shape[id] != "cactus" and not Blocks.solid[id]:   # cortar o cacto derruba o pedaço de cima (ponytail: sem drop; corte de cima para baixo para aproveitar)
+		var ay := y + 1
+		while ay < H and Blocks.shape[chunks[c][lx + lz * C + ay * C * C]] == "cactus":
+			chunks[c][lx + lz * C + ay * C * C] = 0
+			ay += 1
 	edited[c] = true
 	if id == Blocks.sapling:
 		saplings[Vector3i(x, y, z)] = randf_range(GROW_MIN, GROW_MAX)
