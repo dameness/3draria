@@ -85,6 +85,14 @@ func test_player():
 	p.creative = true
 	p.step(1.0, Vector3(1, 0, 0), false)
 	check(p.position.x > 28, "voo atravessa blocos")
+	var x0: float = p.position.x
+	p.step(0.1, Vector3(1, 0, 0), false)
+	var slow_step: float = p.position.x - x0
+	p.sprint = true
+	x0 = p.position.x
+	p.step(0.1, Vector3(1, 0, 0), false)
+	check(absf((p.position.x - x0) / slow_step - 3.0) < 0.01, "Shift no criativo voa 3x mais rápido")
+	p.sprint = false
 	p.free()
 	w.free()
 	return true
@@ -4142,6 +4150,18 @@ func test_gen():
 # Mundo de teste (menu → "Mundo de teste"): a arena entra na geração, os baús trazem TODOS os itens (por categoria, a partir de Items.names) e a fileira
 # TODOS os blocos; habitantes, vitrine parada e os atalhos do painel F9.
 func test_testworld():
+	var old_dir := SaveGame.worlds_dir   # um mundo de teste salvo em outro tamanho é refeito, não aberto como mundo comum
+	SaveGame.worlds_dir = "user://t_worlds/"
+	DirAccess.make_dir_recursive_absolute(SaveGame.worlds_dir)
+	var tw_path := SaveGame.worlds_dir + SaveGame.TEST_NAME + ".wld"
+	var tf := FileAccess.open(tw_path, FileAccess.WRITE)
+	tf.store_var({"version": SaveGame.VERSION, "name": "velho", "seed": 1, "time": 60.0, "chunks": {}, "test": true})   # sem "size": mundo pequeno antigo
+	tf.close()
+	SaveGame.test_world()
+	var fresh: Dictionary = SaveGame._read(tw_path)
+	check(fresh.get("size") == WorldGen.SIZE_CHUNKS and fresh.get("test") == true and fresh.seed == SaveGame.TEST_SEED, "mundo de teste de outro tamanho é recriado")
+	DirAccess.remove_absolute(tw_path)
+	SaveGame.worlds_dir = old_dir
 	TestWorld.build()
 	var seen := {}
 	var titles := {}

@@ -59,7 +59,10 @@ static func create_world(name: String, seed: int, test := false) -> String:
 # O mundo de teste (test_world.gd): sempre o mesmo nome e a mesma seed; abre o que existe ou cria um novo.
 static func test_world() -> String:
 	var path := worlds_dir + TEST_NAME + ".wld"
-	return path if FileAccess.file_exists(path) else create_world(TEST_NAME, TEST_SEED, true)
+	if FileAccess.file_exists(path) and _read(path).get("size", 16) == WorldGen.SIZE_CHUNKS:
+		return path
+	DirAccess.remove_absolute(path)   # não existe, ou é de um mundo de outro tamanho (a arena não combinaria com o terreno): nada nele vale guardar
+	return create_world(TEST_NAME, TEST_SEED, true)
 
 
 # Aparência (cores) do personagem, tirada do nome: cada personagem tem a sua sem guardar nada no save.

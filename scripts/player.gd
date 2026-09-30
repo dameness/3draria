@@ -14,6 +14,7 @@ const GRAVITY := 28.0
 const JUMP := 9.0        # sobe ~1,4 bloco
 const WALK := 6.6        # 11 tiles/s da wiki (1 bloco = 1,67 tile); não há corrida
 const FLY := 13.5        # modo criativo (F): blocos/s
+const FLY_SPRINT := 3.0  # Shift no modo criativo: voa 3x mais rápido
 const WING_ACCEL := 45.0   # asas: quanto sobe a velocidade vertical por segundo enquanto voa
 const GLIDE := 1.0 / 3.0   # planando (asas sem tempo de voo, Espaço apertado): gravidade e queda máxima em 1/3 (wiki Wings)
 const FALL_MAX := 50.0
@@ -66,6 +67,7 @@ var hit_wall := false         # o último passo bateu numa parede (usado para sa
 var depth := 0.0              # blocos de líquido acima dos pés
 var swimming := false         # mais fundo que SWIM_DEPTH
 var creative := false         # modo criativo (F): sem colisão, sem dano
+var sprint := false           # Shift segurado (com as mãos livres); no criativo acelera o voo, fora dele é o Auto Select
 var flight_left := 0.0        # segundos de voo que restam às asas; volta ao máximo no chão
 var gliding := false          # planando com as asas (a animação usa)
 var flapping := false         # batendo as asas agora (subindo)
@@ -344,7 +346,8 @@ func _process(delta: float) -> void:
 		crack.visible = false
 	_update_rope()
 	var free := not (inventory_open or menu_open or map_open or dead > 0.0)   # mãos livres: sem painel na frente
-	auto_pick(free and Input.is_physical_key_pressed(KEY_SHIFT))
+	sprint = free and Input.is_physical_key_pressed(KEY_SHIFT)
+	auto_pick(sprint and not creative)   # voando, Shift é velocidade (trocar de item no meio do voo atrapalharia)
 	if not free:
 		attack_held = false
 		attack_buffer = 0.0
@@ -456,7 +459,7 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 	var speed := WALK * boots
 	if creative:
 		velocity = Vector3.ZERO
-		position += wish * FLY * boots * delta  # atravessa blocos
+		position += wish * FLY * boots * (FLY_SPRINT if sprint else 1.0) * delta  # atravessa blocos
 		fall_top = position.y
 		last_pos = position
 		return
