@@ -26,7 +26,7 @@ Testes verdes (`tests/run.gd`, `tests/menu_flow.gd`). Não precisa de mundo novo
 - **Botão direito em armas:** a wiki (tooltips) não lista nenhuma arma pré-Hardmode com ação no botão direito; só Hardmode (Sky Dragon's Fury, Flairon, Tome of Infinite Wisdom, Brand of the Inferno). Nada a fazer até lá.
 
 ## Habitantes e exceções `wiki_ok`
-- Habitantes já atiram no inimigo mais próximo (`attack` em enemies.json; velocidade, cadência e alcance são chute, o dano é o da wiki), mas seguem invulneráveis, parados e sem linha de visada; falta os inimigos os atacarem, eles morrerem/voltarem e andarem pela casa.
+- Habitantes: de dia andam até 6 blocos de casa e à noite voltam (abrem e fecham porta; sem busca de caminho, uma parede que os segura por 12 s os faz aparecer em casa), atiram no inimigo mais próximo (velocidade, cadência e alcance são chute, o dano é o da wiki), fogem se o inimigo chega a 3 blocos ou a vida cai abaixo de 50%, apanham do inimigo que encosta (defesa e 0,5 s de folga), regeneram (0,33/s; Guide 2/s), morrem e voltam depois de 2 min, de dia e com casa. Os inimigos comuns os perseguem quando estão mais perto que o jogador. Falta: linha de visada dos tiros, projéteis e explosões inimigas não os ferem, a espera da morte não vai no save, busca de caminho até a porta, o modelo ainda anda de braços de zumbi.
 - Só o Ruby entre as gemas (para a Gold/Platinum Crown → Slime Crown); faltam Amethyst, Topaz, Sapphire, Emerald e Diamond.
 - `wiki_ok` que restam: Old Man (dano; ele é o guarda da Dungeon) e a receita do Hellforge (a wiki não a tem: ele só vem de ruínas do Underworld e Hellstone Crate, que o jogo não tem).
 
@@ -51,7 +51,7 @@ Escala: 1 tile = 0,6 bloco e o mundo é uma ilha de 256x256 (o mundo pequeno da 
 
 ## Depois
 - Sprites GIF animados da wiki (Angry Bones, Cursed Skull, Fallen Star): baixa prioridade, os inimigos vão ganhar modelo 3D próprio. Plano se voltar: `fetch-sprites` decodifica todos os quadros (stdlib, sem PIL) num PNG em faixa + `.anim` (quadros, ms); `Atlas.wiki_frames` corta; `enemy_model` monta uma malha por quadro (cache por sprite) e `animate()` alterna a visível.
-- Habitantes andando pela casa e voltando à noite; mais habitantes (Demolitionist, Arms Dealer…); parede de fundo.
+- Mais habitantes (Dryad, Clothier, Goblin Tinkerer, Wizard); parede de fundo.
 - Starfury, Celestial Magnet, Sky Mill; mais asas no Hardmode.
 - Editar personagem existente; Conquistas/Créditos/Configurações no título; escala da interface; tempo de jogo no save.
 - Sons que faltam e música/ambiente (a wiki hospeda os áudios); autosave + backup do mundo.
@@ -62,4 +62,5 @@ Escala: 1 tile = 0,6 bloco e o mundo é uma ilha de 256x256 (o mundo pequeno da 
 ## Em aberto com o dono
 - Bug do verme/subsolo: causa raiz corrigida (chunk gerado na fila), mas o dono ainda não conseguiu verificar.
 - Pedir playtest (9ª parte: selva e colmeia, **mundo novo**: cave até a câmara, quebre a larva e lute com a Queen Bee; drops) e (8ª parte: deserto, **mundo novo**: Vulture de dia, Antlion Charger debaixo) e (7ª parte: bioma de neve — **mundo novo**; Ice Slime/Frozen Zombie na superfície de neve, Ice Bat/Undead Viking/Spiked Ice Slime/Snow Flinx debaixo) e (6ª parte: Wooden Boomerang, Book of Skulls, Skeletron Hand (drop do Skeletron), Mining Helmet no Merchant, 4 gold) e (5ª parte: Demolitionist chega com bomba no inventário e o Arms Dealer com bala; lojas deles) e (4ª parte: bombas e dinamite dos baús — mundo novo para achá-las; Nurse mais cara depois dos chefes) e (3ª parte: conjuradores — Dark Caster no dungeon, Fire Imp no submundo, Tim raro nas cavernas; caveiras teleguiadas do Skeletron abaixo de 75% da vida) e da revisão pré-Hardmode (2ª parte: espera de 10 s ao morrer, baús de superfície — **mundo novo**, Giant Worm/Devourer/Blood Crawler/Face Monster/Mother Slime/Undead Miner, Anvil no Merchant) e da 1ª: regeneração de vida (agora pela fórmula da wiki: parado e sem apanhar ~2/s aos 60 s), corações e estrelas dos inimigos, moedas que caem ao morrer, Eater of Worlds com 67 segmentos (**conferir o FPS**; o número é `worm.segments` em `enemies.json`), Skeletron alternando mãos e giro, bichos das cavernas/submundo/meteorito, tijolos do dungeon (agora pedem a Molten, 100%).
+- Pedir playtest dos habitantes (mundo de teste ou uma casa sua): de dia passeiam perto de casa e param quando você chega perto; à noite voltam para dentro; zumbi/slime os persegue e eles atiram ou fogem; morto, o habitante volta de dia depois de 2 min (com casa). Sem mundo novo.
 - Pedir playtest do que mudou antes: Configurações, cartões do menu, inimigos com sprite, "Reiniciar mundo" (F9).

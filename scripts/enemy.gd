@@ -11,6 +11,9 @@ const WORM_FREE := 37.0       # a wiki: cabeça a mais de 62,5 tiles (~37 blocos
 const WORM_TURN := 3.0        # rad/s da cabeça dentro do terreno (a wiki não dá o número; tirado do jogo)
 const NPC_SPEED := 1.5        # habitante andando (a wiki não dá o número; tirado do jogo)
 const WANDER := 6.0           # de dia o habitante anda até tantos blocos de casa
+const NPC_FLEE := 3.5         # habitante fugindo (zumbi anda a 2, slime pula a 3; o olho voador, a 5, alcança)
+const FLEE_NEAR := 3.0        # inimigo mais perto que isto: o habitante recua em vez de ficar atirando
+const FLEE_LIFE := 0.5        # com menos desta fração da vida ele só foge
 const NPC_IMMUNE := 0.5       # depois de apanhar o habitante fica tanto tempo sem apanhar de novo
 const HOME_WAIT := 12.0       # à noite, tantos segundos sem chegar em casa e ele aparece lá
 
@@ -165,26 +168,37 @@ func think(delta: float) -> void:
 		"queen_bee":
 			queen_bee(delta, to)
 		"npc":
-			flat = npc(delta, to, flat)
+			flat = town_ai(delta, to, flat)
 	if flat != Vector3.ZERO:
 		rotation.y = atan2(flat.x, flat.z)
 
 
 # Habitante (wiki Town NPCs): de dia anda perto de casa (WANDER), à noite volta para ela; com o jogador a menos de 3 blocos para e olha para ele.
+# Com um inimigo a até 12 blocos fica encarando e atirando (npc_attack); se ele chega a FLEE_NEAR ou a vida cai abaixo de FLEE_LIFE, foge dele.
 # Abre a porta que o barra e a fecha depois de passar. Devolve para onde olha (ZERO = onde já olhava).
 # ponytail: sem busca de caminho: anda em linha reta e, se uma parede o segura por HOME_WAIT s à noite, aparece em casa (a wiki também teleporta);
 # upgrade: busca de caminho pela moradia.
-func npc(delta: float, to: Vector3, flat: Vector3) -> Vector3:
+func town_ai(delta: float, to: Vector3, flat: Vector3) -> Vector3:
 	velocity.x = 0.0
 	velocity.z = 0.0
 	regen += delta * def.get("regen", 0.33)   # wiki: 0,33 de vida por segundo (o Guide, 2)
 	if regen >= 1.0:
 		regen -= 1.0
 		hp = mini(hp + 1, def.life)
+	var look := flat if to.length() < 7.0 else Vector3.ZERO
+	if not def.talk in entities.TOWN:   # o Velho fica onde está
+		return look
+	var foe := _foe(12.0)
+	var away := Vector3.ZERO
+	if foe:
+		away = Vector3(position.x - foe.position.x, 0.0, position.z - foe.position.z)
+		if hp < def.life * FLEE_LIFE or away.length() < FLEE_NEAR:
+			return _walk(away.normalized(), NPC_FLEE)   # foge sem atirar
 	if def.has("attack"):
 		npc_attack(delta)
-	var look := flat if to.length() < 7.0 else Vector3.ZERO
-	if not def.talk in entities.TOWN or to.length() < 3.0:   # o Velho fica onde está
+	if foe:   # com inimigo à vista fica de pé encarando e atirando (npc_attack)
+		return -away
+	if to.length() < 3.0:
 		return look
 	if door_at.y >= 0 and Vector2(door_at.x + 0.5 - position.x, door_at.z + 0.5 - position.z).length() > 1.2:
 		if entities.world.get_block(door_at.x, door_at.y, door_at.z) == Blocks.door_open:
@@ -212,6 +226,16 @@ func npc(delta: float, to: Vector3, flat: Vector3) -> Vector3:
 	return _walk(g.normalized()) if g.length() > 0.4 else look
 
 
+# O inimigo mais perto (até r blocos) que fere ao encostar, ou null.
+func _foe(r: float) -> Node3D:
+	var best: Node3D = null
+	for e in entities.enemies:
+		if e.def.ai != "npc" and not e.display and e.damage > 0 and position.distance_to(e.position) < r:
+			best = e
+			r = position.distance_to(e.position)
+	return best
+
+
 # Anda na direção dir: abre a porta fechada à frente, ou pula o degrau. Devolve dir.
 func _walk(dir: Vector3, speed := NPC_SPEED) -> Vector3:
 	velocity.x = dir.x * speed
@@ -229,7 +253,7 @@ func _walk(dir: Vector3, speed := NPC_SPEED) -> Vector3:
 
 
 # Habitante: a cada `cooldown` atira em quem estiver a até `range` blocos (dano = o da wiki, `damage`).
-# ponytail: sem linha de visada (o tiro que bate em parede some); habitante segue invulnerável.
+# ponytail: sem linha de visada (o tiro que bate em parede some).
 func npc_attack(delta: float) -> void:
 	timer -= delta
 	if timer > 0.0:
