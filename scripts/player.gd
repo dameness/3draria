@@ -341,6 +341,7 @@ func _process(delta: float) -> void:
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
 		highlight.global_position = Vector3(target.pos) + Vector3.ONE * 0.5
+		(highlight.mesh as BoxMesh).material.albedo_color = Color(1.0, 0.5, 0.05, 0.4) if smart_cursor else Color(0, 0, 0, 0.25)   # laranja: cursor inteligente ligado
 	if mine_damage > 0.0 and not target.is_empty() and target.pos == mine_pos:
 		crack.show_at(mine_pos, mine_damage / 100.0)
 	else:
@@ -1481,11 +1482,15 @@ func place_block() -> void:
 
 # Auto Select (Shift; wiki Cursor modes): segurado, a mão usa o item do inventário inteiro que serve para a mira, num slot extra ao lado da hotbar
 # (o slot da hotbar não muda): machado no tronco e no cacto, picareta no resto; sem bloco na mira, um glowstick (mira longe) ou uma tocha.
-# Empate: o primeiro do inventário. Sem item adequado a mão fica como está.
+# Empate: o primeiro do inventário. Sem item adequado a mão fica como está. Tocha ou glowstick já na hotbar ficam (senão a picareta ganharia sempre).
 func auto_pick(hold: bool) -> void:
 	auto_on = hold
 	auto_slot = -1
 	if not hold:
+		return
+	var cur: int = inv.item[slot]
+	if cur != -1 and (Items.defs[cur].get("throw") == "glowstick" or Items.places[cur] == Blocks.ids.torch):
+		auto_slot = slot   # luz já escolhida na hotbar: o Shift não a troca pela picareta (em 3D, mirar o chão ou a parede sempre acerta um bloco)
 		return
 	var b: int = world.get_block(target.pos.x, target.pos.y, target.pos.z) if not target.is_empty() else 0
 	var best_score := 0
