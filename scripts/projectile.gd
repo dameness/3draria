@@ -273,6 +273,19 @@ func _physics_process(delta: float) -> void:
 				return
 		position = next
 		return
+	if def.has("seek") and age > 0.5:   # abelha (wiki Bee Gun): meio segundo depois persegue o inimigo mais perto (30 blocos = 50 tiles de Manhattan)
+		var best: Node3D = null
+		var bd := 30.0
+		for e in entities.enemies:
+			var d: Vector3 = e.position + Vector3.UP * e.tall * 0.5 - position
+			if e.def.ai != "npc" and not e.display and not e in hit and absf(d.x) + absf(d.y) + absf(d.z) < bd:
+				bd = absf(d.x) + absf(d.y) + absf(d.z)
+				best = e
+		if best:
+			var want: Vector3 = best.position + Vector3.UP * best.tall * 0.5 - position
+			var turn := minf(velocity.angle_to(want), def.seek * delta)
+			if turn > 0.0001 and velocity.cross(want).length() > 0.0001:
+				velocity = velocity.rotated(velocity.cross(want).normalized(), turn)
 	for n in entities.get_children():   # projétil do jogador destrói esfera de conjurador
 		if n != self and n.get("def") is Dictionary and n.def.get("destroy", false) and n.position.distance_to(next) < r + n.def.size * 0.5:
 			entities.pop_sphere(n)

@@ -2946,6 +2946,14 @@ func test_missing_items():
 	gr._physics_process(dt)
 	var swarm: int = bent.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.get("name") == "bee_shot").size() - bee_before
 	check(gr.is_queued_for_deletion() and swarm == 8 and bw.get_block(33, 10, 24) == Blocks.ids.stone, "a Beenade explode em 8 abelhas sem quebrar o chão (%d)" % swarm)
+	var zb: Node3D = bent.spawn_enemy(bent.def_named("zombie"), Vector3(30.5, 11, 28.5))
+	var bee: Node3D = bent.spawn_projectile("bee_shot", Vector3(30.5, 11.5, 24.5), Vector3.RIGHT, 14.0, 5, 0.25)
+	bee.age = 0.6
+	for i in 10:
+		bee._physics_process(dt)
+	check(bee.velocity.z > 1.0 and bee.velocity.normalized().dot(Vector3.RIGHT) < 0.95, "a abelha vira para o inimigo mais perto depois de 0,5 s (%s)" % bee.velocity)
+	zb.queue_free()
+	bee.queue_free()
 	var zc: Node3D = bent.spawn_enemy(bent.def_named("zombie"), Vector3(30.5, 11, 24.5))
 	var gc: Node3D = bent.spawn_projectile("grenade", Vector3(30.5, 11.4, 24.5), Vector3.ZERO, 0.0, 60, 8.0)
 	gc._physics_process(dt)
