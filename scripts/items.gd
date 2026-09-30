@@ -82,10 +82,10 @@ static func use_dur(id: int) -> float:
 	return d.tool_speed / 60.0 if d.has("tool_speed") else d.get("use_time", 0.25)
 
 
-# Segurar o botão repete o uso (wiki Autoswing): só as ferramentas e armas marcadas nos dados, blocos, tochas, mudas e baldes; o resto exige um clique por uso.
+# Segurar o botão repete o uso (wiki Autoswing): só as ferramentas e armas marcadas nos dados, blocos, tochas e mudas; o resto exige um clique por uso.
 static func autoswing(id: int) -> bool:
 	var d := defs[id]
-	return d.get("autoswing", places[id] != -1 or d.has("bucket"))
+	return d.get("autoswing", places[id] != -1)
 
 
 static func label(id: int) -> String:

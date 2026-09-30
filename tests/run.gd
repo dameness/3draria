@@ -1706,7 +1706,7 @@ func hold_uses(p: Node3D, item: String, seconds: float) -> int:
 # Ataque como o do Terraria: um clique = um uso (com buffer de 0,12 s), segurar só repete o que tem autoswing, no ritmo do use time (armas)
 # ou do tool speed (picareta e machado), e a mira decide quem apanha (3 raios em leque contra a caixa do inimigo).
 func test_attack():
-	for n in ["copper_pickaxe", "copper_axe", "platinum_pickaxe", "terra_blade", "enchanted_sword", "cobalt_sword", "dirt", "torch", "empty_bucket", "acorn"]:
+	for n in ["copper_pickaxe", "copper_axe", "platinum_pickaxe", "terra_blade", "enchanted_sword", "cobalt_sword", "dirt", "torch", "acorn"]:
 		check(Items.autoswing(Items.ids[n]), n + " tem autoswing (wiki)")
 	for n in ["wooden_sword", "copper_shortsword", "iron_broadsword", "lights_bane", "blood_butcherer", "wooden_bow", "demon_bow", "suspicious_looking_eye"]:
 		check(not Items.autoswing(Items.ids[n]), n + " exige um clique por uso (wiki)")
@@ -2394,6 +2394,22 @@ func test_tools():
 			spot = c
 			break
 	check(w.liquid.scoop(w, spot) == Blocks.ids.lava and volume(w, lo, hi, Blocks.ids.lava) == 0, "o balde recolhe a lava toda, inclusive a sobra rasa (%d)" % volume(w, lo, hi, Blocks.ids.lava))
+	# botão direito (como no Minecraft) recolhe e derrama; o esquerdo não mexe no balde
+	w.set_block(24, 11, 20, Blocks.ids.water)
+	p.inv.item[p.slot] = Items.ids.empty_bucket
+	p.position = Vector3(22.5, 11, 20.5)
+	p.rotation.y = -PI / 2
+	p.pitch = -0.3
+	p.cooldown = 0.0
+	p.use_item()
+	check(w.get_block(24, 11, 20) == Blocks.ids.water and p.held() == Items.ids.empty_bucket, "o botão esquerdo não usa o balde")
+	p.cooldown = 0.0
+	p.interact()
+	check(w.get_block(24, 11, 20) == 0 and p.held() == Items.ids.water_bucket, "botão direito com o balde vazio recolhe")
+	p.cooldown = 0.0
+	p.target = {"pos": Vector3i(24, 10, 20), "normal": Vector3i(0, 1, 0)}
+	p.interact()
+	check(w.get_block(24, 11, 20) == Blocks.ids.water and p.held() == Items.ids.empty_bucket, "botão direito com o balde cheio derrama")
 	free_player(p)
 	w.free()
 	return true

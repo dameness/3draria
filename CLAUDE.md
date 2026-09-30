@@ -18,7 +18,7 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
 - **GUI = a do Terraria, nos mesmos lugares e com a mesma interatividade** (spec em docs/UI.md): hotbar/inventário no canto
   superior esquerdo, criação à esquerda, equipamento à direita, vida no canto superior direito, item preso ao cursor,
   botão direito, lixeira, dicas com a cor da raridade. **Esc abre o inventário** (e o botão Configurações dele pausa), Tab/M são do mapa,
-  botão esquerdo usa (até coloca bloco), direito só interage, Shift = Auto Select (wiki Controls). Jogabilidade também como a do Terraria.
+  botão esquerdo usa (até coloca bloco), direito só interage (exceção: o balde usa o direito, como no Minecraft), Shift = Auto Select (wiki Controls). Jogabilidade também como a do Terraria.
 - **Animação sempre**: câmera/mão, poses, inimigos, partículas e interface. Jogo parado é defeito.
 - Desempenho está bom no PC do dono (Ubuntu modesto): manter e pedir o FPS de volta.
 - **Ao fim de todo passo, diga como rebuildar**: `git pull && scripts/update.sh && .tools/godot` (update.sh = Godot + sprites +

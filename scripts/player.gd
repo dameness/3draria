@@ -986,8 +986,6 @@ func use_item() -> void:
 		return
 	if d.has("ammo"):
 		shoot(d, eye(), -cam.global_basis.z)
-	elif d.has("bucket"):
-		use_bucket(d)
 	elif Items.places[id] != -1:
 		place_block()
 	elif d.get("damage", 0) > 0 or Items.pick_power[id] > 0 or Items.axe_power[id] > 0:   # a lâmina (ou a picareta) só acerta quando o arco chega à frente (~1/3 do golpe)
@@ -1188,10 +1186,16 @@ func break_target() -> void:
 
 
 # Botão direito: interage com o que está na mira (NPC, baú), como no Terraria; colocar bloco é o botão esquerdo (use_item).
+# Exceção, como no Minecraft: o balde (cheio derrama, vazio recolhe) usa o botão direito, se não houver nada a abrir na mira.
 func interact() -> void:
 	var npc: Node3D = entities.npc_aimed(REACH)
 	if npc:
 		entities.talk(npc)
+	elif held() != -1 and Items.defs[held()].has("bucket") and (target.is_empty() or not world.get_block(target.pos.x, target.pos.y, target.pos.z) in [Blocks.ids.chest, Blocks.door_closed, Blocks.door_open, Blocks.ids.chair]):
+		if cooldown <= 0.0:
+			cooldown = use_time(held())
+			use_len = cooldown
+			use_bucket(Items.defs[held()])
 	elif target.is_empty():
 		return
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
