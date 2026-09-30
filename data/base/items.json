@@ -69,9 +69,9 @@
 	{"name": "platinum_chainmail", "icon": "platinum_chainmail", "armor": "body", "defense": 6, "stack": 1, "set": "platinum"},
 	{"name": "platinum_greaves", "icon": "platinum_greaves", "armor": "legs", "defense": 5, "stack": 1, "set": "platinum"},
 	{"name": "copper_coin", "icon": "copper_coin", "stack": 100},
-	{"name": "silver_coin", "icon": "silver_coin", "stack": 100, "rarity": 1, "wiki_ok": ["rarity"]},
-	{"name": "gold_coin", "icon": "gold_coin", "stack": 100, "rarity": 2, "wiki_ok": ["rarity"]},
-	{"name": "platinum_coin", "icon": "platinum_coin", "stack": 100, "rarity": 3, "wiki_ok": ["rarity"]},
+	{"name": "silver_coin", "icon": "silver_coin", "stack": 100, "rarity": 0},
+	{"name": "gold_coin", "icon": "gold_coin", "stack": 100, "rarity": 0},
+	{"name": "platinum_coin", "icon": "platinum_coin", "stack": 100, "rarity": 0},
 	{"name": "hermes_boots", "tip": "O usuário corre super rápido","icon": "hermes_boots", "stack": 1, "rarity": 1, "accessory": {"speed": 0.4}},
 	{"name": "shiny_red_balloon", "tip": "Aumenta a altura do pulo","icon": "shiny_red_balloon", "stack": 1, "rarity": 1, "accessory": {"jump": 0.25}},
 	{"name": "band_of_regeneration", "tip": "Regenera vida lentamente","icon": "band_of_regeneration", "stack": 1, "rarity": 1, "accessory": {"regen": 1}},
@@ -204,5 +204,7 @@
 	{"name": "binoculars", "tip": "Segurado, aproxima a visão", "icon": "binoculars", "stack": 1, "rarity": 4, "zoom": 2.0},
 	{"name": "beenade", "tip": "Explode em um enxame de abelhas", "icon": "beenade", "damage": 12, "use_time": 0.25, "knockback": 1, "throw": "beenade", "shoot_speed": 11, "consumable": true, "rarity": 0, "sprite_angle": 45},
 	{"name": "honey_comb", "tip": "Solta abelhas e cobre você de mel ao levar dano", "icon": "honey_comb", "stack": 1, "rarity": 2, "accessory": {"bees": true}},
-	{"name": "bottled_honey", "icon": "bottled_honey", "consumable": true, "heal": 80, "buff": "honey", "buff_time": 15, "use_time": 0.283, "rarity": 0}
+	{"name": "bottled_honey", "icon": "bottled_honey", "consumable": true, "heal": 80, "buff": "honey", "buff_time": 15, "use_time": 0.283, "rarity": 0},
+	{"name": "gold_crown", "icon": "gold_crown", "rarity": 0},
+	{"name": "platinum_crown", "icon": "platinum_crown", "rarity": 0}
 ]

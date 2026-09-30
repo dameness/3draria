@@ -17,6 +17,7 @@ var item_id := -1        # flail: o item que o jogador precisa manter na mão
 var spin := 0.0          # flail: ângulo do giro
 var last_hit := {}       # flail: inimigo -> instante do último golpe do giro
 var chain: Array[Node3D] = []
+var npc := false         # disparado por habitante: não fere o jogador
 var stuck := false       # sinalizador: grudou num bloco e fica aceso até o fim da vida
 
 
@@ -199,7 +200,7 @@ func _bomb(delta: float) -> void:
 	if def.get("contact", false) and not boom:   # granada: explode ao tocar num inimigo, sem esperar o pavio
 		boom = entities.enemies.any(func(e): return not e.display and e.def.ai != "npc" and VoxelBody.touches(position, 0.2, 0.4, e.position, e.half, e.tall))
 	if boom:
-		entities.explode(position + Vector3.UP * 0.2, def.radius, damage, def.get("keep_blocks", false))
+		entities.explode(position + Vector3.UP * 0.2, def.radius, damage, def.get("keep_blocks", false), not npc)
 		for i in def.get("bees", 0):   # Beenade: um enxame de abelhas sai da explosão
 			var dir := Vector3(entities.rng.randf_range(-1, 1), entities.rng.randf_range(-0.2, 1), entities.rng.randf_range(-1, 1)).normalized()
 			entities.spawn_projectile("bee_shot", position + Vector3.UP * 0.3, dir, 14.0, maxi(1, roundi(damage * 0.5)), 0.25)
@@ -273,7 +274,7 @@ func _physics_process(delta: float) -> void:
 			queue_free()
 			return
 	for e in entities.enemies.duplicate():
-		if not e in hit and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
+		if e.def.ai != "npc" and not e in hit and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
 			hit.append(e)
 			e.hurt(Combat.vary(damage, entities.rng), velocity, knockback, Combat.is_crit(entities.rng, crit))
 			if hit.size() >= def.get("pierce", 1):

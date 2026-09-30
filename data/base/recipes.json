@@ -84,7 +84,8 @@
 	{"result": "meteor_helmet", "needs": {"meteorite_bar": 10}, "station": "anvil"},
 	{"result": "meteor_suit", "needs": {"meteorite_bar": 20}, "station": "anvil"},
 	{"result": "meteor_leggings", "needs": {"meteorite_bar": 15}, "station": "anvil"},
-	{"result": "slime_crown", "needs": {"gel": 20, "gold_bar": 5}, "station": "demon_altar", "wiki_ok": ["recipe"]},
+	{"result": "slime_crown", "needs": {"gel": 20, "gold_crown": 1}, "station": "demon_altar"},
+	{"result": "slime_crown", "needs": {"gel": 20, "platinum_crown": 1}, "station": "demon_altar"},
 	{"result": "cobalt_bar", "needs": {"cobalt_ore": 3}, "station": "furnace"},
 	{"result": "palladium_bar", "needs": {"palladium_ore": 3}, "station": "furnace"},
 	{"result": "cobalt_pickaxe", "needs": {"cobalt_bar": 15}, "station": "anvil"},
@@ -123,5 +124,7 @@
 	{"result": "platinum_shortsword", "needs": {"platinum_bar": 6}, "station": "anvil"},
 	{"result": "wood_helmet", "needs": {"wood": 20}, "station": "workbench"},
 	{"result": "wood_breastplate", "needs": {"wood": 30}, "station": "workbench"},
-	{"result": "wood_greaves", "needs": {"wood": 25}, "station": "workbench"}
+	{"result": "wood_greaves", "needs": {"wood": 25}, "station": "workbench"},
+	{"result": "gold_crown", "needs": {"gold_bar": 5, "ruby": 1}, "station": "anvil"},
+	{"result": "platinum_crown", "needs": {"platinum_bar": 5, "ruby": 1}, "station": "anvil"}
 ]

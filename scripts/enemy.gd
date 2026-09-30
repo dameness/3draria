@@ -97,7 +97,7 @@ func _physics_process(delta: float) -> void:
 	think(delta)
 	move(delta)
 	var p: Node3D = entities.player
-	if damage > 0 and VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
+	if damage > 0 and def.ai != "npc" and VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
 		p.hurt(Combat.vary(damage, rng), p.position - position)
 
 
@@ -143,13 +143,38 @@ func think(delta: float) -> void:
 			caster(delta)
 		"queen_bee":
 			queen_bee(delta, to)
-		"npc":   # fica parado e vira para o jogador quando ele chega perto
+		"npc":   # fica parado, vira para o jogador quando ele chega perto e atira no inimigo mais próximo (def.attack)
 			velocity.x = 0.0
 			velocity.z = 0.0
 			if to.length() < 7.0:
 				flat = Vector3(to.x, 0, to.z)
+			if def.has("attack"):
+				npc_attack(delta)
 	if flat != Vector3.ZERO:
 		rotation.y = atan2(flat.x, flat.z)
+
+
+# Habitante: a cada `cooldown` atira em quem estiver a até `range` blocos (dano = o da wiki, `damage`).
+# ponytail: sem linha de visada (o tiro que bate em parede some) nem fuga; habitante segue invulnerável.
+func npc_attack(delta: float) -> void:
+	timer -= delta
+	if timer > 0.0:
+		return
+	var a: Dictionary = def.attack
+	var from := position + Vector3.UP * tall * 0.7
+	var target: Node3D = null
+	for e in entities.enemies:
+		if e.def.ai != "npc" and not e.display and from.distance_to(e.position) < a.range \
+				and (target == null or from.distance_to(e.position) < from.distance_to(target.position)):
+			target = e
+	if target == null:
+		return
+	timer = a.cooldown
+	var aim: Vector3 = target.position + Vector3.UP * target.tall / 2
+	var t: float = from.distance_to(aim) / a.speed   # a gravidade do projétil derruba o tiro: mira mais alto
+	aim.y += 0.5 * entities.projectiles[a.projectile].get("gravity", 0.0) * t * t
+	var shot: Node3D = entities.spawn_projectile(a.projectile, from, aim - from, a.speed, damage, 3.0)
+	shot.npc = true
 
 
 # Fase 1: paira acima do jogador invocando servos, depois 3 investidas. Fase 2: investidas em cadeia

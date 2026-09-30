@@ -694,7 +694,7 @@ func spawn_cloud(at: Vector3, damage: int) -> void:
 
 # Explosão (wiki Bomb/Dynamite): quebra os blocos numa esfera de `r` blocos, menos os à prova de explosão (inquebráveis, tijolos do dungeon,
 # baús, orbes e cristais, pedra infernal antes do Hardmode), solta os itens (juntos, por tipo) e fere a `r + 0.8` inimigos (não habitantes) e o jogador.
-func explode(at: Vector3, r: float, dmg: int, keep_blocks := false) -> void:   # keep_blocks: a granada fere, mas não destrói blocos
+func explode(at: Vector3, r: float, dmg: int, keep_blocks := false, hurt_player := true) -> void:   # keep_blocks: a granada fere, mas não destrói blocos
 	var lost := {}
 	var c := Vector3i(at.floor())
 	var n := 0 if keep_blocks else ceili(r)
@@ -719,7 +719,7 @@ func explode(at: Vector3, r: float, dmg: int, keep_blocks := false) -> void:   #
 	for e in enemies.duplicate():
 		if not e.display and e.def.ai != "npc" and e.position.distance_to(at) < r + 0.8:
 			e.hurt(dmg, e.position - at, 8.0)
-	if player.position.distance_to(at) < r + 0.8:
+	if hurt_player and player.position.distance_to(at) < r + 0.8:
 		player.hurt(dmg, player.position - at)
 	if player.position.distance_to(at) < 40.0:
 		player.shake = maxf(player.shake, 1.0)

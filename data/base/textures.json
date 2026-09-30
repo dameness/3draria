@@ -368,5 +368,9 @@
 	"honey_comb": {"wiki": "Honey_Comb", "pattern": "blob", "colors": ["#f0c020", "#a87810", "#fff0a0"]},
 	"bottled_honey": {"wiki": "Bottled_Honey", "pattern": "blob", "colors": ["#f0a020", "#a86810", "#ffe080"]},
 	"rope": {"wiki": "Rope", "pattern": "blob", "colors": ["#b08a4a", "#7a5a2a", "#d8b878"]},
-	"rope_tile": {"pattern": "noise", "colors": ["#b08a4a", "#8a6a34", "#d8b878"]}
+	"rope_tile": {"pattern": "noise", "colors": ["#b08a4a", "#8a6a34", "#d8b878"]},
+	"ruby": {"wiki": "Ruby_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#7d7d7d", "#707070", "#8a8a8a"], "top_colors": ["#d0203a", "#e8506a"]},
+	"ruby_item": {"wiki": "Ruby"},
+	"gold_crown": {"wiki": "Gold_Crown"},
+	"platinum_crown": {"wiki": "Platinum_Crown"}
 }

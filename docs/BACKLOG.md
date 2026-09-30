@@ -25,6 +25,11 @@ Testes verdes (`tests/run.gd`, `tests/menu_flow.gd`). Não precisa de mundo novo
 - Flails (Mace, Ball O' Hurt, The Meatball, Blue Moon, Sunfury): faltam a fase de segurar de novo para a bola cair no chão (50% do dano), o On Fire! do Sunfury (25%, sem debuff de fogo nos inimigos), a sinergia Blue Moon + Sunfury (arremessa os dois espelhados), a Chain Knife (flail lançado, 1/250 do Cave Bat) e a origem do Blue Moon (baú trancado da Dungeon; não há baú de dungeon, só no mundo de teste).
 - **Botão direito em armas:** a wiki (tooltips) não lista nenhuma arma pré-Hardmode com ação no botão direito; só Hardmode (Sky Dragon's Fury, Flairon, Tome of Infinite Wisdom, Brand of the Inferno). Nada a fazer até lá.
 
+## Habitantes e exceções `wiki_ok`
+- Habitantes já atiram no inimigo mais próximo (`attack` em enemies.json; velocidade, cadência e alcance são chute, o dano é o da wiki), mas seguem invulneráveis, parados e sem linha de visada; falta os inimigos os atacarem, eles morrerem/voltarem e andarem pela casa.
+- Só o Ruby entre as gemas (para a Gold/Platinum Crown → Slime Crown); faltam Amethyst, Topaz, Sapphire, Emerald e Diamond.
+- `wiki_ok` que restam: Old Man (dano; ele é o guarda da Dungeon) e a receita do Hellforge (a wiki não a tem: ele só vem de ruínas do Underworld e Hellstone Crate, que o jogo não tem).
+
 ## Divergências pré-Hardmode com a wiki (revisão de 29/09/2026; o que já foi corrigido está no `git log`)
 Conferido contra a wiki: itens (dano, use time, poder, raridade), receitas, inimigos (vida/dano/defesa/recuo/moedas), drops de chefes, loot de baú, armaduras, regeneração, morte.
 Tudo abaixo ainda diverge; em ordem de impacto na progressão:
@@ -34,14 +39,14 @@ Tudo abaixo ainda diverge; em ordem de impacto na progressão:
 4. **Vila:** Guide, Merchant, Nurse, Demolitionist (chega com uma bomba) e Arms Dealer (com bala ou arma de bala); faltam Dryad, Clothier, Goblin Tinkerer/reforja, Wizard. Merchant sem Piggy Bank, Bug Net, Shuriken, Rope, Glowstick; Arms Dealer sem Minishark/Silver Bullet; Nurse cobra 1 de cobre por vida × o avanço do mundo, sem o ajuste de felicidade nem cobrança por debuff. O Olho de Cthulhu natural exige 4 habitantes, como na wiki.
 5. **Baús:** faltam Blowpipe (depende das Seeds: ver "Seeds" em Agora, passo 1), Guide to Plant Fiber Cordage, Step Stool, Poison Barb, Extractinator, Glowstick, Angel Statue, poções Gills/Hunter/Dangersense e os acessórios de pet; a Rope é um bloco de um só passo (a wiki a estende sozinha). Bomb, Dynamite, Grenade, Shuriken, Throwing Knife, Flare Gun, Umbrella, Climbing Claws, Shoe Spikes, Radar e Lava Charm já saem dos baús.
 6. **Chefes:**
-   - King Slime: faltam Slimy Saddle, Solidifier, Slime Staff (Slime Gun sem o debuff Slime; Slime Hook já cai); a receita da Slime Crown na wiki é 20 Gel + Gold/Platinum Crown (jogo: 20 Gel + 5 barras de ouro); não nasce sozinho (1/300 de dia) nem pela Slime Rain.
+   - King Slime: faltam Slimy Saddle, Solidifier, Slime Staff (Slime Gun sem o debuff Slime; Slime Hook já cai); não nasce sozinho (1/300 de dia) nem pela Slime Rain.
    - Eye of Cthulhu: faltam Corrupt/Crimson Seeds e o altar (só cai se não houver); Binoculars aproxima a visão (zoom), não desloca o olhar.
    - Eater of Worlds: não foge quando o jogador sai do bioma; falta Eater's Bone; Worm Food/Rotten Chunk (Eater of Souls solta 33%) não existem, só as orbes o invocam.
    - Skeletron: Hand e Book of Skulls já caem; falta a máscara (vanity). **Decisão pendente:** ao amanhecer a wiki o enfurece (9999 de dano e defesa); o jogo faz ele ir embora.
    - Wall of Flesh: faltam Horrified/The Tongue (puxa o jogador para a boca), a arma e o emblema do Hardmode e o Demon Heart.
    - Queen Bee: sem enfurecimento fora da selva nem veneno; faltam Hive Wand, Honeyed Goggles, Nectar, o Abeemination e Bee Keeper/Bee's Knees/Bee Gun sem os efeitos de abelha (só o dano e o disparo); Beenade, Honey Comb e Bottled Honey já caem. Máscaras/troféus de todos os chefes são vanity e não existem. Deerclops depende do que falta da neve.
 7. **Biomas e eventos:** neve e deserto existem só como discos (neve/gelo com 6 inimigos; areia/areia endurecida/arenito com Vulture e Antlion Charger); selva com lama, grama de selva e a colmeia com a larva (Queen Bee), Hornet, Jungle Bat, Jungle Slime; faltam árvore boreal, Deerclops, baú de gelo, Ice Torch, tempestade; cacto, Antlion, pirâmide, Mummy (Hardmode); mogno, Man Eater, Snatcher, baú de hera, Life Fruit, oceano de verdade, cogumelo; Blood Moon, Goblin Army, Slime Rain; critters; pesca; Living Tree, Pirâmide, cavernas de aranha.
-8. **Itens pré-Hardmode ausentes (amostra):** Blowpipe, Trident, Anklet of the Wind, Zombie Arm, Bed (ponto de spawn), Piggy Bank, Rotten Chunk/Vertebra, Glowstick, plataformas e móveis de madeira. Slime Crown pela receita da wiki pede Gold Crown (5 barras + Ruby): faltam as gemas.
+8. **Itens pré-Hardmode ausentes (amostra):** Blowpipe, Trident, Anklet of the Wind, Zombie Arm, Bed (ponto de spawn), Piggy Bank, Rotten Chunk/Vertebra, Glowstick, plataformas e móveis de madeira.
 Escala: 1 tile = 0,6 bloco e o mundo é uma ilha de 256x256 (o mundo pequeno da wiki é 4200x1200 tiles), então profundidades, quantidade de baús/orbes/cristais e raios de bioma não batem em número, só na ordem das camadas.
 
 ## Depois

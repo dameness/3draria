@@ -1502,6 +1502,19 @@ func test_npc():
 	ent.remove_enemy(guide)
 	ent._town()
 	check(has.call("guide"), "quem some volta a aparecer perto do spawn")
+	# habitante ataca (wiki: o Guide atira flecha, dano 8) e não fere o jogador ao encostar
+	guide = ent.enemies.filter(func(e): return e.def.name == "guide")[0]
+	var far: Node3D = ent.spawn_enemy(enemy_def("zombie"), guide.position + Vector3(6, 0, 0))
+	var before := ent.get_children().size()
+	guide.timer = 0.0
+	guide.npc_attack(0.0)
+	var shot: Node3D = ent.get_children()[ent.get_children().size() - 1]
+	check(ent.get_children().size() == before + 1 and shot.npc and shot.damage == 8 and shot.velocity.x > 0.0, "o Guide atira no zumbi que chega perto (dano 8 da wiki)")
+	p.position = guide.position
+	var hp: float = p.hp
+	guide._physics_process(0.016)
+	check(p.hp == hp, "habitante não fere o jogador ao encostar")
+	ent.remove_enemy(far)
 	# pagar e o troco
 	p.inv.coin = PackedInt32Array([0, 0, 1, 0])   # 1 de ouro = 10000 cobre
 	check(p.inv.pay(500) and p.inv.coin_value() == 9500 and p.inv.coin[1] == 95 and not p.inv.pay(9999), "pagar 5 de prata de 1 de ouro sobra 95 de prata; sem saldo recusa")
