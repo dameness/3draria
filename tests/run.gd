@@ -3142,7 +3142,7 @@ func integration():
 			ent._old_man()
 			var has_npc := func(n: String) -> bool: return ent.enemies.any(func(e): return e.def.name == n)
 			check(has_npc.call("guide") and has_npc.call("merchant") and has_npc.call("nurse") and has_npc.call("old_man"), "Guide, Merchant, Nurse e Velho já estão perto do nascimento")
-			check(ent.boss_names().size() == 6 and ent.boss_names().has("wall_of_flesh") and not ent.boss_names().has("creeper"), "o painel lista os 6 chefes (%s)" % str(ent.boss_names()))
+			check(ent.boss_names().size() == 7 and ent.boss_names().has("wall_of_flesh") and not ent.boss_names().has("creeper"), "o painel lista os 7 chefes (%s)" % str(ent.boss_names()))
 			pl._unhandled_input(key(KEY_F9))
 			check(pl.inventory_open and hud.test_open, "F9 abre o painel de teste")
 			pl._unhandled_input(key(KEY_F9))
@@ -4277,6 +4277,57 @@ func test_wiki_review():
 	check(nent.biome_at(np.position) == "ice" and nent.defs.any(func(d): return d.name == "undead_viking" and d.biome == "ice"), "debaixo da neve é o bioma de gelo (Undead Viking, Ice Bat)")
 	free_player(np)
 	nw.free()
+	# --- selva, colmeia e Queen Bee (wiki Jungle, Queen Bee)
+	for sd in [1, 2, 3]:
+		var jw := dungeon_world(sd)
+		var jg: WorldGen = jw.gen
+		var hc := jg.hive_center
+		var jd := jg.generate(hc.x / 16, hc.z / 16)
+		var lx := posmod(hc.x, 16)
+		var lz := posmod(hc.z, 16)
+		check(jd.count(Blocks.ids.hive) > 50 and jd[lx + lz * 16 + hc.y * 256] == Blocks.ids.bee_larva and jd[lx + lz * 16 + (hc.y - 1) * 256] == Blocks.ids.hive and jd[lx + lz * 16 + (hc.y + 1) * 256] == 0, "seed %d: a colmeia tem favo (%d), a larva no chão de uma câmara oca" % [sd, jd.count(Blocks.ids.hive)])
+		var jc := Vector2i(jg.jungle_center) / 16
+		var jj := jg.generate(jc.x, jc.y)
+		check(jj.count(Blocks.ids.mud) > 30 and jg.jungle_center.distance_to(jg.desert_center) > 25.0 and jg.jungle_center.distance_to(jg.snow_center) > 25.0, "seed %d: a selva tem lama (%d) e fica longe dos outros biomas" % [sd, jj.count(Blocks.ids.mud)])
+		jw.free()
+	var qw := floor_world()
+	var qp := make_player(qw)
+	var qent: Node3D = qp.entities
+	qp.position = Vector3(24.5, 11, 24.5)
+	qent.larva_broken()
+	var queen: Node3D = qent.boss
+	check(queen != null and queen.def.name == "queen_bee" and queen.hp == 3400 and queen.defense == 8 and queen.damage == 30, "quebrar a larva chama a Queen Bee (3400 de vida, defesa 8)")
+	qent.larva_broken()
+	check(qent.enemies.filter(func(e): return e.def.name == "queen_bee").size() == 1, "só uma Queen Bee por vez")
+	var stingers := 0
+	var bees := 0
+	var modes := {}
+	var dashed := false
+	for i in 60 * 16:
+		queen._physics_process(1.0 / 60)
+		modes[queen.mode] = true
+		dashed = dashed or queen.velocity.length() > 15.0
+		if i % 30 == 0:
+			for n in qent.get_children():
+				if n.get("def") is Dictionary and n.def.get("name") == "stinger":
+					stingers += 1
+	bees = qent.enemies.filter(func(e): return e.def.name == "bee").size()
+	check(modes.has("align") and modes.has("charge") and modes.has("bees") and modes.has("stingers") and dashed and stingers > 0 and bees >= 3, "os três ataques em ciclo: investidas, abelhas (%d) e ferrões (%d)" % [bees, stingers])
+	for c in qent.get_children():
+		if c.get("item") != null:
+			c.free()
+	queen.hurt(99999, Vector3.RIGHT, 0)
+	var gear := 0
+	var wax := 0
+	for c in qent.get_children():
+		if c.get("item") in [Items.ids.bee_gun, Items.ids.bee_keeper, Items.ids.the_bees_knees]:
+			gear += 1
+		if c.get("item") == Items.ids.bee_wax:
+			wax += c.count
+	check(qent.boss == null and gear == 1 and wax >= 16, "a Queen Bee solta uma das três armas e Bee Wax (%d)" % wax)
+	check(qent.defs.any(func(d): return d.name == "hornet" and d.biome == "jungle_cave") and qent.defs.any(func(d): return d.name == "jungle_slime" and d.biome == "jungle"), "Hornet debaixo da selva, Jungle Slime na superfície")
+	free_player(qp)
+	qw.free()
 	# --- deserto (wiki Desert)
 	for sd in [1, 2, 3]:
 		var dw := dungeon_world(sd)

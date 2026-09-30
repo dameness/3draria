@@ -1107,6 +1107,8 @@ func break_target() -> void:
 	world.chests.erase(p)
 	if b == Blocks.ids.shadow_orb or b == Blocks.ids.crimson_heart:
 		entities.orb_broken(b, Vector3(p) + Vector3(0.5, 0.2, 0.5))
+	elif b == Blocks.ids.bee_larva:
+		entities.larva_broken()
 	mine_damage = 0.0
 	mine_pos = Vector3i(-1, -1, -1)
 	if Items.drop[b] != -1:

@@ -16,5 +16,7 @@
 	{"name": "bomb", "model_item": "bomb", "size": 0.6, "gravity": 22, "life": 10, "pierce": 1, "fuse": 3.0, "radius": 3.0},
 	{"name": "dynamite", "model_item": "dynamite", "size": 0.8, "gravity": 22, "life": 10, "pierce": 1, "fuse": 5.0, "radius": 4.2},
 	{"name": "skull_shot", "size": 0.6, "gravity": 0, "life": 1.6, "pierce": 1, "glow": "#e8f0ff"},
-	{"name": "wooden_boomerang", "model_item": "wooden_boomerang", "size": 0.9, "life": 4.0, "out": 0.45, "pierce": 99}
+	{"name": "wooden_boomerang", "model_item": "wooden_boomerang", "size": 0.9, "life": 4.0, "out": 0.45, "pierce": 99},
+	{"name": "bee_shot", "size": 0.4, "gravity": 0, "life": 1.6, "pierce": 1, "glow": "#f0c020"},
+	{"name": "stinger", "size": 0.5, "gravity": 0, "life": 4, "pierce": 1, "glow": "#ffd030", "hostile": true}
 ]

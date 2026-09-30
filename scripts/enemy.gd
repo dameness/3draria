@@ -141,6 +141,8 @@ func think(delta: float) -> void:
 			wall(delta, flat)
 		"caster":
 			caster(delta)
+		"queen_bee":
+			queen_bee(delta, to)
 		"npc":   # fica parado e vira para o jogador quando ele chega perto
 			velocity.x = 0.0
 			velocity.z = 0.0
@@ -334,6 +336,54 @@ func wall(delta: float, flat: Vector3) -> void:
 		entities.spawn_enemy(entities.def_named(def.minion), position + Vector3.UP * tall * 0.3 + flat * 3.0)
 	if position.distance_to(p.position) > 150.0:
 		entities.remove_enemy(self)
+
+
+# Queen Bee (wiki), três ataques em ciclo: nivela com o jogador e investe 3 vezes; paira em cima soltando 6 abelhas; paira e atira ferrões.
+# ponytail: sem o enfurecimento fora da selva nem o veneno.
+func queen_bee(delta: float, to: Vector3) -> void:
+	var p: Node3D = entities.player
+	timer -= delta
+	var away := Vector3(-to.x, 0, -to.z).normalized() if Vector2(to.x, to.z).length() > 0.5 else Vector3.RIGHT
+	match mode:
+		"align":   # 9 blocos ao lado do jogador, na altura dele
+			velocity = velocity.lerp(((p.position + away * 9.0 + Vector3.UP) - position).limit_length(def.speed * 2.0), delta * 3.0)
+			if position.distance_to(p.position + away * 9.0) < 2.5 or timer <= 0.0:
+				mode = "charge"
+				dashes = 3
+				timer = 0.0
+		"charge":
+			if timer <= 0.0:
+				if dashes == 0:
+					mode = "bees"
+					timer = 4.0
+					summoned = 0
+					return
+				dashes -= 1
+				velocity = to.normalized() * 22.0
+				timer = 0.9
+			velocity *= 1.0 - delta * 0.8
+		"bees":
+			velocity = velocity.lerp(((p.position + Vector3.UP * 7.0) - position).limit_length(def.speed), delta * 2.0)
+			if summoned < 6 and timer < 4.0 - summoned * 0.5 and entities.enemies.filter(func(e): return e.def.name == "bee").size() < 12:
+				summoned += 1
+				entities.spawn_enemy(entities.def_named(def.minion), position + Vector3.DOWN)
+			if timer <= 0.0:
+				mode = "stingers"
+				timer = 4.0
+				shot_timer = 0.0
+		_:   # "stingers" (e o começo)
+			if mode != "stingers":
+				mode = "align"
+				timer = 3.0
+				return
+			velocity = velocity.lerp(((p.position + Vector3.UP * 6.0 + away * 3.0) - position).limit_length(def.speed), delta * 2.0)
+			shot_timer -= delta
+			if shot_timer <= 0.0:
+				shot_timer = 0.45
+				entities.spawn_projectile("stinger", position, p.position + Vector3.UP - position, 14.0, 22, 0.0)
+			if timer <= 0.0:
+				mode = "align"
+				timer = 3.0
 
 
 # Conjurador (wiki Caster AI: Dark Caster, Tim, Fire Imp): parado; 2,5 s depois de nascer e a cada 10,8 s teleporta para um ponto livre perto do jogador e

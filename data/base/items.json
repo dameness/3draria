@@ -179,5 +179,9 @@
 	{"name": "book_of_skulls", "tip": "Dispara uma caveira","icon": "book_of_skulls", "damage": 29, "cost": 18, "use_time": 0.533, "shoot": "skull_shot", "shoot_speed": 17, "knockback": 3.5, "stack": 1, "rarity": 2, "sprite_angle": 45},
 	{"name": "skeletron_hand", "tip": "Aperte E para lançar o gancho","icon": "skeletron_hand", "hook": {"range": 15.94, "launch": 37.5, "pull": 24.75}, "stack": 1, "rarity": 2},
 	{"name": "wooden_boomerang", "icon": "wooden_boomerang", "damage": 10, "use_time": 0.333, "boomerang": "wooden_boomerang", "shoot_speed": 15, "knockback": 5, "stack": 1, "rarity": 1},
-	{"name": "mining_helmet", "tip": "Emite luz quando vestido","icon": "mining_helmet", "armor": "head", "defense": 2, "stack": 1, "rarity": 1, "light": true}
+	{"name": "mining_helmet", "tip": "Emite luz quando vestido","icon": "mining_helmet", "armor": "head", "defense": 2, "stack": 1, "rarity": 1, "light": true},
+	{"name": "bee_wax", "icon": "bee_wax", "rarity": 0},
+	{"name": "bee_keeper", "icon": "bee_keeper", "damage": 30, "use_time": 0.333, "reach": 2.6, "knockback": 5.3, "stack": 1, "rarity": 3, "autoswing": true},
+	{"name": "the_bees_knees", "icon": "the_bees_knees", "damage": 23, "use_time": 0.383, "ammo": "arrow", "shoot_speed": 30, "knockback": 3, "stack": 1, "rarity": 3},
+	{"name": "bee_gun", "tip": "Dispara abelhas","icon": "bee_gun", "damage": 9, "cost": 5, "use_time": 0.2, "shoot": "bee_shot", "shoot_speed": 20, "knockback": 0.25, "stack": 1, "rarity": 2, "autoswing": true, "sprite_angle": 0}
 ]

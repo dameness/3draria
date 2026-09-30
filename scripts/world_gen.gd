@@ -77,7 +77,13 @@ var hm_ores: Array = []           # ores.json com "hardmode": true (um por grupo
 var hallow_center := Vector2.ZERO
 var snow_center := Vector2.ZERO    # bioma de neve (wiki Snow biome): longe do mal, do Hallow e do dungeon
 var desert_center := Vector2.ZERO  # bioma de deserto (wiki Desert): o 4º disco, longe dos outros
+var jungle_center := Vector2.ZERO  # bioma de selva (wiki Jungle): o 5º disco; a colmeia com a larva fica debaixo dele
+var hive_center := Vector3i.ZERO   # centro da câmara da colmeia (a larva no chão dela)
 var SNOW: int
+var MUD: int
+var JGRASS: int
+var HIVE: int
+var LARVA: int
 var HSAND: int
 var SANDSTONE: int
 var ICE: int
@@ -148,6 +154,10 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	PEARLSTONE = Blocks.ids.pearlstone
 	hallow_center = CENTER + Vector2(0, -72.0 if evil_center.y > CENTER.y else 72.0)   # entre o mal e o dungeon, nunca em cima de um
 	SNOW = Blocks.ids.snow_block
+	MUD = Blocks.ids.mud
+	JGRASS = Blocks.ids.jungle_grass
+	HIVE = Blocks.ids.hive
+	LARVA = Blocks.ids.bee_larva
 	HSAND = Blocks.ids.hardened_sand
 	SANDSTONE = Blocks.ids.sandstone
 	ICE = Blocks.ids.ice_block
@@ -172,6 +182,14 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 		if m > far:
 			far = m
 			desert_center = c
+	far = -1.0   # a selva, no que sobra
+	for k in 24:
+		var c := CENTER + Vector2.from_angle(TAU * k / 24.0) * 70.0
+		var m := minf(minf(minf(c.distance_to(evil_center), c.distance_to(hallow_center)), minf(c.distance_to(Vector2(ex, ez)), c.distance_to(snow_center))), c.distance_to(desert_center))
+		if m > far:
+			far = m
+			jungle_center = c
+	hive_center = Vector3i(int(jungle_center.x), surface_height(int(jungle_center.x), int(jungle_center.y)) - 16, int(jungle_center.y))
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
@@ -268,6 +286,7 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_evil(d, hs, W, cx, cz)
 	_snow(d, hs, W, cx, cz)
 	_desert(d, hs, W, cx, cz)
+	_jungle(d, hs, W, cx, cz)
 	_dungeon(d, cx, cz)
 	_ores(d, rng)
 	_trees(d, hs, W, cx, cz)
@@ -358,6 +377,10 @@ func snow_weight(wx: int, wz: int) -> float:
 	return _disc(wx, wz, snow_center, 900)
 
 
+func jungle_weight(wx: int, wz: int) -> float:
+	return _disc(wx, wz, jungle_center, 1700)
+
+
 func desert_weight(wx: int, wz: int) -> float:
 	return _disc(wx, wz, desert_center, 1300)
 
@@ -368,6 +391,46 @@ func _disc(wx: int, wz: int, center: Vector2, salt: int) -> float:
 	if dist > SNOW_RADIUS + 8.0:
 		return 0.0
 	return clampf((SNOW_RADIUS - dist + rock_noise.get_noise_2d(wx + salt, wz) * 8.0) / 4.0, 0.0, 1.0)
+
+
+# Selva (wiki Jungle): grama de selva e lama no lugar da grama e da terra (as árvores ficam) e, debaixo do centro, a colmeia: uma bola de favo
+# de 5 blocos com uma câmara oca e a larva no chão dela (quebrar a larva chama a Queen Bee).
+func _jungle(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(jungle_center) > SNOW_RADIUS + 8.0 + CHUNK:
+		return
+	var layer := CHUNK * CHUNK
+	for z in CHUNK:
+		for x in CHUNK:
+			if jungle_weight(ox + x, oz + z) < 0.5 or evil_weight(ox + x, oz + z) >= 0.5 or snow_weight(ox + x, oz + z) >= 0.5 or desert_weight(ox + x, oz + z) >= 0.5:
+				continue
+			var i := x + z * CHUNK
+			var h := hs[(x + MARGIN) + (z + MARGIN) * W]
+			for y in range(UNDERWORLD_TOP + 8, h + 1):
+				var b := d[i + y * layer]
+				if b == GRASS:
+					d[i + y * layer] = JGRASS
+				elif b == DIRT:
+					d[i + y * layer] = MUD
+	var hc := hive_center
+	for dz in range(-6, 7):
+		for dy in range(-6, 7):
+			for dx in range(-6, 7):
+				var lx := hc.x + dx - ox
+				var lz := hc.z + dz - oz
+				if lx < 0 or lx >= CHUNK or lz < 0 or lz >= CHUNK:
+					continue
+				var r := Vector3(dx, dy, dz).length()
+				var i := lx + lz * CHUNK + (hc.y + dy) * layer
+				if r <= 2.6 and dy >= 0:
+					d[i] = AIR
+				elif r <= 5.4 and d[i] != WATER and d[i] != LAVA:
+					d[i] = HIVE
+	var lx := hc.x - ox
+	var lz := hc.z - oz
+	if lx >= 0 and lx < CHUNK and lz >= 0 and lz < CHUNK:
+		d[lx + lz * CHUNK + hc.y * layer] = LARVA   # no chão da câmara (o piso é de favo)
 
 
 # Deserto (wiki Desert): areia na superfície (6 blocos), areia endurecida no resto da terra e arenito em manchas na pedra. Sem grama, árvores nem plantas.
@@ -634,7 +697,7 @@ func _trees(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) 
 			var wz := gz * TREE_CELL + (h >> 16) % TREE_CELL
 			var ix := wx - ox + MARGIN
 			var iz := wz - oz + MARGIN
-			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5 or snow_weight(wx, wz) >= 0.5 or desert_weight(wx, wz) >= 0.5:
+			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5 or snow_weight(wx, wz) >= 0.5 or desert_weight(wx, wz) >= 0.5 or jungle_weight(wx, wz) >= 0.5:
 				continue
 			var forest := clampf(0.3 + forest_noise.get_noise_2d(wx, wz) * 1.0, 0.0, 0.75)   # matas e clareiras
 			var by := hs[ix + iz * W]
