@@ -85,7 +85,7 @@ static func use_dur(id: int) -> float:
 # Segurar o botão repete o uso (wiki Autoswing): só as ferramentas e armas marcadas nos dados, blocos, tochas e mudas; o resto exige um clique por uso.
 static func autoswing(id: int) -> bool:
 	var d := defs[id]
-	return d.get("autoswing", places[id] != -1)
+	return d.get("autoswing", places[id] != -1 or d.has("plants"))
 
 
 static func label(id: int) -> String:

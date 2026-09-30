@@ -30,5 +30,6 @@
 	{"name": "throwing_knife", "model_item": "throwing_knife", "size": 0.6, "gravity": 8, "life": 3, "pierce": 1},
 	{"name": "flare", "size": 0.35, "gravity": 3, "life": 40, "pierce": 1, "glow": "#ff5a3a", "stick": true},
 	{"name": "syringe", "size": 0.4, "gravity": 0, "life": 2, "pierce": 1, "glow": "#ffffff"},
-	{"name": "slime_spray", "size": 0.3, "gravity": 12, "life": 0.8, "pierce": 1, "glow": "#5aa0ff"}
+	{"name": "slime_spray", "size": 0.3, "gravity": 12, "life": 0.8, "pierce": 1, "glow": "#5aa0ff"},
+	{"name": "seed", "model_item": "seed", "size": 0.3, "gravity": 6, "life": 1.6, "pierce": 1}
 ]

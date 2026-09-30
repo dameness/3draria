@@ -578,10 +578,10 @@ func spawn_worm(d: Dictionary, pos: Vector3) -> Node3D:
 	return head
 
 
-# Item de um drop: nos mundos de Carmesim o minério do mal é crimtano, onde o dado diz demonita (como o Terraria).
+# Item de um drop: nos mundos de Carmesim o minério e as sementes do mal são de crimtano/carmesim, onde o dado diz demonita/corrupção (como o Terraria).
 func drop_id(item: String) -> int:
-	if item == "demonite_ore" and world.gen.evil == "crimson":
-		return Items.ids.crimtane_ore
+	if world.gen.evil == "crimson":
+		item = {"demonite_ore": "crimtane_ore", "corrupt_seeds": "crimson_seeds"}.get(item, item)
 	return Items.ids[item]
 
 

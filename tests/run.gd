@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -268,6 +268,7 @@ func test_save():
 	w.saplings[Vector3i(9, 11, 9)] = 42.0
 	w.homes["guide"] = Vector3i(22, 12, 22)
 	w.town_wait["nurse"] = 77.0
+	w.spread[Vector3i(1, 2, 3)] = 5.0
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
 	var w2: Node3D = load("res://scripts/world.gd").new()
 	w2.gen = WorldGen.new(1)
@@ -286,6 +287,7 @@ func test_save():
 	check(w2.saplings.get(Vector3i(9, 11, 9)) == 42.0, "mudas plantadas voltam")
 	check(w2.homes.get("guide") == Vector3i(22, 12, 22), "a casa dos habitantes volta")
 	check(w2.town_wait.get("nurse") == 77.0, "a espera do habitante morto volta")
+	check(w2.spread.get(Vector3i(1, 2, 3)) == 5.0, "a grama do mal que espalha volta")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
 	check(SaveGame.list(SaveGame.players_dir).is_empty(), "apagar personagem")
@@ -1695,6 +1697,99 @@ func test_npc_defend():
 	zombie.position = Vector3(20.5, 11.0, 21.5)
 	run(old, 1.0)
 	check(old.position.distance_to(Vector3(20.5, 11.0, 20.5)) < 0.1, "o Velho não foge")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Seeds (wiki): Blowpipe atira Seed (munição "dart"); capim e flores cortados soltam Seed só com Blowpipe no inventário; Grass/Corrupt/Crimson Seeds
+# viram grama na terra da mira; a grama do mal colocada se espalha pela terra vizinha, com teto por chunk.
+func test_seeds():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var d: Dictionary = Items.defs[Items.ids.blowpipe]
+	check(d.damage == 9 and d.knockback == 3.5 and d.ammo == "dart" and Items.defs[Items.ids.seed].damage == 4 and Items.defs[Items.ids.seed].ammo_class == "dart", "Blowpipe (9, recuo 3,5) atira dardos; Seed tem 4 de dano")
+	check(Loot.tables.surface.main.has("blowpipe"), "a Blowpipe sai nos baús de superfície")
+	# tiro
+	var eye: Vector3 = p.position + Vector3.UP * p.EYE
+	p.inv.add(Items.ids.seed, 3)
+	p.shoot(d, eye, Vector3.RIGHT)
+	var shot: Node = ent.get_children().back()
+	check(shot.def.name == "seed" and shot.damage == 13 and p.inv.total(Items.ids.seed) == 2, "a Blowpipe gasta uma Seed e fere com 9 + 4")
+	# corte de plantas: à frente do jogador (olhando para -Z), na altura dos pés
+	var drops := func() -> int:
+		var n := 0
+		for c in ent.get_children():
+			if c.get("item") == Items.ids.seed:
+				check(c.count == 4, "flor solta 4 Seeds")
+				n += 1
+		return n
+	for i in 40:
+		w.set_block(24, 11, 23, Blocks.ids.flower_red)
+		p.cut_plants(2.2)
+		check(w.get_block(24, 11, 23) == 0, "o golpe corta a flor à frente")
+	check(drops.call() == 0, "sem Blowpipe no inventário a flor não solta Seed")
+	w.set_block(24, 11, 30, Blocks.ids.flower_red)
+	p.cut_plants(2.2)
+	check(w.get_block(24, 11, 30) == Blocks.ids.flower_red, "o golpe não corta o que está atrás nem fora do alcance")
+	w.set_block(24, 11, 23, Blocks.ids.sapling)
+	p.cut_plants(2.2)
+	check(w.get_block(24, 11, 23) == Blocks.ids.sapling, "a muda de árvore não é cortada")
+	p.inv.add(Items.ids.blowpipe, 1)
+	for i in 40:
+		w.set_block(24, 11, 23, Blocks.ids.flower_red)
+		p.cut_plants(2.2)
+	var n: int = drops.call()
+	check(n > 8 and n < 32, "com Blowpipe, ~metade das flores soltam 4 Seeds (%d de 40)" % n)
+	w.set_block(24, 11, 23, Blocks.ids.grass_tuft)
+	p.cut_plants(2.2)
+	check(w.get_block(24, 11, 23) == 0, "o capim também é cortado")
+	# plantar
+	w.set_block(26, 10, 24, Blocks.ids.dirt)
+	p.inv.add(Items.ids.grass_seeds, 2)
+	p.inv.add(Items.ids.corrupt_seeds, 1)
+	p.slot = p.inv.item.find(Items.ids.grass_seeds)
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
+	p.plant_seeds(Items.defs[Items.ids.grass_seeds])
+	check(w.get_block(24, 10, 24) == Blocks.ids.stone and p.inv.total(Items.ids.grass_seeds) == 2, "semente em pedra não faz nada e não se gasta")
+	p.target = {"pos": Vector3i(26, 10, 24), "normal": Vector3i.UP}
+	p.plant_seeds(Items.defs[Items.ids.grass_seeds])
+	check(w.get_block(26, 10, 24) == Blocks.ids.grass and p.inv.total(Items.ids.grass_seeds) == 1 and w.spread.is_empty(), "Grass Seeds viram grama na terra e a grama comum não espalha")
+	check(Items.autoswing(Items.ids.grass_seeds), "a semente repete segurando o botão")
+	w.set_block(26, 10, 24, Blocks.ids.dirt)
+	p.slot = p.inv.item.find(Items.ids.corrupt_seeds)
+	p.plant_seeds(Items.defs[Items.ids.corrupt_seeds])
+	check(w.get_block(26, 10, 24) == Blocks.ids.corrupt_grass and w.spread.has(Vector3i(26, 10, 24)), "Corrupt Seeds viram grama corrompida, que passa a espalhar")
+	# espalhar: terra à mostra em volta é contaminada; a colocada some da lista se for quebrada
+	var src := Vector3i(26, 10, 24)
+	for dz in range(-1, 2):
+		for dx in range(-1, 2):
+			if dx != 0 or dz != 0:
+				w.set_block(src.x + dx, 10, src.z + dz, Blocks.ids.dirt)
+	for i in 300:
+		w._spread_from(src)
+	var bad := 0
+	for dz in range(-1, 2):
+		for dx in range(-1, 2):
+			bad += int(w.get_block(src.x + dx, 10, src.z + dz) != Blocks.ids.corrupt_grass)
+	check(bad == 0 and w.spread.size() >= 9, "a grama do mal contamina a terra vizinha e ela também espalha (%d)" % w.spread.size())
+	w.set_block(src.x, 10, src.z, 0)
+	check(not w.spread.has(src), "quebrada, deixa de espalhar")
+	# teto por chunk
+	for i in 64:
+		w.spread[Vector3i(20 + i % 8, 40 + i / 8, 20)] = 99.0
+	w.set_block(src.x + 1, 10, src.z, Blocks.ids.corrupt_grass)
+	w.set_block(src.x + 2, 10, src.z, Blocks.ids.dirt)
+	var full: int = w.spread.size()
+	for i in 300:
+		w._spread_from(Vector3i(src.x + 1, 10, src.z))
+	check(w.get_block(src.x + 2, 10, src.z) == Blocks.ids.dirt and w.spread.size() == full, "com o chunk cheio (64) o mal não espalha mais")
+	# EoC: as sementes do mal de cada mundo
+	w.gen.evil = "corruption"
+	check(ent.drop_id("corrupt_seeds") == Items.ids.corrupt_seeds, "Corrupção: o Olho solta Corrupt Seeds")
+	w.gen.evil = "crimson"
+	check(ent.drop_id("corrupt_seeds") == Items.ids.crimson_seeds and ent.drop_id("demonite_ore") == Items.ids.crimtane_ore, "Carmesim: solta Crimson Seeds (e crimtano)")
 	free_player(p)
 	w.free()
 	return true

@@ -368,6 +368,7 @@ func tick(delta: float) -> void:
 		swing_timer -= delta
 		if swing_timer <= 0.0:   # o impacto do golpe: a lâmina acerta o que está à frente e a picareta bate no bloco da mira
 			var hits := 0
+			cut_plants(swing_item.get("reach", 2.2))
 			if swing_item.get("damage", 0) > 0:
 				hits = swing(swing_item, eye(), -cam.global_basis.z)
 			if swing_item.has("pick_power") or swing_item.has("axe_power") or swing_item.has("hammer_power"):
@@ -988,10 +989,43 @@ func use_item() -> void:
 		shoot(d, eye(), -cam.global_basis.z)
 	elif Items.places[id] != -1:
 		place_block()
+	elif d.has("plants"):
+		plant_seeds(d)
 	elif d.get("damage", 0) > 0 or Items.pick_power[id] > 0 or Items.axe_power[id] > 0:   # a lâmina (ou a picareta) só acerta quando o arco chega à frente (~1/3 do golpe)
 		swing_item = d
 		swing_timer = cooldown * (0.42 if d.get("use_style") == "thrust" else 0.3)
 		Sfx.play(entities, "swing", position + Vector3.UP, -10.0, 1.15 if d.get("use_style") == "thrust" else 0.9)
+
+
+# Sementes de grama (wiki Grass Seeds): na terra da mira nasce a grama do item (a do mal se espalha sozinha: world.gd spread).
+# ponytail: só terra (a wiki também aceita lama/areia com a semente de selva/cogumelo, que não existem).
+func plant_seeds(d: Dictionary) -> void:
+	if target.is_empty() or world.get_block(target.pos.x, target.pos.y, target.pos.z) != Blocks.ids.dirt:
+		return
+	world.set_block(target.pos.x, target.pos.y, target.pos.z, Blocks.ids[d.plants])
+	inv.take_one(slot)
+	place_anim = 0.18
+	Sfx.play(entities, "place", Vector3(target.pos) + Vector3.ONE * 0.5, -6.0, 1.4)
+	Fx.dust(entities, Vector3(target.pos) + Vector3(0.5, 1.0, 0.5), Color("#5aa82a"), 5)
+
+
+# Cada golpe corta o capim e as flores à frente, na altura dos pés (±1 bloco: rampas), como no Terraria. Com Blowpipe no inventário (ou Blowgun, no Hardmode)
+# elas soltam Seed: flor 4, capim 1-2, metade das vezes (a wiki não dá a chance).
+func cut_plants(reach: float) -> void:
+	var seeds := inv.total(Items.ids.blowpipe) > 0
+	var flat := Basis(Vector3.UP, rotation.y) * Vector3.FORWARD
+	for r in [flat, flat.rotated(Vector3.UP, FAN), flat.rotated(Vector3.UP, -FAN)]:
+		for i in range(1, int((reach + 0.5) * 2) + 1):
+			for dy in [-1, 0, 1]:
+				var q := Vector3i((position + Vector3.UP * 0.1 + r * i * 0.5).floor()) + Vector3i(0, dy, 0)
+				var b: int = world.get_block(q.x, q.y, q.z)
+				var flower: bool = b >= Blocks.ids.flower_yellow and b <= Blocks.ids.flower_pink   # (ids seguidos em blocks.json)
+				if b != Blocks.ids.grass_tuft and not flower:
+					continue
+				world.set_block(q.x, q.y, q.z, 0)
+				Fx.dust(entities, Vector3(q) + Vector3(0.5, 0.4, 0.5), Blocks.color_of(b), 4)
+				if seeds and entities.rng.randf() < 0.5:
+					entities.spawn_drop(Items.ids.seed, 4 if flower else entities.rng.randi_range(1, 2), Vector3(q) + Vector3(0.5, 0.3, 0.5))
 
 
 # Balde: vazio pega o líquido da mira (8 unidades, um bloco cheio, juntando a sobra rasa em volta); cheio derrama um bloco cheio no ar junto do alvo. O líquido depois flui sozinho (liquid.gd).

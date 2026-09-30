@@ -8,6 +8,9 @@ const H := WorldGen.HEIGHT
 const NB: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]  # ordem do ChunkMesher
 const GROW_MIN := 120.0   # a muda vira árvore depois de 2 a 5 minutos (a wiki: tempo aleatório, sem número)
 const GROW_MAX := 300.0
+const SPREAD_MIN := 30.0   # a grama do mal tenta contaminar um vizinho a cada 30 a 90 s (a wiki: aleatório, sem número)
+const SPREAD_MAX := 90.0
+const SPREAD_CAP := 64     # teto de grama que espalha por chunk. ponytail: sem Purification Powder/Dryad para conter o mal; quando houver, tire o teto
 const DIAG: Array[Vector2i] = [Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]   # vizinhos de canto: só fontes de luz
 
 @export var render_distance := 6  # em chunks; teclas [ e ] mudam em jogo
@@ -35,6 +38,7 @@ var test_world := false     # mundo de teste (test_world.gd): arena com baús de
 var skeletron_down := false   # Skeletron derrotado: o dungeon abre para qualquer picareta
 var meteor_due := false       # cai um meteorito à meia-noite
 var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do mal); vai no save do mundo
+var spread := {}     # Vector3i -> segundos até a grama do mal tentar contaminar um vizinho (a colocada e a que se espalhou; vai no save)
 var saplings := {}   # Vector3i -> segundos até crescer; só as plantadas (vai no save)
 var map_img := Image.create(WorldGen.SIZE, WorldGen.SIZE, false, Image.FORMAT_RGBA8)   # mapa explorado (minimap.gd; alfa 0 = não visto); vai no save
 var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
@@ -106,6 +110,10 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 		saplings[Vector3i(x, y, z)] = randf_range(GROW_MIN, GROW_MAX)
 	elif not saplings.is_empty():
 		saplings.erase(Vector3i(x, y, z))
+	if Blocks.spreads[id]:
+		spread[Vector3i(x, y, z)] = randf_range(SPREAD_MIN, SPREAD_MAX)
+	elif not spread.is_empty():
+		spread.erase(Vector3i(x, y, z))
 	if wake:
 		liquid.wake(x, y, z)
 	_rebuild(c)
@@ -119,6 +127,27 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 				var k := c + Vector2i(dx, dz)
 				if (dx != 0 or dz != 0) and in_world(k) and _lit_side(lx, dx, reach) and _lit_side(lz, dz, reach):
 					_rebuild(k)
+
+
+# A grama do mal em p contamina um dos 26 vizinhos, sorteado: se é terra ou grama comum, está à mostra (ar ou planta ao lado) e o chunk dele ainda tem teto.
+# Só a colocada/plantada e a que ela espalhou: a do bioma de nascença não anda (uma vila ao lado do mal não some).
+func _spread_from(p: Vector3i) -> void:
+	var q := p + Vector3i(randi_range(-1, 1), randi_range(-1, 1), randi_range(-1, 1))
+	var cq := Vector2i(floori(q.x / float(C)), floori(q.z / float(C)))
+	if not chunks.has(cq) or not chunks.has(Vector2i(floori(p.x / float(C)), floori(p.z / float(C)))):
+		return
+	var b := get_block(q.x, q.y, q.z)
+	if b != Blocks.ids.dirt and b != Blocks.ids.grass:
+		return
+	var open := false
+	for d in [Vector3i.UP, Vector3i.DOWN, Vector3i.LEFT, Vector3i.RIGHT, Vector3i.FORWARD, Vector3i.BACK]:
+		var n := get_block(q.x + d.x, q.y + d.y, q.z + d.z)
+		open = open or n == 0 or Blocks.soft[n] == 1
+	var count := 0
+	for k in spread:
+		count += 1 if floori(k.x / float(C)) == cq.x and floori(k.z / float(C)) == cq.y else 0
+	if open and count < SPREAD_CAP:
+		set_block(q.x, q.y, q.z, get_block(p.x, p.y, p.z))
 
 
 # A muda em p vira árvore se há grama embaixo e espaço livre em volta (2 blocos de cada lado, 12 de altura); senão tenta de novo em 1 min.
@@ -220,6 +249,7 @@ func set_seed(s: int, test := false) -> void:
 	liquid = Liquid.new()
 	map_img.fill(Color(0, 0, 0, 0))
 	saplings.clear()
+	spread.clear()
 
 
 # Primeiro y livre acima do bloco sólido mais alto da coluna (ground: sem contar tronco e folhas). Ignora o céu (a partir de SKY_BASE, só há ilhas
@@ -291,6 +321,11 @@ func _process(delta: float) -> void:
 		saplings[p] -= delta
 		if saplings[p] <= 0.0:
 			grow_sapling(p)
+	for p in spread.keys():
+		spread[p] -= delta
+		if spread[p] <= 0.0:
+			spread[p] = randf_range(SPREAD_MIN, SPREAD_MAX)
+			_spread_from(p)
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return

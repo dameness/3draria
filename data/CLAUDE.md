@@ -33,14 +33,14 @@ translúcida à parte, `"glow": true` = brilha sozinho, como a lava). Líquido f
 superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 níveis, no fim da lista.
 `shape: "door"`: painel fino na borda do bloco, sem colisão (porta aberta; `door` é o cubo sólido: as duas contam como parede na moradia). `shape: "rope"`: fio fino não sólido; dentro dele Espaço sobe, C desce, sem tecla pendura (player.gd `on_rope`). Forma nova = um `match` em `chunk_mesher._shape`.
 `light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
-`grass: true`: é grama (a muda de árvore só pega em cima dela).
+`grass: true`: é grama (a muda de árvore só pega em cima dela). `spread: true`: a grama do mal, colocada ou plantada por semente, se espalha pela terra e grama vizinhas (`world.gd`, com teto por chunk).
 `clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral). Plantas e líquidos são
 `breakable: false`: não viram item.
 
 ## items.json (itens que não são bloco)
 `{name, icon, stack?=9999, rarity?=0, pick_power?, axe_power?, hammer_power?, use_time? (s), tool_speed? (quadros de 1/60 s), autoswing? (bool), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
-`ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
+`plants`: bloco de grama em que a semente transforma a terra da mira (Grass/Corrupt/Crimson Seeds). `ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
 `sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
 flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glow, trail, particles} (cores).
 `use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).

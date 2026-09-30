@@ -122,6 +122,8 @@ const SHOTS := [
 	{"name": "proj_bala", "item": "musket", "ammo": "musket_ball", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_terra", "item": "terra_blade", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_laser", "item": "space_gun", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
+	{"name": "mao_zarabatana", "item": "blowpipe", "look": Vector2(0.5, -0.12)},
+	{"name": "proj_semente", "item": "blowpipe", "ammo": "seed", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_espinho", "item": "vilethorn", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_garfo", "item": "the_rotted_fork", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},
 	{"name": "proj_faisca", "item": "wand_of_sparking", "enemies": ["zombie"], "fire": 2.5, "look": Vector2(0, -0.05)},

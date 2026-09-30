@@ -206,5 +206,10 @@
 	{"name": "honey_comb", "tip": "Solta abelhas e cobre você de mel ao levar dano", "icon": "honey_comb", "stack": 1, "rarity": 2, "accessory": {"bees": true}},
 	{"name": "bottled_honey", "icon": "bottled_honey", "consumable": true, "heal": 80, "buff": "honey", "buff_time": 15, "use_time": 0.283, "rarity": 0},
 	{"name": "gold_crown", "icon": "gold_crown", "rarity": 0},
-	{"name": "platinum_crown", "icon": "platinum_crown", "rarity": 0}
+	{"name": "platinum_crown", "icon": "platinum_crown", "rarity": 0},
+	{"name": "seed", "icon": "seed", "damage": 4, "ammo_class": "dart", "projectile": "seed", "sprite_angle": 0, "use_time": 0.25},
+	{"name": "blowpipe", "icon": "blowpipe", "damage": 9, "use_time": 0.417, "ammo": "dart", "shoot_speed": 41.25, "knockback": 3.5, "stack": 1, "sprite_angle": 0},
+	{"name": "grass_seeds", "tip": "Para plantar grama em terra", "icon": "grass_seeds", "plants": "grass", "use_time": 0.25},
+	{"name": "corrupt_seeds", "tip": "Para plantar grama corrompida em terra", "icon": "corrupt_seeds", "plants": "corrupt_grass", "use_time": 0.25},
+	{"name": "crimson_seeds", "tip": "Para plantar grama carmesim em terra", "icon": "crimson_seeds", "plants": "crimson_grass", "use_time": 0.25}
 ]

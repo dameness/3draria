@@ -372,5 +372,10 @@
 	"ruby": {"wiki": "Ruby_(placed)", "crop": [16, 16], "pattern": "ore", "colors": ["#7d7d7d", "#707070", "#8a8a8a"], "top_colors": ["#d0203a", "#e8506a"]},
 	"ruby_item": {"wiki": "Ruby"},
 	"gold_crown": {"wiki": "Gold_Crown"},
-	"platinum_crown": {"wiki": "Platinum_Crown"}
+	"platinum_crown": {"wiki": "Platinum_Crown"},
+	"seed": {"wiki": "Seed", "pattern": "blob", "colors": ["#8a6a3a", "#5a4020", "#b08a4a"]},
+	"blowpipe": {"wiki": "Blowpipe", "pattern": "sword", "colors": ["#b08a4a", "#6e4b2a"]},
+	"grass_seeds": {"wiki": "Grass_Seeds", "pattern": "blob", "colors": ["#5aa82a", "#3a7a1a", "#8ad04a"]},
+	"corrupt_seeds": {"wiki": "Corrupt_Seeds", "pattern": "blob", "colors": ["#7a5aa8", "#4a2a7a", "#a888d0"]},
+	"crimson_seeds": {"wiki": "Crimson_Seeds", "pattern": "blob", "colors": ["#c03a3a", "#7a1a1a", "#e07070"]}
 }
