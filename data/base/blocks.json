@@ -67,5 +67,7 @@
 	{"name": "sunplate", "mine": 1, "icon": "sunplate_item", "tiles": {"all": "sunplate"}},
 	{"name": "chair", "mine": 3, "icon": "chair_item", "tiles": {"top": "chair_top", "side": "chair_side", "bottom": "chair_top"}},
 	{"name": "door", "mine": 3, "icon": "door_item", "tiles": {"all": "door"}},
-	{"name": "door_open", "mine": 3, "solid": false, "shape": "door", "item": false, "drop": "door", "tiles": {"all": "door"}}
+	{"name": "door_open", "mine": 3, "solid": false, "shape": "door", "item": false, "drop": "door", "tiles": {"all": "door"}},
+	{"name": "snow_block", "mine": 2, "icon": "snow_block_item", "tiles": {"all": "snow_block"}},
+	{"name": "ice_block", "icon": "ice_block_item", "tiles": {"all": "ice_block"}}
 ]

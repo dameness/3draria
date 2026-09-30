@@ -42,6 +42,7 @@ const SHOTS := [
 	{"name": "ilha_ceu_bau", "sky": "top", "look": Vector2(0, -0.2), "creative": true, "inventory": true, "sky_chest": true},
 	{"name": "gancho", "look": Vector2(0.9, 0.25), "hook": true, "third": true, "creative": false},
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
+	{"name": "neve", "snow": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "inimigos_voadores", "look": Vector2(0, -0.1), "enemies": ["eater_of_souls", "crimera", "voodoo_demon", "hellbat", "pixie", "unicorn"]},
@@ -273,6 +274,9 @@ func _setup(s: Dictionary) -> void:
 	if s.get("hallow", false):
 		var hc := Vector2i(world.gen.hallow_center)
 		player.position = Vector3(hc.x + 0.5, world.surface_y(hc.x, hc.y) + s.get("up", 0.0), hc.y + 0.5)
+	if s.get("snow", false):
+		var sc := Vector2i(world.gen.snow_center)
+		player.position = Vector3(sc.x + 0.5, world.surface_y(sc.x, sc.y) + s.get("up", 0.0), sc.y + 0.5)
 	if s.has("dungeon"):
 		var g: WorldGen = world.gen
 		var e := g.dungeon_entrance

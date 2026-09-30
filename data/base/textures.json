@@ -313,5 +313,15 @@
 	"skeletron_hand": {"wiki": "Skeletron_Hand", "pattern": "blob", "colors": ["#e0dccc", "#a09c88", "#ffffff"]},
 	"wooden_boomerang": {"wiki": "Wooden_Boomerang", "pattern": "sword", "colors": ["#c08a4a", "#8a5a2a"], "top_colors": ["#6e4b2a"]},
 	"mining_helmet": {"wiki": "Mining_Helmet"},
+	"snow_block": {"wiki": "Snow_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#e8f0f8", "#d8e4f0", "#f4f8fc", "#c8d8e8"]},
+	"ice_block": {"wiki": "Ice_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#a8d0f0", "#98c0e4", "#b8dcf8", "#88b0d8"]},
+	"snow_block_item": {"wiki": "Snow_Block"},
+	"ice_block_item": {"wiki": "Ice_Block"},
+	"ice_slime": {"wiki": "Ice_Slime"},
+	"frozen_zombie": {"wiki": "Frozen_Zombie"},
+	"ice_bat": {"wiki": "Ice_Bat"},
+	"undead_viking": {"wiki": "Undead_Viking"},
+	"spiked_ice_slime": {"wiki": "Spiked_Ice_Slime"},
+	"snow_flinx": {"wiki": "Snow_Flinx"},
 	"logo": {"wiki": "Terraria_Steam_Library_logo"}
 }

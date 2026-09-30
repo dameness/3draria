@@ -4112,6 +4112,9 @@ func test_armor_looks():
 
 
 # Revisão contra a wiki (pré-hardmode): corações e estrelas, moedas na morte, Olho de Cthulhu natural, bioma das cavernas, dados de chefes e inimigos.
+const CENTER_V := Vector2(128, 128)
+
+
 func test_wiki_review():
 	var w := floor_world()
 	var p := make_player(w)
@@ -4247,6 +4250,33 @@ func test_wiki_review():
 	check(ent2.biome_at(p2.position) == "meteorite" and not ent2.enemies.is_empty() and ent2.enemies.all(func(e): return e.def.name == "meteor_head"), "perto de uma cratera só nascem Meteor Heads")
 	free_player(p2)
 	w2.free()
+	# --- bioma de neve (wiki Snow biome)
+	for sd in [1, 2, 3]:
+		var sw := dungeon_world(sd)
+		var sg: WorldGen = sw.gen
+		var sc := Vector2i(sg.snow_center) / 16
+		var chunk_d := sg.generate(sc.x, sc.y)
+		var snow_n := chunk_d.count(Blocks.ids.snow_block)
+		var ice_n := chunk_d.count(Blocks.ids.ice_block)
+		check(snow_n > 40 and ice_n > 10 and chunk_d.count(WorldGen.new(sd).GRASS) < 40, "seed %d: o chunk da neve tem neve (%d) e gelo (%d)" % [sd, snow_n, ice_n])
+		check(sg.snow_center.distance_to(sg.evil_center) > 35.0 and sg.snow_center.distance_to(sg.hallow_center) > 35.0 and sg.snow_center.distance_to(CENTER_V) < 80.0, "seed %d: a neve fica longe do mal e do Hallow" % sd)
+		sw.free()
+	var nw := dungeon_world(1)
+	var np := make_player(nw)
+	var nent: Node3D = np.entities
+	var ng: WorldGen = nw.gen
+	var nx := int(ng.snow_center.x)
+	var nz := int(ng.snow_center.y)
+	np.position = Vector3(nx + 0.5, nw.surface_y(nx, nz, true) + 1.0, nz + 0.5)
+	np.clock.time = 100.0
+	nent.rng.seed = 4
+	for i in 80:
+		nent.try_spawn()
+	check(nent.biome_at(np.position) == "snow" and not nent.enemies.is_empty() and nent.enemies.all(func(e): return e.def.get("biome") == "snow"), "na neve nascem só Ice Slime e Frozen Zombie (%d)" % nent.enemies.size())
+	np.position.y -= 20.0
+	check(nent.biome_at(np.position) == "ice" and nent.defs.any(func(d): return d.name == "undead_viking" and d.biome == "ice"), "debaixo da neve é o bioma de gelo (Undead Viking, Ice Bat)")
+	free_player(np)
+	nw.free()
 	# --- conjurador (wiki Caster AI): teleporta aos 2,5 s, solta 3 esferas com 1,67 s entre elas; golpe cancela
 	var cw := floor_world()
 	var cp := make_player(cw)

@@ -18,6 +18,7 @@ const ROCK_LINE := 100         # acima disto a superfície é pedra pelada
 const MARGIN := 5              # alturas calculadas além do chunk: inclinação e árvores dos chunks vizinhos
 const TREE_CELL := 5           # no máximo uma árvore por célula 5x5 (posição sorteada dentro dela)
 const EVIL_RADIUS := 30.0      # raio do bioma do mal
+const SNOW_RADIUS := 30.0      # raio do bioma de neve
 const DUNGEON_CELL := 10       # dungeon: grade de salas de 10 blocos (parede incluída), 6 x 5 salas em 2 andares
 const DUNGEON_W := 6
 const DUNGEON_D := 5
@@ -74,6 +75,9 @@ var sky_chests: Array[Vector3i] = []     # o baú de cada ilha (mesmo índice)
 var hardmode := false             # Wall of Flesh derrotado: minérios novos e o Hallow entram na geração (world.start_hardmode converte o que já existe)
 var hm_ores: Array = []           # ores.json com "hardmode": true (um por grupo, escolhido pela seed)
 var hallow_center := Vector2.ZERO
+var snow_center := Vector2.ZERO    # bioma de neve (wiki Snow biome): longe do mal, do Hallow e do dungeon
+var SNOW: int
+var ICE: int
 var HALLOW_GRASS: int
 var PEARLSTONE: int
 var BRICK: int
@@ -140,6 +144,8 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	HALLOW_GRASS = Blocks.ids.hallowed_grass
 	PEARLSTONE = Blocks.ids.pearlstone
 	hallow_center = CENTER + Vector2(0, -72.0 if evil_center.y > CENTER.y else 72.0)   # entre o mal e o dungeon, nunca em cima de um
+	SNOW = Blocks.ids.snow_block
+	ICE = Blocks.ids.ice_block
 	BRICK = Blocks.ids.dungeon_brick
 	TORCH = Blocks.ids.torch
 	dungeon_x = 6 if evil_center.x > CENTER.x else SIZE_CHUNKS * CHUNK - 6 - DUNGEON_W * DUNGEON_CELL - 1
@@ -147,6 +153,13 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	var ex := dungeon_x + DUNGEON_W / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
 	var ez := dungeon_z + DUNGEON_D / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
 	dungeon_entrance = Vector3i(ex, surface_height(ex, ez), ez)
+	var far := -1.0   # a neve fica no ponto do anel de 70 blocos mais longe dos outros três biomas
+	for k in 24:
+		var c := CENTER + Vector2.from_angle(TAU * k / 24.0) * 70.0
+		var m := minf(minf(c.distance_to(evil_center), c.distance_to(hallow_center)), c.distance_to(Vector2(ex, ez)))
+		if m > far:
+			far = m
+			snow_center = c
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
@@ -241,6 +254,7 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash([seed, cx, cz])
 	_evil(d, hs, W, cx, cz)
+	_snow(d, hs, W, cx, cz)
 	_dungeon(d, cx, cz)
 	_ores(d, rng)
 	_trees(d, hs, W, cx, cz)
@@ -325,6 +339,34 @@ func hardmode_pass(d: PackedByteArray, cx: int, cz: int) -> void:
 			for y in range(UNDERWORLD_TOP + 8, top + 1):
 				if d[i + y * layer] == STONE:
 					d[i + y * layer] = PEARLSTONE
+
+
+func snow_weight(wx: int, wz: int) -> float:
+	var dist := Vector2(wx, wz).distance_to(snow_center)
+	if dist > SNOW_RADIUS + 8.0:
+		return 0.0
+	return clampf((SNOW_RADIUS - dist + rock_noise.get_noise_2d(wx + 900, wz) * 8.0) / 4.0, 0.0, 1.0)
+
+
+# Neve (wiki Snow biome): neve no lugar da grama e da terra, gelo em manchas na pedra (do submundo para cima). Sem grama, sem árvores nem plantas.
+func _snow(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(snow_center) > SNOW_RADIUS + 8.0 + CHUNK:
+		return
+	var layer := CHUNK * CHUNK
+	for z in CHUNK:
+		for x in CHUNK:
+			if snow_weight(ox + x, oz + z) < 0.5 or evil_weight(ox + x, oz + z) >= 0.5:
+				continue
+			var i := x + z * CHUNK
+			var h := hs[(x + MARGIN) + (z + MARGIN) * W]
+			for y in range(UNDERWORLD_TOP + 8, h + 1):
+				var b := d[i + y * layer]
+				if b == GRASS or b == DIRT:
+					d[i + y * layer] = SNOW
+				elif b == STONE and rock_noise.get_noise_3d(ox + x + 300, y, oz + z) > -0.1:
+					d[i + y * layer] = ICE
 
 
 func in_dungeon(x: int, y: int, z: int) -> bool:
@@ -549,7 +591,7 @@ func _trees(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) 
 			var wz := gz * TREE_CELL + (h >> 16) % TREE_CELL
 			var ix := wx - ox + MARGIN
 			var iz := wz - oz + MARGIN
-			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5:
+			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5 or snow_weight(wx, wz) >= 0.5:
 				continue
 			var forest := clampf(0.3 + forest_noise.get_noise_2d(wx, wz) * 1.0, 0.0, 0.75)   # matas e clareiras
 			var by := hs[ix + iz * W]
