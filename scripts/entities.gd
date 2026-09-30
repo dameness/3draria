@@ -7,6 +7,7 @@ const MAX_NIGHT := 8
 const SPAWN_MIN := 24.0
 const SPAWN_MAX := 40.0
 const DESPAWN := 64.0
+const NPC_RETURN := 120.0   # wiki: um habitante morto volta uns 2 minutos depois, se houver casa (o Guide só de dia)
 const TOWN := ["guide", "merchant", "nurse", "demolitionist", "arms_dealer"]   # habitantes, na ordem em que ocupam os lugares perto do nascimento
 const Enemy := preload("res://scripts/enemy.gd")
 const ItemDrop := preload("res://scripts/item_drop.gd")
@@ -29,6 +30,7 @@ var boss_max := 0           # vida total do chefe ao nascer (a de todos os segme
 var rng := RandomNumberGenerator.new()
 var spawn_timer := 3.0
 var town_tick := 0
+var town_wait := {}        # habitante morto: segundos até poder voltar (só volta de dia e com casa, como na wiki)
 var last_time := -1.0      # relógio no quadro anterior (o anoitecer é a passagem por DAY_SECONDS)
 var eye_watch := -1.0      # contagem até o Olho de Cthulhu nascer sozinho (-1 = sem contagem)
 
@@ -124,14 +126,38 @@ func _town() -> void:
 	town_tick += 1
 	if town_tick % 3 == 0:
 		_homes()
-	var i := 0
-	for n in TOWN:
+	for i in TOWN.size():
+		var n: String = TOWN[i]
+		var dead := town_wait.has(n)
+		if dead:
+			town_wait[n] -= 1.0
+			if town_wait[n] > 0.0 or clock.is_night() or not world.homes.has(n):
+				continue
 		var where := _npc_spot(n, i)
 		if world.npcs.has(n) and player.position.distance_to(where) <= 60.0 and not enemies.any(func(e): return e.def.name == n):
 			spawn_enemy(def_named(n), where)
-			if n != "guide" and not world.test_world and not world.homes.has(n):
+			town_wait.erase(n)
+			if dead:
+				player.say("%s voltou!" % Items.title(n))
+			elif n != "guide" and not world.test_world and not world.homes.has(n):
 				player.say("%s chegou!" % Items.title(n))
-		i += 1
+
+
+# Um habitante morreu: some da vila por NPC_RETURN segundos.
+func npc_died(n: String) -> void:
+	town_wait[n] = NPC_RETURN
+	player.say("%s foi morto!" % Items.title(n))
+
+
+# O habitante mais perto de `e` (até 12 blocos) e mais perto dele que o jogador: os inimigos vão atrás dele. null = o alvo é o jogador.
+func victim(e: Node3D) -> Node3D:
+	var best: Node3D = null
+	var d := minf(e.position.distance_to(player.position), 12.0)
+	for n in enemies:
+		if n.def.ai == "npc" and not n.def.get("invulnerable", false) and e.position.distance_to(n.position) < d:
+			best = n
+			d = e.position.distance_to(n.position)
+	return best
 
 
 # O inventário (com os slots de munição) tem um item cujo dado satisfaz `pred`?

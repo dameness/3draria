@@ -11,6 +11,7 @@ const WORM_FREE := 37.0       # a wiki: cabeça a mais de 62,5 tiles (~37 blocos
 const WORM_TURN := 3.0        # rad/s da cabeça dentro do terreno (a wiki não dá o número; tirado do jogo)
 const NPC_SPEED := 1.5        # habitante andando (a wiki não dá o número; tirado do jogo)
 const WANDER := 6.0           # de dia o habitante anda até tantos blocos de casa
+const NPC_IMMUNE := 0.5       # depois de apanhar o habitante fica tanto tempo sem apanhar de novo
 const HOME_WAIT := 12.0       # à noite, tantos segundos sem chegar em casa e ele aparece lá
 
 var def: Dictionary
@@ -49,6 +50,8 @@ var angle := 0.0    # creeper: fase da órbita em volta do cérebro (follow = o 
 var home := Vector3.ZERO    # habitante: a casa (ou o ponto perto do nascimento); quem põe é Entities
 var goal := Vector3.ZERO    # habitante: para onde anda de dia
 var walk_timer := 0.0       # habitante: segundos até escolher outro destino
+var immune := 0.0           # habitante: segundos de invulnerabilidade depois do último golpe
+var regen := 0.0            # habitante: vida recuperada que ainda não completou 1 ponto
 var stuck := 0.0            # habitante: segundos tentando chegar em casa à noite
 var door_at := Vector3i(-1, -1, -1)   # habitante: a porta que ele abriu e vai fechar depois de passar
 
@@ -102,11 +105,16 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if display:
 		return
+	immune -= delta
 	think(delta)
 	move(delta)
 	var p: Node3D = entities.player
-	if damage > 0 and def.ai != "npc" and VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
-		p.hurt(Combat.vary(damage, rng), p.position - position)
+	if damage > 0 and def.ai != "npc":
+		if VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
+			p.hurt(Combat.vary(damage, rng), p.position - position)
+		for n in entities.enemies:   # o inimigo também fere o habitante que encosta nele
+			if n.def.ai == "npc" and n.immune <= 0.0 and VoxelBody.touches(position, half, tall, n.position, n.half, n.tall):
+				n.hurt(Combat.vary(damage, rng), n.position - position, 4.0, false, true)
 
 
 func think(delta: float) -> void:
@@ -114,7 +122,12 @@ func think(delta: float) -> void:
 	if stun > 0:
 		return
 	var p: Node3D = entities.player
-	var to: Vector3 = p.position + Vector3.UP - (position + Vector3.UP * tall / 2)
+	var prey: Vector3 = p.position
+	if def.ai in ["hop", "walk", "fly"]:   # vai atrás do habitante que estiver mais perto que o jogador
+		var victim: Node3D = entities.victim(self)
+		if victim:
+			prey = victim.position
+	var to: Vector3 = prey + Vector3.UP - (position + Vector3.UP * tall / 2)
 	var flat := Vector3(to.x, 0, to.z).normalized()
 	match def.ai:
 		"hop":
@@ -164,6 +177,10 @@ func think(delta: float) -> void:
 func npc(delta: float, to: Vector3, flat: Vector3) -> Vector3:
 	velocity.x = 0.0
 	velocity.z = 0.0
+	regen += delta * def.get("regen", 0.33)   # wiki: 0,33 de vida por segundo (o Guide, 2)
+	if regen >= 1.0:
+		regen -= 1.0
+		hp = mini(hp + 1, def.life)
 	if def.has("attack"):
 		npc_attack(delta)
 	var look := flat if to.length() < 7.0 else Vector3.ZERO
@@ -643,8 +660,9 @@ func move(delta: float) -> void:
 
 # Dano como no Terraria (modo normal): dano − defesa/2, mínimo 1. Retorna o dano causado.
 # dmg já vem com a variância (Combat.vary); a defesa entra agora e o crítico dobra depois dela (wiki Damage), com 40% mais recuo.
-func hurt(dmg: int, dir: Vector3, knockback: float, crit := false) -> int:
-	if def.get("invulnerable", false):
+# foe: o golpe vem de um inimigo (só assim o habitante apanha: as armas do jogador passam por ele, como no Terraria).
+func hurt(dmg: int, dir: Vector3, knockback: float, crit := false, foe := false) -> int:
+	if def.get("invulnerable", false) or (def.ai == "npc" and (not foe or immune > 0.0)):
 		return 0
 	if def.ai == "brain" and phase == 1:   # imune enquanto houver Creepers
 		Fx.sparks(entities, position + Vector3.UP * tall * 0.5, Color(0.8, 0.8, 1.0), 4, dir)
@@ -655,6 +673,7 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false) -> int:
 		shots = 0
 	hp -= taken
 	flash = FLASH_TIME
+	immune = NPC_IMMUNE
 	Sfx.play(entities, "die" if hp <= 0 else "hit", position)
 	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ff5a14") if crit else Color("#ffa050"), crit)
 	var blood := Color(def.get("blood", def.color))
@@ -667,6 +686,8 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false) -> int:
 		velocity = flat * kb + Vector3.UP * (3.0 if def.ai != "fly" else 0.0)
 		stun = 0.25
 	if hp <= 0:
+		if def.ai == "npc":
+			entities.npc_died(def.name)
 		Fx.puff(entities, position + Vector3.UP * tall * 0.5, blood, 12 if not def.get("boss") else 40)
 		if def.ai == "worm":
 			split_worm()

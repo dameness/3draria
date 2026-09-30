@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1570,6 +1570,64 @@ func test_npc_walk():
 	var old: Node3D = ent.spawn_enemy(enemy_def("old_man"), Vector3(20.5, 11.0, 20.5))
 	run(old, 3.0)
 	check(old.position.distance_to(Vector3(20.5, 11.0, 20.5)) < 0.1, "o Velho não sai do lugar")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Habitantes vulneráveis (wiki Town NPCs): só inimigos os ferem (o jogador não), com 0,5 s de folga entre golpes; regeneram; morrem e voltam depois.
+func test_npc_life():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	p.position = Vector3(5.5, 11, 5.5)
+	p.clock.time = 60.0
+	var guide: Node3D = ent.spawn_enemy(enemy_def("guide"), Vector3(30.5, 11.0, 30.5))
+	var merchant: Node3D = ent.spawn_enemy(enemy_def("merchant"), Vector3(30.5, 11.0, 26.5))
+	check(guide.hurt(50, Vector3.RIGHT, 0.0) == 0 and guide.hp == 250, "a arma do jogador não fere o habitante")
+	check(guide.hurt(50, Vector3.RIGHT, 0.0, false, true) == 35 and guide.hp == 215, "inimigo fere: 50 - defesa 30 / 2 = 35")
+	check(guide.hurt(50, Vector3.RIGHT, 0.0, false, true) == 0, "logo depois ele está imune")
+	guide.stun = 0.0
+	run(guide, 0.6)
+	check(guide.hurt(50, Vector3.RIGHT, 0.0, false, true) == 35, "passado 0,5 s apanha de novo")
+	# regeneração: Guide 2/s, os outros 0,33/s
+	for n in [guide, merchant]:
+		n.walk_timer = 100.0   # parados: só a vida importa aqui
+		n.goal = n.position
+		n.hp = 100
+	run(guide, 3.0)
+	run(merchant, 4.0)
+	check(guide.hp >= 105 and guide.hp <= 107 and merchant.hp == 101, "regenera: Guide 2/s, Merchant 0,33/s (%d, %d)" % [guide.hp, merchant.hp])
+	# inimigo que encosta fere; e vai atrás do habitante mais perto que o jogador
+	var zombie: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(30.5, 11.0, 20.5))
+	check(ent.victim(zombie) == merchant, "o zumbi escolhe o habitante mais perto (o jogador está longe)")
+	zombie.position = merchant.position + Vector3(1.5, 0, 0)
+	var x0 := zombie.position.x
+	merchant.hp = 250
+	run(zombie, 1.0)
+	check(zombie.position.x < x0 and merchant.hp < 250, "o zumbi anda até o Merchant e o fere (hp %d)" % merchant.hp)
+	p.position = zombie.position
+	check(ent.victim(zombie) == null, "com o jogador colado nele, o alvo é o jogador")
+	p.position = Vector3(5.5, 11, 5.5)
+	# morte: some, avisa e só volta depois da espera, de dia e com casa
+	ent.remove_enemy(zombie)
+	merchant.immune = 0.0
+	merchant.hurt(999, Vector3.RIGHT, 0.0, false, true)
+	check(not ent.enemies.has(merchant) and ent.town_wait.has("merchant") and p.message.contains("Merchant foi morto"), "morreu: some da vila e avisa (%s)" % p.message)
+	p.inv.coin = PackedInt32Array([0, 60, 0, 0])
+	w.npcs["merchant"] = true
+	for i in 130:
+		ent._town()
+	check(not ent.enemies.any(func(e): return e.def.name == "merchant"), "sem casa ele não volta")
+	w.homes["merchant"] = Vector3i(28, 11, 28)   # (casa de mentira: town_tick fora de _homes, que a desfaria)
+	p.clock.time = p.clock.DAY_SECONDS + 60.0
+	ent.town_tick = 0
+	ent._town()
+	check(not ent.enemies.any(func(e): return e.def.name == "merchant"), "de noite também não")
+	p.clock.time = 60.0
+	ent.town_tick = 0
+	ent._town()
+	check(ent.enemies.any(func(e): return e.def.name == "merchant") and not ent.town_wait.has("merchant") and p.message.contains("Merchant voltou"), "de dia, com casa e passada a espera, ele volta (%s)" % p.message)
 	free_player(p)
 	w.free()
 	return true
