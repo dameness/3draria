@@ -12,6 +12,7 @@ const C := WorldGen.CHUNK
 const H := WorldGen.HEIGHT
 const PERIOD := 0.1       # segundos por geração
 const LAVA_EVERY := 4     # a lava anda uma geração a cada 4 (mais viscosa)
+const SCOOP_CELLS := 64  # blocos que o balde examina
 const BUDGET := 400       # blocos processados por quadro (uma geração grande se espalha por vários quadros)
 const SIDES: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
 const AROUND: Array[Vector3i] = [Vector3i(0, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
@@ -35,6 +36,38 @@ func wake(x: int, y: int, z: int) -> void:
 			if not queued.has(k):
 				queued[k] = true
 				nxt.append(k)
+
+
+# Balde vazio: tira do líquido da mira até 8 unidades (um balde cheio), começando pelo bloco mirado e seguindo pelos vizinhos do mesmo
+# líquido, do mais perto para o mais longe, para não sobrar a poça rasa que o líquido derramado deixa. Retorna o tipo (0 = nada).
+# ponytail: olha no máximo SCOOP_CELLS blocos ao redor; uma poça mais espalhada que isso deixa o resto.
+func scoop(world: Node, p: Vector3i) -> int:
+	var b: int = world.get_block(p.x, p.y, p.z)
+	if b <= 0 or not Blocks.liquid[b]:
+		return 0
+	var kind: int = Blocks.liquid_kind[b]
+	var need := 8
+	var seen := {p: true}
+	var queue: Array[Vector3i] = [p]
+	var i := 0
+	while i < queue.size() and need > 0:
+		var c := queue[i]
+		i += 1
+		var cb: int = world.get_block(c.x, c.y, c.z)
+		var lv: int = Blocks.liquid_level[cb]
+		var take := mini(lv, need)
+		need -= take
+		world.set_block(c.x, c.y, c.z, Blocks.level_ids[kind][lv - take], false)
+		wake(c.x, c.y, c.z)
+		if need > 0 and queue.size() < SCOOP_CELLS:
+			for o in AROUND:
+				var n := c + o
+				if not seen.has(n):
+					seen[n] = true
+					var nb: int = world.get_block(n.x, n.y, n.z)
+					if nb > 0 and Blocks.liquid[nb] and Blocks.liquid_kind[nb] == kind:
+						queue.append(n)
+	return kind
 
 
 func is_idle() -> bool:

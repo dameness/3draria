@@ -2381,6 +2381,19 @@ func test_tools():
 	p.target = {"pos": Vector3i(20, 10, 16), "normal": Vector3i(0, 1, 0)}
 	p.use_bucket(Items.defs[Items.ids.lava_bucket])
 	check(w.get_block(20, 11, 16) == Blocks.ids.lava and p.held() == Items.ids.empty_bucket, "balde de lava derrama lava")
+	# a lava derramada se espalha em níveis rasos; o balde recolhe o volume todo (8 unidades), sem sobrar poça
+	w.liquid.settle(w)
+	var lo := Vector3i(12, 9, 8)
+	var hi := Vector3i(28, 13, 24)
+	var lava_before := volume(w, lo, hi, Blocks.ids.lava)
+	var level_spread: bool = w.get_block(20, 11, 16) != Blocks.ids.lava
+	check(lava_before == 8 and level_spread, "a lava derramada se espalhou em níveis rasos (%d unidades)" % lava_before)
+	var spot: Vector3i = Vector3i(20, 11, 16)
+	for c in [Vector3i(20, 11, 16)] + Array(Liquid.AROUND.map(func(o): return Vector3i(20, 11, 16) + o)):
+		if Blocks.liquid[w.get_block(c.x, c.y, c.z)]:
+			spot = c
+			break
+	check(w.liquid.scoop(w, spot) == Blocks.ids.lava and volume(w, lo, hi, Blocks.ids.lava) == 0, "o balde recolhe a lava toda, inclusive a sobra rasa (%d)" % volume(w, lo, hi, Blocks.ids.lava))
 	free_player(p)
 	w.free()
 	return true

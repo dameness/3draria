@@ -940,15 +940,14 @@ func use_item() -> void:
 		Sfx.play(entities, "swing", position + Vector3.UP, -10.0, 1.15 if d.get("use_style") == "thrust" else 0.9)
 
 
-# Balde: vazio pega o líquido da mira (um bloco); cheio derrama um bloco cheio no ar junto do alvo. O líquido depois flui sozinho (liquid.gd).
+# Balde: vazio pega o líquido da mira (8 unidades, um bloco cheio, juntando a sobra rasa em volta); cheio derrama um bloco cheio no ar junto do alvo. O líquido depois flui sozinho (liquid.gd).
 func use_bucket(d: Dictionary) -> void:
 	if d.bucket == "empty":
 		var look := Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD   # a mira, sem depender da câmera na árvore
 		var hit: Dictionary = world.raycast(position + Vector3.UP * EYE, look, REACH, true)
 		if hit.is_empty() or not Blocks.liquid[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]:
 			return
-		var kind := Blocks.liquid_kind[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]
-		world.set_block(hit.pos.x, hit.pos.y, hit.pos.z, 0)
+		var kind: int = world.liquid.scoop(world, hit.pos)
 		inv.item[slot] = Items.ids["water_bucket" if kind == Blocks.ids.water else "lava_bucket"]
 		inv.version += 1
 		Fx.splash(entities, Vector3(hit.pos) + Vector3(0.5, 0.8, 0.5), 8)
