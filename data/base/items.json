@@ -183,5 +183,10 @@
 	{"name": "bee_wax", "icon": "bee_wax", "rarity": 0},
 	{"name": "bee_keeper", "icon": "bee_keeper", "damage": 30, "use_time": 0.333, "reach": 2.6, "knockback": 5.3, "stack": 1, "rarity": 3, "autoswing": true},
 	{"name": "the_bees_knees", "icon": "the_bees_knees", "damage": 23, "use_time": 0.383, "ammo": "arrow", "shoot_speed": 30, "knockback": 3, "stack": 1, "rarity": 3},
-	{"name": "bee_gun", "tip": "Dispara abelhas","icon": "bee_gun", "damage": 9, "cost": 5, "use_time": 0.2, "shoot": "bee_shot", "shoot_speed": 20, "knockback": 0.25, "stack": 1, "rarity": 2, "autoswing": true, "sprite_angle": 0}
+	{"name": "bee_gun", "tip": "Dispara abelhas","icon": "bee_gun", "damage": 9, "cost": 5, "use_time": 0.2, "shoot": "bee_shot", "shoot_speed": 20, "knockback": 0.25, "stack": 1, "rarity": 2, "autoswing": true, "sprite_angle": 0},
+	{"name": "mace", "icon": "mace", "damage": 18, "use_time": 0.75, "flail": "mace_ball", "shoot_speed": 11, "knockback": 4.6, "stack": 1, "rarity": 1, "use_style": "hold", "tip": "Segure para girar; solte para arremessar"},
+	{"name": "ball_o'_hurt", "icon": "ball_o'_hurt", "damage": 30, "use_time": 0.75, "flail": "balloh_ball", "shoot_speed": 12, "knockback": 5.5, "stack": 1, "rarity": 1, "use_style": "hold"},
+	{"name": "the_meatball", "icon": "the_meatball", "damage": 34, "use_time": 0.75, "flail": "meatball_ball", "shoot_speed": 12, "knockback": 5.5, "stack": 1, "rarity": 1, "use_style": "hold"},
+	{"name": "blue_moon", "icon": "blue_moon", "damage": 54, "use_time": 0.75, "flail": "blue_moon_ball", "shoot_speed": 12, "knockback": 6, "stack": 1, "rarity": 2, "use_style": "hold"},
+	{"name": "sunfury", "icon": "sunfury", "damage": 64, "use_time": 0.75, "flail": "sunfury_ball", "shoot_speed": 12, "knockback": 6.75, "crit": 0.11, "stack": 1, "rarity": 3, "use_style": "hold"}
 ]

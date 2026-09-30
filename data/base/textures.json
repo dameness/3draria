@@ -345,5 +345,10 @@
 	"the_bees_knees": {"wiki": "The_Bee's_Knees", "pattern": "bow", "colors": ["#e8b020", "#a87810"], "top_colors": ["#6e4b2a"]},
 	"bee_gun": {"wiki": "Bee_Gun", "pattern": "bow", "colors": ["#e8b020", "#a87810"], "top_colors": ["#6e4b2a"]},
 	"bee_wax": {"wiki": "Bee_Wax", "pattern": "bar", "colors": ["#f0d060", "#c8a030", "#fff0a0"]},
-	"logo": {"wiki": "Terraria_Steam_Library_logo"}
+	"logo": {"wiki": "Terraria_Steam_Library_logo"},
+	"mace": {"wiki": "Mace", "pattern": "sword", "colors": ["#8a8f99", "#5a5f69"], "top_colors": ["#6e4b2a"]},
+	"ball_o'_hurt": {"wiki": "Ball_O'_Hurt", "pattern": "sword", "colors": ["#7a5aa0", "#4a3a6a"], "top_colors": ["#6e4b2a"]},
+	"the_meatball": {"wiki": "The_Meatball", "pattern": "sword", "colors": ["#c04a4a", "#802020"], "top_colors": ["#6e4b2a"]},
+	"blue_moon": {"wiki": "Blue_Moon", "pattern": "sword", "colors": ["#4a7ae0", "#2a4aa0"], "top_colors": ["#6e4b2a"]},
+	"sunfury": {"wiki": "Sunfury", "pattern": "sword", "colors": ["#f0761a", "#a03a0a"], "top_colors": ["#6e4b2a"]}
 }

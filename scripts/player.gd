@@ -922,6 +922,9 @@ func use_item() -> void:
 	if d.has("boomerang"):
 		throw_boomerang(d, -cam.global_basis.z)
 		return
+	if d.has("flail"):
+		throw_flail(id, d)
+		return
 	if d.has("cost"):
 		cast(d)
 		return
@@ -1025,6 +1028,15 @@ func throw_boomerang(d: Dictionary, forward: Vector3) -> void:
 		return
 	entities.spawn_projectile(d.boomerang, position + Vector3.UP * EYE + forward * 0.5, forward, d.shoot_speed, d.damage, d.knockback, d.get("crit", Combat.CRIT))
 	Sfx.play(entities, "swing", position + Vector3.UP, -8.0, 1.3)
+
+
+# Flail (wiki): a bola nasce girando em volta do jogador; o projétil decide a hora de arremessar (soltar o botão). Só uma no ar por vez.
+func throw_flail(id: int, d: Dictionary) -> void:
+	if entities.get_children().any(func(n): return n.get("def") is Dictionary and n.def.has("flail") and not n.is_queued_for_deletion()):
+		return
+	var a: Node3D = entities.spawn_projectile(d.flail, position + Vector3.UP, Vector3.FORWARD, d.shoot_speed, d.damage, d.knockback, d.get("crit", Combat.CRIT))
+	a.item_id = id
+	Sfx.play(entities, "swing", position + Vector3.UP, -10.0, 0.8)
 
 
 # Bomba e dinamite: joga um projétil com pavio (projectiles.json) em arco e gasta um.

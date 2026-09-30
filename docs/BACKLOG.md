@@ -12,9 +12,13 @@ Testes verdes (`tests/run.gd`, `tests/menu_flow.gd`). Não precisa de mundo novo
 1. **Personagem e armaduras** (2 passadas feitas: rosto aberto, ombreiras grandes, braços grossos; armadura com textura de placas pixeladas × cor do ícone). Falta o dono dizer o que ainda incomoda (proporção da cabeça, cores, volume). Molten, Meteor e Ninja com formato próprio já feitos.
 2. **Inimigos:** números de todos conferidos com a wiki (ok); nomes em title case (`Items.title`); The Hungry virou carne com boca; slimes em domo; Dark Caster de túnica azul.
    Falta o dono ver: Angry Bones/Cursed Skull (sprites da wiki são GIF: o carregador recusa), Skeletron (mãos), Wall of Flesh (plano demais) e o comportamento de cada IA.
+3. **Lava e balde:** ao colocar lava com o balde e tentar recolher, sobra um pouco no chão (nível parcial que o balde não pega). O balde deve recolher tudo (ou a sobra deve fluir/sumir de forma previsível). Só anotado; falta corrigir.
 
 - Projétil 3D só onde o sprite é pixel art pequeno (`"solid": true` em projectiles.json: Enchanted e Rotted Fork); Terra Beam (crescente 297x520), laser e espinho seguem billboard.
 - Efeitos de armadura da wiki ainda sem código (por isso sem texto na dica): Molten (+7% dano/velocidade/crítico corpo a corpo), Meteor (+9% dano mágico), Ninja (+3% crítico); bônus de conjunto de Molten/Ninja.
+
+- Flails (Mace, Ball O' Hurt, The Meatball, Blue Moon, Sunfury): faltam a fase de segurar de novo para a bola cair no chão (50% do dano), o On Fire! do Sunfury (25%, sem debuff de fogo nos inimigos), a sinergia Blue Moon + Sunfury (arremessa os dois espelhados), a Chain Knife (flail lançado, 1/250 do Cave Bat) e a origem do Blue Moon (baú trancado da Dungeon; não há baú de dungeon, só no mundo de teste).
+- **Botão direito em armas:** a wiki (tooltips) não lista nenhuma arma pré-Hardmode com ação no botão direito; só Hardmode (Sky Dragon's Fury, Flairon, Tome of Infinite Wisdom, Brand of the Inferno). Nada a fazer até lá.
 
 ## Divergências pré-Hardmode com a wiki (revisão de 29/09/2026; o que já foi corrigido está no `git log`)
 Conferido contra a wiki: itens (dano, use time, poder, raridade), receitas, inimigos (vida/dano/defesa/recuo/moedas), drops de chefes, loot de baú, armaduras, regeneração, morte.
@@ -38,7 +42,7 @@ Escala: 1 tile = 0,6 bloco e o mundo é uma ilha de 256x256 (o mundo pequeno da 
 ## Depois
 - Sprites GIF animados da wiki (Angry Bones, Cursed Skull, Fallen Star): baixa prioridade, os inimigos vão ganhar modelo 3D próprio. Plano se voltar: `fetch-sprites` decodifica todos os quadros (stdlib, sem PIL) num PNG em faixa + `.anim` (quadros, ms); `Atlas.wiki_frames` corta; `enemy_model` monta uma malha por quadro (cache por sprite) e `animate()` alterna a visível.
 - Habitantes andando pela casa e voltando à noite; mais habitantes (Demolitionist, Arms Dealer…); parede de fundo.
-- Ball O' Hurt (mangual), Starfury, Celestial Magnet, Sky Mill; mais asas no Hardmode.
+- Starfury, Celestial Magnet, Sky Mill; mais asas no Hardmode.
 - Editar personagem existente; Conquistas/Créditos/Configurações no título; escala da interface; tempo de jogo no save.
 - Sons que faltam e música/ambiente (a wiki hospeda os áudios); autosave + backup do mundo.
 - Biomas (neve, deserto, selva), luz que se espalha pelas tochas, eventos (Lua de Sangue, Goblin Army).

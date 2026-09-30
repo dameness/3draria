@@ -18,5 +18,10 @@
 	{"name": "skull_shot", "size": 0.6, "gravity": 0, "life": 1.6, "pierce": 1, "glow": "#e8f0ff"},
 	{"name": "wooden_boomerang", "model_item": "wooden_boomerang", "size": 0.9, "life": 4.0, "out": 0.45, "pierce": 99},
 	{"name": "bee_shot", "size": 0.4, "gravity": 0, "life": 1.6, "pierce": 1, "glow": "#f0c020"},
-	{"name": "stinger", "size": 0.5, "gravity": 0, "life": 4, "pierce": 1, "glow": "#ffd030", "hostile": true}
+	{"name": "stinger", "size": 0.5, "gravity": 0, "life": 4, "pierce": 1, "glow": "#ffd030", "hostile": true},
+	{"name": "mace_ball", "flail": true, "color": "#7a7f8a", "size": 0.5, "length": 4.4, "life": 6},
+	{"name": "balloh_ball", "flail": true, "color": "#5a4a7a", "size": 0.55, "length": 4.8, "life": 6},
+	{"name": "meatball_ball", "flail": true, "color": "#a83a3a", "size": 0.55, "length": 4.8, "life": 6},
+	{"name": "blue_moon_ball", "flail": true, "color": "#3a6ad0", "size": 0.6, "length": 4.8, "life": 6, "glow": "#5a9aff"},
+	{"name": "sunfury_ball", "flail": true, "color": "#e0651a", "size": 0.6, "length": 4.8, "life": 6, "glow": "#ff8a20"}
 ]

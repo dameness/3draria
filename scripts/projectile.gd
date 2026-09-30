@@ -12,10 +12,17 @@ var entities: Node3D
 var age := 0.0
 var hit: Array[Node3D] = []
 var returning := false   # bumerangue: já está voltando
+var mode := "spin"       # flail: spin (gira em volta do jogador) | out (arremessado) | back (recolhe)
+var item_id := -1        # flail: o item que o jogador precisa manter na mão
+var spin := 0.0          # flail: ângulo do giro
+var last_hit := {}       # flail: inimigo -> instante do último golpe do giro
+var chain: Array[Node3D] = []
 
 
 func _ready() -> void:
 	var atlas: Texture2D = entities.world.atlas_texture
+	if def.has("flail"):
+		_flail_build()
 	if def.has("model_item") or def.get("solid", false):   # solid: o sprite da wiki (pixel art pequeno) extrudado em 3D, como o ícone de item
 		var m: Array
 		var ang := 45.0
@@ -65,6 +72,95 @@ func _ready() -> void:
 		halo.modulate = Color(1, 1, 1, 0.6)
 		add_child(halo)
 		_trail()
+
+
+# Flail: bola de ferro com espinhos na ponta de uma corrente de elos (nós soltos no mundo, reposicionados a cada quadro).
+func _flail_build() -> void:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(def.color)
+	mat.metallic = 0.6
+	mat.roughness = 0.45
+	var ball := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	sph.radius = def.size * 0.5
+	sph.height = def.size
+	sph.radial_segments = 12
+	sph.rings = 6
+	ball.mesh = sph
+	ball.material_override = mat
+	add_child(ball)
+	var spike := CylinderMesh.new()   # cone: 6 espinhos nos eixos
+	spike.top_radius = 0.0
+	spike.bottom_radius = def.size * 0.16
+	spike.height = def.size * 0.5
+	spike.radial_segments = 5
+	for dir in [Vector3.UP, Vector3.DOWN, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK]:
+		var sp := MeshInstance3D.new()
+		sp.mesh = spike
+		sp.material_override = mat
+		sp.position = dir * def.size * 0.62
+		sp.basis = Basis(Quaternion(Vector3.UP, dir))
+		ball.add_child(sp)
+	var link := BoxMesh.new()
+	link.size = Vector3(0.05, 0.05, 0.11)
+	var lm := StandardMaterial3D.new()
+	lm.albedo_color = Color("#6b6f78")
+	lm.metallic = 0.7
+	for i in 9:
+		var l := MeshInstance3D.new()
+		l.mesh = link
+		l.material_override = lm
+		l.top_level = true
+		add_child(l)
+		chain.append(l)
+
+
+# Flail (wiki Flails): segurar o botão gira a bola em volta do jogador (60% do dano, 35% do recuo, golpes repetidos por inimigo);
+# soltar arremessa para a mira (dano cheio) até `length`, ou até bater num bloco, e ela volta. ponytail: sem a fase "cair no chão" de segurar de novo.
+func _flail(delta: float) -> void:
+	var p: Node3D = entities.player
+	var hand: Vector3 = p.position + Vector3.UP * 1.0
+	if p.held() != item_id or p.dead > 0.0:
+		queue_free()
+		return
+	var r: float = def.size * 0.5
+	var full := mode != "spin"
+	if mode == "spin":
+		spin += delta * 9.0
+		var want: Vector3 = hand + Vector3(cos(spin), 0.0, sin(spin)) * def.length * 0.6
+		if not Blocks.solid[entities.world.get_block(floori(want.x), floori(want.y), floori(want.z))]:
+			position = want
+		if not p.attack_held or p.inventory_open:
+			mode = "out"
+			hit.clear()
+			var aim: Vector3 = Basis(Vector3.UP, p.rotation.y) * Basis(Vector3.RIGHT, p.pitch) * Vector3.FORWARD   # a mira, sem depender da câmera na árvore
+			velocity = aim * velocity.length() * 1.6
+			Sfx.play(entities, "swing", position, -8.0, 1.2)
+	elif mode == "out":
+		var next := position + velocity * delta
+		if position.distance_to(hand) > def.length or Blocks.solid[entities.world.get_block(floori(next.x), floori(next.y), floori(next.z))]:
+			mode = "back"
+			hit.clear()
+		else:
+			position = next
+	else:
+		var back := hand - position
+		if back.length() < 0.7 or age > def.life:
+			queue_free()
+			return
+		position += back.normalized() * velocity.length() * 1.3 * delta
+	for e in entities.enemies.duplicate():
+		if VoxelBody.touches(position - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
+			if full and not e in hit:
+				hit.append(e)
+				e.hurt(Combat.vary(damage, entities.rng), e.position - hand, knockback, Combat.is_crit(entities.rng, crit))
+			elif not full and age - last_hit.get(e, -9.0) > 0.3:
+				last_hit[e] = age
+				e.hurt(Combat.vary(roundi(damage * 0.6), entities.rng), e.position - hand, knockback * 0.35, Combat.is_crit(entities.rng, crit))
+	for i in chain.size():   # elos entre a mão e a bola
+		chain[i].global_position = hand.lerp(position, (i + 0.5) / chain.size())
+		if position.distance_to(hand) > 0.05:
+			chain[i].look_at(position)
 
 
 # Rastro: faíscas aditivas na cor do brilho, soltas no mundo (local_coords falso) para ficarem para trás; estilo do pó do Terraria.
@@ -130,6 +226,9 @@ func _physics_process(delta: float) -> void:
 		return
 	if def.has("out"):
 		_boomerang(delta)
+		return
+	if def.has("flail"):
+		_flail(delta)
 		return
 	velocity.y -= def.get("gravity", 0.0) * delta
 	var next := position + velocity * delta

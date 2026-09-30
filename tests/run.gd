@@ -1361,8 +1361,8 @@ func test_loot():
 	check(first_is_main, "cada baú tem exatamente 1 item principal, no 1º slot")
 	var even := true
 	for id in main_count:
-		even = even and absf(main_count[id] / float(n) - 0.25) < 0.03
-	check(even and main_count.size() == 4, "os 4 principais saem com ~1/4 cada (renormalizado do 1/6 da wiki)")
+		even = even and absf(main_count[id] / float(n) - 0.2) < 0.03
+	check(even and main_count.size() == 5, "os 5 principais saem com ~1/5 cada (renormalizado do 1/6 da wiki)")
 	check(absf(lesser / float(n) - 0.5) < 0.03 and lesser_min == 3 and lesser_max == 5, "Lesser Healing: 3-5 em ~50%% dos baús (%.3f)" % (lesser / float(n)))
 	check(absf(regen / float(n) - 0.667) < 0.03, "Regeneration em ~2/3 (%.3f)" % (regen / float(n)))
 	check(both_bars == 0 and torches_ok, "ferro e chumbo nunca juntos (mesmo conjunto); tochas 10-20 no subsolo")
@@ -4423,6 +4423,39 @@ func test_wiki_review():
 			hp_prev = target.hp
 		turned = turned or b.returning
 	check(hits == 2 and turned and b.is_queued_for_deletion() and mp.inv.total(Items.ids.wooden_boomerang) == 0, "o bumerangue fere na ida e na volta, volta para a mão e não se gasta (%d acertos)" % hits)
+	# --- flail: segurar gira (60% do dano), soltar arremessa (dano cheio) e volta; um por vez; o item não se gasta
+	var mace_id: int = Items.ids.mace
+	mp.inv.item[0] = mace_id
+	mp.inv.count[0] = 1
+	mp.slot = 0
+	mp.attack_held = true
+	mp.throw_flail(mace_id, Items.defs[mace_id])
+	mp.throw_flail(mace_id, Items.defs[mace_id])
+	var fl: Array = ment.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.has("flail"))
+	check(fl.size() == 1, "só um flail no ar por vez")
+	var fball: Node3D = fl[0]
+	var ftarget: Node3D = ment.spawn_enemy(ment.def_named("zombie"), mp.position + Vector3(2.6, 0, 0))
+	ftarget.hp = 9999
+	ftarget.defense = 0
+	var spin_hits := 0
+	var fprev: int = ftarget.hp
+	for i in 90:
+		fball._physics_process(1.0 / 60)
+		if ftarget.hp < fprev:
+			spin_hits += 1
+			check(fprev - ftarget.hp <= ceili(18 * 0.6 * 1.15) * 2, "o giro fere com 60% do dano")
+			fprev = ftarget.hp
+	check(spin_hits >= 1 and fball.mode == "spin", "girando em volta do jogador fere quem passa (%d golpes)" % spin_hits)
+	mp.attack_held = false
+	fball._physics_process(1.0 / 60)
+	check(fball.mode == "out", "soltar o botão arremessa o flail")
+	var went_back := false
+	for i in 60 * 4:
+		if fball.is_queued_for_deletion():
+			break
+		fball._physics_process(1.0 / 60)
+		went_back = went_back or fball.mode == "back"
+	check(went_back and fball.is_queued_for_deletion() and mp.inv.total(mace_id) == 1, "o flail volta para a mão e não se gasta")
 	mp.mana = 50.0
 	mp.cast(Items.defs[Items.ids.book_of_skulls], Vector3(0, 0, 1))
 	check(is_equal_approx(mp.mana, 32.0) and ment.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "skull_shot"), "Book of Skulls: 18 de mana e uma caveira")

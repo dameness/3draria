@@ -40,6 +40,7 @@ const SHOTS := [
 	{"name": "ilha_ceu", "sky": "top", "look": Vector2(0, -0.08), "creative": true},
 	{"name": "ilha_ceu_baixo", "sky": "below", "look": Vector2(0, 0.35), "creative": true},
 	{"name": "ilha_ceu_bau", "sky": "top", "look": Vector2(0, -0.2), "creative": true, "inventory": true, "sky_chest": true},
+	{"name": "flail", "item": "blue_moon", "look": Vector2(0.4, -0.5), "third": true, "flail": true, "creative": false},
 	{"name": "gancho", "look": Vector2(0.9, 0.25), "hook": true, "third": true, "creative": false},
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "neve", "snow": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
@@ -550,6 +551,14 @@ func _setup(s: Dictionary) -> void:
 		player.slot = player.inv.item.find(Items.ids[s.item])
 	else:
 		player.slot = 0
+	if s.get("flail", false):   # o flail girando em volta do jogador (botão segurado)
+		player.attack_held = true
+		player.use_item()
+		for n in player.entities.get_children():   # gira alguns quadros e congela (sem mouse capturado a física soltaria o botão)
+			if n.get("def") is Dictionary and n.def.has("flail"):
+				for k in 9:
+					n._physics_process(1.0 / 30)
+				n.set_physics_process(false)
 	if s.get("hook", false):   # lança o gancho na parede: a mira é a da tela
 		player.inv.add(Items.ids.grappling_hook, 1)
 		var pitch: float = s.look.y

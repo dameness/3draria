@@ -599,11 +599,11 @@ func orb_broken(id: int, at := Vector3.ZERO) -> void:
 		spawn_drop(Items.ids[gun], 1, at + Vector3(0, 0.3, 0))
 		spawn_drop(Items.ids.musket_ball, 100, at + Vector3(0.3, 0.3, 0))
 	if id == Blocks.ids.shadow_orb:   # cada orbe: 20% de cada um dos itens do bioma
-		for n in ["vilethorn", "band_of_starpower"]:
+		for n in ["vilethorn", "band_of_starpower", "ball_o'_hurt"]:
 			if rng.randf() < 0.2:
 				spawn_drop(Items.ids[n], 1, at + Vector3(rng.randf_range(-0.4, 0.4), 0.3, rng.randf_range(-0.4, 0.4)))
 	else:
-		for n in ["crimson_rod", "the_rotted_fork", "panic_necklace"]:
+		for n in ["crimson_rod", "the_rotted_fork", "panic_necklace", "the_meatball"]:
 			if rng.randf() < 0.2:
 				spawn_drop(Items.ids[n], 1, at + Vector3(rng.randf_range(-0.4, 0.4), 0.3, rng.randf_range(-0.4, 0.4)))
 	if world.orbs_broken % 3 != 0:

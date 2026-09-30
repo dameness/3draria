@@ -52,6 +52,7 @@ Recuo de flecha soma ao da arma (`knockback` na munição).
 
 Acessório: `accessory: {speed?, jump?, regen?, defense?, max_mana?, panic?, no_fall?, double_jump?, wings?: {time (s de voo), lift (blocos/s)}}` (bônus somam; só um par de asas vale).
 Armadura: `armor: head|body|legs`, `defense`, `set`. `armor_sets.json`: `{conjunto: {pieces: [...], defense: bônus, free_cost?: [armas sem custo de mana com o conjunto completo]}}`.
+Flail: `flail: <projétil>` (projectiles.json: `flail: true`, `color`, `size`, `length` em blocos, `life`); `shoot_speed` = velocity da wiki. Segurar gira (60% dano, 35% recuo), soltar arremessa e volta; um no ar por vez.
 Magia: `cost` (mana) + `shoot` (projétil); `cloud: alcance` faz a arma soltar uma nuvem que chove (`blood_drop`) em vez de um projétil (Crimson Rod).
 Gancho: `hook: {range, launch, pull}` (blocos, blocos/s); a tecla E usa o primeiro gancho do inventário. Poção/buff: `buff` + `buff_time` (s), nomes em `buffs.json` (efeitos `defense speed regen mining arrow_damage arrow_speed shine owl spelunker`).
 `pickup: {heal?, mana?}`: coração/estrela, consumidos ao pegar (não entram no inventário).
