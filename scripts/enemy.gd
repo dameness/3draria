@@ -252,8 +252,14 @@ func _walk(dir: Vector3, speed := NPC_SPEED) -> Vector3:
 	return dir
 
 
+# Sem bloco entre `from` e o meio do inimigo `e`.
+func _sees(from: Vector3, e: Node3D) -> bool:
+	var to: Vector3 = e.position + Vector3.UP * e.tall / 2 - from
+	return entities.world.raycast(from, to.normalized(), to.length()).is_empty()
+
+
 # Habitante: a cada `cooldown` atira em quem estiver a até `range` blocos (dano = o da wiki, `damage`).
-# ponytail: sem linha de visada (o tiro que bate em parede some).
+# Só atira em quem está à vista (raycast até o alvo sem bloco no caminho).
 func npc_attack(delta: float) -> void:
 	timer -= delta
 	if timer > 0.0:
@@ -263,7 +269,7 @@ func npc_attack(delta: float) -> void:
 	var target: Node3D = null
 	for e in entities.enemies:
 		if e.def.ai != "npc" and not e.display and from.distance_to(e.position) < a.range \
-				and (target == null or from.distance_to(e.position) < from.distance_to(target.position)):
+				and (target == null or from.distance_to(e.position) < from.distance_to(target.position)) and _sees(from, e):
 			target = e
 	if target == null:
 		return

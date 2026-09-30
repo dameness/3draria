@@ -266,6 +266,11 @@ func _physics_process(delta: float) -> void:
 			p.hurt(Combat.vary(damage, entities.rng), velocity)
 			queue_free()
 			return
+		for n in entities.enemies:   # o tiro inimigo também fere o habitante que ele atravessa
+			if n.def.ai == "npc" and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, n.position, n.half, n.tall):
+				n.hurt(Combat.vary(damage, entities.rng), velocity, knockback, false, true)
+				queue_free()
+				return
 		position = next
 		return
 	for n in entities.get_children():   # projétil do jogador destrói esfera de conjurador

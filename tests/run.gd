@@ -267,6 +267,7 @@ func test_save():
 	w.map_img.set_pixel(30, 40, Color("#ff8800"))
 	w.saplings[Vector3i(9, 11, 9)] = 42.0
 	w.homes["guide"] = Vector3i(22, 12, 22)
+	w.town_wait["nurse"] = 77.0
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
 	var w2: Node3D = load("res://scripts/world.gd").new()
 	w2.gen = WorldGen.new(1)
@@ -284,6 +285,7 @@ func test_save():
 	check(w2.map_img.get_pixel(30, 40).is_equal_approx(Color("#ff8800")) and w2.map_img.get_pixel(31, 40).a == 0.0, "mapa explorado volta")
 	check(w2.saplings.get(Vector3i(9, 11, 9)) == 42.0, "mudas plantadas voltam")
 	check(w2.homes.get("guide") == Vector3i(22, 12, 22), "a casa dos habitantes volta")
+	check(w2.town_wait.get("nurse") == 77.0, "a espera do habitante morto volta")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
 	check(SaveGame.list(SaveGame.players_dir).is_empty(), "apagar personagem")
@@ -1618,7 +1620,7 @@ func test_npc_life():
 	ent.remove_enemy(zombie)
 	merchant.immune = 0.0
 	merchant.hurt(999, Vector3.RIGHT, 0.0, false, true)
-	check(not ent.enemies.has(merchant) and ent.town_wait.has("merchant") and p.message.contains("Merchant foi morto"), "morreu: some da vila e avisa (%s)" % p.message)
+	check(not ent.enemies.has(merchant) and w.town_wait.has("merchant") and p.message.contains("Merchant foi morto"), "morreu: some da vila e avisa (%s)" % p.message)
 	p.inv.coin = PackedInt32Array([0, 60, 0, 0])
 	w.npcs["merchant"] = true
 	for i in 130:
@@ -1632,7 +1634,7 @@ func test_npc_life():
 	p.clock.time = 60.0
 	ent.town_tick = 0
 	ent._town()
-	check(ent.enemies.any(func(e): return e.def.name == "merchant") and not ent.town_wait.has("merchant") and p.message.contains("Merchant voltou"), "de dia, com casa e passada a espera, ele volta (%s)" % p.message)
+	check(ent.enemies.any(func(e): return e.def.name == "merchant") and not w.town_wait.has("merchant") and p.message.contains("Merchant voltou"), "de dia, com casa e passada a espera, ele volta (%s)" % p.message)
 	free_player(p)
 	w.free()
 	return true
@@ -1666,6 +1668,29 @@ func test_npc_defend():
 	before = shots.call()
 	run(guide, 1.0)
 	check(guide.position.z > 32.0 and shots.call() == before, "com menos de metade da vida foge mesmo de longe (z=%.2f)" % guide.position.z)
+	# linha de visada: uma parede entre os dois e o Guide não atira
+	guide.position = Vector3(30.5, 11.0, 30.5)
+	zombie.position = Vector3(30.5, 11.0, 25.5)
+	guide.hp = 250
+	guide.timer = 0.0
+	for y in range(11, 14):
+		for x in range(28, 33):
+			w.set_block(x, y, 28, Blocks.ids.stone)
+	before = shots.call()
+	run(guide, 0.5)
+	check(shots.call() == before, "com uma parede no meio o Guide não atira")
+	for y in range(11, 14):
+		for x in range(28, 33):
+			w.set_block(x, y, 28, 0)
+	run(guide, 0.5)
+	check(shots.call() > before, "tirada a parede, atira")
+	# projétil inimigo fere o habitante
+	guide.hp = 250
+	guide.immune = 0.0
+	var bolt: Node3D = ent.spawn_projectile("eye_laser", guide.position + Vector3(-3, 1, 0), Vector3.RIGHT, 16.0, 25, 0.0)
+	for i in 60:
+		bolt._physics_process(1.0 / 60)
+	check(guide.hp < 250 and not is_instance_valid(bolt) or bolt.is_queued_for_deletion(), "o tiro do chefe fere o habitante (hp %d)" % guide.hp)
 	var old: Node3D = ent.spawn_enemy(enemy_def("old_man"), Vector3(20.5, 11.0, 20.5))
 	zombie.position = Vector3(20.5, 11.0, 21.5)
 	run(old, 1.0)
