@@ -76,7 +76,10 @@ var hardmode := false             # Wall of Flesh derrotado: minérios novos e o
 var hm_ores: Array = []           # ores.json com "hardmode": true (um por grupo, escolhido pela seed)
 var hallow_center := Vector2.ZERO
 var snow_center := Vector2.ZERO    # bioma de neve (wiki Snow biome): longe do mal, do Hallow e do dungeon
+var desert_center := Vector2.ZERO  # bioma de deserto (wiki Desert): o 4º disco, longe dos outros
 var SNOW: int
+var HSAND: int
+var SANDSTONE: int
 var ICE: int
 var HALLOW_GRASS: int
 var PEARLSTONE: int
@@ -145,6 +148,8 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	PEARLSTONE = Blocks.ids.pearlstone
 	hallow_center = CENTER + Vector2(0, -72.0 if evil_center.y > CENTER.y else 72.0)   # entre o mal e o dungeon, nunca em cima de um
 	SNOW = Blocks.ids.snow_block
+	HSAND = Blocks.ids.hardened_sand
+	SANDSTONE = Blocks.ids.sandstone
 	ICE = Blocks.ids.ice_block
 	BRICK = Blocks.ids.dungeon_brick
 	TORCH = Blocks.ids.torch
@@ -160,6 +165,13 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 		if m > far:
 			far = m
 			snow_center = c
+	far = -1.0   # o deserto, no melhor ponto que sobra
+	for k in 24:
+		var c := CENTER + Vector2.from_angle(TAU * k / 24.0) * 70.0
+		var m := minf(minf(minf(c.distance_to(evil_center), c.distance_to(hallow_center)), c.distance_to(Vector2(ex, ez))), c.distance_to(snow_center))
+		if m > far:
+			far = m
+			desert_center = c
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
@@ -255,6 +267,7 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	rng.seed = hash([seed, cx, cz])
 	_evil(d, hs, W, cx, cz)
 	_snow(d, hs, W, cx, cz)
+	_desert(d, hs, W, cx, cz)
 	_dungeon(d, cx, cz)
 	_ores(d, rng)
 	_trees(d, hs, W, cx, cz)
@@ -342,10 +355,40 @@ func hardmode_pass(d: PackedByteArray, cx: int, cz: int) -> void:
 
 
 func snow_weight(wx: int, wz: int) -> float:
-	var dist := Vector2(wx, wz).distance_to(snow_center)
+	return _disc(wx, wz, snow_center, 900)
+
+
+func desert_weight(wx: int, wz: int) -> float:
+	return _disc(wx, wz, desert_center, 1300)
+
+
+# Peso 0-1 de um bioma em disco (raio SNOW_RADIUS, borda irregular pelo ruído): 1 dentro, 0 fora.
+func _disc(wx: int, wz: int, center: Vector2, salt: int) -> float:
+	var dist := Vector2(wx, wz).distance_to(center)
 	if dist > SNOW_RADIUS + 8.0:
 		return 0.0
-	return clampf((SNOW_RADIUS - dist + rock_noise.get_noise_2d(wx + 900, wz) * 8.0) / 4.0, 0.0, 1.0)
+	return clampf((SNOW_RADIUS - dist + rock_noise.get_noise_2d(wx + salt, wz) * 8.0) / 4.0, 0.0, 1.0)
+
+
+# Deserto (wiki Desert): areia na superfície (6 blocos), areia endurecida no resto da terra e arenito em manchas na pedra. Sem grama, árvores nem plantas.
+func _desert(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(desert_center) > SNOW_RADIUS + 8.0 + CHUNK:
+		return
+	var layer := CHUNK * CHUNK
+	for z in CHUNK:
+		for x in CHUNK:
+			if desert_weight(ox + x, oz + z) < 0.5 or evil_weight(ox + x, oz + z) >= 0.5 or snow_weight(ox + x, oz + z) >= 0.5:
+				continue
+			var i := x + z * CHUNK
+			var h := hs[(x + MARGIN) + (z + MARGIN) * W]
+			for y in range(UNDERWORLD_TOP + 8, h + 1):
+				var b := d[i + y * layer]
+				if b == GRASS or b == DIRT or b == SAND:
+					d[i + y * layer] = SAND if h - y <= 6 else HSAND
+				elif b == STONE and rock_noise.get_noise_3d(ox + x + 300, y, oz + z) > -0.1:
+					d[i + y * layer] = SANDSTONE
 
 
 # Neve (wiki Snow biome): neve no lugar da grama e da terra, gelo em manchas na pedra (do submundo para cima). Sem grama, sem árvores nem plantas.
@@ -591,7 +634,7 @@ func _trees(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) 
 			var wz := gz * TREE_CELL + (h >> 16) % TREE_CELL
 			var ix := wx - ox + MARGIN
 			var iz := wz - oz + MARGIN
-			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5 or snow_weight(wx, wz) >= 0.5:
+			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5 or snow_weight(wx, wz) >= 0.5 or desert_weight(wx, wz) >= 0.5:
 				continue
 			var forest := clampf(0.3 + forest_noise.get_noise_2d(wx, wz) * 1.0, 0.0, 0.75)   # matas e clareiras
 			var by := hs[ix + iz * W]

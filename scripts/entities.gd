@@ -195,6 +195,8 @@ func biome_at(pos: Vector3) -> String:
 		return world.gen.evil
 	if world.hardmode and world.gen.hallow_weight(x, z) >= 0.5:
 		return "hallow"
+	if world.gen.desert_weight(x, z) >= 0.5 and world.gen.snow_weight(x, z) < 0.5:
+		return "desert_cave" if pos.y < world.surface_y(x, z, true) - 8.0 else "desert"
 	if world.gen.snow_weight(x, z) >= 0.5:   # neve na superfície, gelo debaixo dela
 		return "ice" if pos.y < world.surface_y(x, z, true) - 8.0 else "snow"
 	if pos.y < world.surface_y(x, z, true) - 8.0:
@@ -223,14 +225,14 @@ func try_spawn() -> void:
 		return
 	var when := "night" if night else "day"
 	var biome := biome_at(player.position)
-	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (_in_biome(d.biome, biome) if d.has("biome") else not biome in ["dungeon", "underworld", "underground", "cavern", "meteorite", "snow", "ice"]) \
+	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (_in_biome(d.biome, biome) if d.has("biome") else not biome in ["dungeon", "underworld", "underground", "cavern", "meteorite", "snow", "ice", "desert_cave"]) \
 			and (world.hardmode or not d.get("hardmode", false)))
 	if options.is_empty():
 		return
 	var d: Dictionary = options[rng.randi() % options.size()]
 	if rng.randf() > d.get("rare", 1.0):   # raro: só nasce em parte das vezes que é sorteado
 		return
-	if biome in ["dungeon", "underworld", "underground", "cavern", "ice"]:   # sem superfície: numa sala/caverna perto do jogador (voadores em qualquer ar, os outros com chão)
+	if biome in ["dungeon", "underworld", "underground", "cavern", "ice", "desert_cave"]:   # sem superfície: numa sala/caverna perto do jogador (voadores em qualquer ar, os outros com chão)
 		for attempt in 12:
 			var p := Vector3i(floori(player.position.x) + rng.randi_range(-14, 14), floori(player.position.y) + rng.randi_range(-2, 4), floori(player.position.z) + rng.randi_range(-14, 14))
 			if world.get_block(p.x, p.y, p.z) == 0 and world.get_block(p.x, p.y + 1, p.z) == 0 and (d.ai == "fly" or Blocks.solid[world.get_block(p.x, p.y - 1, p.z)]) \

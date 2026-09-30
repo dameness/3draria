@@ -4277,6 +4277,28 @@ func test_wiki_review():
 	check(nent.biome_at(np.position) == "ice" and nent.defs.any(func(d): return d.name == "undead_viking" and d.biome == "ice"), "debaixo da neve é o bioma de gelo (Undead Viking, Ice Bat)")
 	free_player(np)
 	nw.free()
+	# --- deserto (wiki Desert)
+	for sd in [1, 2, 3]:
+		var dw := dungeon_world(sd)
+		var dg: WorldGen = dw.gen
+		var dc2 := Vector2i(dg.desert_center) / 16
+		var dd := dg.generate(dc2.x, dc2.y)
+		check(dd.count(Blocks.ids.hardened_sand) > 40 and dd.count(Blocks.ids.sandstone) > 10, "seed %d: o chunk do deserto tem areia endurecida (%d) e arenito (%d)" % [sd, dd.count(Blocks.ids.hardened_sand), dd.count(Blocks.ids.sandstone)])
+		check(dg.desert_center.distance_to(dg.snow_center) > 30.0 and dg.desert_center.distance_to(dg.evil_center) > 30.0 and dg.desert_center.distance_to(dg.hallow_center) > 30.0, "seed %d: o deserto fica longe dos outros biomas" % sd)
+		dw.free()
+	var dw2 := dungeon_world(1)
+	var dp2 := make_player(dw2)
+	var dent: Node3D = dp2.entities
+	var dx := int(dw2.gen.desert_center.x)
+	var dz := int(dw2.gen.desert_center.y)
+	dp2.position = Vector3(dx + 0.5, dw2.surface_y(dx, dz, true) + 1.0, dz + 0.5)
+	dp2.clock.time = 100.0
+	dent.rng.seed = 6
+	check(dent.biome_at(dp2.position) == "desert" and dent.defs.any(func(d): return d.name == "vulture" and d.biome == "desert") and dent.defs.any(func(d): return d.name == "antlion_charger" and d.biome == "desert_cave"), "biomas: deserto na superfície e desert_cave debaixo (Vulture, Antlion Charger)")
+	dp2.position.y -= 20.0
+	check(dent.biome_at(dp2.position) == "desert_cave", "debaixo do deserto é a caverna do deserto")
+	free_player(dp2)
+	dw2.free()
 	# --- conjurador (wiki Caster AI): teleporta aos 2,5 s, solta 3 esferas com 1,67 s entre elas; golpe cancela
 	var cw := floor_world()
 	var cp := make_player(cw)

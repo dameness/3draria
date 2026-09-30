@@ -323,5 +323,11 @@
 	"undead_viking": {"wiki": "Undead_Viking"},
 	"spiked_ice_slime": {"wiki": "Spiked_Ice_Slime"},
 	"snow_flinx": {"wiki": "Snow_Flinx"},
+	"hardened_sand": {"wiki": "Hardened_Sand_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#b89a58", "#a88a4a", "#c8aa68", "#987a3a"]},
+	"sandstone": {"wiki": "Sandstone_Block_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#a89060", "#98804f", "#b8a070", "#886f40"]},
+	"hardened_sand_item": {"wiki": "Hardened_Sand_Block"},
+	"sandstone_item": {"wiki": "Sandstone_Block"},
+	"vulture": {"wiki": "Vulture"},
+	"antlion_charger": {"wiki": "Antlion_Charger"},
 	"logo": {"wiki": "Terraria_Steam_Library_logo"}
 }

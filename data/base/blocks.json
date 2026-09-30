@@ -69,5 +69,7 @@
 	{"name": "door", "mine": 3, "icon": "door_item", "tiles": {"all": "door"}},
 	{"name": "door_open", "mine": 3, "solid": false, "shape": "door", "item": false, "drop": "door", "tiles": {"all": "door"}},
 	{"name": "snow_block", "mine": 2, "icon": "snow_block_item", "tiles": {"all": "snow_block"}},
-	{"name": "ice_block", "icon": "ice_block_item", "tiles": {"all": "ice_block"}}
+	{"name": "ice_block", "icon": "ice_block_item", "tiles": {"all": "ice_block"}},
+	{"name": "hardened_sand", "mine": 2, "icon": "hardened_sand_item", "tiles": {"all": "hardened_sand"}},
+	{"name": "sandstone", "icon": "sandstone_item", "tiles": {"all": "sandstone"}}
 ]
