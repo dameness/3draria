@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1138,7 +1138,7 @@ func test_consumables():
 	p.buffs.clear()
 	p.hp = 100.0
 	p.quick_heal()
-	check(is_equal_approx(p.hp, 150.0) and p.inv.total(Items.ids.lesser_healing_potion) == 0, "H/Q: cura com a poção que há (max_hp 200)")
+	check(is_equal_approx(p.hp, 150.0) and p.inv.total(Items.ids.lesser_healing_potion) == 0, "H: cura com a poção que há (max_hp 200)")
 	p.quick_heal()
 	check(p.message.contains("sem poção"), "sem poção, avisa")
 	p.max_hp = 100
@@ -1790,6 +1790,58 @@ func test_seeds():
 	check(ent.drop_id("corrupt_seeds") == Items.ids.corrupt_seeds, "Corrupção: o Olho solta Corrupt Seeds")
 	w.gen.evil = "crimson"
 	check(ent.drop_id("corrupt_seeds") == Items.ids.crimson_seeds and ent.drop_id("demonite_ore") == Items.ids.crimtane_ore, "Carmesim: solta Crimson Seeds (e crimtano)")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Soltar itens: Q solta 1 do slot da mão (Alt+Q, a pilha), o item cursor + clique fora dos painéis vai ao chão; o item jogado sai à frente e só volta a ser
+# puxado depois de 1,5 s; favoritado não sai; a Guide Voodoo Doll largada na lava do submundo chama o Wall of Flesh.
+func test_throw():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var drops := func() -> Array: return ent.get_children().filter(func(n): return n.get("doll") != null and not n.is_queued_for_deletion())
+	p.inv.add(Items.ids.torch, 5)
+	var s: int = p.inv.item.find(Items.ids.torch)
+	p.drop_slot(s, false)
+	var d: Node3D = drops.call()[0]
+	check(p.inv.count[s] == 4 and d.item == Items.ids.torch and d.count == 1 and d.delay == p.THROW_DELAY and d.velocity.length() > 5.0, "Q solta 1 item, jogado para a frente")
+	d._ready()
+	run(d, 1.0)
+	check(is_instance_valid(d) and d.count == 1, "o item jogado não volta na hora (só depois de %.1f s)" % p.THROW_DELAY)
+	run(d, 1.5)
+	check(is_instance_valid(d) and d.count == 1 and d.position.distance_to(p.position) > 2.5, "cai a uns passos do jogador (fora do ímã)")
+	p.position = Vector3(d.position.x, 11, d.position.z)   # ...e volta quando ele chega perto
+	run(d, 0.5)
+	check(p.inv.total(Items.ids.torch) == 5 and drops.call().is_empty(), "passado o tempo, é puxado de volta")
+	s = p.inv.item.find(Items.ids.torch)
+	p.position = Vector3(24.5, 11, 24.5)
+	p.drop_slot(s, true)
+	check(p.inv.item[s] == -1 and drops.call()[0].count == 5, "Alt+Q solta a pilha inteira")
+	for n in drops.call():
+		n.free()
+	p.inv.add(Items.ids.wood, 3)
+	s = p.inv.item.find(Items.ids.wood)
+	p.inv.fav[s] = 1
+	p.drop_slot(s, true)
+	check(p.inv.count[s] == 3 and drops.call().is_empty() and p.message.contains("favoritado"), "favoritado não sai")
+	p.inv.fav[s] = 0
+	p.inv.cursor_id = Items.ids.wood
+	p.inv.cursor_count = 7
+	p.drop_cursor()
+	check(p.inv.cursor_id == -1 and drops.call()[0].count == 7, "o item preso ao cursor vai ao chão")
+	# boneca: só a que cai na lava do submundo chama o chefe
+	for n in drops.call():
+		n.free()
+	w.set_block(30, 11, 30, Blocks.ids.lava)
+	var doll: Node3D = ent.spawn_drop(Items.ids.guide_voodoo_doll, 2, Vector3(20.5, 12, 20.5))
+	doll._ready()
+	run(doll, 1.0)
+	check(ent.boss == null, "a boneca no chão não chama nada")
+	doll.position = Vector3(30.5, 11.5, 30.5)
+	run(doll, 0.1)
+	check(ent.boss != null and ent.boss.def.name == "wall_of_flesh" and doll.count == 1 and p.message.contains("despertou"), "largada na lava do submundo chama o Wall of Flesh e gasta uma")
 	free_player(p)
 	w.free()
 	return true

@@ -13,10 +13,13 @@ var count: int
 var entities: Node3D
 var velocity := Vector3(0, 4, 0)
 var age := 0.0
+var delay := DELAY
+var doll := false        # Guide Voodoo Doll: largada na lava do submundo, chama o chefe (wiki)
 var icon: Sprite3D
 
 
 func _ready() -> void:
+	doll = Items.defs[item].get("underworld", false)
 	icon = Sprite3D.new()
 	icon.texture = entities.icon(item)
 	icon.pixel_size = 0.45 / maxf(icon.texture.get_width(), icon.texture.get_height())
@@ -50,7 +53,7 @@ func _physics_process(delta: float) -> void:
 	icon.rotation.y += delta * 2.0
 	var p: Node3D = entities.player
 	var to: Vector3 = p.position + Vector3.UP * 0.9 - position
-	if age > DELAY and to.length() < MAGNET:
+	if age > delay and to.length() < MAGNET:
 		if to.length() < PICKUP:
 			var pk: Dictionary = Items.defs[item].get("pickup", {})
 			if not pk.is_empty():   # coração / estrela: curam na hora
@@ -73,3 +76,11 @@ func _physics_process(delta: float) -> void:
 	position = r[0]
 	if r[1].y != 0:
 		velocity = Vector3.ZERO
+	if doll and position.y < WorldGen.UNDERWORLD_TOP and entities.boss == null:
+		var b: int = entities.world.get_block(floori(position.x), floori(position.y), floori(position.z))
+		if Blocks.liquid[b] == 1 and Blocks.liquid_kind[b] == Blocks.ids.lava:   # (outros itens na lava só afundam; a wiki os queima)
+			var boss: Node3D = entities.spawn_boss(Items.defs[item].summon)
+			p.say("%s despertou!" % Items.title(boss.def.name))
+			count -= 1
+			if count <= 0:
+				queue_free()

@@ -3,7 +3,7 @@ extends Node3D
 # Teclas como no Terraria (wiki Controls): WASD anda, Espaço pula, 1-0 ou a roda escolhem o slot, Esc abre/fecha o inventário (a pausa é o botão
 # Configurações dele), Tab/M/+/- são do minimapa (minimap.gd), Shift segurado = Auto Select (a ferramenta certa para o alvo, senão a tocha).
 # Botão esquerdo usa o item da mão (picareta minera, espada golpeia, arco atira, bloco coloca, poção bebe); o direito interage (baú, NPC).
-# H/Q bebem a poção de cura, J a de mana, B as de buff (wiki Controls).
+# H bebe a poção de cura, J a de mana, B as de buff (wiki Controls).
 # Só do jogo (não do Terraria): F liga/desliga o modo criativo (atravessa blocos, invulnerável; Espaço sobe, C desce), V troca 1ª/3ª pessoa,
 # F5 salva (também salva ao fechar), F8 dá o kit de teste, F9 abre o painel do mundo de teste (só nele: hora, chefes, hardmode, viagem). Voar de verdade é com asas (acessório): segurar Espaço no ar.
 
@@ -23,6 +23,7 @@ const CLICK_BUFFER := 0.12   # um clique durante o fim do golpe anterior vale pa
 const FAN := deg_to_rad(20.0)   # o golpe corpo a corpo testa a mira e mais dois raios a ±20°
 const PAD := 0.25            # ...contra a caixa do inimigo alargada em tanto (dá folga ao mirar)
 const REACH := 5.0
+const THROW_DELAY := 1.5     # o item jogado só é puxado de volta depois disto (s)
 const HOOK_HANG := 1.4                 # gancho: a esta distância da âncora o jogador fica pendurado
 const SMART_CONE := deg_to_rad(12.0)   # cursor inteligente: até onde da mira ele procura um bloco
 const SWIM_UP := 4.5       # Espaço na água: sobe a esta velocidade
@@ -211,8 +212,11 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventMouseButton:
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			attack_held = e.pressed and not inventory_open
-			if e.pressed and inventory_open and inv.cursor_id != -1 and Items.defs[inv.cursor_id].get("consumable", false):
-				consume(0, true)   # Terraria: poção no cursor + clique esquerdo fora dos painéis = bebe
+			if e.pressed and inventory_open and inv.cursor_id != -1:   # Terraria: item no cursor + clique esquerdo fora dos painéis
+				if Items.defs[inv.cursor_id].get("consumable", false):
+					consume(0, true)   # poção = bebe
+				else:
+					drop_cursor()   # o resto = joga no chão
 			if attack_held:
 				attack_buffer = CLICK_BUFFER
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED   # clique com o mouse solto (voltou do Alt+Tab) recaptura
@@ -228,8 +232,10 @@ func _unhandled_input(e: InputEvent) -> void:
 	elif e is InputEventKey and e.pressed and not e.echo:
 		if e.physical_keycode >= KEY_0 and e.physical_keycode <= KEY_9:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
-		elif e.physical_keycode == KEY_H or e.physical_keycode == KEY_Q:
+		elif e.physical_keycode == KEY_H:
 			quick_heal()
+		elif e.physical_keycode == KEY_Q:   # tecla de soltar do Minecraft: 1 item (Alt+Q, a pilha); com o inventário aberto, o do slot sob o mouse
+			drop_slot(hovered_slot() if inventory_open else slot, e.alt_pressed)
 		elif e.physical_keycode == KEY_B:
 			quick_buff()
 		elif e.physical_keycode == KEY_J:
@@ -868,7 +874,7 @@ func consume(i: int, from_cursor := false) -> bool:   # from_cursor: bebe a poç
 	return true
 
 
-# H/Q (wiki Controls): bebe a poção de cura que cobre o que falta com o menor desperdício; se nenhuma cobre, a maior.
+# H (wiki Controls): bebe a poção de cura que cobre o que falta com o menor desperdício; se nenhuma cobre, a maior.
 func quick_heal() -> void:
 	var missing := max_hp - hp
 	var best := -1
@@ -1028,6 +1034,48 @@ func cut_plants(reach: float) -> void:
 					entities.spawn_drop(Items.ids.seed, 4 if flower else entities.rng.randi_range(1, 2), Vector3(q) + Vector3(0.5, 0.3, 0.5))
 
 
+# Jogar itens no chão (Terraria: o item sai à frente, no ar, e só volta a ser puxado depois de THROW_DELAY; quem aguarda no chão o pega de novo).
+func throw_drop(id: int, n: int) -> void:
+	var look := Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD   # a mira, sem depender da câmera na árvore
+	var d: Node3D = entities.spawn_drop(id, n, position + Vector3.UP * 1.3 + look * 0.5)
+	d.velocity = look * 6.0 + Vector3.UP * 2.0
+	d.delay = THROW_DELAY
+	Sfx.play(entities, "swing", position + Vector3.UP, -10.0, 1.3)
+
+
+# Solta 1 (ou a pilha, whole) do slot i do inventário; favoritado não sai.
+func drop_slot(i: int, whole: bool) -> void:
+	if i < 0 or inv.item[i] == -1:
+		return
+	if inv.fav[i] == 1:
+		say("item favoritado (Alt+clique tira a estrela)")
+		return
+	var n: int = inv.count[i] if whole else 1
+	throw_drop(inv.item[i], n)
+	inv.count[i] -= n
+	if inv.count[i] == 0:
+		inv.item[i] = -1
+	inv.version += 1
+
+
+# O item preso ao cursor (a pilha toda) vai para o chão.
+func drop_cursor() -> void:
+	throw_drop(inv.cursor_id, inv.cursor_count)
+	inv.cursor_id = -1
+	inv.cursor_count = 0
+	inv.version += 1
+
+
+# Slot do inventário sob o mouse (-1 = nenhum, ou sem HUD nos testes).
+func hovered_slot() -> int:
+	var hud: Node = get_parent().get_node_or_null("HUD") if get_parent() else null
+	if hud:
+		for i in hud.slots.size():
+			if hud.slots[i].is_visible_in_tree() and hud.slots[i].is_hovered():
+				return i
+	return -1
+
+
 # Balde: vazio pega o líquido da mira (8 unidades, um bloco cheio, juntando a sobra rasa em volta); cheio derrama um bloco cheio no ar junto do alvo. O líquido depois flui sozinho (liquid.gd).
 func use_bucket(d: Dictionary) -> void:
 	if d.bucket == "empty":
@@ -1098,7 +1146,7 @@ func _lava_near(r: int) -> bool:
 
 func summon(d: Dictionary) -> void:
 	if d.get("underworld", false) and not (position.y < WorldGen.UNDERWORLD_TOP and _lava_near(3)):
-		say("jogue a boneca na lava, no submundo")
+		say("solte a boneca (Q) na lava, no submundo")
 	elif d.get("night", false) and not clock.is_night():
 		say("nada acontece... (só à noite)")
 	elif entities.boss:
