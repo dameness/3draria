@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1522,6 +1522,54 @@ func test_npc():
 	var hud: CanvasLayer = load("res://scripts/hud.gd").new()
 	check(hud.SHOPS.merchant[0] == ["copper_pickaxe", 500] and Items.ids.has(hud.SHOPS.merchant[3][0]), "loja: Copper Pickaxe a 5 de prata")
 	hud.free()
+	free_player(p)
+	w.free()
+	return true
+
+
+# Habitantes andando (wiki Town NPCs): de dia passeiam perto de casa, à noite voltam; abrem a porta e a fecham; preso atrás de parede, aparece em casa.
+func test_npc_walk():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	p.position = Vector3(5.5, 11, 5.5)   # longe: ninguém para para conversar
+	p.clock.time = 60.0
+	var guide: Node3D = ent.spawn_enemy(enemy_def("guide"), Vector3(30.5, 11.0, 30.5))
+	check(guide.home == Vector3(30.5, 11.0, 30.5), "o habitante nasce com a casa onde apareceu")
+	guide.goal = Vector3(34.5, 11.0, 30.5)
+	guide.walk_timer = 100.0
+	run(guide, 5.0)
+	check(guide.position.x > 34.0 and absf(guide.position.z - 30.5) < 0.5, "de dia anda até o destino (x=%.2f)" % guide.position.x)
+	# à noite volta para casa
+	p.clock.time = p.clock.DAY_SECONDS + 60.0
+	run(guide, 8.0)
+	check(Vector2(guide.position.x - 30.5, guide.position.z - 30.5).length() < 0.6, "à noite volta para casa (x=%.2f)" % guide.position.x)
+	# porta no caminho: abre, passa e fecha; parede sem porta: depois de HOME_WAIT s ele aparece em casa
+	for z in range(20, 41):
+		for y in range(11, 14):
+			w.set_block(32, y, z, Blocks.ids.stone)
+	guide.position = Vector3(34.5, 11.0, 30.5)
+	run(guide, 5.0)
+	check(guide.position.x > 32.5, "a parede o segura (x=%.2f)" % guide.position.x)
+	run(guide, 8.0)
+	check(Vector2(guide.position.x - 30.5, guide.position.z - 30.5).length() < 0.6, "preso à noite, aparece em casa")
+	w.set_block(32, 11, 30, Blocks.door_closed)
+	w.set_block(32, 12, 30, Blocks.door_closed)
+	guide.position = Vector3(34.5, 11.0, 30.5)
+	var opened := false
+	var closed := false
+	for i in 600:
+		guide._physics_process(1.0 / 60)
+		var b: int = w.get_block(32, 11, 30)
+		if b == Blocks.door_open:
+			opened = true
+		elif opened and b == Blocks.door_closed:
+			closed = true
+	check(opened and closed and guide.position.x < 31.5, "abre a porta, passa e a fecha atrás de si (x=%.2f)" % guide.position.x)
+	# o Velho fica onde está
+	var old: Node3D = ent.spawn_enemy(enemy_def("old_man"), Vector3(20.5, 11.0, 20.5))
+	run(old, 3.0)
+	check(old.position.distance_to(Vector3(20.5, 11.0, 20.5)) < 0.1, "o Velho não sai do lugar")
 	free_player(p)
 	w.free()
 	return true

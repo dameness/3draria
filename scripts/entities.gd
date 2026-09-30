@@ -165,9 +165,11 @@ func _homes() -> void:
 			if not f.is_empty():
 				world.homes[n] = f.home
 				player.say("%s se mudou para a casa!" % Items.title(n))
-		for e in enemies:   # quem já está no mundo vai para o lugar dele
-			if e.def.name == n and e.position.distance_to(_npc_spot(n, 0)) > 4.0 and world.homes.has(n):
-				e.position = _npc_spot(n, 0)
+		var spot := _npc_spot(n, TOWN.find(n))
+		for e in enemies:   # quem já está no mundo vai para a casa nova (ou de volta ao nascimento)
+			if e.def.name == n and e.home.distance_to(spot) > 0.5:
+				e.home = spot
+				e.position = spot
 
 
 # Estrela cadente (wiki Fallen Star): à noite cai perto do jogador, de vez em quando; ao amanhecer as que sobraram somem.
@@ -499,6 +501,7 @@ func spawn_enemy(d: Dictionary, pos: Vector3) -> Node3D:
 	e.entities = self
 	e.stats()
 	e.position = pos
+	e.home = pos
 	add_child(e)
 	enemies.append(e)
 	return e
