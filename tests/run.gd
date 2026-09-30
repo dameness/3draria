@@ -1566,6 +1566,11 @@ func test_npc_walk():
 		elif opened and b == Blocks.door_closed:
 			closed = true
 	check(opened and closed and guide.position.x < 31.5, "abre a porta, passa e a fecha atrás de si (x=%.2f)" % guide.position.x)
+	var m := EnemyModel.build(guide.def)
+	var z := EnemyModel.build(enemy_def("zombie"))
+	check(not m.get_node("Body").arms_forward and m.get_node("Body").townsfolk and z.get_node("Body").arms_forward, "habitante de braços soltos; o zumbi segue de braços esticados")
+	m.free()
+	z.free()
 	# o Velho fica onde está
 	var old: Node3D = ent.spawn_enemy(enemy_def("old_man"), Vector3(20.5, 11.0, 20.5))
 	run(old, 3.0)

@@ -42,7 +42,8 @@ static func build(def: Dictionary) -> Node3D:
 			body.shirt = Color(c.get("shirt", "#4a5a7a"))
 			body.pants = Color(c.get("pants", "#3a3a4a"))
 			body.hair = Color(c.get("hair", "#2a3a2a"))
-			body.arms_forward = true
+			body.arms_forward = def.ai != "npc"   # zumbi de braços esticados; habitante de braços soltos
+			body.townsfolk = def.ai == "npc"
 			body.scale = Vector3.ONE * size[1] / 1.8
 			body.name = "Body"
 			root.add_child(body)

@@ -16,6 +16,7 @@ var hair := Color("#5a3220")
 var shirt := Color("#c0503c")
 var pants := Color("#3c4c98")
 var arms_forward := false            # zumbi
+var townsfolk := false               # habitante: braços soltos balançando ao andar (sem mira, item nem armadura)
 var parts := {}      # nome -> pivô (Node3D) na articulação
 var shells := {}     # slot de armadura -> [MeshInstance3D]
 var held: MeshInstance3D
@@ -263,6 +264,9 @@ func _process(delta: float) -> void:
 		blink = 0.13
 	for e in eyes:
 		e.scale.y = 0.12 if blink > 0 else 1.0
+	if townsfolk:
+		parts.arm_r.rotation.x = -arm
+		return
 	if arms_forward:   # zumbi: braços esticados para a frente
 		parts.arm_l.rotation.x = PI / 2 + swing * 0.2
 		parts.arm_r.rotation.x = PI / 2 - swing * 0.2
