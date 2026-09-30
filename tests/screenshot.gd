@@ -45,6 +45,7 @@ const SHOTS := [
 	{"name": "neve", "snow": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "deserto", "desert": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "selva", "jungle": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
+	{"name": "colmeia", "hive": true, "look": Vector2(0.4, -0.1), "creative": true},
 	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
 	{"name": "inimigos_voadores", "look": Vector2(0, -0.1), "enemies": ["eater_of_souls", "crimera", "voodoo_demon", "hellbat", "pixie", "unicorn"]},
@@ -285,6 +286,9 @@ func _setup(s: Dictionary) -> void:
 	if s.get("jungle", false):
 		var jc := Vector2i(world.gen.jungle_center)
 		player.position = Vector3(jc.x + 0.5, world.surface_y(jc.x, jc.y) + s.get("up", 0.0), jc.y + 0.5)
+	if s.get("hive", false):
+		var hv: Vector3i = world.gen.hive_center
+		player.position = Vector3(hv.x + 0.5, hv.y + 1.0, hv.z + 0.5)
 	if s.has("dungeon"):
 		var g: WorldGen = world.gen
 		var e := g.dungeon_entrance
