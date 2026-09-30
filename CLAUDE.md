@@ -78,7 +78,7 @@ menu.tscn            cena inicial: menu (personagem/mundo)   game.tscn  o jogo (
 scripts/             setup-godot.sh e um .gd por sistema:
   blocks.gd          carrega blocks.json/textures.json (id = posição na lista, 0 = ar)
   atlas.gd           gera o atlas 16x16 procedural
-  world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128); o mundo é uma ilha (oceano a partir de 104 blocos do centro) com 3 ilhas flutuantes (y ≥ SKY_BASE)
+  world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128); o mundo é uma ilha (oceano a partir de 104 blocos do centro) com 3 ilhas flutuantes (y ≥ SKY_BASE) e Living Trees (`_plan_living`/`_living`: árvores gigantes de living_wood com poço, túneis e sala do tesouro)
   housing.gd         moradia de habitante (wiki Housing em 3D): cômodo fechado com tocha, bancada e cadeira; portas contam como parede
   spelunker.gd       brilhos do Espeleólogo vistos através da terra (varre os chunks com find, sem laço por bloco)
   timber.gd          árvores (wiki Tree): dano por tile, queda da árvore inteira com animação, madeira e acorn; a muda cresce em world.gd

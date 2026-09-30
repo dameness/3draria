@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1289,7 +1289,7 @@ func world_census() -> Dictionary:
 						r.bad_crystals += int(y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE - 14 or not (below == gen.STONE or below == gen.DIRT or below == Blocks.ids.dungeon_brick))
 					elif d[i] == Blocks.ids.chest:
 						r.chests[Loot.layer_of(y)] += 1
-						r.bad_chests += int(Loot.layer_of(y) != "sky" and (y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE + 9 or not (below == gen.STONE or below == gen.DIRT or below == gen.GRASS or below == Blocks.ids.dungeon_brick)))
+						r.bad_chests += int(Loot.layer_of(y) != "sky" and below != gen.LIVING_WOOD and (y <= WorldGen.UNDERWORLD_TOP or y > WorldGen.SURFACE + 9 or not (below == gen.STONE or below == gen.DIRT or below == gen.GRASS or below == Blocks.ids.dungeon_brick)))
 		census_cache = r
 	return census_cache
 
@@ -1810,6 +1810,76 @@ class GenView extends Node3D:   # get_block sobre chunks gerados, para seguir o 
 		if not chunks.has(k):
 			chunks[k] = gen.generate(k.x, k.y)
 		return chunks[k][(x - k.x * 16) + (z - k.y * 16) * 16 + y * 256]
+
+
+# Living Tree (wiki): grupos de árvores de Living Wood com poço oco, túneis com baú entre elas e, na principal, a sala do tesouro com as varinhas.
+func test_living_tree():
+	var planned := 0
+	for sd in [1, 2, 3, 4242, 99, 1337]:
+		var g := WorldGen.new(sd)
+		var ok := true
+		for t in g.living_trees:
+			planned += 1
+			var c := Vector2(t.x, t.z)
+			ok = ok and c.distance_to(WorldGen.CENTER) <= 82.0 and t.y >= WorldGen.WATER_LEVEL + 4 and c.distance_to(g.evil_center) > WorldGen.EVIL_RADIUS and c.distance_to(g.snow_center) > WorldGen.EVIL_RADIUS and c.distance_to(g.jungle_center) > WorldGen.EVIL_RADIUS and c.distance_to(g.desert_center) > WorldGen.EVIL_RADIUS and not g.in_dungeon(t.x, WorldGen.DUNGEON_Y, t.z)
+		for m in g.mines:   # a sala do tesouro fica na altura das minas: nenhuma mina passa perto
+			var a := Vector2(m.x, m.z)
+			var b := a + (Vector2(m.len, 0) if m.axis == 0 else Vector2(0, m.len))
+			for t in g.living_trees:
+				ok = ok and Geometry2D.get_closest_point_to_segment(Vector2(t.x, t.z), a, b).distance_to(Vector2(t.x, t.z)) > 16.0
+		check(ok, "seed %d: Living Trees em terra firme, longe dos biomas, do dungeon e das minas" % sd)
+		check(g.living_trees.filter(func(t): return t.main).size() == g.living_chests.size(), "seed %d: um baú do tesouro por árvore principal" % sd)
+	check(planned > 0, "alguma seed planeja Living Trees")
+	# gera os chunks em volta de uma árvore principal e confere a estrutura
+	var w := dungeon_world(1337)
+	var g: WorldGen = w.gen
+	var main: Dictionary = g.living_trees.filter(func(t): return t.main)[0] if not g.living_trees.is_empty() else {}
+	check(not main.is_empty(), "a seed 1337 tem uma Living Tree principal")
+	if main.is_empty():
+		w.free()
+		return true
+	for cz in range((main.z - 14) / 16, (main.z + 14) / 16 + 1):
+		for cx in range((main.x - 14) / 16, (main.x + 14) / 16 + 1):
+			w.chunks[Vector2i(cx, cz)] = g.generate(cx, cz)
+	var lw: int = Blocks.ids.living_wood
+	var x: int = main.x
+	var z: int = main.z
+	var y: int = main.y
+	check(w.get_block(x + 4, y + 5, z) == lw and w.get_block(x - 4, y + 5, z) == lw, "o tronco é de Living Wood e fechado por fora")
+	check(w.get_block(x, y + 5, z) == 0 and w.get_block(x + 1, y + 18, z + 1) == 0 and w.get_block(x, y - 12, z) == 0, "o poço 5x5 é oco do topo à sala")
+	var stairs := 0
+	for yy in range(y - 13, y + WorldGen.LIVING_TOP + 1):
+		for dz in range(-2, 3):
+			for dx in range(-2, 3):
+				stairs += int(w.get_block(x + dx, yy, z + dz) == lw and maxi(absi(dx), absi(dz)) == 2)
+	check(stairs >= 33, "escada em espiral: um degrau por altura (%d)" % stairs)
+	var chest := Vector3i(x + 4, y - 13, z)
+	check(g.living_chests.has(chest) and w.get_block(chest.x, chest.y, chest.z) == Blocks.ids.chest and w.get_block(x - 4, y - 13, z + 2) == Blocks.ids.living_loom and w.get_block(x - 4, y - 13, z - 2) == Blocks.ids.chair, "sala do tesouro: baú, Living Loom e cadeira")
+	check(w.get_block(x, y + WorldGen.LIVING_TOP + 1, z) == Blocks.ids.chest and w.get_block(x, y + WorldGen.LIVING_TOP, z) == lw, "baú comum na plataforma do topo")
+	var leaves := 0
+	for dy in range(22, 40):
+		for dx in range(-12, 13):
+			leaves += int(w.get_block(x + dx, y + dy, z) == Blocks.ids.leaves)
+	check(leaves > 40, "copa de folhas no alto (%d)" % leaves)
+	var c: Dictionary = w.chest_at(chest)
+	var items := Array(c.item)
+	check(items[0] == Items.ids.living_wood_wand and items[1] == Items.ids.leaf_wand, "o baú do tesouro dá Living Wood Wand + Leaf Wand")
+	# túnel entre as árvores do grupo
+	if not g.living_tunnels.is_empty():
+		var tn: Dictionary = g.living_tunnels[0]
+		var mid_s: int = tn.lo + 9
+		var at := Vector3i(mid_s, tn.y, tn.fixed) if tn.axis == 0 else Vector3i(tn.fixed, tn.y, mid_s)
+		for cz in range((at.z - 2) / 16, (at.z + 2) / 16 + 1):
+			for cx in range((at.x - 2) / 16, (at.x + 2) / 16 + 1):
+				if not w.chunks.has(Vector2i(cx, cz)):
+					w.chunks[Vector2i(cx, cz)] = g.generate(cx, cz)
+		check(w.get_block(at.x, at.y, at.z) == Blocks.ids.chest and w.get_block(at.x, at.y - 1, at.z) == lw, "o túnel tem chão de Living Wood e um baú (de superfície)")
+		check(Loot.layer_of(at.y) == "surface" and not g.living_chests.has(at), "…que sorteia o loot de superfície")
+	# varinha: coloca Living Wood gastando Wood; a Living Wood solta Wood ao quebrar
+	check(Items.defs[Items.ids.living_wood_wand].wand == "wood" and Items.places[Items.ids.living_wood_wand] == lw and Items.drop[lw] == Items.ids.wood, "Living Wood Wand coloca Living Wood e a Living Wood solta Wood")
+	check(Items.places[Items.ids.leaf_wand] == Blocks.ids.leaves and not Items.ids.has("living_wood"), "Leaf Wand coloca folhas; Living Wood não vira item")
+	w.free()
+	return true
 
 
 func test_minecart():
@@ -3804,6 +3874,8 @@ func integration():
 				var x := 128 + rng.randi_range(-60, 60)
 				var z := 128 + rng.randi_range(-60, 60)
 				player.position = Vector3(x + 0.5, world.surface_y(x, z), z + 0.5)
+				if player.overlaps_solid(player.position):   # o topo de uma Living Tree cai dentro da copa: posição que o jogador não alcança
+					continue
 				player.rotation.y = rng.randf() * TAU
 				player.pitch = rng.randf_range(-1.5, 1.5)
 				player.cam.rotation.x = player.pitch

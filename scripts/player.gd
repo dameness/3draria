@@ -1433,6 +1433,10 @@ func place_block() -> void:
 	if Items.places[held()] == Blocks.sapling and not (target.normal == Vector3i.UP and Blocks.grassy[world.get_block(target.pos.x, target.pos.y, target.pos.z)] == 1):
 		say("a muda só pega em cima da grama")
 		return
+	var wand: String = Items.defs[held()].get("wand", "")   # varinha: gasta o item `wand` (Wood) em vez de si mesma
+	if wand != "" and inv.total(Items.ids[wand]) == 0:
+		say("precisa de %s" % Items.title(wand))
+		return
 	var p: Vector3i = target.pos + target.normal
 	var lo := Vector3i((position + LO).floor())
 	var hi := Vector3i((position + HI - Vector3.ONE * EPS).floor())
@@ -1441,7 +1445,10 @@ func place_block() -> void:
 	if not inside and (there == 0 or Blocks.soft[there]):  # ar, planta ou líquido: o bloco novo substitui
 		Sfx.play(entities, "place", Vector3(p) + Vector3.ONE * 0.5)
 		world.set_block(p.x, p.y, p.z, Items.places[held()])
-		inv.take_one(slot)
+		if wand != "":
+			inv.remove(Items.ids[wand], 1)
+		else:
+			inv.take_one(slot)
 		place_anim = 0.18
 
 

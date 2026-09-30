@@ -38,6 +38,9 @@ const SHOTS := [
 	{"name": "dungeon_fora", "dungeon": "out", "look": Vector2(0, -0.25), "creative": true, "time": 1100.0},
 	{"name": "dungeon_sala", "dungeon": "in", "look": Vector2(-PI / 2, -0.05), "creative": true, "time": 300.0},
 	{"name": "skeletron", "look": Vector2(0, 0.2), "boss": "skeletron", "time": 1100.0, "item": "terra_blade"},
+	{"name": "arvore_viva", "living": "out", "look": Vector2(0, -0.5), "creative": true},
+	{"name": "arvore_viva_sala", "living": "in", "look": Vector2(-PI / 2, -0.05), "creative": true, "time": 300.0},
+	{"name": "arvore_viva_poco", "living": "shaft", "look": Vector2(0, -0.6), "creative": true, "time": 300.0},
 	{"name": "ilha_ceu", "sky": "top", "look": Vector2(0, -0.08), "creative": true},
 	{"name": "ilha_ceu_baixo", "sky": "below", "look": Vector2(0, 0.35), "creative": true},
 	{"name": "ilha_ceu_bau", "sky": "top", "look": Vector2(0, -0.2), "creative": true, "inventory": true, "sky_chest": true},
@@ -312,6 +315,17 @@ func _setup(s: Dictionary) -> void:
 		else:
 			player.position = Vector3(g.dungeon_x + 25.5, WorldGen.DUNGEON_Y + 1, g.dungeon_z + 25.5)
 		print("  ", s.name, " em ", player.position)
+	if s.has("living"):   # a Living Tree principal: de fora (16 blocos ao sul, de frente), na sala do tesouro, ou no topo do poço olhando para baixo
+		var t: Dictionary = world.gen.living_trees.filter(func(t): return t.main)[0]
+		var at := Vector3(t.x + 0.5, t.y + 1.0, t.z + 0.5)
+		if s.living == "out":
+			at = Vector3(t.x + 0.5, t.y + 36.0, t.z + 38.5)
+		elif s.living == "in":
+			at = Vector3(t.x + 0.5 - 2.0, t.y - 12.0, t.z + 0.5)
+		else:
+			at = Vector3(t.x + 0.5 + 1.0, t.y + 22.0, t.z + 0.5 + 1.0)
+		player.position = at
+		print("  ", s.name, " em ", at)
 	if s.has("evil"):   # bioma do mal: acima do centro, ou dentro do 1º abismo
 		var g: WorldGen = world.gen
 		var at := Vector2i(g.evil_center)

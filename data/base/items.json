@@ -212,5 +212,7 @@
 	{"name": "grass_seeds", "tip": "Para plantar grama em terra", "icon": "grass_seeds", "plants": "grass", "use_time": 0.25},
 	{"name": "corrupt_seeds", "tip": "Para plantar grama corrompida em terra", "icon": "corrupt_seeds", "plants": "corrupt_grass", "use_time": 0.25},
 	{"name": "crimson_seeds", "tip": "Para plantar grama carmesim em terra", "icon": "crimson_seeds", "plants": "crimson_grass", "use_time": 0.25},
-	{"name": "minecart", "tip": "Carregando-o, o carrinho é mais rápido e bate mais forte", "icon": "minecart", "stack": 1, "rarity": 1}
+	{"name": "minecart", "tip": "Carregando-o, o carrinho é mais rápido e bate mais forte", "icon": "minecart", "stack": 1, "rarity": 1},
+	{"name": "living_wood_wand", "tip": "Coloca Living Wood, gastando Wood", "icon": "living_wood_wand", "places": "living_wood", "wand": "wood", "stack": 1, "rarity": 1, "use_time": 0.25},
+	{"name": "leaf_wand", "tip": "Coloca Leaf Blocks, gastando Wood", "icon": "leaf_wand", "places": "leaves", "wand": "wood", "stack": 1, "rarity": 1, "use_time": 0.25}
 ]

@@ -35,6 +35,11 @@ const CHASM_DEPTH := 38
 const MINES := 4               # minas abandonadas (wiki Abandoned Minecart Track): corredor escorado com trilho, fundo no subsolo, poço de corda até a superfície
 const MINE_Y0 := 50            # o trilho fica entre estas alturas (acima das cavernas alagadas, abaixo da superfície)
 const MINE_Y1 := 58
+const LIVING_H := 30           # Living Tree (wiki): altura do tronco acima do chão; o poço interno 5x5 desce até a sala do tesouro (14 abaixo do chão)
+const LIVING_TOP := 20         # altura da plataforma do topo do poço (a escada sobe até aqui)
+const LIVING_R := 15           # alcance horizontal de uma árvore (copa e galhos)
+const LIVING_RING: Array[Vector2i] = [Vector2i(2, 0), Vector2i(2, 1), Vector2i(2, 2), Vector2i(1, 2), Vector2i(0, 2), Vector2i(-1, 2), Vector2i(-2, 2), Vector2i(-2, 1),
+	Vector2i(-2, 0), Vector2i(-2, -1), Vector2i(-2, -2), Vector2i(-1, -2), Vector2i(0, -2), Vector2i(1, -2), Vector2i(2, -2), Vector2i(2, -1)]   # degraus da escada em espiral do poço
 const CENTER := Vector2(SIZE_CHUNKS * CHUNK / 2.0, SIZE_CHUNKS * CHUNK / 2.0)   # nascimento: planície
 enum {TOP_GRASS, TOP_STONE, TOP_SAND}   # o que cobre a superfície de uma coluna
 const DIRS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
@@ -74,6 +79,9 @@ var dungeon_z := 0
 var dungeon_entrance := Vector3i.ZERO   # torre de entrada (centro, altura da superfície)
 var test_world := false           # mundo de teste: generate carimba a arena (test_world.gd)
 var mines: Array[Dictionary] = []   # [{axis: 0 (x) ou 1 (z), x, z (início), len, ys: altura do trilho em cada passo}]
+var living_trees: Array[Dictionary] = []   # Living Trees: [{x, z, y (chão), main (tem a sala do tesouro), branches: [{dir, dy, len}]}]
+var living_tunnels: Array[Dictionary] = []   # túneis entre as árvores de um grupo: {axis, lo, hi, fixed, y (chão do túnel)}
+var living_chests: Array[Vector3i] = []      # baús do tesouro (loot "living" em loot.json); os dos túneis e do topo são baús comuns e sorteiam pela altura (superfície)
 var sky_islands: Array[Vector3i] = []   # (x, y da superfície, z) do centro de cada ilha
 var sky_chests: Array[Vector3i] = []     # o baú de cada ilha (mesmo índice)
 var hardmode := false             # Wall of Flesh derrotado: minérios novos e o Hallow entram na geração (world.start_hardmode converte o que já existe)
@@ -87,6 +95,9 @@ var SNOW: int
 var MUD: int
 var JGRASS: int
 var HIVE: int
+var LIVING_WOOD: int
+var LIVING_LOOM: int
+var CHAIR: int
 var LARVA: int
 var HSAND: int
 var SANDSTONE: int
@@ -171,6 +182,9 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	TORCH = Blocks.ids.torch
 	TRACK = Blocks.ids.minecart_track
 	ROPE = Blocks.ids.rope
+	LIVING_WOOD = Blocks.ids.living_wood
+	LIVING_LOOM = Blocks.ids.living_loom
+	CHAIR = Blocks.ids.chair
 	dungeon_x = 6 if evil_center.x > CENTER.x else SIZE_CHUNKS * CHUNK - 6 - DUNGEON_W * DUNGEON_CELL - 1
 	dungeon_z = int(CENTER.y) - DUNGEON_D * DUNGEON_CELL / 2
 	var ex := dungeon_x + DUNGEON_W / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
@@ -198,6 +212,7 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 			far = m
 			jungle_center = c
 	hive_center = Vector3i(int(jungle_center.x), surface_height(int(jungle_center.x), int(jungle_center.y)) - 16, int(jungle_center.y))
+	_plan_living()
 	_plan_mines()
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
@@ -307,6 +322,7 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_chest(d, rng)
 	rng.seed = hash([seed, cx, cz, "crystal"])
 	_crystal(d, rng)
+	_living(d, cx, cz)
 	_sky(d, cx, cz)
 	if hardmode:
 		hardmode_pass(d, cx, cz)
@@ -537,6 +553,8 @@ func _plan_mines() -> void:
 			for k in 5:
 				var q := a.lerp(b, k / 4.0)
 				ok = ok and not dun.has_point(q) and q.distance_to(Vector2(hive_center.x, hive_center.z)) > 25.0 and q.distance_to(CENTER) > 12.0
+			for t in living_trees:
+				ok = ok and Geometry2D.get_closest_point_to_segment(Vector2(t.x, t.z), a, b).distance_to(Vector2(t.x, t.z)) > 16.0   # a sala do tesouro fica na altura das minas
 			var box := Rect2(a, b - a).abs().grow(6.0)   # uma mina não cruza outra (o corredor de uma apagaria o trilho da outra)
 			for other in mines:
 				ok = ok and not box.intersects(Rect2(Vector2(other.x, other.z), Vector2(other.len if other.axis == 0 else 0, 0 if other.axis == 0 else other.len)).abs().grow(6.0))
@@ -601,6 +619,159 @@ func _mines(d: PackedByteArray, cx: int, cz: int) -> void:
 						d[i + (y + 2) * layer] = WOOD
 				elif k % 12 == 3 and lane == 1:
 					d[i + (y + 1) * layer] = TORCH
+
+
+# Living Trees (wiki): grupos de árvores gigantes de Living Wood com um poço oco por dentro (fechado: é preciso cortar o tronco), túneis entre as árvores do grupo
+# com baú de superfície, e na árvore principal uma sala do tesouro no fundo (Living Loom, cadeira e o baú com as varinhas). Tudo sai da seed.
+# Escala: 1 tile = 0,6 bloco, então 13-30 tiles de distância viram 14-22 blocos e a árvore tem 26 de tronco.
+func _plan_living() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = hash([seed, "living"])
+	var dun := Rect2(dungeon_x - 14, dungeon_z - 14, DUNGEON_W * DUNGEON_CELL + 28, DUNGEON_D * DUNGEON_CELL + 28)
+	var mains: Array[Vector2] = []
+	for g in r.randi_range(1, 3):
+		for attempt in 50:
+			var c := CENTER + Vector2.from_angle(r.randf() * TAU) * r.randf_range(38.0, 70.0)
+			if not _living_ok(c, dun) or mains.any(func(m): return m.distance_to(c) < 50.0):
+				continue
+			mains.append(c)
+			var axis := r.randi() % 2
+			var group: Array[Dictionary] = [_living_tree(c, true, r)]
+			for side in [-1, 1]:
+				var at := c
+				for k in r.randi_range(0, 2):
+					at += (Vector2(side, 0) if axis == 0 else Vector2(0, side)) * r.randi_range(14, 22)
+					if not _living_ok(at, dun):
+						break
+					group.append(_living_tree(at, false, r))
+			var ty := 999
+			for t in group:
+				ty = mini(ty, t.y - 7)
+			var lo: int = group.map(func(t): return t.x if axis == 0 else t.z).min()
+			var hi: int = group.map(func(t): return t.x if axis == 0 else t.z).max()
+			if hi > lo:
+				var fixed: int = group[0].z if axis == 0 else group[0].x
+				living_tunnels.append({"axis": axis, "lo": lo, "hi": hi, "fixed": fixed, "y": ty})
+			living_trees.append_array(group)
+			break
+	for t in living_trees:
+		if t.main:
+			living_chests.append(Vector3i(t.x + 4, t.y - 13, t.z))
+
+
+# Terreno bom para uma Living Tree: em terra firme, longe dos biomas, do dungeon e da colmeia, plano ao redor.
+func _living_ok(c: Vector2, dun: Rect2) -> bool:
+	if c.distance_to(CENTER) > 82.0 or dun.has_point(c) or c.distance_to(Vector2(hive_center.x, hive_center.z)) < 30.0:
+		return false
+	for bc in [evil_center, hallow_center, snow_center, desert_center, jungle_center]:
+		if c.distance_to(bc) < EVIL_RADIUS + 14.0:
+			return false
+	var by := surface_height(int(c.x), int(c.y))
+	if by < WATER_LEVEL + 4 or by > 84:
+		return false
+	for k in 8:
+		var q := c + Vector2.from_angle(TAU * k / 8.0) * 9.0
+		if absi(surface_height(int(q.x), int(q.y)) - by) > 6:
+			return false
+	return true
+
+
+func _living_tree(c: Vector2, main: bool, r: RandomNumberGenerator) -> Dictionary:
+	var branches := []
+	for k in 3:
+		var a := TAU * (k + r.randf_range(0.0, 0.8)) / 3.0
+		branches.append({"dir": Vector2.from_angle(a), "dy": r.randi_range(18, 26), "len": r.randi_range(5, 7)})
+	return {"x": int(c.x), "z": int(c.y), "y": surface_height(int(c.x), int(c.y)), "main": main, "branches": branches}
+
+
+# Escreve a parte das Living Trees que cai neste chunk (por coordenada: os chunks vizinhos calculam o mesmo).
+func _living(d: PackedByteArray, cx: int, cz: int) -> void:
+	var layer := CHUNK * CHUNK
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	for t in living_trees:
+		if t.x + LIVING_R < ox or t.x - LIVING_R >= ox + CHUNK or t.z + LIVING_R < oz or t.z - LIVING_R >= oz + CHUNK:
+			continue
+		for lz in CHUNK:
+			for lx in CHUNK:
+				var dx: int = ox + lx - t.x
+				var dz: int = oz + lz - t.z
+				if dx * dx + dz * dz > LIVING_R * LIVING_R:
+					continue
+				for dy in range(-14, LIVING_H + 12):
+					var b := _living_block(t, dx, dz, dy)
+					if b == -1:
+						continue
+					var i: int = lx + lz * CHUNK + (t.y + dy) * layer
+					if b == LEAVES and d[i] != AIR:   # a copa só ocupa o ar (o morro fica)
+						continue
+					d[i] = b
+	for tn in living_tunnels:
+		var along: bool = tn.axis == 0
+		if (tn.hi + 2 < ox or tn.lo - 2 >= ox + CHUNK or tn.fixed + 2 < oz or tn.fixed - 2 >= oz + CHUNK) if along else (tn.hi + 2 < oz or tn.lo - 2 >= oz + CHUNK or tn.fixed + 2 < ox or tn.fixed - 2 >= ox + CHUNK):
+			continue
+		for lz in CHUNK:
+			for lx in CHUNK:
+				var s: int = ox + lx if along else oz + lz   # ao longo do túnel
+				var p: int = (oz + lz if along else ox + lx) - tn.fixed   # de lado
+				if s < tn.lo or s > tn.hi or absi(p) > 1:
+					continue
+				d[lx + lz * CHUNK + (tn.y - 1) * layer] = LIVING_WOOD
+				for k in 3:
+					var b := AIR
+					if k == 0 and p == 0 and s == tn.lo + 9:
+						b = CHEST
+					elif k == 1 and p == 1 and (s - tn.lo) % 7 == 3:
+						b = TORCH
+					d[lx + lz * CHUNK + (tn.y + k) * layer] = b
+
+
+# O bloco da árvore t na posição relativa (dx, dy, dz) ao tronco no chão; -1 = não toca. Tronco com raiz alargada, poço 5x5 com escada em espiral,
+# sala do tesouro, plataforma com baú no topo, três galhos com folhas e a copa.
+func _living_block(t: Dictionary, dx: int, dz: int, dy: int) -> int:
+	var b := -1
+	var r2 := dx * dx + dz * dz
+	var cheb := maxi(absi(dx), absi(dz))
+	var rr := 4.5 + clampf((3 - dy) * 0.5, 0.0, 3.5)
+	if dy <= LIVING_H + 2 and r2 <= rr * rr:
+		b = LIVING_WOOD
+		if cheb <= 2 and dy >= -13 and dy <= LIVING_TOP + 3:
+			b = AIR
+			if cheb == 2 and dy <= LIVING_TOP and LIVING_RING[posmod(dy + 13, 16)] == Vector2i(dx, dz):
+				b = LIVING_WOOD   # um degrau por bloco de altura, dando a volta no poço
+			elif dy == LIVING_TOP and cheb <= 1:
+				b = LIVING_WOOD   # plataforma do topo
+			elif dy == LIVING_TOP + 1 and cheb == 0:
+				b = CHEST
+			elif cheb == 2 and dx * dz == 0 and posmod(dy, 6) == 0 and dy >= -6:
+				b = TORCH
+	if t.main and dy >= -13 and dy <= -9 and absi(dx) <= 5 and absi(dz) <= 3:   # sala do tesouro
+		b = AIR
+		if dy == -13 and dx == -4 and dz == 2:
+			b = LIVING_LOOM
+		elif dy == -13 and dx == -4 and dz == -2:
+			b = CHAIR
+		elif dy == -13 and dx == 4 and dz == 0:
+			b = CHEST
+		elif dy == -11 and absi(dx) == 5 and absi(dz) == 2:
+			b = TORCH
+		elif cheb == 2 and LIVING_RING[posmod(dy + 13, 16)] == Vector2i(dx, dz):
+			b = LIVING_WOOD
+	if dy < 15:
+		return b
+	var p := Vector2(dx, dz)
+	for br in t.branches:
+		var along: float = clampf(p.dot(br.dir), 0.0, br.len)
+		if b == -1 and absi(dy - br.dy) <= 1 and (p - br.dir * along).length() <= 1.2:
+			b = LIVING_WOOD
+		var e: Vector2 = br.dir * (br.len + 2)   # folhas na ponta do galho
+		var lq: float = (p - e).length_squared() / 25.0 + (dy - br.dy - 1) * (dy - br.dy - 1) / 16.0
+		if b == -1 and lq <= 1.0 and (lq < 0.55 or _hash01(dx, dy, dz, seed) > 0.25):
+			b = LEAVES
+	var q := r2 / 144.0 + (dy - LIVING_H + 2) * (dy - LIVING_H + 2) / 64.0   # copa: elipsoide 12 x 8
+	if b == -1 and q <= 1.0 and (q < 0.55 or _hash01(dx, dy, dz, seed + 1) > 0.25):
+		b = LEAVES
+	return b
 
 
 func _dungeon_block(wx: int, y: int, wz: int) -> int:
@@ -790,7 +961,7 @@ func _trees(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) 
 			var wz := gz * TREE_CELL + (h >> 16) % TREE_CELL
 			var ix := wx - ox + MARGIN
 			var iz := wz - oz + MARGIN
-			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5 or snow_weight(wx, wz) >= 0.5 or desert_weight(wx, wz) >= 0.5 or jungle_weight(wx, wz) >= 0.5:
+			if ix < 1 or iz < 1 or ix > W - 2 or iz > W - 2 or Vector2(wx, wz).distance_to(CENTER) < 26.0 or evil_weight(wx, wz) >= 0.5 or snow_weight(wx, wz) >= 0.5 or desert_weight(wx, wz) >= 0.5 or jungle_weight(wx, wz) >= 0.5 or living_trees.any(func(t): return Vector2(wx - t.x, wz - t.z).length() < LIVING_R + 3):
 				continue
 			var forest := clampf(0.3 + forest_noise.get_noise_2d(wx, wz) * 1.0, 0.0, 0.75)   # matas e clareiras
 			var by := hs[ix + iz * W]
