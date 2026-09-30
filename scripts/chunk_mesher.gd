@@ -95,8 +95,9 @@ static func _padded(d: PackedByteArray, nb: Array) -> PackedByteArray:
 # d: blocos do chunk. nb: vizinhos [+X, -X, +Z, -Z]; PackedByteArray vazio = fora do mundo (ar).
 # corners: vizinhos de canto [+X+Z, +X-Z, -X+Z, -X-Z], só como fontes de luz (vazio ou ausente = sem tocha de lá).
 # Retorna os arrays da superfície opaca para ArrayMesh.add_surface_from_arrays, ou [] se não houver faces.
-# water_out (opcional) recebe os arrays da superfície da água, se houver.
-static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [], corners := []) -> Array:
+# water_out (opcional) recebe os arrays da superfície da água, se houver. models_out (opcional) recebe [id, posição local, luz (céu, tocha)]
+# de cada bloco com modelo voxel (shape "model"): o world.gd os instancia à parte, fora da malha.
+static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [], corners := [], models_out := []) -> Array:
 	var solid := Blocks.solid
 	var special := Blocks.special
 	var liquid := Blocks.liquid
@@ -129,6 +130,8 @@ static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [
 				if special[b]:
 					if liquid[b]:
 						_liquid(a if Blocks.glow[b] else wd, p, hts, lights, b, x, y, z, tw)
+					elif Blocks.model[b] != "":
+						models_out.append([b, Vector3i(x, y, z), _light(p, hts, lights, x, y, z)])
 					else:
 						_shape(a, b, Vector3(x, y, z), tw, _light(p, hts, lights, x, y, z), p, pi)
 					continue

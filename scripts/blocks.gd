@@ -13,6 +13,8 @@ static var hammer := PackedByteArray()     # id -> 1 se só um martelo quebra (S
 static var guard := PackedInt32Array()      # id -> poder de picareta exigido enquanto o Skeletron não foi derrotado (tijolos do dungeon); 0 = livre
 static var mine := PackedFloat32Array()    # id -> dureza ao contrário: dano por golpe = poder da picareta × isto (100 de dano quebra o bloco)
 static var shape: Array[String] = []       # id -> "" (cubo) ou forma não sólida: "torch", "plant" (cruz), "liquid" (água/lava)
+static var model: Array[String] = []       # id -> modelo voxel do bloco (shape "model": instância à parte, fora da malha do chunk; scripts/voxel), "" = nenhum
+static var model_size: Array[Vector2] = [] # id -> largura e altura do modelo em tiles do Terraria (1 tile = 0,6 bloco); o modelo inteiro cabe nessa largura
 static var special := PackedByteArray()    # id -> 1 se tem forma própria (shape != "")
 static var liquid := PackedByteArray()     # id -> 1 se é líquido (água/lava em qualquer nível; liquid.gd faz fluir)
 static var liquid_kind := PackedInt32Array()  # id -> id do líquido cheio (water, lava) a que o nível pertence; o próprio id se não é líquido
@@ -53,6 +55,8 @@ static func load_pack(dir := "res://data/base") -> void:
 	mine.clear()
 	shape.clear()
 	special.clear()
+	model.clear()
+	model_size.clear()
 	liquid.clear()
 	liquid_kind.clear()
 	liquid_level.clear()
@@ -82,6 +86,8 @@ static func load_pack(dir := "res://data/base") -> void:
 		mine.append(b.get("mine", 1.0))
 		shape.append(b.get("shape", ""))
 		special.append(1 if shape[-1] != "" else 0)
+		model.append(b.get("model", "") if shape[-1] == "model" else "")
+		model_size.append(Vector2(b.size[0], b.size[1]) if b.has("size") else Vector2.ZERO)
 		liquid.append(1 if shape[-1] == "liquid" else 0)
 		liquid_kind.append(ids[b.get("liquid", b.name)] if liquid[-1] else ids[b.name])
 		liquid_level.append(b.get("level", 8) if liquid[-1] else 0)

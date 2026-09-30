@@ -6,4 +6,5 @@ export_presets.cfg
 .tools/
 textures/
 assets/wiki/
+assets/models/
 __pycache__/

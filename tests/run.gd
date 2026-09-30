@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -3516,6 +3516,98 @@ func quads(mesh: ArrayMesh) -> int:
 	return mesh.surface_get_array_len(0) / 4
 
 
+# Modelos voxel (scripts/voxel): .vox ida e volta, mesher (faces internas somem, sentido das faces, encaixe, emissivo), inflado do sprite,
+# corpo, bloco com modelo e os pilotos (Living Loom, Molten).
+func test_voxel():
+	var m := VoxModel.new()
+	m.box(Vector3i(0, 0, 0), Vector3i(1, 1, 1), 0xc08040)
+	m.put(Vector3i(5, 0, 0), 0)
+	m.put(Vector3i(6, 0, 0), 0xff1800)
+	m.put(Vector3i(3, 3, 3), VoxModel.ANCHOR)
+	m.emit[0xff1800] = true
+	check(m.v[Vector3i(5, 0, 0)] != 0, "sem preto puro: voxel preto vira quase preto")
+	var path := "user://test_model.vox"
+	m.write(path)
+	var r := VoxModel.read(path)
+	check(r != null and r.v.size() == m.v.size() and r.has_anchor and r.anchor == Vector3i(3, 3, 3) and r.emit.has(0xff1800) and r.v[Vector3i(6, 0, 0)] == 0xff1800, "vox: grava e lê (voxels, encaixe, emissivo)")
+	check(VoxModel.read("user://nao_existe.vox") == null, "vox: arquivo ausente = null")
+	var cube := VoxModel.new()
+	cube.box(Vector3i.ZERO, Vector3i(1, 1, 1), 0x808080)
+	var mesh := VoxMesh.build(cube)
+	check(quads(mesh) == 24, "mesher: cubo 2x2x2 tem só as 24 faces de fora (%d)" % quads(mesh))
+	var bar := VoxModel.new()
+	bar.box(Vector3i.ZERO, Vector3i(2, 0, 0), 0x808080)
+	check(quads(VoxMesh.build(bar)) == 14, "mesher: barra 3x1x1 = 14 faces")
+	var a := mesh.surface_get_arrays(0)
+	var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+	var nr: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+	var ix: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	var wound := true
+	for t in range(0, ix.size(), 3):
+		wound = wound and (v[ix[t + 1]] - v[ix[t]]).cross(v[ix[t + 2]] - v[ix[t]]).dot(nr[ix[t]]) < 0
+	check(wound, "mesher: faces viradas para fora")
+	check(is_equal_approx(mesh.get_aabb().size.x, 2 * VoxMesh.V) and is_equal_approx(mesh.get_aabb().position.y, 0.0), "mesher: voxel = V e a origem é o centro da base")
+	var anch := VoxModel.new()
+	anch.box(Vector3i(-2, -2, -2), Vector3i(2, 2, 2), 0x808080)
+	anch.put(Vector3i.ZERO, VoxModel.ANCHOR)
+	var ab := VoxMesh.build(anch).get_aabb()
+	check(ab.get_center().length() < VoxMesh.V * 0.6 and is_equal_approx(ab.size.y, 5 * VoxMesh.V), "mesher: origem no encaixe, que não vira voxel")
+	var glowing := VoxModel.new()
+	glowing.box(Vector3i.ZERO, Vector3i(1, 0, 0), 0xff1800)
+	glowing.emit[0xff1800] = true
+	var gm := VoxMesh.build(glowing)
+	check(gm.surface_get_arrays(0)[Mesh.ARRAY_COLOR][0].a == 0.0 and gm.get_meta("glow").size() == 2, "mesher: emissivo = alfa 0 e topos listados")
+	# sprite inflado: a silhueta de frente é a do sprite e há volume
+	var plus := Image.create(5, 5, false, Image.FORMAT_RGBA8)
+	plus.fill(Color.RED)
+	var inf := VoxModel.from_sprite(plus, VoxModel.inflate(plus, 2))
+	var cols := {}
+	for p in inf.v:
+		cols[Vector2i(p.x, p.z)] = (cols.get(Vector2i(p.x, p.z), 0) as int) + 1
+	check(cols.size() == 25 and cols[Vector2i(2, 2)] == 4 and cols[Vector2i(0, 0)] == 2 and inf.size().y == 4, "inflar: mesma silhueta de frente, centro mais grosso que a borda")
+	check(VoxModel.from_sprite(plus, VoxModel.inflate(plus, 2)).v.size() == inf.v.size(), "inflar: determinístico")
+	var icon := Items.icon_texture(Items.ids.copper_pickaxe, ImageTexture.create_from_image(Atlas.build(Blocks.textures)))
+	var held: Array = ItemModel.for_item(Items.ids.copper_pickaxe, icon, 0.9)
+	check(held[0].get_aabb().size.z > 0.03 and held[1] is ShaderMaterial and is_equal_approx(maxf(held[0].get_aabb().size.x, held[0].get_aabb().size.y), 0.9), "item na mão: volume do sprite inflado, lado maior = comprimento")
+	# corpo: altura de ~1,8 bloco, nas articulações do player_model; recolor troca a camisa
+	var look := {"skin": Color(VoxRecipes.LOOK.skin), "hair": Color(VoxRecipes.LOOK.hair), "shirt": Color(VoxRecipes.LOOK.shirt), "pants": Color(VoxRecipes.LOOK.pants)}
+	var top: float = VoxRecipes.PIV.upper.y + VoxRecipes.PIV.head.y + VoxRecipes.part_mesh("body", "hair", look).get_aabb().end.y
+	var feet: float = VoxRecipes.PIV.leg.y + VoxRecipes.part_mesh("body", "leg", look).get_aabb().position.y
+	check(absf(top - 1.8) < 0.1 and absf(feet) < 0.03, "corpo voxel: ~1,8 de altura e pés no chão (%.2f, %.2f)" % [top, feet])
+	var blue := look.duplicate()
+	blue.shirt = Color("#2060ff")
+	var c0: PackedColorArray = VoxRecipes.part_mesh("body", "torso", look).surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var c1: PackedColorArray = VoxRecipes.part_mesh("body", "torso", blue).surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	check(c0 != c1 and c0.size() == c1.size(), "corpo voxel: a cor da camisa vem do personagem")
+	# bloco com modelo
+	var loom: int = Blocks.ids.living_loom
+	check(Blocks.shape[loom] == "model" and Blocks.model[loom] == "living_loom" and Blocks.model_size[loom] == Vector2(3, 3) and Blocks.solid[loom] == 0, "Living Loom: bloco com modelo, sem colisão")
+	var lm := VoxRecipes.block_mesh("living_loom", Blocks.model_size[loom])
+	check(is_equal_approx(lm.get_aabb().size.x, 1.8) and lm.get_aabb().size.z > 0.2, "Living Loom: 3 tiles = 1,8 bloco de largura, com profundidade (%s)" % lm.get_aabb().size)
+	var d := chunk(0)
+	d[5 + 5 * C + 20 * C * C] = loom
+	var models := []
+	ChunkMesher.build(d, [PackedByteArray(), PackedByteArray(), PackedByteArray(), PackedByteArray()], Blocks.textures.size(), [], [], models)
+	check(models.size() == 1 and models[0][0] == loom and models[0][1] == Vector3i(5, 20, 5), "mesher do chunk entrega o bloco com modelo e não o desenha na malha")
+	check(VoxRecipes.loom({"wiki": "nao_existe"}).v.size() > 100 and VoxRecipes.armor_set("x", {"wiki": "nao_existe"}).is_empty(), "sem o sprite baixado: loom vira caixa e o conjunto cai nas formas em código")
+	# Molten: modelo por peça, brilho e cor do sprite
+	if VoxRecipes.sprite("Molten_armor") != null:
+		var mh := VoxRecipes.find("molten", "head")
+		check(mh != null and mh.has_anchor and mh.emit.size() >= 3 and VoxRecipes.find("molten", "leg") != null, "Molten: 4 peças voxel com encaixe e cores emissivas")
+		check(VoxRecipes.part_mesh("molten", "head").get_meta("glow").size() > 3, "Molten: topos da crista listados para as fagulhas")
+	check(FileAccess.get_file_as_string("res://docs/LEVAS.md") == load("res://scripts/voxel/levas.gd").text(), "docs/LEVAS.md em dia (rode .tools/godot --headless -s scripts/voxel/levas.gd)")
+	var used := {}   # todo `model` citado nos dados resolve para uma receita ou arquivo
+	for b in Blocks.model:
+		if b != "":
+			used[b] = true
+	for k in Items.sets:
+		if Items.sets[k].model != "":
+			used[Items.sets[k].model] = true
+	for n in used:
+		check(VoxRecipes.specs().has(n), "model '%s' está em models.json" % n)
+	return true
+
+
 func test_item_model():
 	var plus := Image.create(3, 3, false, Image.FORMAT_RGBA8)
 	for p in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 2)]:
@@ -4999,7 +5091,14 @@ func test_armor_looks():
 		ids[2] = Items.ids["molten_greaves" if set == "molten" else "meteor_leggings" if set == "meteor" else "ninja_pants"]
 		m.worn = ids
 		m._dress()
-		check(m.shells.size() == 3 and m.shells.head.size() > 3, "%s: vestiu as 3 peças com formas próprias" % set)
+		if set == "molten":   # casca voxel: uma malha na cabeça, tronco + 2 braços, 2 pernas (sem o sprite do conjunto baixado, cai nas formas em código)
+			var vox: bool = VoxRecipes.sprite("Molten_armor") != null
+			check(m.shells.size() == 3 and (m.shells.head.size() == 1 and m.shells.body.size() == 3 and m.shells.legs.size() == 2 if vox else m.shells.head.size() > 3), "molten: vestiu as 3 peças (casca voxel: %s)" % vox)
+		else:
+			check(m.shells.size() == 3 and m.shells.head.size() > 3, "%s: vestiu as 3 peças com formas próprias" % set)
+	m.worn = PackedInt32Array([Items.ids.gold_helmet, Items.ids.gold_chainmail, Items.ids.gold_greaves])   # metal comum: peças genéricas (formas em código)
+	m._dress()
+	check(m.shells.head.size() > 3 and m.shells.body.size() > 3 and m.shells.legs.size() > 3, "gold: vestiu as 3 peças genéricas")
 	var pal: Array = m._colors(Items.ids.molten_helmet, true)
 	check(pal[3].r > 0.8 and pal[3].b < 0.35 and pal[0].s < 0.4, "molten: destaque laranja separado do metal cinza-oliva (%s / %s)" % [pal[3], pal[0]])
 	d.free()

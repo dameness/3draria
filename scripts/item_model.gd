@@ -1,6 +1,6 @@
 class_name ItemModel
-# Transforma o ícone 2D num objeto 3D: frente e verso com a própria imagem (alpha scissor)
-# e bordas só onde o pixel vizinho é transparente. Mantém a silhueta exata do sprite.
+# Transforma o ícone 2D num objeto 3D. `build`: extrusão fina (frente e verso com a própria imagem, bordas só onde o vizinho é
+# transparente) para inimigos de sprite; `for_item`: o modelo voxel (scripts/voxel), que dá volume a todo item.
 
 const THICK := 1.5          # espessura em pixels do sprite
 const SHADE_FRONT := 1.0
@@ -69,17 +69,16 @@ static func _quad(a: Dictionary, c: Array, uvs: Array, n: Vector3, shade: float)
 	a.i.append_array([base, base + 1, base + 2, base, base + 2, base + 3])
 
 
-# [malha, material] do item, a partir do mesmo ícone da interface. Cacheado por item.
+# [malha, material] do item na mão: modelo voxel (campo `model` do item, senão o nome; sem nada, o sprite inflado), cacheado.
+# Itens soltos do código (projétil com sprite) passam um id que não é de item: valem só o ícone. A extrusão fina acima (`build`) fica
+# para os inimigos.
 static func for_item(id: int, icon: Texture2D, length: float) -> Array:
 	var key := [id, length]
 	if not cache.has(key):
 		var img := icon.get_image()
 		img.convert(Image.FORMAT_RGBA8)
-		var mat := StandardMaterial3D.new()
-		mat.albedo_texture = ImageTexture.create_from_image(img)
-		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
-		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		mat.vertex_color_use_as_albedo = true
-		cache[key] = [build(img, length), mat]
+		var name := ""
+		if id >= 0 and id < Items.names.size():
+			name = Items.defs[id].get("model", Items.names[id])
+		cache[key] = [VoxRecipes.item_mesh(name, img, length), VoxMesh.material(0.6)]
 	return cache[key]

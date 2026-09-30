@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Baixa os sprites citados em "wiki" nos data/*/textures.json para assets/wiki/ (fora do git; uso pessoal).
+# Baixa os sprites citados em "wiki" nos data/*/textures.json e models.json para assets/wiki/ (fora do git; uso pessoal).
 # Idempotente: só baixa o que falta, então é só rodar de novo se algum falhar. Sem os sprites o jogo funciona
 # igual, com as texturas procedurais.
 # A wiki limita o ritmo (HTTP 429): baixa um arquivo por vez, com pausa, obedecendo o Retry-After; se ela insistir,
@@ -50,6 +50,14 @@ def real_url(host, name):
 
 todo = {}
 for path in sorted(glob.glob(os.path.join(root, "data", "*", "textures.json"))):
+    host = HOSTS.get(os.path.basename(os.path.dirname(path)), "terraria.wiki.gg")
+    for spec in json.load(open(path)).values():
+        name = spec.get("wiki")
+        dest = os.path.join(out, str(name) + ".png")
+        if name and not (os.path.exists(dest) and os.path.getsize(dest) > 0):
+            todo[name] = host
+
+for path in sorted(glob.glob(os.path.join(root, "data", "*", "models.json"))):   # sprites-base dos modelos voxel (scripts/voxel)
     host = HOSTS.get(os.path.basename(os.path.dirname(path)), "terraria.wiki.gg")
     for spec in json.load(open(path)).values():
         name = spec.get("wiki")

@@ -177,8 +177,6 @@ func _show(id: int) -> void:
 		glow = MeshInstance3D.new()
 		glow.mesh = m[0]
 		var gm := _additive(Color(Color(fx.glow), 0.45))
-		gm.albedo_texture = m[1].albedo_texture  # usa a transparência do sprite: o halo segue a silhueta
-		gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 		glow.material_override = gm
 		var c := aabb.get_center()
 		glow.transform = Transform3D(Basis().scaled(Vector3.ONE * 1.15), c - c * 1.15)
