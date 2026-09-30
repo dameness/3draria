@@ -138,7 +138,10 @@ var highlight: MeshInstance3D
 
 func _ready() -> void:
 	if SaveGame.world_path != "":
-		SaveGame.load_world(world, self, clock, SaveGame.world_path)
+		var old_path := SaveGame.world_path
+		SaveGame.load_world(world, self, clock, old_path)
+		if SaveGame.world_path == "" and old_path != "":
+			say("mundo de outro tamanho: crie um mundo novo (este jogo não será salvo)")
 		world.render_distance = Settings.render_distance
 	if spawn == Vector3.ZERO:  # mundo novo: nasce no meio, na superfície
 		var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2

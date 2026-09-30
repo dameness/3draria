@@ -215,7 +215,7 @@ func chest_at(p: Vector3i) -> Dictionary:
 	if not chests.has(p):
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash([world_seed, p.x, p.y, p.z])
-		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest("living" if gen and gen.living_chests.has(p) else Loot.layer_of(p.y), rng, gen.sky_chests.find(p) if gen else -1)   # ilhas: cada uma com o próximo item principal
+		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest("living" if gen and gen.living_chests.has(p) else "water" if gen and gen.in_sea(p.x, p.z) else Loot.layer_of(p.y), rng, gen.sky_chests.find(p) if gen else -1)   # ilhas: cada uma com o próximo item principal
 	if k != -1:
 		chests[p].title = TestWorld.chests[k].title   # o painel mostra o nome da categoria (não vai no save: sai da posição)
 	return chests[p]
@@ -395,6 +395,9 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 			if meshes[k]:
 				meshes[k].queue_free()
 			meshes.erase(k)
+	for k in chunks.keys():   # o mundo é grande: chunks longe e sem edição saem da memória (get_block/a geração os refazem iguais)
+		if not edited.has(k) and (k - c).length_squared() > (r + 4) * (r + 4):
+			chunks.erase(k)
 	pending.clear()
 	for z in range(c.y - r, c.y + r + 1):
 		for x in range(c.x - r, c.x + r + 1):

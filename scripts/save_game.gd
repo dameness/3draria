@@ -51,7 +51,7 @@ static func _look_out(look: Dictionary) -> Dictionary:
 
 static func create_world(name: String, seed: int, test := false) -> String:
 	var path := _path(worlds_dir, name, ".wld")
-	if path == "" or _write(path, {"version": VERSION, "name": name.strip_edges(), "seed": seed, "time": 60.0, "chunks": {}, "test": test}) != OK:
+	if path == "" or _write(path, {"version": VERSION, "name": name.strip_edges(), "seed": seed, "size": WorldGen.SIZE_CHUNKS, "time": 60.0, "chunks": {}, "test": test}) != OK:
 		return ""
 	return path
 
@@ -151,7 +151,7 @@ static func save_world(world, player, clock, path: String) -> Error:
 	var chunks := {}
 	for k in world.edited:
 		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
-	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed,
+	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed, "size": WorldGen.SIZE_CHUNKS,
 		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "eoc_down": world.eoc_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
 		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "spread": world.spread, "npcs": world.npcs, "homes": world.homes, "town_wait": world.town_wait, "test": world.test_world})
 
@@ -166,6 +166,9 @@ static func _chests_out(chests: Dictionary) -> Dictionary:
 static func load_world(world, player, clock, path: String) -> bool:
 	var data := _read(path)
 	if data.is_empty():
+		return false
+	if data.get("size", 16) != WorldGen.SIZE_CHUNKS:   # mundo de outro tamanho (o pequeno de antes): o terreno mudou, então o arquivo fica intacto e se joga sem salvar
+		world_path = ""
 		return false
 	world.set_seed(data.seed, data.get("test", false))
 	var size := WorldGen.CHUNK * WorldGen.CHUNK * WorldGen.HEIGHT

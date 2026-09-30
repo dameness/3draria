@@ -78,7 +78,7 @@ menu.tscn            cena inicial: menu (personagem/mundo)   game.tscn  o jogo (
 scripts/             setup-godot.sh e um .gd por sistema:
   blocks.gd          carrega blocks.json/textures.json (id = posição na lista, 0 = ar)
   atlas.gd           gera o atlas 16x16 procedural
-  world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128); o mundo é uma ilha (oceano a partir de 104 blocos do centro) com 3 ilhas flutuantes (y ≥ SKY_BASE) e Living Trees (`_plan_living`/`_living`: árvores gigantes de living_wood com poço, túneis e sala do tesouro)
+  world_gen.gd       ruído em camadas → PackedByteArray por chunk (16x16x128); o mundo é uma ilha redonda de 1920x1920 (oceano fundo a partir de `LAND_RADIUS`, biomas em faixas por raio/ângulo, dungeon na borda) com ilhas flutuantes (y ≥ SKY_BASE) e Living Trees (`_plan_living`/`_living`: árvores gigantes de living_wood com poço, túneis e sala do tesouro)
   housing.gd         moradia de habitante (wiki Housing em 3D): cômodo fechado com tocha, bancada e cadeira; portas contam como parede
   spelunker.gd       brilhos do Espeleólogo vistos através da terra (varre os chunks com find, sem laço por bloco)
   timber.gd          árvores (wiki Tree): dano por tile, queda da árvore inteira com animação, madeira e acorn; a muda cresce em world.gd
@@ -105,13 +105,14 @@ scripts/             setup-godot.sh e um .gd por sistema:
   menu.gd            menu inicial com o mundo real ao fundo (câmera girando, dia passando) e o personagem escolhido de pé
                      no gramado: Um jogador → personagem → mundo; no jogo o botão Configurações do inventário pausa (Continuar / Salvar e sair)
   ui.gd              tema e peças da interface do Terraria (fonte com contorno, painéis azuis, coração, dicas por raridade)
-  minimap.gd         mapa de exploração (256x256, origem fixa, vai no save): retrato / sobreposição / oculto (Tab), cheio (M), zoom (+/-)
+  minimap.gd         mapa de exploração (1 pixel por bloco, origem fixa, vai no save): retrato / sobreposição / oculto (Tab), cheio (M), zoom (+/-)
   hud.gd             GUI no layout do Terraria (docs/UI.md): hotbar/inventário, criação, equipamento, vida, cursor, Configurações (pausa)
   settings.gd        opções (distância, volume, sensibilidade) em user://settings.cfg; o menu liga o caminho, testes usam os padrões
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  braço + item na mão (1ª pessoa): pose, inércia, balanço
   player_model.gd    boneco chibi arredondado com contorno (3ª pessoa, tecla V): poses, arma na mão, armadura por peça
 scripts/update.sh    após cada git pull: Godot + sprites + cache de classes
 tests/character_preview.gd  prévia dos personagens/armaduras (xvfb) → textures/personagens.png
+tests/world_map.gd  mapa do mundo inteiro pela geração (headless) → textures/mapa_mundo.png
 tests/run.gd         testes headless (asserts simples, sem framework) + integração da cena principal
 data/base/           conteúdo do jogo base
 data/calamity/       conteúdo da expansão (F7)

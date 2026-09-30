@@ -4,8 +4,8 @@ class_name TestWorld
 # depois nos JSON aparece sozinho. Determinístico: WorldGen.generate carimba a arena (stamp) e World.chest_at enche os baús (stock);
 # o .wld só guarda a flag "test". build() roda na thread principal antes de gerar chunks; as threads só leem.
 
-const CX := 128                 # centro da arena = nascimento (WorldGen.CENTER)
-const CZ := 128
+const CX := WorldGen.SIZE_CHUNKS * 8   # centro da arena = nascimento (WorldGen.CENTER)
+const CZ := WorldGen.SIZE_CHUNKS * 8
 const FLAT := WorldGen.SURFACE + 2   # y do gramado (a planície do nascimento já fica por aqui)
 const ARENA := Rect2i(CX - 44, CZ - 32, 89, 74)   # x, z, largura, profundidade: gramado limpo, sem árvore nem lago
 const CATEGORIES := ["Armas", "Ferramentas", "Armaduras", "Acessórios", "Poções e consumíveis", "Blocos e minérios", "Moedas e munição", "Materiais e barras", "Chefes e invocadores"]

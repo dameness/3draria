@@ -6,7 +6,7 @@ extends RefCounted
 
 const CHUNK := 16
 const HEIGHT := 128
-const SIZE_CHUNKS := 16        # mundo finito: 16x16 chunks = 256x256 blocos
+const SIZE_CHUNKS := 120       # mundo finito: 120x120 chunks = 1920x1920 blocos (uma ilha redonda; o resto é oceano). Só a região perto do jogador existe na memória; mude aqui para encolher tudo
 const SIZE := SIZE_CHUNKS * CHUNK   # lado do mundo em blocos
 const UNDERWORLD_TOP := 20     # abaixo disto: submundo
 const CAVERN_TOP := 48         # abaixo disto: camada de cavernas (pedra)
@@ -17,26 +17,26 @@ const LAVA_CAVE := 24          # cavernas: o que está aberto abaixo disto é la
 const ROCK_LINE := 100         # acima disto a superfície é pedra pelada
 const MARGIN := 5              # alturas calculadas além do chunk: inclinação e árvores dos chunks vizinhos
 const TREE_CELL := 5           # no máximo uma árvore por célula 5x5 (posição sorteada dentro dela)
-const EVIL_RADIUS := 30.0      # raio do bioma do mal
-const SNOW_RADIUS := 30.0      # raio do bioma de neve
 const DUNGEON_CELL := 10       # dungeon: grade de salas de 10 blocos (parede incluída), 6 x 5 salas em 2 andares
 const DUNGEON_W := 6
 const DUNGEON_D := 5
 const DUNGEON_Y := 30          # chão do 1º andar
 const DUNGEON_FLOORS := 2
 const SKY_BASE := 110          # de y = 110 para cima é céu: só há as ilhas flutuantes; a luz do céu e surface_y ignoram isso (a terra embaixo não escurece)
-const SKY_ISLANDS := 3         # mundo pequeno: 3 ilhas (wiki Floating Island), cada uma com uma casa e um Skyware Chest
+const SKY_ISLANDS := 10        # ilhas (wiki Floating Island), cada uma com uma casa e um Skyware Chest
 const SKY_R := 9               # raio de uma ilha
-const LAND_RADIUS := 104.0     # o mundo é uma ilha: até este raio do centro é terra; daí a costa desce e fora dela é oceano
-const COAST := 18.0            # largura da costa (do fim da terra ao fundo do mar)
-const OCEAN_DEPTH := 14        # o fundo do oceano fica tantos blocos abaixo do nível da água
-const CHASMS := 6              # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
+const LAND_RADIUS := 790.0     # o mundo é uma ilha: até este raio do centro é terra; daí a costa desce e fora dela é oceano
+const COAST := 70.0            # largura da costa (do fim da terra ao fundo do mar)
+const OCEAN_DEPTH := 30        # o fundo do oceano fica tantos blocos abaixo do nível da água
+const SEA_CHESTS := 0.02       # chance por chunk de oceano de ter uma ruína submersa com baú (loot "water")
+const CHASMS := 12             # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
 const CHASM_DEPTH := 38
-const MINES := 4               # minas abandonadas (wiki Abandoned Minecart Track): corredor escorado com trilho, fundo no subsolo, poço de corda até a superfície
+const MINES := 16              # minas abandonadas (wiki Abandoned Minecart Track): corredor escorado com trilho, fundo no subsolo, poço de corda até a superfície
 const MINE_Y0 := 50            # o trilho fica entre estas alturas (acima das cavernas alagadas, abaixo da superfície)
 const MINE_Y1 := 58
 const LIVING_H := 30           # Living Tree (wiki): altura do tronco acima do chão; o poço interno 5x5 desce até a sala do tesouro (14 abaixo do chão)
 const LIVING_TOP := 20         # altura da plataforma do topo do poço (a escada sobe até aqui)
+const LIVING_GROUPS := 14        # grupos de Living Trees por mundo (no máximo; o terreno decide)
 const LIVING_R := 15           # alcance horizontal de uma árvore (copa e galhos)
 const LIVING_RING: Array[Vector2i] = [Vector2i(2, 0), Vector2i(2, 1), Vector2i(2, 2), Vector2i(1, 2), Vector2i(0, 2), Vector2i(-1, 2), Vector2i(-2, 2), Vector2i(-2, 1),
 	Vector2i(-2, 0), Vector2i(-2, -1), Vector2i(-2, -2), Vector2i(-1, -2), Vector2i(0, -2), Vector2i(1, -2), Vector2i(2, -2), Vector2i(2, -1)]   # degraus da escada em espiral do poço
@@ -87,9 +87,13 @@ var sky_chests: Array[Vector3i] = []     # o baú de cada ilha (mesmo índice)
 var hardmode := false             # Wall of Flesh derrotado: minérios novos e o Hallow entram na geração (world.start_hardmode converte o que já existe)
 var hm_ores: Array = []           # ores.json com "hardmode": true (um por grupo, escolhido pela seed)
 var hallow_center := Vector2.ZERO
-var snow_center := Vector2.ZERO    # bioma de neve (wiki Snow biome): longe do mal, do Hallow e do dungeon
-var desert_center := Vector2.ZERO  # bioma de deserto (wiki Desert): o 4º disco, longe dos outros
-var jungle_center := Vector2.ZERO  # bioma de selva (wiki Jungle): o 5º disco; a colmeia com a larva fica debaixo dele
+# Biomas em faixas (anéis em volta do nascimento, raios em frações de LAND_RADIUS; ângulos a partir da direção do dungeon). Os *_center são um ponto
+# representativo de cada faixa (chasmas, colmeia, atalhos de teste); quem decide o bioma de uma coluna são os *_weight.
+var lateral := 1.0                 # +1 ou -1 (seed): em que lado ficam neve e deserto
+var dungeon_dir := 0.0             # ângulo do centro do mundo para o dungeon (borda); o mal fica do lado oposto
+var snow_center := Vector2.ZERO    # neve: anel 0,22-0,50, lado +90°
+var desert_center := Vector2.ZERO  # deserto: anel 0,22-0,50, lado -90°
+var jungle_center := Vector2.ZERO  # selva: anel 0,50-0,78, lado do dungeon; a colmeia com a larva fica debaixo dela
 var hive_center := Vector3i.ZERO   # centro da câmara da colmeia (a larva no chão dela)
 var SNOW: int
 var MUD: int
@@ -149,7 +153,9 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	var er := RandomNumberGenerator.new()   # bioma do mal: tipo, posição e abismos só dependem da seed
 	er.seed = hash([seed, "evil"])
 	evil = "corruption" if er.randi() % 2 == 0 else "crimson"
-	evil_center = CENTER + Vector2.from_angle(er.randf() * TAU) * er.randf_range(62.0, 80.0)
+	dungeon_dir = er.randf() * TAU   # o dungeon fica na borda, nesta direção; o mal, do lado oposto; neve e deserto, nas laterais
+	lateral = 1.0 if er.randi() % 2 == 0 else -1.0
+	evil_center = _at(PI, 0.68)
 	EVIL_STONE = Blocks.ids.ebonstone if evil == "corruption" else Blocks.ids.crimstone
 	EVIL_GRASS = Blocks.ids.corrupt_grass if evil == "corruption" else Blocks.ids.crimson_grass
 	ORB = Blocks.ids.shadow_orb if evil == "corruption" else Blocks.ids.crimson_heart
@@ -158,18 +164,18 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	for k in SKY_ISLANDS:
 		for attempt in 60:
 			var c := Vector2(sr.randi_range(SKY_R + 4, SIZE - SKY_R - 5), sr.randi_range(SKY_R + 4, SIZE - SKY_R - 5))
-			if c.distance_to(CENTER) > 45.0 and sky_islands.all(func(o): return c.distance_to(Vector2(o.x, o.z)) > 55.0):
+			if c.distance_to(CENTER) > 45.0 and c.distance_to(CENTER) < LAND_RADIUS and sky_islands.all(func(o): return c.distance_to(Vector2(o.x, o.z)) > 55.0):
 				var y := SKY_BASE + 8 + sr.randi_range(0, 4)
 				sky_islands.append(Vector3i(int(c.x), y, int(c.y)))
 				sky_chests.append(Vector3i(int(c.x), y + 1, int(c.y) - 1))   # no chão da casa, ao norte
 				break
 	for k in CHASMS:
-		var c := evil_center + Vector2.from_angle(TAU * k / CHASMS + er.randf_range(-0.15, 0.15)) * er.randf_range(13.0, 19.0)
+		var c := _at(PI + er.randf_range(-0.42, 0.42), er.randf_range(0.52, 0.86))   # espalhados pela faixa do mal
 		chasm_centers.append(Vector2i(c))
 		chasm_heights.append(surface_height(int(c.x), int(c.y)))
 	HALLOW_GRASS = Blocks.ids.hallowed_grass
 	PEARLSTONE = Blocks.ids.pearlstone
-	hallow_center = CENTER + Vector2(0, -72.0 if evil_center.y > CENTER.y else 72.0)   # entre o mal e o dungeon, nunca em cima de um
+	hallow_center = _at(lateral * PI / 2, 0.65)
 	SNOW = Blocks.ids.snow_block
 	MUD = Blocks.ids.mud
 	JGRASS = Blocks.ids.jungle_grass
@@ -185,32 +191,20 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	LIVING_WOOD = Blocks.ids.living_wood
 	LIVING_LOOM = Blocks.ids.living_loom
 	CHAIR = Blocks.ids.chair
-	dungeon_x = 6 if evil_center.x > CENTER.x else SIZE_CHUNKS * CHUNK - 6 - DUNGEON_W * DUNGEON_CELL - 1
-	dungeon_z = int(CENTER.y) - DUNGEON_D * DUNGEON_CELL / 2
-	var ex := dungeon_x + DUNGEON_W / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
-	var ez := dungeon_z + DUNGEON_D / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
+	snow_center = _at(-lateral * PI / 2, 0.36)
+	desert_center = _at(lateral * PI / 2, 0.36)
+	jungle_center = _at(0.0, 0.64)
+	var ex := 0   # o dungeon, na borda da terra: se a entrada cair num lago, anda um pouco pela borda até achar chão seco
+	var ez := 0
+	for k in 16:
+		var dc := _at((k / 2 + 1) * 0.03 * (1.0 if k % 2 == 0 else -1.0) if k > 0 else 0.0, 0.9)
+		dungeon_x = int(dc.x) - DUNGEON_W * DUNGEON_CELL / 2
+		dungeon_z = int(dc.y) - DUNGEON_D * DUNGEON_CELL / 2
+		ex = dungeon_x + DUNGEON_W / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
+		ez = dungeon_z + DUNGEON_D / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
+		if surface_height(ex, ez) > WATER_LEVEL + 2:
+			break
 	dungeon_entrance = Vector3i(ex, surface_height(ex, ez), ez)
-	var far := -1.0   # a neve fica no ponto do anel de 70 blocos mais longe dos outros três biomas
-	for k in 24:
-		var c := CENTER + Vector2.from_angle(TAU * k / 24.0) * 70.0
-		var m := minf(minf(c.distance_to(evil_center), c.distance_to(hallow_center)), c.distance_to(Vector2(ex, ez)))
-		if m > far:
-			far = m
-			snow_center = c
-	far = -1.0   # o deserto, no melhor ponto que sobra
-	for k in 24:
-		var c := CENTER + Vector2.from_angle(TAU * k / 24.0) * 70.0
-		var m := minf(minf(minf(c.distance_to(evil_center), c.distance_to(hallow_center)), c.distance_to(Vector2(ex, ez))), c.distance_to(snow_center))
-		if m > far:
-			far = m
-			desert_center = c
-	far = -1.0   # a selva, no que sobra
-	for k in 24:
-		var c := CENTER + Vector2.from_angle(TAU * k / 24.0) * 70.0
-		var m := minf(minf(minf(c.distance_to(evil_center), c.distance_to(hallow_center)), minf(c.distance_to(Vector2(ex, ez)), c.distance_to(snow_center))), c.distance_to(desert_center))
-		if m > far:
-			far = m
-			jungle_center = c
 	hive_center = Vector3i(int(jungle_center.x), surface_height(int(jungle_center.x), int(jungle_center.y)) - 16, int(jungle_center.y))
 	_plan_living()
 	_plan_mines()
@@ -323,12 +317,50 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	rng.seed = hash([seed, cx, cz, "crystal"])
 	_crystal(d, rng)
 	_living(d, cx, cz)
+	_sea(d, cx, cz)
 	_sky(d, cx, cz)
 	if hardmode:
 		hardmode_pass(d, cx, cz)
 	if test_world:
 		TestWorld.stamp(d, cx, cz)
 	return d
+
+
+# Onde (x, z dentro do chunk) fica a ruína submersa do chunk, ou (-1, -1) se não tem.
+func sea_spot(cx: int, cz: int) -> Vector2i:
+	if Vector2(cx * CHUNK + CHUNK / 2.0, cz * CHUNK + CHUNK / 2.0).distance_to(CENTER) < LAND_RADIUS + COAST + 12.0:
+		return Vector2i(-1, -1)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed, cx, cz, "sea"])
+	if rng.randf() > SEA_CHESTS:
+		return Vector2i(-1, -1)
+	return Vector2i(rng.randi_range(2, CHUNK - 3), rng.randi_range(2, CHUNK - 3))
+
+
+# Ruínas submersas (no fundo do mar aberto, de vez em quando): plataforma de arenito com quatro pilares e um baú de loot "water". Os pilares são o marco para achá-las.
+func _sea(d: PackedByteArray, cx: int, cz: int) -> void:
+	var spot := sea_spot(cx, cz)
+	if spot.x < 0:
+		return
+	var x := spot.x
+	var z := spot.y
+	var layer := CHUNK * CHUNK
+	var floors := PackedInt32Array()
+	for dz in range(-1, 2):
+		for dx in range(-1, 2):
+			var y := WATER_LEVEL
+			while y > 0 and not Blocks.solid[d[x + dx + (z + dz) * CHUNK + y * layer]]:
+				y -= 1
+			floors.append(y)
+	var pad := floors[0]
+	for f in floors:
+		pad = maxi(pad, f)
+	for k in 9:
+		var i := x + k % 3 - 1 + (z + k / 3 - 1) * CHUNK
+		var corner := k % 2 == 0 and k != 4
+		for y in range(floors[k], pad + (5 if corner else 1)):
+			d[i + y * layer] = SANDSTONE
+	d[x + z * CHUNK + (pad + 1) * layer] = CHEST
 
 
 # Ilhas flutuantes (wiki Floating Island): um disco de terra com grama em cima, nuvens embaixo, e no meio uma casinha de sunplate com um Skyware Chest.
@@ -366,11 +398,64 @@ func _sky(d: PackedByteArray, cx: int, cz: int) -> void:
 		_write(d, cx, cz, isl.x + 1, base, isl.z + 1, Blocks.ids.torch)
 
 
-func hallow_weight(wx: int, wz: int) -> float:
-	var dist := Vector2(wx, wz).distance_to(hallow_center)
-	if dist > EVIL_RADIUS + 8.0:
+# Ponto do mundo a `frac` de LAND_RADIUS do centro, no ângulo `a` medido a partir da direção do dungeon.
+func _at(a: float, frac: float) -> Vector2:
+	return CENTER + Vector2.from_angle(dungeon_dir + a) * frac * LAND_RADIUS
+
+
+# Quanto a coluna está dentro do setor (anel de frac r0 a r1, ângulo a0 ± hw): distância em blocos até a borda mais próxima (negativa fora).
+func _sector(wx: int, wz: int, r0: float, r1: float, a0: float, hw: float) -> float:
+	var v := Vector2(wx, wz) - CENTER
+	var r := v.length()
+	var da := absf(wrapf(v.angle() - dungeon_dir - a0, -PI, PI))
+	return minf(minf(r - r0 * LAND_RADIUS, r1 * LAND_RADIUS - r), (hw - da) * r)
+
+
+# Peso 0-1 da faixa: borda irregular (ruído largo + ruído fino), 1 dentro, 0 fora. Sai cedo, sem ruído, longe da borda.
+func _band(wx: int, wz: int, d_in: float, salt: int) -> float:
+	if d_in < -45.0:
 		return 0.0
-	return clampf((EVIL_RADIUS - dist + rock_noise.get_noise_2d(wx + 500, wz) * 8.0) / 4.0, 0.0, 1.0)
+	d_in += mount_noise.get_noise_2d(wx + salt, wz) * 30.0
+	if d_in < -10.0:
+		return 0.0
+	return clampf((d_in + rock_noise.get_noise_2d(wx + salt, wz) * 8.0) / 4.0, 0.0, 1.0)
+
+
+# O chunk (por ox, oz) está perto do anel r0..r1 (frações de LAND_RADIUS)? Descarta os outros sem olhar coluna por coluna.
+func _near_ring(ox: int, oz: int, r0: float, r1: float) -> bool:
+	var r := Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(CENTER)
+	return r > r0 * LAND_RADIUS - 60.0 and r < r1 * LAND_RADIUS + 60.0
+
+
+func hallow_weight(wx: int, wz: int) -> float:
+	return _band(wx, wz, _sector(wx, wz, 0.5, 0.8, lateral * PI / 2, 0.5), 500)
+
+
+func snow_weight(wx: int, wz: int) -> float:
+	return _band(wx, wz, _sector(wx, wz, 0.22, 0.5, -lateral * PI / 2, 1.05), 900)
+
+
+func desert_weight(wx: int, wz: int) -> float:
+	return _band(wx, wz, _sector(wx, wz, 0.22, 0.5, lateral * PI / 2, 1.05), 1300)
+
+
+func jungle_weight(wx: int, wz: int) -> float:
+	return _band(wx, wz, _sector(wx, wz, 0.5, 0.78, 0.0, 0.95), 1700)
+
+
+# Corrupção/Carmesim: setor do lado oposto ao dungeon, do anel da neve até perto da praia.
+func evil_weight(wx: int, wz: int) -> float:
+	return _band(wx, wz, _sector(wx, wz, 0.45, 0.92, PI, 0.6), 0)
+
+
+# Lado do oceano: true = o da direção do dungeon (no Calamity, o Sulphurous Sea substitui o oceano desse lado), false = o oposto.
+func sea_side_dungeon(wx: int, wz: int) -> bool:
+	return absf(wrapf((Vector2(wx, wz) - CENTER).angle() - dungeon_dir, -PI, PI)) < PI / 2
+
+
+# Fora da terra (costa e mar aberto)?
+func in_sea(wx: int, wz: int) -> bool:
+	return Vector2(wx, wz).distance_to(CENTER) > LAND_RADIUS + COAST * 0.5
 
 
 # Hardmode: veios de cobalto/paládio na pedra e o Hallow (grama e pedra) num disco do outro lado do mundo. Determinístico por chunk:
@@ -381,7 +466,7 @@ func hardmode_pass(d: PackedByteArray, cx: int, cz: int) -> void:
 	_ores(d, rng, hm_ores)
 	var ox := cx * CHUNK
 	var oz := cz * CHUNK
-	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(hallow_center) > EVIL_RADIUS + 8.0 + CHUNK:
+	if not _near_ring(ox, oz, 0.5, 0.8):
 		return
 	var layer := CHUNK * CHUNK
 	for z in CHUNK:
@@ -399,32 +484,12 @@ func hardmode_pass(d: PackedByteArray, cx: int, cz: int) -> void:
 					d[i + y * layer] = PEARLSTONE
 
 
-func snow_weight(wx: int, wz: int) -> float:
-	return _disc(wx, wz, snow_center, 900)
-
-
-func jungle_weight(wx: int, wz: int) -> float:
-	return _disc(wx, wz, jungle_center, 1700)
-
-
-func desert_weight(wx: int, wz: int) -> float:
-	return _disc(wx, wz, desert_center, 1300)
-
-
-# Peso 0-1 de um bioma em disco (raio SNOW_RADIUS, borda irregular pelo ruído): 1 dentro, 0 fora.
-func _disc(wx: int, wz: int, center: Vector2, salt: int) -> float:
-	var dist := Vector2(wx, wz).distance_to(center)
-	if dist > SNOW_RADIUS + 8.0:
-		return 0.0
-	return clampf((SNOW_RADIUS - dist + rock_noise.get_noise_2d(wx + salt, wz) * 8.0) / 4.0, 0.0, 1.0)
-
-
 # Selva (wiki Jungle): grama de selva e lama no lugar da grama e da terra (as árvores ficam) e, debaixo do centro, a colmeia: uma bola de favo
 # de 5 blocos com uma câmara oca e a larva no chão dela (quebrar a larva chama a Queen Bee).
 func _jungle(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
 	var ox := cx * CHUNK
 	var oz := cz * CHUNK
-	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(jungle_center) > SNOW_RADIUS + 8.0 + CHUNK:
+	if not _near_ring(ox, oz, 0.5, 0.78):
 		return
 	var layer := CHUNK * CHUNK
 	for z in CHUNK:
@@ -463,7 +528,7 @@ func _jungle(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int)
 func _desert(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
 	var ox := cx * CHUNK
 	var oz := cz * CHUNK
-	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(desert_center) > SNOW_RADIUS + 8.0 + CHUNK:
+	if not _near_ring(ox, oz, 0.22, 0.5):
 		return
 	var layer := CHUNK * CHUNK
 	for z in CHUNK:
@@ -484,7 +549,7 @@ func _desert(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int)
 func _snow(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
 	var ox := cx * CHUNK
 	var oz := cz * CHUNK
-	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(snow_center) > SNOW_RADIUS + 8.0 + CHUNK:
+	if not _near_ring(ox, oz, 0.22, 0.5):
 		return
 	var layer := CHUNK * CHUNK
 	for z in CHUNK:
@@ -545,14 +610,14 @@ func _plan_mines() -> void:
 		for attempt in 40:
 			var axis := r.randi() % 2
 			var span := r.randi_range(70, 110)
-			var x := int(CENTER.x) + r.randi_range(-70, 70)
-			var z := int(CENTER.y) + r.randi_range(-70, 70)
+			var x := int(CENTER.x) + r.randi_range(-650, 650)
+			var z := int(CENTER.y) + r.randi_range(-650, 650)
 			var a := Vector2(x, z)
 			var b := a + (Vector2(span, 0) if axis == 0 else Vector2(0, span))
-			var ok := a.distance_to(CENTER) < 85.0 and b.distance_to(CENTER) < 85.0
+			var ok := a.distance_to(CENTER) < 0.85 * LAND_RADIUS and b.distance_to(CENTER) < 0.85 * LAND_RADIUS
 			for k in 5:
 				var q := a.lerp(b, k / 4.0)
-				ok = ok and not dun.has_point(q) and q.distance_to(Vector2(hive_center.x, hive_center.z)) > 25.0 and q.distance_to(CENTER) > 12.0
+				ok = ok and not dun.has_point(q) and q.distance_to(Vector2(hive_center.x, hive_center.z)) > 25.0 and q.distance_to(CENTER) > 40.0
 			for t in living_trees:
 				ok = ok and Geometry2D.get_closest_point_to_segment(Vector2(t.x, t.z), a, b).distance_to(Vector2(t.x, t.z)) > 16.0   # a sala do tesouro fica na altura das minas
 			var box := Rect2(a, b - a).abs().grow(6.0)   # uma mina não cruza outra (o corredor de uma apagaria o trilho da outra)
@@ -629,42 +694,41 @@ func _plan_living() -> void:
 	r.seed = hash([seed, "living"])
 	var dun := Rect2(dungeon_x - 14, dungeon_z - 14, DUNGEON_W * DUNGEON_CELL + 28, DUNGEON_D * DUNGEON_CELL + 28)
 	var mains: Array[Vector2] = []
-	for g in r.randi_range(1, 3):
-		for attempt in 50:
-			var c := CENTER + Vector2.from_angle(r.randf() * TAU) * r.randf_range(38.0, 70.0)
-			if not _living_ok(c, dun) or mains.any(func(m): return m.distance_to(c) < 50.0):
-				continue
-			mains.append(c)
-			var axis := r.randi() % 2
-			var group: Array[Dictionary] = [_living_tree(c, true, r)]
-			for side in [-1, 1]:
-				var at := c
-				for k in r.randi_range(0, 2):
-					at += (Vector2(side, 0) if axis == 0 else Vector2(0, side)) * r.randi_range(14, 22)
-					if not _living_ok(at, dun):
-						break
-					group.append(_living_tree(at, false, r))
-			var ty := 999
-			for t in group:
-				ty = mini(ty, t.y - 7)
-			var lo: int = group.map(func(t): return t.x if axis == 0 else t.z).min()
-			var hi: int = group.map(func(t): return t.x if axis == 0 else t.z).max()
-			if hi > lo:
-				var fixed: int = group[0].z if axis == 0 else group[0].x
-				living_tunnels.append({"axis": axis, "lo": lo, "hi": hi, "fixed": fixed, "y": ty})
-			living_trees.append_array(group)
+	for attempt in 400:
+		if mains.size() >= LIVING_GROUPS:
 			break
+		var c := CENTER + Vector2.from_angle(r.randf() * TAU) * r.randf_range(0.12, 0.92) * LAND_RADIUS
+		if not _living_ok(c, dun) or mains.any(func(m): return m.distance_to(c) < 110.0):
+			continue
+		mains.append(c)
+		var axis := r.randi() % 2
+		var group: Array[Dictionary] = [_living_tree(c, true, r)]
+		for side in [-1, 1]:
+			var at := c
+			for k in r.randi_range(0, 2):
+				at += (Vector2(side, 0) if axis == 0 else Vector2(0, side)) * r.randi_range(14, 22)
+				if not _living_ok(at, dun) or surface_height(int(at.x), int(at.y)) > group[0].y + 5:   # o túnel (7 abaixo da principal) tem de cruzar o poço de todas
+					break
+				group.append(_living_tree(at, false, r))
+		var ty: int = group[0].y - 7
+		var lo: int = group.map(func(t): return t.x if axis == 0 else t.z).min()
+		var hi: int = group.map(func(t): return t.x if axis == 0 else t.z).max()
+		if hi > lo:
+			living_tunnels.append({"axis": axis, "lo": lo, "hi": hi, "fixed": group[0].z if axis == 0 else group[0].x, "y": ty})
+		living_trees.append_array(group)
 	for t in living_trees:
 		if t.main:
 			living_chests.append(Vector3i(t.x + 4, t.y - 13, t.z))
 
 
-# Terreno bom para uma Living Tree: em terra firme, longe dos biomas, do dungeon e da colmeia, plano ao redor.
+# Terreno bom para uma Living Tree: em terra firme na floresta (nenhum outro bioma por perto), longe do dungeon e da colmeia, plano ao redor.
 func _living_ok(c: Vector2, dun: Rect2) -> bool:
-	if c.distance_to(CENTER) > 82.0 or dun.has_point(c) or c.distance_to(Vector2(hive_center.x, hive_center.z)) < 30.0:
+	if c.distance_to(CENTER) > 0.92 * LAND_RADIUS or dun.has_point(c) or c.distance_to(Vector2(hive_center.x, hive_center.z)) < 30.0:
 		return false
-	for bc in [evil_center, hallow_center, snow_center, desert_center, jungle_center]:
-		if c.distance_to(bc) < EVIL_RADIUS + 14.0:
+	for k in 9:
+		var q := c if k == 8 else c + Vector2.from_angle(TAU * k / 8.0) * 16.0
+		if evil_weight(int(q.x), int(q.y)) > 0.0 or hallow_weight(int(q.x), int(q.y)) > 0.0 or snow_weight(int(q.x), int(q.y)) > 0.0 \
+				or desert_weight(int(q.x), int(q.y)) > 0.0 or jungle_weight(int(q.x), int(q.y)) > 0.0:
 			return false
 	var by := surface_height(int(c.x), int(c.y))
 	if by < WATER_LEVEL + 4 or by > 84:
@@ -807,19 +871,11 @@ func _dungeon_block(wx: int, y: int, wz: int) -> int:
 	return AIR
 
 
-# Quanto do bioma do mal cobre a coluna (0 a 1): disco com a borda irregular por ruído.
-func evil_weight(wx: int, wz: int) -> float:
-	var d := Vector2(wx, wz).distance_to(evil_center)
-	if d > EVIL_RADIUS + 8.0:
-		return 0.0
-	return clampf((EVIL_RADIUS - d + rock_noise.get_noise_2d(wx, wz) * 8.0) / 4.0, 0.0, 1.0)
-
-
 # Corrupção/Carmesim: grama e pedra do bioma trocadas, mais os abismos estreitos com um orbe no fundo.
 func _evil(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
 	var ox := cx * CHUNK
 	var oz := cz * CHUNK
-	if Vector2(ox + CHUNK / 2.0, oz + CHUNK / 2.0).distance_to(evil_center) > EVIL_RADIUS + 8.0 + CHUNK:
+	if not _near_ring(ox, oz, 0.45, 0.92):
 		return
 	var layer := CHUNK * CHUNK
 	for z in CHUNK:
@@ -863,6 +919,8 @@ func _evil(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -
 			var i := lx + lz * CHUNK + o.y * layer
 			d[i - layer] = EVIL_STONE
 			d[i] = ORB
+			d[i + layer] = AIR   # o espaço em cima do orbe não fica alagado
+			d[i + 2 * layer] = AIR
 
 
 # O eixo do abismo serpenteia devagar com a altura.

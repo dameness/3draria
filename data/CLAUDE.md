@@ -31,6 +31,7 @@ atravessa e colocar bloco substitui; some se o chão sumir), `"liquid"` (água/l
 translúcida à parte, `"glow": true` = brilha sozinho, como a lava). Líquido flui (scripts/liquid.gd) e tem nível 1-8 por bloco:
 `water`/`lava` são o nível 8 (cheio) e `water_1..7`/`lava_1..7` (`"liquid": "water", "level": n`) os níveis parciais; a altura da
 superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 níveis, no fim da lista.
+`loot.json`: tabelas por camada (`underground`, `cavern`, `lava`, `sky`, `surface`) e `living` (sala do tesouro da Living Tree), `water` (ruínas do mar); `bundle` junta um item ao outro.
 `living_wood`: só de árvores gigantes (`item: false`, solta Wood); as varinhas (`wand: "wood"` em items.json) colocam-no/folhas gastando Wood.
 `shape: "track"` (minecart_track): placa rente ao chão que segue os vizinhos em x/z e vira rampa se o vizinho do lado está um bloco acima (e o do mesmo nível não existe); o carrinho (minecart.gd) usa a mesma regra. `shape: "door"`: painel fino na borda do bloco, sem colisão (porta aberta; `door` é o cubo sólido: as duas contam como parede na moradia). `shape: "rope"`: fio fino não sólido; dentro dele Espaço sobe, C desce, sem tecla pendura (player.gd `on_rope`). Forma nova = um `match` em `chunk_mesher._shape`.
 `light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).

@@ -675,6 +675,115 @@
 			}
 		]
 	},
+	"water": {
+		"main": [
+			"band_of_regeneration",
+			"magic_mirror",
+			"cloud_in_a_bottle",
+			"hermes_boots",
+			"mace",
+			"shoe_spikes",
+			"flare_gun"
+		],
+		"common": [
+			{
+				"items": [
+					"suspicious_looking_eye"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.2
+			},
+			{
+				"items": [
+					"silver_bar",
+					"tungsten_bar"
+				],
+				"min": 3,
+				"max": 10,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"gold_bar",
+					"platinum_bar"
+				],
+				"min": 3,
+				"max": 10,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"healing_potion"
+				],
+				"min": 3,
+				"max": 5,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"regeneration_potion",
+					"swiftness_potion",
+					"archery_potion",
+					"mining_potion",
+					"shine_potion",
+					"night_owl_potion",
+					"spelunker_potion"
+				],
+				"min": 1,
+				"max": 2,
+				"chance": 0.444
+			},
+			{
+				"items": [
+					"recall_potion"
+				],
+				"min": 2,
+				"max": 4,
+				"chance": 0.5
+			},
+			{
+				"items": [
+					"torch"
+				],
+				"min": 15,
+				"max": 29,
+				"chance": 0.25
+			},
+			{
+				"items": [
+					"gold_coin"
+				],
+				"min": 2,
+				"max": 4,
+				"chance": 0.75
+			},
+			{
+				"items": [
+					"lesser_mana_potion"
+				],
+				"min": 2,
+				"max": 4,
+				"chance": 0.3
+			},
+			{
+				"items": [
+					"dynamite"
+				],
+				"min": 1,
+				"max": 1,
+				"chance": 0.333
+			},
+			{
+				"items": [
+					"throwing_knife"
+				],
+				"min": 25,
+				"max": 50,
+				"chance": 0.25
+			}
+		]
+	},
 	"bundle": {
 		"flare_gun": {
 			"item": "flare",

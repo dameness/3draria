@@ -41,6 +41,8 @@ const SHOTS := [
 	{"name": "arvore_viva", "living": "out", "look": Vector2(0, -0.5), "creative": true},
 	{"name": "arvore_viva_sala", "living": "in", "look": Vector2(-PI / 2, -0.05), "creative": true, "time": 300.0},
 	{"name": "arvore_viva_poco", "living": "shaft", "look": Vector2(0, -0.6), "creative": true, "time": 300.0},
+	{"name": "mar_ruina", "sea": "ruin", "look": Vector2(0, -0.25), "creative": true},
+	{"name": "mar_costa", "sea": "coast", "look": Vector2(0, -0.1), "creative": true},
 	{"name": "ilha_ceu", "sky": "top", "look": Vector2(0, -0.08), "creative": true},
 	{"name": "ilha_ceu_baixo", "sky": "below", "look": Vector2(0, 0.35), "creative": true},
 	{"name": "ilha_ceu_bau", "sky": "top", "look": Vector2(0, -0.2), "creative": true, "inventory": true, "sky_chest": true},
@@ -264,9 +266,10 @@ func _setup(s: Dictionary) -> void:
 	if s.has("find"):  # junto do bloco pedido (água, lava) mais perto do meio do mundo
 		var best := Vector3i.ZERO
 		var bd := 1 << 40
-		for z in range(40, 216, 2):
-			for x in range(40, 216, 2):
-				var d := (x - 128) * (x - 128) + (z - 128) * (z - 128)
+		var o := int(WorldGen.CENTER.x) - 128   # o mundo antigo tinha o centro em 128
+		for z in range(o + 40, o + 216, 2):
+			for x in range(o + 40, o + 216, 2):
+				var d := (x - o - 128) * (x - o - 128) + (z - o - 128) * (z - o - 128)
 				if d < bd and world.get_block(x, s.get("find_y", WorldGen.WATER_LEVEL), z) == Blocks.ids[s.find]:
 					bd = d
 					best = Vector3i(x, s.get("find_y", WorldGen.WATER_LEVEL), z)
@@ -288,6 +291,26 @@ func _setup(s: Dictionary) -> void:
 		else:
 			player.position = Vector3(isl.x + 0.5, world.surface_y(isl.x, isl.z + 30), isl.z + 30.5)
 		print("  ", s.name, " ilha em ", isl)
+	if s.has("sea"):   # a ruína submersa mais perto do nascimento (de lado, debaixo d'água), ou a praia diante do mar
+		var g: WorldGen = world.gen
+		var best := Vector2i(-1, -1)
+		var bd := 1e9
+		for cz in WorldGen.SIZE_CHUNKS:
+			for cx in WorldGen.SIZE_CHUNKS:
+				var sp := g.sea_spot(cx, cz)
+				var dd := Vector2(cx * 16 + sp.x, cz * 16 + sp.y).distance_to(WorldGen.CENTER)
+				if sp.x >= 0 and dd < bd:
+					bd = dd
+					best = Vector2i(cx * 16 + sp.x, cz * 16 + sp.y)
+		if s.sea == "ruin":
+			var fy := g.surface_height(best.x, best.y)
+			player.position = Vector3(best.x + 0.5, fy + 5.0, best.y + 10.5)
+			player.rotation.y = 0.0
+		else:
+			var beach := WorldGen.CENTER + Vector2.from_angle(g.dungeon_dir + PI / 2) * (WorldGen.LAND_RADIUS + 10.0)
+			player.position = Vector3(beach.x, WorldGen.WATER_LEVEL + 12.0, beach.y)
+			player.rotation.y = -g.dungeon_dir - PI / 2 - PI / 2
+		print("  ", s.name, " em ", player.position, " ruína ", best)
 	if s.get("hell", false):
 		player.position = Vector3(player.spawn.x, 9.0, player.spawn.z)
 	if s.get("hardmode", false):
@@ -337,14 +360,15 @@ func _setup(s: Dictionary) -> void:
 		print("  ", s.name, " ", g.evil, " em ", player.position)
 	if s.get("tree", false):   # a árvore mais perto do nascimento, com o jogador a 8 blocos dela olhando para o tronco
 		var bd := 1 << 40
-		for z in range(70, 190):
-			for x in range(70, 190):
+		var o := int(WorldGen.CENTER.x) - 128
+		for z in range(o + 70, o + 190):
+			for x in range(o + 70, o + 190):
 				var sy: int = world.surface_y(x, z, true)
-				var d := (x - 128) * (x - 128) + (z - 128) * (z - 128)
+				var d := (x - o - 128) * (x - o - 128) + (z - o - 128) * (z - o - 128)
 				if d < bd and world.get_block(x, sy, z) == Blocks.ids.wood and Timber.is_tree(world, Vector3i(x, sy, z)):
 					bd = d
 					tree_base = Vector3i(x, sy, z)
-		var away := (Vector3(128.5, 0, 128.5) - Vector3(tree_base.x + 0.5, 0, tree_base.z + 0.5)).normalized()
+		var away := (Vector3(WorldGen.CENTER.x + 0.5, 0, WorldGen.CENTER.y + 0.5) - Vector3(tree_base.x + 0.5, 0, tree_base.z + 0.5)).normalized()
 		var at := Vector3(tree_base.x + 0.5, 0, tree_base.z + 0.5) + away * 8.0
 		player.position = Vector3(at.x, world.surface_y(int(at.x), int(at.z), true), at.z)
 		var to: Vector3 = Vector3(tree_base.x + 0.5, tree_base.y + 4.0, tree_base.z + 0.5) - player.eye()
@@ -366,11 +390,12 @@ func _setup(s: Dictionary) -> void:
 	if s.has("map"):   # minimapa: revela a faixa (ou o mundo todo) e escolhe o estilo
 		var mm: Minimap = main.get_node("HUD").minimap
 		if s.get("explore", false):
-			for cz in WorldGen.SIZE_CHUNKS:
-				for cx in WorldGen.SIZE_CHUNKS:
+			var m := WorldGen.SIZE_CHUNKS / 2   # o mundo inteiro é grande demais para um print: explora 40x40 chunks em volta do nascimento
+			for cz in range(m - 20, m + 20):
+				for cx in range(m - 20, m + 20):
 					world.get_block(cx * WorldGen.CHUNK, 0, cz * WorldGen.CHUNK)
-			for z in WorldGen.SIZE:
-				for x in WorldGen.SIZE:
+			for z in range((m - 20) * 16, (m + 20) * 16):
+				for x in range((m - 20) * 16, (m + 20) * 16):
 					world.map_img.set_pixel(x, z, mm._column(x, z))
 		else:
 			for i in 60:

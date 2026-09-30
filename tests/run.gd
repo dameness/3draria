@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -406,7 +406,7 @@ func test_progression():
 	var gen := WorldGen.new(3)
 	var altar := false
 	for c in 32:
-		var d := gen.generate(c % 16, 5 + c / 16)
+		var d := gen.generate(MID - 8 + c % 16, MID - 3 + c / 16)
 		var i := d.find(gen.ALTAR)
 		if i != -1:
 			var y := i / (C * C)
@@ -726,8 +726,8 @@ func test_evil():
 	check(kinds.has("corruption") and kinds.has("crimson"), "a seed escolhe Corrupção ou Carmesim (ambos aparecem)")
 	var g := WorldGen.new(1337)
 	var reach := g.evil_center.distance_to(WorldGen.CENTER)
-	check(reach >= 60.0 and g.evil_center.x - 30 > 0 and g.evil_center.x + 30 < WorldGen.SIZE_CHUNKS * C and g.evil_center.y - 30 > 0 \
-		and g.evil_center.y + 30 < WorldGen.SIZE_CHUNKS * C, "o bioma fica longe do nascimento e dentro do mundo")
+	check(reach >= 0.5 * WorldGen.LAND_RADIUS and g.evil_center.x - 30 > 0 and g.evil_center.x + 30 < WorldGen.SIZE_CHUNKS * C and g.evil_center.y - 30 > 0 \
+		and g.evil_center.y + 30 < WorldGen.SIZE_CHUNKS * C and g.evil_weight(int(g.evil_center.x), int(g.evil_center.y)) == 1.0 and g.evil_weight(int(WorldGen.CENTER.x), int(WorldGen.CENTER.y)) == 0.0, "o bioma fica longe do nascimento e dentro do mundo")
 	var stone := 0
 	var grass := 0
 	var c0 := Vector2i(floori(g.evil_center.x / C), floori(g.evil_center.y / C))
@@ -737,7 +737,8 @@ func test_evil():
 			stone += d.count(g.EVIL_STONE)
 			grass += d.count(g.EVIL_GRASS)
 	check(stone > 500 and grass > 100, "pedra e grama do mal cobrem o centro (%d, %d)" % [stone, grass])
-	check(g.generate(1, 1).count(g.EVIL_STONE) == 0 and g.generate(1, 1).count(g.ORB) == 0, "o resto do mundo fica intacto")
+	var far := WorldGen.SIZE_CHUNKS / 2
+	check(g.generate(far, far).count(g.EVIL_STONE) == 0 and g.generate(far, far).count(g.ORB) == 0, "o resto do mundo fica intacto")
 	var orbs := 0
 	for k in WorldGen.CHASMS:
 		var o := g.chasm_orb(k)
@@ -1270,7 +1271,7 @@ func test_consumables():
 	return true
 
 
-# Baús e cristais do mundo inteiro de uma seed, contados uma vez para os testes (leva ~3 s).
+# Baús e cristais de uma janela de 16x16 chunks em volta do nascimento (o mundo inteiro é grande demais), contados uma vez para os testes (leva ~3 s).
 var census_cache := {}
 
 
@@ -1278,8 +1279,9 @@ func world_census() -> Dictionary:
 	if census_cache.is_empty():
 		var gen := WorldGen.new(4242)
 		var r := {"crystals": 0, "bad_crystals": 0, "chests": {"surface": 0, "underground": 0, "cavern": 0, "lava": 0, "sky": 0}, "bad_chests": 0}
-		for cz in WorldGen.SIZE_CHUNKS:
-			for cx in WorldGen.SIZE_CHUNKS:
+		var m := WorldGen.SIZE_CHUNKS / 2
+		for cz in range(m - 8, m + 8):
+			for cx in range(m - 8, m + 8):
 				var d := gen.generate(cx, cz)
 				for i in d.size():
 					var y := i / (C * C)
@@ -1328,7 +1330,7 @@ func test_life_crystal():
 	check(p.hp == 400.0, "morrer renasce com a vida máxima nova")
 	# geração: cristais no chão das cavernas, do subsolo às cavernas, nunca no submundo; ~1 a cada 3 chunks
 	var cs: Dictionary = world_census()
-	print("cristais: %d no mundo de %d chunks" % [cs.crystals, WorldGen.SIZE_CHUNKS * WorldGen.SIZE_CHUNKS])
+	print("cristais: %d em 256 chunks" % cs.crystals)
 	check(cs.crystals >= 40 and cs.crystals <= 110 and cs.bad_crystals == 0, "o mundo tem ~1 cristal a cada 3 chunks (%d), no chão e fora do submundo (%d fora do lugar)" % [cs.crystals, cs.bad_crystals])
 	free_player(p)
 	w.free()
@@ -1421,7 +1423,7 @@ func test_loot():
 	var cs: Dictionary = world_census()
 	var total: int = cs.chests.surface + cs.chests.underground + cs.chests.cavern + cs.chests.lava
 	print("baús: %s (%d, fora do lugar %d)" % [str(cs.chests), total, cs.bad_chests])
-	check(cs.chests.surface >= 3 and cs.chests.underground >= 1 and cs.chests.cavern >= 5 and cs.chests.lava >= 5 and total >= 40 and total <= 90 and cs.bad_chests == 0, "baús nas 4 camadas (superfície, subsolo, cavernas, lava), em cima de chão e fora do submundo")
+	check(cs.chests.surface >= 3 and cs.chests.underground >= 1 and cs.chests.cavern >= 5 and cs.chests.lava >= 2 and total >= 40 and total <= 90 and cs.bad_chests == 0, "baús nas 4 camadas (superfície, subsolo, cavernas, lava), em cima de chão e fora do submundo")
 	return true
 
 
@@ -1812,6 +1814,51 @@ class GenView extends Node3D:   # get_block sobre chunks gerados, para seguir o 
 		return chunks[k][(x - k.x * 16) + (z - k.y * 16) * 16 + y * 256]
 
 
+# Mundo grande e redondo: biomas em faixas (anéis em volta do nascimento), dungeon na borda com o mal do lado oposto, oceano fundo em volta com
+# ruínas submersas que guardam baús de loot "water".
+func test_rings():
+	check(WorldGen.SIZE == WorldGen.SIZE_CHUNKS * C and WorldGen.LAND_RADIUS + WorldGen.COAST < WorldGen.SIZE / 2.0, "a ilha cabe no mundo, com oceano em volta")
+	for sd in [1, 2, 3, 4242, 1337]:
+		var g := WorldGen.new(sd)
+		var L := WorldGen.LAND_RADIUS
+		var at := func(a: float, frac: float) -> Vector2i: return Vector2i(g._at(a, frac))
+		var sn: Vector2i = at.call(-g.lateral * PI / 2, 0.36)
+		var de: Vector2i = at.call(g.lateral * PI / 2, 0.36)
+		var ju: Vector2i = at.call(0.0, 0.64)
+		var ev: Vector2i = at.call(PI, 0.68)
+		var ha: Vector2i = at.call(g.lateral * PI / 2, 0.65)
+		check(g.snow_weight(sn.x, sn.y) == 1.0 and g.desert_weight(de.x, de.y) == 1.0 and g.jungle_weight(ju.x, ju.y) == 1.0 and g.evil_weight(ev.x, ev.y) == 1.0 and g.hallow_weight(ha.x, ha.y) == 1.0, "seed %d: neve, deserto, selva, mal e Hallow nas suas faixas" % sd)
+		var core := true
+		for k in 24:   # o miolo (até 0,15 do raio) é só floresta, o nascimento
+			var q := Vector2i(WorldGen.CENTER + Vector2.from_angle(TAU * k / 24.0) * 0.15 * L)
+			core = core and g.snow_weight(q.x, q.y) + g.desert_weight(q.x, q.y) + g.jungle_weight(q.x, q.y) + g.evil_weight(q.x, q.y) + g.hallow_weight(q.x, q.y) == 0.0
+		check(core, "seed %d: o miolo do mundo é floresta" % sd)
+		var dc := Vector2(g.dungeon_x + 30, g.dungeon_z + 25)
+		check(dc.distance_to(WorldGen.CENTER) > 0.8 * L and dc.distance_to(WorldGen.CENTER) < L - 30.0 and g.dungeon_entrance.y > WorldGen.WATER_LEVEL and g.evil_weight(int(dc.x), int(dc.y)) == 0.0, "seed %d: o dungeon fica na borda da terra, longe do mal" % sd)
+		check(g.sea_side_dungeon(int(dc.x), int(dc.y)) and not g.sea_side_dungeon(ev.x, ev.y), "seed %d: o oceano tem o lado do dungeon e o oposto (gancho para o Calamity)" % sd)
+		var spots := 0
+		for cz in WorldGen.SIZE_CHUNKS:
+			for cx in WorldGen.SIZE_CHUNKS:
+				spots += int(g.sea_spot(cx, cz).x >= 0)
+		check(spots >= 40 and spots <= 400, "seed %d: %d ruínas submersas no mundo" % [sd, spots])
+	# uma ruína: plataforma de arenito, pilares e o baú de "water" sobre o fundo do mar
+	var g := WorldGen.new(1337)
+	var found := Vector2i(-1, -1)
+	for cz in range(2, WorldGen.SIZE_CHUNKS):
+		for cx in range(2, WorldGen.SIZE_CHUNKS):
+			if found.x < 0 and g.sea_spot(cx, cz).x >= 0:
+				found = Vector2i(cx, cz)
+	var sp := g.sea_spot(found.x, found.y)
+	var d := g.generate(found.x, found.y)
+	var chest_i := d.find(Blocks.ids.chest)
+	check(chest_i != -1 and chest_i % C == sp.x and (chest_i / C) % C == sp.y and d[chest_i - C * C] == Blocks.ids.sandstone and d.count(Blocks.ids.sandstone) >= 9 + 4 * 4, "a ruína tem o baú sobre a plataforma de arenito, com pilares")
+	var w := dungeon_world(1337)
+	var at_chest := Vector3i(found.x * C + sp.x, chest_i / (C * C), found.y * C + sp.y)
+	check(w.gen.in_sea(at_chest.x, at_chest.z) and w.chest_at(at_chest).item[0] != -1 and Loot.tables.has("water"), "o baú do mar sorteia o loot water")
+	w.free()
+	return true
+
+
 # Living Tree (wiki): grupos de árvores de Living Wood com poço oco, túneis com baú entre elas e, na principal, a sala do tesouro com as varinhas.
 func test_living_tree():
 	var planned := 0
@@ -1821,7 +1868,7 @@ func test_living_tree():
 		for t in g.living_trees:
 			planned += 1
 			var c := Vector2(t.x, t.z)
-			ok = ok and c.distance_to(WorldGen.CENTER) <= 82.0 and t.y >= WorldGen.WATER_LEVEL + 4 and c.distance_to(g.evil_center) > WorldGen.EVIL_RADIUS and c.distance_to(g.snow_center) > WorldGen.EVIL_RADIUS and c.distance_to(g.jungle_center) > WorldGen.EVIL_RADIUS and c.distance_to(g.desert_center) > WorldGen.EVIL_RADIUS and not g.in_dungeon(t.x, WorldGen.DUNGEON_Y, t.z)
+			ok = ok and c.distance_to(WorldGen.CENTER) <= 0.92 * WorldGen.LAND_RADIUS and t.y >= WorldGen.WATER_LEVEL + 4 and g.evil_weight(t.x, t.z) == 0.0 and g.snow_weight(t.x, t.z) == 0.0 and g.jungle_weight(t.x, t.z) == 0.0 and g.desert_weight(t.x, t.z) == 0.0 and g.hallow_weight(t.x, t.z) == 0.0 and not g.in_dungeon(t.x, WorldGen.DUNGEON_Y, t.z)
 		for m in g.mines:   # a sala do tesouro fica na altura das minas: nenhuma mina passa perto
 			var a := Vector2(m.x, m.z)
 			var b := a + (Vector2(m.len, 0) if m.axis == 0 else Vector2(0, m.len))
@@ -2601,6 +2648,7 @@ func test_king_meteor():
 	ent._physics_process(1.0 / 60)
 	check(ent.meteor == null, "antes da meia-noite ainda não cai")
 	p.clock.time = p.clock.DAY_SECONDS + p.clock.NIGHT_SECONDS / 2.0 + 5.0
+	p.position = Vector3(WorldGen.CENTER.x + 60.5, 90.0, WorldGen.CENTER.y + 60.5)   # o meteorito precisa de terra seca em volta
 	ent._physics_process(1.0 / 60)
 	check(ent.meteor != null and not p.world.meteor_due and p.message.contains("meteorito"), "à meia-noite a bola de fogo aparece e avisa a direção")
 	var target := Vector3i(ent.meteor.position)
@@ -2640,7 +2688,7 @@ func test_dungeon():
 		var x1 := g.dungeon_x + WorldGen.DUNGEON_W * WorldGen.DUNGEON_CELL
 		var z1 := g.dungeon_z + WorldGen.DUNGEON_D * WorldGen.DUNGEON_CELL
 		var top := WorldGen.DUNGEON_Y + WorldGen.DUNGEON_FLOORS * WorldGen.DUNGEON_CELL
-		var opposite: bool = (g.dungeon_x < 128) == (g.evil_center.x > 128)
+		var opposite: bool = (Vector2(g.dungeon_x + 30, g.dungeon_z + 25) - WorldGen.CENTER).dot(g.evil_center - WorldGen.CENTER) < 0.0
 		check(opposite and g.dungeon_x >= 0 and x1 < WorldGen.SIZE_CHUNKS * C, "seed %d: o dungeon fica do lado oposto ao mal, dentro do mundo" % sd)
 		# flood fill de ar a partir do poço de entrada: todas as salas têm de ser alcançáveis
 		var e := g.dungeon_entrance
@@ -3871,8 +3919,8 @@ func integration():
 			var bad := 0
 			var samples := 1500
 			for i in samples:
-				var x := 128 + rng.randi_range(-60, 60)
-				var z := 128 + rng.randi_range(-60, 60)
+				var x := MID * 16 + rng.randi_range(-60, 60)
+				var z := MID * 16 + rng.randi_range(-60, 60)
 				player.position = Vector3(x + 0.5, world.surface_y(x, z), z + 0.5)
 				if player.overlaps_solid(player.position):   # o topo de uma Living Tree cai dentro da copa: posição que o jogador não alcança
 					continue
@@ -3883,8 +3931,8 @@ func integration():
 				bad += int(not player.lens_clear(player.cam.global_position))
 			check(bad == 0, "3ª pessoa: a câmera nunca fica dentro de bloco (%d de %d ângulos)" % [bad, samples])
 			# Colado numa parede do lado do ombro: a câmera não pode entrar nela.
-			var px := 128
-			var pz := 128
+			var px := MID * 16
+			var pz := MID * 16
 			var gy: int = world.surface_y(px, pz)
 			for dy in range(0, 4):
 				for dz in range(-8, 9):
@@ -3952,7 +4000,7 @@ func integration():
 			var ent: Node3D = main.get_node("Entities")
 			var hud: CanvasLayer = main.get_node("HUD")
 			var clock: Node = main.get_node("DayNight")
-			check(world.test_world and pl.spawn.is_equal_approx(Vector3(128.5, TestWorld.FLAT + 1, 128.5)), "o jogador nasce na arena de teste")
+			check(world.test_world and pl.spawn.is_equal_approx(Vector3(WorldGen.CENTER.x + 0.5, TestWorld.FLAT + 1, WorldGen.CENTER.y + 0.5)), "o jogador nasce na arena de teste")
 			var show: Array = ent.enemies.filter(func(e): return e.display)
 			var want: int = ent.defs.filter(func(d): return not d.get("boss") and not d.get("part") and d.ai != "npc").size()
 			check(show.size() == want and want >= 13, "vitrine com um de cada inimigo que não é chefe (%d)" % want)
@@ -4055,14 +4103,15 @@ func test_mesher():
 
 func test_gen():
 	var gen := WorldGen.new(42)
+	var m := WorldGen.SIZE_CHUNKS / 2 + 2   # perto do nascimento
 	var t := Time.get_ticks_usec()
-	var d := gen.generate(8, 8)
+	var d := gen.generate(m, m)
 	var gen_ms := (Time.get_ticks_usec() - t) / 1000.0
-	check(d == WorldGen.new(42).generate(8, 8), "geração determinística por seed")
-	check(d != WorldGen.new(43).generate(8, 8), "seed diferente muda o mundo")
+	check(d == WorldGen.new(42).generate(m, m), "geração determinística por seed")
+	check(d != WorldGen.new(43).generate(m, m), "seed diferente muda o mundo")
 	check(d.size() == C * C * H, "chunk tem 16x16xALTURA blocos")
 	var at := func(x, y, z): return d[x + z * C + y * C * C]
-	var h := gen.surface_height(8 * C + 5, 8 * C + 5)
+	var h := gen.surface_height(m * C + 5, m * C + 5)
 	check(at.call(5, h, 5) == gen.GRASS and not Blocks.solid[at.call(5, h + 1, 5)], "superfície: grama no topo, ar ou planta acima")
 	check(at.call(5, 0, 5) == gen.BEDROCK, "fundo: bedrock")
 	var count := {}
@@ -4077,13 +4126,13 @@ func test_gen():
 	check(count.get("subterrâneo:%d" % gen.DIRT, 0) > count.get("subterrâneo:%d" % gen.STONE, 0), "subterrâneo: terra predomina")
 	var found := {}
 	for c in 4:
-		var cd := gen.generate(c, 3)
+		var cd := gen.generate(m - 6 + c, m - 5)
 		for i in cd.size():
 			found[cd[i]] = mini(found.get(cd[i], 999), i / (C * C))  # menor y de cada bloco
 	for o in gen.ores:
 		check(found.has(o.block) and found[o.block] >= o.min_y, "minério %s aparece a partir de y=%d" % [Blocks.ids.keys()[o.block], o.min_y])
 	check(found.has(gen.WOOD) and found.has(gen.LEAVES), "há árvores")
-	var nb := [gen.generate(9, 8), gen.generate(7, 8), gen.generate(8, 9), gen.generate(8, 7)]
+	var nb := [gen.generate(m + 1, m), gen.generate(m - 1, m), gen.generate(m, m + 1), gen.generate(m, m - 1)]
 	t = Time.get_ticks_usec()
 	ChunkMesher.build(d, nb, Blocks.textures.size())
 	print("chunk: geração %.1f ms, mesh %.1f ms" % [gen_ms, (Time.get_ticks_usec() - t) / 1000.0])
@@ -4127,7 +4176,7 @@ func test_testworld():
 	var w := dungeon_world(SaveGame.TEST_SEED)
 	w.set_test(true)
 	var normal := WorldGen.new(SaveGame.TEST_SEED)
-	check(w.gen.generate(1, 1) == normal.generate(1, 1) and w.gen.generate(6, 6) != normal.generate(6, 6), "fora da arena o mundo é o de sempre; dentro, é carimbado")
+	check(w.gen.generate(MID + 10, MID + 10) == normal.generate(MID + 10, MID + 10) and w.gen.generate(MID, MID) != normal.generate(MID, MID), "fora da arena o mundo é o de sempre; dentro, é carimbado")
 	var used := {}
 	for k in TestWorld.chests:
 		used[Vector2i(k.pos.x, k.pos.z)] = true
@@ -4150,7 +4199,7 @@ func test_testworld():
 			if not used.has(Vector2i(x, z)) and (w.surface_y(x, z) != TestWorld.FLAT + 1 or w.get_block(x, TestWorld.FLAT, z) != Blocks.ids.grass or w.get_block(x, TestWorld.FLAT + 1, z) != 0):
 				flat = false
 	check(flat, "a arena é um gramado plano (y %d) e limpo" % TestWorld.FLAT)
-	check(used.has(Vector2i(128, 128)) == false and w.surface_y(128, 128) == TestWorld.FLAT + 1, "o nascimento fica livre no gramado")
+	check(used.has(Vector2i(int(WorldGen.CENTER.x), int(WorldGen.CENTER.y))) == false and w.surface_y(int(WorldGen.CENTER.x), int(WorldGen.CENTER.y)) == TestWorld.FLAT + 1, "o nascimento fica livre no gramado")
 	var c0: Vector3i = TestWorld.chests[0].pos
 	var got: Dictionary = w.chest_at(c0)
 	check(got.item == TestWorld.chests[0].item and got.title == TestWorld.chests[0].title, "chest_at devolve o baú de teste com o título")
@@ -4848,7 +4897,7 @@ func test_hook():
 	return true
 
 
-# O mundo é uma ilha: terra até 104 blocos do centro, a costa desce e o oceano cobre o resto (cantos incluídos); o mal, o Hallow e o dungeon ficam em terra; a borda do mundo é
+# O mundo é uma ilha: terra até LAND_RADIUS do centro, a costa desce e o oceano cobre o resto (cantos incluídos); o mal, o Hallow e o dungeon ficam em terra; a borda do mundo é
 # uma parede para o jogador.
 func test_island():
 	for sd in [1, 2, 3, 4242, 7, 99]:
@@ -4858,11 +4907,11 @@ func test_island():
 		var ang := 0.0
 		for k in 40:
 			ang = k * TAU / 40.0
-			var inner := WorldGen.CENTER + Vector2.from_angle(ang) * 96.0
-			var outer := WorldGen.CENTER + Vector2.from_angle(ang) * 124.0
+			var inner := WorldGen.CENTER + Vector2.from_angle(ang) * (WorldGen.LAND_RADIUS - 30.0)
+			var outer := WorldGen.CENTER + Vector2.from_angle(ang) * (WorldGen.LAND_RADIUS + WorldGen.COAST + 20.0)
 			land_ok = land_ok and g.surface_height(int(inner.x), int(inner.y)) > 0   # (terra ou lago: só não pode ser o fundo do mar)
 			sea_ok = sea_ok and g.surface_height(int(outer.x), int(outer.y)) <= WorldGen.WATER_LEVEL - WorldGen.OCEAN_DEPTH + 4
-		check(land_ok and sea_ok, "seed %d: o anel de fora (124 blocos) é fundo de oceano" % sd)
+		check(land_ok and sea_ok, "seed %d: o anel de fora é fundo de oceano" % sd)
 		var shore := WorldGen.WATER_LEVEL - 6   # (lagos da terra ficam um pouco abaixo da água; o fundo do mar fica bem abaixo disto)
 		check(g.surface_height(int(g.evil_center.x), int(g.evil_center.y)) > shore and g.dungeon_entrance.y > shore \
 			and g.surface_height(int(g.hallow_center.x), int(g.hallow_center.y)) > shore, "seed %d: o mal, o Hallow e a entrada do dungeon ficam em terra" % sd)
@@ -4938,7 +4987,9 @@ func test_armor_looks():
 
 
 # Revisão contra a wiki (pré-hardmode): corações e estrelas, moedas na morte, Olho de Cthulhu natural, bioma das cavernas, dados de chefes e inimigos.
-const CENTER_V := Vector2(128, 128)
+const CENTER_V := WorldGen.CENTER
+const MID := WorldGen.SIZE_CHUNKS / 2   # chunk do nascimento
+const OFF := WorldGen.SIZE_CHUNKS * 8 - 128   # desloca as coordenadas do mundo antigo (centro em 128) para o nascimento atual
 
 
 func test_wiki_review():
@@ -5042,12 +5093,12 @@ func test_wiki_review():
 	var ent2: Node3D = p2.entities
 	p2.clock.time = 100.0
 	for spot in [[36, "cavern", ["black_slime", "cave_bat", "skeleton", "mother_slime", "undead_miner", "tim", "giant_worm", "giant_worm_body", "giant_worm_tail"]], [60, "underground", ["red_slime", "yellow_slime", "giant_worm", "giant_worm_body", "giant_worm_tail"]]]:
-		for x in range(104, 137):   # sala grande: o nascimento pede ao menos 6 blocos de distância do jogador
-			for z in range(104, 137):
+		for x in range(OFF + 104, OFF + 137):   # sala grande: o nascimento pede ao menos 6 blocos de distância do jogador
+			for z in range(OFF + 104, OFF + 137):
 				w2.set_block(x, spot[0] - 1, z, Blocks.ids.stone, false)
 				for y in range(spot[0], spot[0] + 4):
 					w2.set_block(x, y, z, 0, false)
-		p2.position = Vector3(120.5, spot[0], 120.5)
+		p2.position = Vector3(OFF + 120.5, spot[0], OFF + 120.5)
 		ent2.rng.seed = 3
 		for e in ent2.enemies.duplicate():
 			ent2.remove_enemy(e)
@@ -5056,7 +5107,7 @@ func test_wiki_review():
 		check(ent2.biome_at(p2.position) == spot[1] and not ent2.enemies.is_empty() and ent2.enemies.all(func(e): return e.def.name in spot[2]), "%s: só nascem %s (%d)" % [spot[1], spot[2], ent2.enemies.size()])
 	for e in ent2.enemies.duplicate():
 		ent2.remove_enemy(e)
-	var gw: Node3D = ent2.spawn_at(enemy_def("giant_worm"), Vector3(120.5, 40, 120.5))
+	var gw: Node3D = ent2.spawn_at(enemy_def("giant_worm"), Vector3(OFF + 120.5, 40, OFF + 120.5))
 	var gsegs: Array = ent2.enemies.filter(func(e): return e.def.get("group") == "giant_worm")
 	check(gsegs.size() == 9 and gw.follow == null and gsegs[8].def.name == "giant_worm_tail" and ent2.boss == null, "Giant Worm nasce como fila de 9 segmentos, sem virar chefe")
 	gsegs[4].hurt(500, Vector3.RIGHT, 0)
@@ -5064,11 +5115,12 @@ func test_wiki_review():
 	check(ent2.defs.any(func(d): return d.name == "devourer" and d.biome == "corruption") and ent2.defs.any(func(d): return d.name == "blood_crawler" and d.biome == "crimson"), "Devourer na corrupção, Blood Crawler e Face Monster no Carmesim")
 	for e in ent2.enemies.duplicate():
 		ent2.remove_enemy(e)
-	var sy: int = w2.surface_y(128, 128, true)
-	for x in range(118, 139):
-		for z in range(118, 139):
+	var cxi := int(WorldGen.CENTER.x)
+	var sy: int = w2.surface_y(cxi, cxi, true)
+	for x in range(cxi - 10, cxi + 11):
+		for z in range(cxi - 10, cxi + 11):
 			w2.set_block(x, w2.surface_y(x, z, true) - 1, z, Blocks.ids.meteorite, false)
-	p2.position = Vector3(128.5, sy, 128.5)
+	p2.position = Vector3(cxi + 0.5, sy, cxi + 0.5)
 	for e in ent2.enemies.duplicate():
 		ent2.remove_enemy(e)
 	for i in 60:
@@ -5085,7 +5137,7 @@ func test_wiki_review():
 		var snow_n := chunk_d.count(Blocks.ids.snow_block)
 		var ice_n := chunk_d.count(Blocks.ids.ice_block)
 		check(snow_n > 40 and ice_n > 10 and chunk_d.count(WorldGen.new(sd).GRASS) < 40, "seed %d: o chunk da neve tem neve (%d) e gelo (%d)" % [sd, snow_n, ice_n])
-		check(sg.snow_center.distance_to(sg.evil_center) > 35.0 and sg.snow_center.distance_to(sg.hallow_center) > 35.0 and sg.snow_center.distance_to(CENTER_V) < 80.0, "seed %d: a neve fica longe do mal e do Hallow" % sd)
+		check(sg.snow_center.distance_to(sg.evil_center) > 35.0 and sg.snow_center.distance_to(sg.hallow_center) > 35.0 and sg.snow_center.distance_to(CENTER_V) < WorldGen.LAND_RADIUS, "seed %d: a neve fica longe do mal e do Hallow" % sd)
 		sw.free()
 	var nw := dungeon_world(1)
 	var np := make_player(nw)

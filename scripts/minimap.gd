@@ -21,6 +21,7 @@ var corner_y := 74.0        # onde o retrato começa (a HUD desce quando a vida 
 var full := false
 var zoom := 1
 var row := 0
+var dirty := false
 var frame: Panel
 
 
@@ -105,9 +106,11 @@ func _reveal() -> void:
 			var c := _column(x, row)
 			if c.a > 0.0:
 				world.map_img.set_pixel(x, row, c)
+				dirty = true
 		row += 1
-	if Engine.get_process_frames() % 3 == 0:   # 256 KB de imagem: sobe para a GPU 20 vezes por segundo, não 60
+	if dirty and Engine.get_process_frames() % 10 == 0:   # a imagem do mundo todo (14 MB no mundo grande) só sobe para a GPU quando mudou, 6 vezes por segundo
 		tex.update(world.map_img)
+		dirty = false
 
 
 # Cor do topo da coluna (x, z): o primeiro bloco sólido ou líquido de cima para baixo (mais claro quanto mais alto);
