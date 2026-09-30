@@ -377,5 +377,8 @@
 	"blowpipe": {"wiki": "Blowpipe", "pattern": "sword", "colors": ["#b08a4a", "#6e4b2a"]},
 	"grass_seeds": {"wiki": "Grass_Seeds", "pattern": "blob", "colors": ["#5aa82a", "#3a7a1a", "#8ad04a"]},
 	"corrupt_seeds": {"wiki": "Corrupt_Seeds", "pattern": "blob", "colors": ["#7a5aa8", "#4a2a7a", "#a888d0"]},
-	"crimson_seeds": {"wiki": "Crimson_Seeds", "pattern": "blob", "colors": ["#c03a3a", "#7a1a1a", "#e07070"]}
+	"crimson_seeds": {"wiki": "Crimson_Seeds", "pattern": "blob", "colors": ["#c03a3a", "#7a1a1a", "#e07070"]},
+	"track_tile": {"pattern": "track", "colors": ["#b4bcc6", "#7a5230", "#5a6168"]},
+	"minecart_track": {"wiki": "Minecart_Track", "pattern": "track", "colors": ["#b4bcc6", "#7a5230", "#5a6168"]},
+	"minecart": {"wiki": "Minecart", "pattern": "blob", "colors": ["#8a93a0", "#5a6168", "#c6ced8"]}
 }

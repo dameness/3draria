@@ -32,6 +32,9 @@ const COAST := 18.0            # largura da costa (do fim da terra ao fundo do m
 const OCEAN_DEPTH := 14        # o fundo do oceano fica tantos blocos abaixo do nível da água
 const CHASMS := 6              # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
 const CHASM_DEPTH := 38
+const MINES := 4               # minas abandonadas (wiki Abandoned Minecart Track): corredor escorado com trilho, fundo no subsolo, poço de corda até a superfície
+const MINE_Y0 := 50            # o trilho fica entre estas alturas (acima das cavernas alagadas, abaixo da superfície)
+const MINE_Y1 := 58
 const CENTER := Vector2(SIZE_CHUNKS * CHUNK / 2.0, SIZE_CHUNKS * CHUNK / 2.0)   # nascimento: planície
 enum {TOP_GRASS, TOP_STONE, TOP_SAND}   # o que cobre a superfície de uma coluna
 const DIRS4: Array[Vector2i] = [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]
@@ -70,6 +73,7 @@ var dungeon_x := 0                # canto (x, z) do dungeon, do lado oposto ao b
 var dungeon_z := 0
 var dungeon_entrance := Vector3i.ZERO   # torre de entrada (centro, altura da superfície)
 var test_world := false           # mundo de teste: generate carimba a arena (test_world.gd)
+var mines: Array[Dictionary] = []   # [{axis: 0 (x) ou 1 (z), x, z (início), len, ys: altura do trilho em cada passo}]
 var sky_islands: Array[Vector3i] = []   # (x, y da superfície, z) do centro de cada ilha
 var sky_chests: Array[Vector3i] = []     # o baú de cada ilha (mesmo índice)
 var hardmode := false             # Wall of Flesh derrotado: minérios novos e o Hallow entram na geração (world.start_hardmode converte o que já existe)
@@ -91,6 +95,8 @@ var HALLOW_GRASS: int
 var PEARLSTONE: int
 var BRICK: int
 var TORCH: int
+var TRACK: int
+var ROPE: int
 var EVIL_STONE: int
 var EVIL_GRASS: int
 var ORB: int
@@ -163,6 +169,8 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	ICE = Blocks.ids.ice_block
 	BRICK = Blocks.ids.dungeon_brick
 	TORCH = Blocks.ids.torch
+	TRACK = Blocks.ids.minecart_track
+	ROPE = Blocks.ids.rope
 	dungeon_x = 6 if evil_center.x > CENTER.x else SIZE_CHUNKS * CHUNK - 6 - DUNGEON_W * DUNGEON_CELL - 1
 	dungeon_z = int(CENTER.y) - DUNGEON_D * DUNGEON_CELL / 2
 	var ex := dungeon_x + DUNGEON_W / 2 * DUNGEON_CELL + DUNGEON_CELL / 2
@@ -190,6 +198,7 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 			far = m
 			jungle_center = c
 	hive_center = Vector3i(int(jungle_center.x), surface_height(int(jungle_center.x), int(jungle_center.y)) - 16, int(jungle_center.y))
+	_plan_mines()
 	# Minérios com "group" são alternativos (cobre/estanho...): a seed escolhe um de cada grupo, como no Terraria.
 	var groups := {}
 	for o in Blocks.read(dir + "/ores.json"):
@@ -288,6 +297,7 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_desert(d, hs, W, cx, cz)
 	_jungle(d, hs, W, cx, cz)
 	_dungeon(d, cx, cz)
+	_mines(d, cx, cz)
 	_ores(d, rng)
 	_trees(d, hs, W, cx, cz)
 	_plants(d, hs, W, rng)
@@ -508,6 +518,89 @@ func _dungeon(d: PackedByteArray, cx: int, cz: int) -> void:
 						d[i + y * layer] = AIR
 					elif y <= e.y + 5 and not (wz - e.z == 2 and wx == e.x and y <= e.y + 2):   # a porta é o vão da frente
 						d[i + y * layer] = BRICK
+
+
+# Sorteia as minas pela seed: 70 a 110 blocos em x ou z, dentro da ilha, longe do dungeon e da colmeia; o trilho sobe e desce um bloco por passo em trechos de 4 a 9.
+func _plan_mines() -> void:
+	var r := RandomNumberGenerator.new()
+	r.seed = hash([seed, "mines"])
+	var dun := Rect2(dungeon_x - 10, dungeon_z - 10, DUNGEON_W * DUNGEON_CELL + 20, DUNGEON_D * DUNGEON_CELL + 20)
+	for n in MINES:
+		for attempt in 40:
+			var axis := r.randi() % 2
+			var span := r.randi_range(70, 110)
+			var x := int(CENTER.x) + r.randi_range(-70, 70)
+			var z := int(CENTER.y) + r.randi_range(-70, 70)
+			var a := Vector2(x, z)
+			var b := a + (Vector2(span, 0) if axis == 0 else Vector2(0, span))
+			var ok := a.distance_to(CENTER) < 85.0 and b.distance_to(CENTER) < 85.0
+			for k in 5:
+				var q := a.lerp(b, k / 4.0)
+				ok = ok and not dun.has_point(q) and q.distance_to(Vector2(hive_center.x, hive_center.z)) > 25.0 and q.distance_to(CENTER) > 12.0
+			var box := Rect2(a, b - a).abs().grow(6.0)   # uma mina não cruza outra (o corredor de uma apagaria o trilho da outra)
+			for other in mines:
+				ok = ok and not box.intersects(Rect2(Vector2(other.x, other.z), Vector2(other.len if other.axis == 0 else 0, 0 if other.axis == 0 else other.len)).abs().grow(6.0))
+			if not ok:
+				continue
+			var ys := PackedInt32Array()
+			var y := r.randi_range(MINE_Y0 + 2, MINE_Y1 - 2)
+			var slope := 0
+			var run := 0
+			for k in span:
+				if run == 0:
+					slope = [-1, 0, 0, 1][r.randi() % 4]
+					run = r.randi_range(4, 9)
+				run -= 1
+				y = clampi(y + slope, MINE_Y0, MINE_Y1)
+				ys.append(y)
+			mines.append({"axis": axis, "x": x, "z": z, "len": span, "ys": ys})
+			break
+
+
+# Uma mina: corredor 3x4 com o chão firme e um trilho no meio, escoras de madeira a cada 6 blocos, tocha a cada 12 e, no início, um poço 3x3 com corda até a superfície.
+# Tudo por coordenada (cada chunk escreve a sua parte).
+func _mines(d: PackedByteArray, cx: int, cz: int) -> void:
+	var layer := CHUNK * CHUNK
+	var ox := cx * CHUNK
+	var oz := cz * CHUNK
+	for m in mines:
+		var along: bool = m.axis == 0
+		var x1: int = m.x + (m.len if along else 0) + 3
+		var z1: int = m.z + (0 if along else m.len) + 3
+		if x1 < ox or m.x - 3 >= ox + CHUNK or z1 < oz or m.z - 3 >= oz + CHUNK:
+			continue
+		var shaft_top := surface_height(m.x + (1 if along else 0), m.z + (0 if along else 1)) + 3
+		for k in m.len:
+			var y: int = m.ys[k]
+			var frame: bool = k % 6 == 0 and k > 0 and k < m.len - 1
+			for lane in range(-1, 2):
+				var wx: int = m.x + (k if along else lane)
+				var wz: int = m.z + (lane if along else k)
+				var lx := wx - ox
+				var lz := wz - oz
+				if lx < 0 or lx >= CHUNK or lz < 0 or lz >= CHUNK:
+					continue
+				var i := lx + lz * CHUNK
+				if d[i + (y - 1) * layer] == AIR or Blocks.liquid[d[i + (y - 1) * layer]] == 1 or Blocks.soft[d[i + (y - 1) * layer]] == 1:
+					d[i + (y - 1) * layer] = STONE   # chão firme onde a caverna abre por baixo
+				for dy in 4:
+					d[i + (y + dy) * layer] = AIR
+				if k <= 2:   # poço de entrada: sobe até a superfície, com a corda numa ponta
+					for yy in range(y + 4, mini(shaft_top, HEIGHT - 1) + 1):
+						d[i + yy * layer] = AIR
+					if k == 1 and lane == 1:
+						for yy in range(y, mini(shaft_top, HEIGHT - 1) - 2):
+							d[i + yy * layer] = ROPE
+				if lane == 0 and d[i + y * layer] == AIR:
+					d[i + y * layer] = TRACK
+				if frame:
+					d[i + (y + 3) * layer] = WOOD
+					if lane != 0:
+						d[i + y * layer] = WOOD
+						d[i + (y + 1) * layer] = WOOD
+						d[i + (y + 2) * layer] = WOOD
+				elif k % 12 == 3 and lane == 1:
+					d[i + (y + 1) * layer] = TORCH
 
 
 func _dungeon_block(wx: int, y: int, wz: int) -> int:

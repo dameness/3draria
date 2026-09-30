@@ -87,6 +87,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
                      shaders/chunk.gdshader: atlas × luz (+ direção do sol, balanço das plantas, lava, tocha); o dia/noite muda só a luz do céu
                      shaders/water.gdshader: água translúcida com ondas   shaders/sky.gdshader: céu, sol, lua, estrelas, nuvens, montanhas
   world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool
+  minecart.gd        carrinho (wiki Minecarts): segue blocos minecart_track (rampas de ±1, curvas, fim de linha), W/S, dano no encontrão; R ou botão direito no trilho monta; minas em world_gen (_plan_mines/_mines)
   liquid.gd          fluxo de água e lava: níveis 1-8, cai e espalha, volume conservado; só reage a edições
   items.gd           itens (blocos viram itens + items.json), drops, poder de picareta
   inventory.gd       slots, empilhar, remover

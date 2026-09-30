@@ -130,7 +130,7 @@ static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [
 					if liquid[b]:
 						_liquid(a if Blocks.glow[b] else wd, p, hts, lights, b, x, y, z, tw)
 					else:
-						_shape(a, b, Vector3(x, y, z), tw, _light(p, hts, lights, x, y, z))
+						_shape(a, b, Vector3(x, y, z), tw, _light(p, hts, lights, x, y, z), p, pi)
 					continue
 				# Caminho rápido: bloco interno cercado por sólidos não tem face visível.
 				if solid[p[pi + 1]] and solid[p[pi - 1]] and solid[p[pi + P]] and solid[p[pi - P]] \
@@ -269,10 +269,45 @@ static func _vquad(a: Dictionary, p0: Vector3, p1: Vector3, h: float, u0: float,
 	a.i.append_array([base, base + 1, base + 2, base, base + 2, base + 3])
 
 
+# Inclinação do trilho no eixo de passo s (1 = x, P = z): altura do fim de baixo do eixo (0) e do de cima (1); rampa só se o vizinho do mesmo nível não existe.
+static func _track_rise(p: PackedByteArray, pi: int, b: int, s: int) -> Vector2:
+	if p[pi + s + PP] == b and p[pi + s] != b:
+		return Vector2(0, 1)
+	if p[pi - s + PP] == b and p[pi - s] != b:
+		return Vector2(1, 0)
+	return Vector2.ZERO
+
+
+# Placa do trilho ao longo de x (ou de z), com a altura h.x na ponta de trás e h.y na da frente; dupla face.
+static func _track_quad(a: Dictionary, pos: Vector3, along_x: bool, h: Vector2, u0: float, tw: float, c: Color) -> void:
+	var base: int = a.v.size()
+	for k in 4:
+		var s := float(k in [2, 3])   # posição ao longo do eixo
+		var t := float(k in [1, 2])   # posição de lado
+		a.v.append(pos + (Vector3(s, 0.05 + lerpf(h.x, h.y, s), t) if along_x else Vector3(t, 0.05 + lerpf(h.x, h.y, s), s)))
+		a.n.append(Vector3.UP)
+		a.c.append(c)
+		a.uv.append(Vector2(u0 + s * tw, t))
+	a.i.append_array([base, base + 1, base + 2, base, base + 2, base + 3, base, base + 2, base + 1, base, base + 3, base + 2])
+
+
 # Formas não cúbicas. Tocha: cabo fino (textura lateral) + chama (textura do topo), sempre acesas.
 # Planta: dois quadros em cruz, frente e verso; balança no shader (b = 0.5).
-static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector2) -> void:
+static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector2, p: PackedByteArray, pi: int) -> void:
 	match Blocks.shape[b]:
+		"track":   # trilho: placa rente ao chão; segue os vizinhos (em x, em z ou nos dois) e sobe em rampa quando o vizinho do lado está um bloco acima
+			var u0 := tiles_of(b, 0) * tw
+			var c := Color(light.x * SHADE[2], light.y * SHADE[2], 0.0)
+			var has_x := false
+			var has_z := false
+			for o in [1, -1]:
+				has_x = has_x or p[pi + o] == b or p[pi + o + PP] == b or p[pi + o - PP] == b
+			for o in [P, -P]:
+				has_z = has_z or p[pi + o] == b or p[pi + o + PP] == b or p[pi + o - PP] == b
+			if has_x or not has_z:
+				_track_quad(a, pos, true, _track_rise(p, pi, b, 1), u0, tw, c)
+			if has_z:
+				_track_quad(a, pos, false, _track_rise(p, pi, b, P), u0, tw, c)
 		"torch":
 			var stick := tiles_of(b, 0) * tw
 			var flame := tiles_of(b, 2) * tw

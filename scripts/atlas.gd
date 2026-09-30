@@ -93,6 +93,15 @@ static func _paint(img: Image, ox: int, spec: Dictionary, seed: int) -> void:
 	var pick := func(pal: Array) -> Color: return pal[rng.randi() % pal.size()]
 	var set_px := func(x: int, y: int, c: Color) -> void: img.set_pixel(ox + x, y, c)
 	match spec.pattern:
+		"track":   # trilho de minecart visto de cima, ao longo de x: dormentes de madeira e dois trilhos de ferro
+			for tx in [1, 5, 9, 13]:
+				for y in range(3, 13):
+					set_px.call(tx, y, cols[1])
+					set_px.call(tx + 1, y, cols[1])
+			for x in TILE:
+				for y in [4, 11]:
+					set_px.call(x, y, cols[0])
+					set_px.call(x, y + 1, cols[2])
 		"bar":
 			for y in range(6, 12):
 				for x in range(3 if y > 6 else 4, 13 if y > 6 else 12):

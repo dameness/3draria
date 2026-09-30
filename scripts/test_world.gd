@@ -163,6 +163,11 @@ static func stamp(d: PackedByteArray, cx: int, cz: int) -> void:
 		_put(d, cx, cz, h.pos, h.id)
 	for t in torches:
 		_put(d, cx, cz, t, Blocks.ids.torch)
+	for k in 41:   # trilho de demonstração atrás da vitrine (R ou botão direito no trilho monta): sobe e desce em rampa
+		var y := FLAT + 1 + (clampi(k - 12, 0, 4) if k < 24 else clampi(36 - k, 0, 4))
+		for yy in range(FLAT + 1, y):
+			_put(d, cx, cz, Vector3i(CX - 20 + k, yy, CZ + 24), Blocks.ids.stone)
+		_put(d, cx, cz, Vector3i(CX - 20 + k, y, CZ + 24), Blocks.ids.minecart_track)
 
 
 static func _put(d: PackedByteArray, cx: int, cz: int, p: Vector3i, id: int) -> void:

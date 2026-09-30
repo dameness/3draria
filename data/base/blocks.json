@@ -77,5 +77,6 @@
 	{"name": "hive", "icon": "hive_item", "tiles": {"all": "hive"}},
 	{"name": "bee_larva", "mine": 10, "solid": false, "shape": "crystal", "item": false, "drop": "", "tiles": {"all": "bee_larva"}},
 	{"name": "rope", "mine": 100, "solid": false, "shape": "rope", "icon": "rope", "tiles": {"all": "rope_tile"}},
-	{"name": "ruby", "tiles": {"all": "ruby"}, "icon": "ruby_item"}
+	{"name": "ruby", "tiles": {"all": "ruby"}, "icon": "ruby_item"},
+	{"name": "minecart_track", "mine": 100, "solid": false, "shape": "track", "icon": "minecart_track", "tiles": {"all": "track_tile"}}
 ]

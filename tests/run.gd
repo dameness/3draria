@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -1799,6 +1799,131 @@ func test_seeds():
 
 # Soltar itens: Q solta 1 do slot da mão (Alt+Q, a pilha), o item cursor + clique fora dos painéis vai ao chão; o item jogado sai à frente e só volta a ser
 # puxado depois de 1,5 s; favoritado não sai; a Guide Voodoo Doll largada na lava do submundo chama o Wall of Flesh.
+# Minecart: trilho, rampa, curva, fim de linha, inversão, encontrão, e as minas geradas (um trilho contínuo do início ao fim).
+class GenView extends Node3D:   # get_block sobre chunks gerados, para seguir o trilho de uma mina sem montar o mundo
+	var gen: WorldGen
+	var chunks := {}
+	func get_block(x: int, y: int, z: int) -> int:
+		if y < 0 or y >= WorldGen.HEIGHT:
+			return 0
+		var k := Vector2i(floori(x / 16.0), floori(z / 16.0))
+		if not chunks.has(k):
+			chunks[k] = gen.generate(k.x, k.y)
+		return chunks[k][(x - k.x * 16) + (z - k.y * 16) * 16 + y * 256]
+
+
+func test_minecart():
+	var tr: int = Blocks.ids.minecart_track
+	check(not Blocks.solid[tr] and Items.ids.has("minecart_track") and Items.ids.has("minecart"), "trilho é um bloco não sólido com item; o item Minecart existe")
+	var w := floor_world()
+	for x in range(20, 31):
+		w.set_block(x, 11, 24, tr)
+	for x in range(31, 34):   # sobe em rampa: cada trilho um acima do anterior
+		w.set_block(x, 12 + (x - 31), 24, tr)
+	for x in range(34, 38):
+		w.set_block(x, 14, 24, tr)
+	var cart := Minecart.new()
+	cart.world = w
+	cart.start(Vector3i(20, 11, 24), Vector3i.RIGHT)
+	check(cart.to == Vector3i(21, 11, 24) and cart.node(cart.from).y < cart.node(Vector3i(30, 11, 24)).y + 0.01, "o carrinho começa no trilho e vê o próximo")
+	for i in 120:
+		cart.advance(0.05, 1.0)
+	check(cart.to == Vector3i(37, 14, 24) and cart.speed == 0.0 and cart.pos().x > 37.0, "acelera, sobe a rampa e para no fim da linha (%s)" % cart.pos())
+	check(cart.node(Vector3i(30, 11, 24)).y > 11.4, "o trilho antes da subida é rampa (meia altura)")
+	cart.advance(0.05, -1.0)
+	check(cart.dir == Vector3i.LEFT and cart.to == Vector3i(36, 14, 24), "S parado inverte o sentido")
+	for i in 120:
+		cart.advance(0.05, 1.0 if i < 60 else 0.0)
+	check(cart.to.x <= 21 and cart.pos().y < 11.3, "volta pelo trilho, descendo a rampa, mantendo a velocidade sem tecla")
+	# freio
+	cart.start(Vector3i(22, 11, 24), Vector3i.RIGHT)
+	cart.speed = 10.0
+	cart.advance(0.1, -1.0)
+	check(cart.speed < 10.0 and cart.speed > 0.0, "S freia")
+	# curva: o trilho vira para o lado quando acaba em frente
+	for z in range(24, 30):
+		w.set_block(38, 14, z, tr)
+	var c2 := Minecart.new()
+	c2.world = w
+	c2.start(Vector3i(36, 14, 24), Vector3i.RIGHT)
+	for i in 60:
+		c2.advance(0.05, 1.0)
+	check(c2.to == Vector3i(38, 14, 29) or c2.from == Vector3i(38, 14, 29), "curva do trilho até o fim da linha (%s)" % c2.to)
+	# teto sólido no caminho: para antes
+	w.set_block(25, 12, 24, Blocks.ids.stone)
+	var c3 := Minecart.new()
+	c3.world = w
+	c3.start(Vector3i(20, 11, 24), Vector3i.RIGHT)
+	for i in 80:
+		c3.advance(0.05, 1.0)
+	check(c3.to == Vector3i(24, 11, 24) and c3.speed == 0.0, "teto sólido no caminho para o carrinho (%s)" % c3.to)
+	w.set_block(25, 12, 24, 0)
+	# jogador: montar pelo trilho, andar, bater num zumbi e descer
+	var p := make_player(w)
+	p.position = Vector3(20.5, 11.0, 24.5)
+	p.rotation.y = -PI / 2.0   # olhando para +x
+	p.mount_cart(p.nearest_track())
+	check(p.cart != null and p.cart.dir == Vector3i.RIGHT and p.position.distance_to(Vector3(20.5, 11.35, 24.5)) < 0.1, "R/direito num trilho monta virado para onde se olha")
+	var z: Node3D = p.entities.spawn_enemy(p.entities.def_named("zombie"), Vector3(28.5, 11, 24.5))
+	z._ready()
+	z.hp = 500
+	var top := 0.0
+	for i in 100:
+		p._ride(0.05, 1.0, false)
+		top = maxf(top, p.cart.speed)
+		z.position = Vector3(28.5, 11, 24.5)
+		z.velocity = Vector3.ZERO
+	check(z.hp < 500 and top > 5.0, "o carrinho fere quem encosta (%d de vida)" % z.hp)
+	p.cart.speed = 10.0
+	check(p.cart.damage() > 15 and p.cart.knockback() > 3.5, "dano e recuo crescem com a velocidade (%d, %.1f)" % [p.cart.damage(), p.cart.knockback()])
+	w.set_block(p.cart.from.x, p.cart.from.y, p.cart.from.z, 0)
+	p._ride(0.05, 0.0, false)
+	check(p.cart == null, "trilho quebrado embaixo: desce do carrinho")
+	p.mount_cart(Vector3i(22, 11, 24))
+	p._ride(0.05, 0.0, true)
+	check(p.cart == null and p.velocity.y > 0.0, "Espaço desce com um pulinho")
+	p.inv.add(Items.ids.minecart, 1)
+	p.mount_cart(Vector3i(22, 11, 24))
+	check(p.cart.fast and p.cart.top_speed() > Minecart.WOOD_SPEED, "carregar o Minecart deixa o carrinho mais rápido")
+	p.dismount_cart()
+	free_player(p)
+	w.free()
+	# malha: trilho solto, em x e em rampa, gera placas (sem erro); a rampa sobe até 1 bloco
+	var d := chunk(0)
+	d[5 + 5 * C + 5 * C * C] = tr
+	d[6 + 5 * C + 5 * C * C] = tr
+	d[7 + 5 * C + 6 * C * C] = tr
+	var arr := ChunkMesher.build(d, [d, d, d, d], Blocks.textures.size())
+	var maxy := -1.0
+	for v in arr[Mesh.ARRAY_VERTEX]:
+		maxy = maxf(maxy, v.y)
+	check(arr.size() > 0 and maxy > 6.0, "a malha do trilho inclui a rampa (%.2f)" % maxy)
+	# minas: cada uma é um trilho contínuo do início ao fim
+	var g := WorldGen.new(12345)
+	check(g.mines.size() >= 3, "a seed sorteia as minas (%d)" % g.mines.size())
+	var gv := GenView.new()
+	gv.gen = g
+	var bad := 0
+	for m in g.mines:
+		var along: bool = m.axis == 0
+		var c := Vector3i(m.x, m.ys[0], m.z)
+		var dir := Vector3i.RIGHT if along else Vector3i.BACK
+		var steps := 0
+		if not Minecart.is_track(gv, c):
+			bad += 1
+			continue
+		for k in m.len - 1:
+			var nxt := Minecart.next_cell(gv, c, dir)
+			if nxt == c:
+				break
+			c = nxt
+			steps += 1
+		bad += int(steps != m.len - 1)
+	check(bad == 0, "as minas geradas têm trilho contínuo e livre do início ao fim (%d falhas)" % bad)
+	gv.free()
+	return true
+
+
 func test_throw():
 	var w := floor_world()
 	var p := make_player(w)

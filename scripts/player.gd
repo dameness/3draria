@@ -80,6 +80,9 @@ var auto_prev := -1           # slot de antes do Auto Select (Shift); -1 = não 
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
+var cart: Minecart = null     # andando de carrinho (R ou botão direito num trilho): o carrinho manda no movimento
+var cart_model: Node3D
+var cart_hit := {}            # inimigo -> segundos até o carrinho poder feri-lo de novo
 var free_yaw := 0.0           # olhar livre (3ª pessoa, segurar Alt): a câmera gira em volta do corpo; a mira e o corpo não mexem
 var free_pitch := 0.0
 var hook_state := ""          # gancho (E): "" sem gancho, "fly" a corrente indo, "pull" preso e puxando
@@ -251,6 +254,11 @@ func _unhandled_input(e: InputEvent) -> void:
 			creative = not creative
 		elif e.physical_keycode == KEY_V:
 			third_person = not third_person
+		elif e.physical_keycode == KEY_R and not inventory_open:   # montar no carrinho do trilho mais perto (wiki Minecart: tecla de montaria) / descer
+			if cart:
+				dismount_cart()
+			else:
+				mount_cart(nearest_track())
 		elif e.physical_keycode == KEY_F9 and world.test_world:   # painel de atalhos do mundo de teste
 			var hud: Node = get_parent().get_node("HUD")
 			var show: bool = not (inventory_open and hud.test_open)
@@ -285,7 +293,10 @@ func _physics_process(delta: float) -> void:
 	if creative:
 		wish.y = k.call(KEY_SPACE) - k.call(KEY_C)
 	crouch = k.call(KEY_C) > 0.0
-	step(delta, wish.normalized(), k.call(KEY_SPACE) > 0.0)
+	if cart:
+		_ride(delta, k.call(KEY_W) - k.call(KEY_S), k.call(KEY_SPACE) > 0.0)
+	else:
+		step(delta, wish.normalized(), k.call(KEY_SPACE) > 0.0)
 	tick(delta)
 
 
@@ -785,6 +796,7 @@ func pickup(pk: Dictionary) -> void:
 
 # Morreu: solta metade das moedas de cada tipo no lugar (wiki Death, Classic), volta ao spawn com a vida cheia (o mapa marca onde foi).
 func die() -> void:
+	dismount_cart(false)
 	if entities:
 		for k in Inventory.COINS.size():
 			var lost := ceili(inv.coin[k] / 2.0)
@@ -965,6 +977,7 @@ func quick_buff() -> void:
 
 # Teleporte para casa (o spawn): as partículas saem de onde estava e chegam onde volta.
 func _teleport_home() -> void:
+	dismount_cart(false)
 	if entities:
 		Fx.puff(entities, position + Vector3(0, 1.0, 0), Color("#a8e8f8"), 16)
 		Sfx.play(entities, "coin", position, -4.0, 0.7)
@@ -1308,6 +1321,100 @@ func interact() -> void:
 		toggle_door(target.pos)
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chair:
 		say(Housing.report(world, target.pos))   # a cadeira diz se a casa vale
+	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.minecart_track:
+		mount_cart(target.pos)   # wiki Minecart Track: a tecla de interagir num trilho também monta
+
+
+# O trilho mais perto dos pés (até 1 bloco em volta); Vector3i.MAX se não há.
+func nearest_track() -> Vector3i:
+	var best := Vector3i.MAX
+	var best_d := INF
+	var base := Vector3i(position.floor())
+	for dy in range(-1, 2):
+		for dz in range(-1, 2):
+			for dx in range(-1, 2):
+				var c := base + Vector3i(dx, dy, dz)
+				var d := Vector3(c.x + 0.5, c.y + 0.5, c.z + 0.5).distance_to(position + Vector3.UP * 0.3)
+				if Minecart.is_track(world, c) and d < best_d:
+					best = c
+					best_d = d
+	return best
+
+
+# Monta no trilho `at` virado para onde você olha (para o lado com saída). Sem trilho por perto não faz nada.
+func mount_cart(at: Vector3i) -> void:
+	if cart or at == Vector3i.MAX:
+		return
+	var look := aim_dir()
+	var facing := Vector3i(1 if look.x > 0.0 else -1, 0, 0) if absf(look.x) > absf(look.z) else Vector3i(0, 0, 1 if look.z > 0.0 else -1)
+	cart = Minecart.new()
+	cart.world = world
+	cart.fast = inv.total(Items.ids.minecart) > 0   # carregar o item Minecart: o carrinho é mais rápido e bate mais forte
+	cart.start(at, facing)
+	cart_model = Minecart.build_model()
+	cart_model.top_level = true
+	add_child(cart_model)
+	cart_model.basis = _cart_basis()
+	hook_state = ""
+	_ride(0.0, 0.0, false)
+
+
+# Desce (o carrinho some): um pulinho, ou sem pulo se o trilho quebrou.
+func dismount_cart(hop := true) -> void:
+	if not cart:
+		return
+	cart = null
+	cart_hit.clear()
+	if cart_model:
+		cart_model.queue_free()
+		cart_model = null
+	if hop:
+		velocity = Vector3(0, 6.0, 0)
+		on_floor = false
+
+
+func _cart_basis() -> Basis:
+	var a := cart.node(cart.from)
+	var b := cart.node(cart.to)
+	var run := Vector2(b.x - a.x, b.z - a.z).length()
+	var pitch_up := atan2(b.y - a.y, run) if run > 0.0 else 0.0
+	return Basis(Vector3.UP, atan2(-cart.dir.z, cart.dir.x)) * Basis(Vector3.BACK, pitch_up)
+
+
+# Um passo andando de carrinho: W acelera, S freia/inverte, Espaço ou R descem. Ele segue os trilhos, leva o jogador junto e bate em quem encosta.
+func _ride(delta: float, axis: float, jump: bool) -> void:
+	if jump or hook_state != "" or not cart.valid() or dead > 0.0 or creative:   # o gancho também desce (wiki)
+		dismount_cart(dead <= 0.0 and cart.valid())
+		return
+	cart.advance(delta, axis)
+	position = cart.pos() + Vector3.UP * Minecart.SEAT
+	velocity = Vector3.ZERO
+	knock = Vector3.ZERO
+	on_floor = true
+	fall_top = position.y
+	last_pos = position
+	var want := _cart_basis()
+	cart_model.basis = cart_model.basis.slerp(want, minf(delta * 14.0, 1.0)) if delta > 0.0 else want
+	cart_model.position = cart.pos()
+	for w in cart_model.get_children().filter(func(n): return n.name.begins_with("Wheel")):
+		w.rotation.z = -cart.spin
+	if delta <= 0.0 or not entities:
+		return
+	var sp := cart.speed
+	if sp > 6.0 and fmod(cart.spin, 4.0) < sp * delta / 0.14:   # faíscas nas rodas
+		Fx.sparks(entities, cart.pos() + Vector3(0, 0.12, 0), Color("#ffd27a"), 1, -Vector3(cart.dir))
+	shake = maxf(shake, clampf(sp / Minecart.FAST_SPEED, 0.0, 1.0) * 0.25)   # o carrinho chacoalha a câmera
+	for e in cart_hit.keys():
+		cart_hit[e] -= delta
+		if cart_hit[e] <= 0.0 or not is_instance_valid(e):
+			cart_hit.erase(e)
+	if sp < 2.0:
+		return
+	for e in entities.enemies.duplicate():   # o encontrão fere o inimigo e dá ao jogador uma folga para não apanhar dele
+		if e.def.ai != "npc" and not e.display and not cart_hit.has(e) and VoxelBody.touches(position, HALF, TALL, e.position, e.half, e.tall):
+			cart_hit[e] = 0.5
+			e.hurt(Combat.vary(cart.damage(), entities.rng), Vector3(cart.dir), cart.knockback(), Combat.is_crit(entities.rng))
+			iframes = maxf(iframes, 0.4)
 
 
 # Abre ou fecha a porta em p (e a que está em cima ou embaixo, para o vão de 2 blocos). A aberta não tem colisão; as duas são parede na moradia.

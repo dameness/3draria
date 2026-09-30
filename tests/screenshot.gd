@@ -42,6 +42,9 @@ const SHOTS := [
 	{"name": "ilha_ceu_baixo", "sky": "below", "look": Vector2(0, 0.35), "creative": true},
 	{"name": "ilha_ceu_bau", "sky": "top", "look": Vector2(0, -0.2), "creative": true, "inventory": true, "sky_chest": true},
 	{"name": "flail", "item": "blue_moon", "look": Vector2(0.4, -0.5), "third": true, "flail": true, "creative": false},
+	{"name": "trilho", "third": true, "track": true, "look": Vector2(-1.1, -0.2), "creative": false},
+	{"name": "carrinho_lado", "third": true, "track": true, "look": Vector2(-PI / 2, -0.1), "creative": false, "free": 1.3},
+	{"name": "mina", "tunel": true, "look": Vector2(-PI / 2, -0.05), "creative": false},
 	{"name": "gancho", "look": Vector2(0.9, 0.25), "hook": true, "third": true, "creative": false},
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "neve", "snow": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
@@ -378,6 +381,26 @@ func _setup(s: Dictionary) -> void:
 		for dy in range(2, 8):
 			for dz in range(-2, 3):
 				world.set_block(int(wall.x + dz * f.z), int(player.position.y) + dy, int(wall.z - dz * f.x), Blocks.ids.stone)
+	if s.get("track", false):   # trilho à frente (+x) com subida e descida em rampa; o jogador monta e anda um pouco
+		var bx := int(player.position.x)
+		var by := int(player.position.y)
+		var bz := int(player.position.z)
+		for k in 26:
+			var y := by + (clampi(k - 5, 0, 4) if k < 12 else clampi(17 - k, 0, 4))
+			for yy in range(by, y):
+				world.set_block(bx + k, yy, bz, Blocks.ids.stone)
+			world.set_block(bx + k, y, bz, Blocks.ids.minecart_track)
+		player.rotation.y = -PI / 2.0
+		player.mount_cart(Vector3i(bx, by, bz))
+		for i in 34:
+			player._ride(0.05, 1.0, false)
+		player.set_physics_process(false)
+	if s.get("tunel", false):   # dentro da primeira mina, olhando ao longo do corredor
+		var m: Dictionary = world.gen.mines[0]
+		var along: bool = m.axis == 0
+		player.position = Vector3(m.x + (9.5 if along else 0.5), m.ys[9] + 0.3, m.z + (0.5 if along else 9.5))
+		player.rotation.y = -PI / 2.0 if along else PI
+		player.spawn = player.position
 	var sp := Vector3i(player.spawn.floor())
 	if s.get("cave", false):  # sala escavada 12 blocos abaixo, com tochas no chão
 		for x in range(-5, 6):

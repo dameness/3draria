@@ -126,5 +126,7 @@
 	{"result": "wood_breastplate", "needs": {"wood": 30}, "station": "workbench"},
 	{"result": "wood_greaves", "needs": {"wood": 25}, "station": "workbench"},
 	{"result": "gold_crown", "needs": {"gold_bar": 5, "ruby": 1}, "station": "anvil"},
-	{"result": "platinum_crown", "needs": {"platinum_bar": 5, "ruby": 1}, "station": "anvil"}
+	{"result": "platinum_crown", "needs": {"platinum_bar": 5, "ruby": 1}, "station": "anvil"},
+	{"result": "minecart_track", "count": 50, "needs": {"iron_bar": 1, "wood": 1}, "station": "anvil"},
+	{"result": "minecart", "needs": {"iron_bar": 15, "wood": 10}, "station": "anvil"}
 ]
