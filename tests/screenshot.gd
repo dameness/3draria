@@ -54,6 +54,7 @@ const SHOTS := [
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "neve", "snow": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "deserto_cacto", "cactus": true, "creative": true, "look": Vector2(0, -0.12)},
+	{"name": "tocha_parede", "wall_torch": true, "smart": true, "look": Vector2(0, -0.2)},
 	{"name": "auto_select", "look": Vector2(0, 0.5), "give": ["glowstick", "torch"], "auto": true},
 	{"name": "deserto", "desert": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "selva", "jungle": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
@@ -477,6 +478,15 @@ func _setup(s: Dictionary) -> void:
 	if s.get("ores", false):   # minérios, baú e cristal escondidos na rocha em volta da sala (o Espeleólogo os mostra através dela)
 		for t in [Vector3i(-7, -13, -2), Vector3i(-8, -12, 1), Vector3i(7, -14, -3), Vector3i(8, -13, 0), Vector3i(0, -16, -5), Vector3i(-3, -17, -8), Vector3i(4, -11, -10), Vector3i(-6, -15, -9)]:
 			world.set_block(sp.x + t.x, sp.y + t.y, sp.z + t.z, Blocks.ids[["copper_ore", "gold_ore", "iron_ore", "life_crystal", "chest"][(t.x + t.z + 20) % 5]])
+	if s.get("wall_torch", false):   # paredão de pedra 4 blocos à frente (norte) com tochas nele (x-1, x+1) e uma no chão (x)
+		var wy: int = world.surface_y(sp.x, sp.z - 6)
+		for wx in range(-3, 4):
+			for wyy in range(0, 4):
+				world.set_block(sp.x + wx, wy + wyy, sp.z - 6, Blocks.ids.stone)
+		for wx in [-2, 2]:
+			world.set_block(sp.x + wx, wy + 2, sp.z - 5, Blocks.ids.torch)
+		world.set_block(sp.x, wy, sp.z - 5, Blocks.ids.torch)
+		player.smart_cursor = s.get("smart", false)
 	if s.get("torches", false):
 		for t in [Vector3i(-2, 0, -4), Vector3i(3, 0, -5), Vector3i(0, 0, -9)]:
 			var y: int = world.surface_y(sp.x + t.x, sp.z + t.z)

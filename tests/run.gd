@@ -1065,6 +1065,11 @@ func test_binds():
 	check(p.auto_slot == 20 and p.held() == Items.ids.glowstick, "Shift sem bloco na mira: o glowstick do inventário (mira longe) antes da tocha")
 	p.auto_pick(false)
 	check(p.auto_slot == -1 and not p.auto_on and p.held() == Items.ids.copper_axe, "soltar o Shift devolve a mão ao slot da hotbar")
+	p.slot = 3   # tocha selecionada na hotbar: o Shift mirando um bloco não a troca pela picareta
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
+	p.auto_pick(true)
+	check(p.auto_slot == 3 and p.held() == Items.ids.torch, "Shift com a tocha na hotbar e um bloco na mira: continua a tocha")
+	p.auto_pick(false)
 	p.inv = Inventory.new()
 	p.inv.add(Items.ids.dirt, 1)
 	p.slot = 0

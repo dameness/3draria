@@ -311,6 +311,19 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 		"torch":
 			var stick := tiles_of(b, 0) * tw
 			var flame := tiles_of(b, 2) * tw
+			var wall := Vector3.ZERO   # sem chão embaixo e com parede ao lado: a tocha sai da parede, inclinada para fora (em degraus)
+			if Blocks.solid[p[pi - PP]] == 0:
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					if Blocks.solid[p[pi + d.x + d.y * P]] == 1:
+						wall = Vector3(d.x, 0, d.y)
+						break
+			if wall != Vector3.ZERO:
+				for f in 6:
+					var sh: float = SHADE[f]
+					for k in 3:
+						_face(a, pos + Vector3(0.44, 0.22 + 0.17 * k, 0.44) + wall * (0.44 - 0.09 * k), f, Vector3(0.12, 0.2, 0.12), stick, tw, Color(sh, sh, 0))
+					_face(a, pos + Vector3(0.41, 0.73, 0.41) + wall * 0.12, f, Vector3(0.18, 0.2, 0.18), flame, tw, Color(1, 1, 0.25))
+				return
 			for f in 6:
 				var sh: float = SHADE[f]
 				_face(a, pos + Vector3(0.44, 0, 0.44), f, Vector3(0.12, 0.55, 0.12), stick, tw, Color(sh, sh, 0))
