@@ -14,7 +14,7 @@ var entities: Node3D
 var velocity := Vector3(0, 4, 0)
 var age := 0.0
 var delay := DELAY
-var doll := false        # Guide Voodoo Doll: largada na lava do submundo, chama o chefe (wiki)
+var doll := false        # Guide Voodoo Doll: ao queimar na lava do submundo chama o Wall of Flesh (wiki)
 var icon: Sprite3D
 
 
@@ -76,11 +76,30 @@ func _physics_process(delta: float) -> void:
 	position = r[0]
 	if r[1].y != 0:
 		velocity = Vector3.ZERO
-	if doll and position.y < WorldGen.UNDERWORLD_TOP and entities.boss == null:
-		var b: int = entities.world.get_block(floori(position.x), floori(position.y), floori(position.z))
-		if Blocks.liquid[b] == 1 and Blocks.liquid_kind[b] == Blocks.ids.lava:   # (outros itens na lava só afundam; a wiki os queima)
-			var boss: Node3D = entities.spawn_boss(Items.defs[item].summon)
-			p.say("%s despertou!" % Items.title(boss.def.name))
-			count -= 1
-			if count <= 0:
-				queue_free()
+	if _burns() and _in_lava():
+		_burn()
+
+
+# Lava (wiki): item de raridade 0 (moedas incluídas) ou -1, fora os lava_safe, queima ao boiar nela (ponto médio do item abaixo da superfície).
+func _burns() -> bool:
+	var d: Dictionary = Items.defs[item]
+	var r: int = d.get("rarity", 0)
+	return r == -1 or (r == 0 and not d.get("lava_safe", false))
+
+
+func _in_lava() -> bool:
+	var at := position + Vector3.UP * 0.25
+	var b: int = entities.world.get_block(floori(at.x), floori(at.y), floori(at.z))
+	return Blocks.liquid[b] == 1 and Blocks.liquid_kind[b] == Blocks.ids.lava and Blocks.liquid_level[b] / 8.0 > fposmod(at.y, 1.0)
+
+
+# Guide Voodoo Doll (wiki): ao queimar, o Guide morre; no submundo, com ele vivo e sem chefe, o Wall of Flesh nasce (uma vez, por mais que a pilha seja grande).
+func _burn() -> void:
+	var d: Dictionary = Items.defs[item]
+	if doll and entities.kill_guide() and position.y < WorldGen.UNDERWORLD_TOP and entities.boss == null:
+		var boss: Node3D = entities.spawn_boss(d.summon)
+		entities.player.say("%s despertou!" % Items.title(boss.def.name))
+	Fx.puff(entities, position + Vector3.UP * 0.3, Color("#5a5048"), 8)
+	Fx.sparks(entities, position + Vector3.UP * 0.3, Color("#ff9a3a"), 8, Vector3.UP)
+	Sfx.play(entities, "hit", position, -12.0, 1.6)
+	queue_free()

@@ -67,6 +67,10 @@ def main():
         check("item", e, rows, [("damage", e.get("damage"), "damage", 0), ("use_time", ut and ut * 60, "usetime", 1),
                                 ("pick_power", e.get("pick_power"), "pick", 0), ("knockback", e.get("knockback"), "knockback", 0.05),
                                 ("rarity", e.get("rarity"), "rare", 0)], out)
+    for e in load("blocks"):   # raridade do bloco-item: a lava queima os de raridade 0 (sem linha na wiki, pula: os blocos comuns são todos 0)
+        rows = W_items.get(key(e.get("wiki") or e["name"]))
+        if rows and e.get("item", True) and e.get("breakable", True) and (e.get("solid", True) or e.get("shape")):
+            check("bloco", e, rows, [("rarity", e.get("rarity", 0), "rare", 0)], out)
     for e in load("enemies"):
         check("inimigo", e, W_npcs.get(key(e.get("wiki") or e["name"])),
               [(f, e.get(f), f, 0) for f in ("life", "damage", "defense")], out)

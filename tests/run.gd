@@ -1831,17 +1831,42 @@ func test_throw():
 	p.inv.cursor_count = 7
 	p.drop_cursor()
 	check(p.inv.cursor_id == -1 and drops.call()[0].count == 7, "o item preso ao cursor vai ao chão")
-	# boneca: só a que cai na lava do submundo chama o chefe
+	# lava (wiki Lava): raridade 0 (moedas incluídas) e -1 queimam, salvo lava_safe; 1+ não
 	for n in drops.call():
 		n.free()
 	w.set_block(30, 11, 30, Blocks.ids.lava)
-	var doll: Node3D = ent.spawn_drop(Items.ids.guide_voodoo_doll, 2, Vector3(20.5, 12, 20.5))
+	var burnt := []
+	var kept := []
+	for n in ["torch", "wood", "copper_coin", "copper_pickaxe", "hellstone", "demonite_ore", "cobalt_ore", "obsidian", "empty_bucket", "lava_bucket", "chain", "iron_bow", "band_of_regeneration"]:
+		var it: Node3D = ent.spawn_drop(Items.ids[n], 1, Vector3(30.5, 11.5, 30.5))
+		it._ready()
+		run(it, 0.1)
+		(burnt if it.is_queued_for_deletion() else kept).append(n)
+	check(burnt == ["torch", "wood", "copper_coin", "copper_pickaxe", "iron_bow"] and kept.size() == 8, "na lava queimam os de raridade 0 (e as moedas) sem lava_safe; minério raro, obsidiana, baldes e corrente ficam (queimou %s)" % [burnt])
+	check(Items.defs[Items.ids.hellstone].rarity == 2 and Items.defs[Items.ids.cobalt_ore].rarity == 3 and Items.defs[Items.ids.demonite_ore].rarity == 1, "os minérios têm a raridade da wiki (não queimam)")
+	w.set_block(32, 11, 30, Blocks.ids.lava_1)   # lava rasa (nível 1): o ponto médio do item fica acima da superfície
+	var shallow: Node3D = ent.spawn_drop(Items.ids.torch, 1, Vector3(32.5, 11.0, 30.5))
+	shallow._ready()
+	run(shallow, 0.05)
+	check(not shallow.is_queued_for_deletion(), "lava rasa não queima o item que boia acima dela")
+	for n in drops.call():
+		n.free()
+	# boneca: queima na lava, mata o Guide (vivo, perto ou longe); no submundo chama o Wall of Flesh uma vez
+	w.npcs["guide"] = true
+	var guide: Node3D = ent.spawn_enemy(enemy_def("guide"), Vector3(40.5, 11.0, 40.5))
+	var doll: Node3D = ent.spawn_drop(Items.ids.guide_voodoo_doll, 3, Vector3(20.5, 12, 20.5))
 	doll._ready()
 	run(doll, 1.0)
-	check(ent.boss == null, "a boneca no chão não chama nada")
+	check(ent.boss == null and not doll.is_queued_for_deletion() and ent.enemies.has(guide), "a boneca no chão não faz nada")
 	doll.position = Vector3(30.5, 11.5, 30.5)
 	run(doll, 0.1)
-	check(ent.boss != null and ent.boss.def.name == "wall_of_flesh" and doll.count == 1 and p.message.contains("despertou"), "largada na lava do submundo chama o Wall of Flesh e gasta uma")
+	check(doll.is_queued_for_deletion() and ent.boss != null and ent.boss.def.name == "wall_of_flesh" and not ent.enemies.has(guide) and w.town_wait.has("guide") and p.message.contains("despertou"), "a boneca queimada na lava do submundo mata o Guide e chama o Wall of Flesh")
+	ent.remove_enemy(ent.boss)
+	ent.boss = null
+	var doll2: Node3D = ent.spawn_drop(Items.ids.guide_voodoo_doll, 1, Vector3(30.5, 11.5, 30.5))
+	doll2._ready()
+	run(doll2, 0.1)
+	check(doll2.is_queued_for_deletion() and ent.boss == null, "sem o Guide vivo a boneca se perde sem chamar o chefe")
 	free_player(p)
 	w.free()
 	return true

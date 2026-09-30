@@ -142,6 +142,19 @@ func _town() -> void:
 				player.say("%s chegou!" % Items.title(n))
 
 
+# Guide Voodoo Doll queimada na lava (wiki): o Guide morre, esteja ele por perto ou não; false se já estava morto (a boneca se perde sem efeito).
+func kill_guide() -> bool:
+	if not world.npcs.has("guide") or world.town_wait.has("guide"):
+		return false
+	for e in enemies:
+		if e.def.name == "guide":
+			e.immune = 0.0
+			e.hurt(99999, Vector3.ZERO, 0.0, false, true)
+			return true
+	npc_died("guide")   # (longe: não há o que ferir, só a morte)
+	return true
+
+
 # Um habitante morreu: some da vila por NPC_RETURN segundos.
 func npc_died(n: String) -> void:
 	world.town_wait[n] = NPC_RETURN

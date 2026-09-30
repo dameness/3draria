@@ -33,13 +33,14 @@ translúcida à parte, `"glow": true` = brilha sozinho, como a lava). Líquido f
 superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 níveis, no fim da lista.
 `shape: "door"`: painel fino na borda do bloco, sem colisão (porta aberta; `door` é o cubo sólido: as duas contam como parede na moradia). `shape: "rope"`: fio fino não sólido; dentro dele Espaço sobe, C desce, sem tecla pendura (player.gd `on_rope`). Forma nova = um `match` em `chunk_mesher._shape`.
 `light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
-`grass: true`: é grama (a muda de árvore só pega em cima dela). `spread: true`: a grama do mal, colocada ou plantada por semente, se espalha pela terra e grama vizinhas (`world.gd`, com teto por chunk).
+`rarity`/`lava_safe` (no bloco que vira item): raridade do item e se ele resiste à lava (ver items.json). `grass: true`: é grama (a muda de árvore só pega em cima dela). `spread: true`: a grama do mal, colocada ou plantada por semente, se espalha pela terra e grama vizinhas (`world.gd`, com teto por chunk).
 `clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral). Plantas e líquidos são
 `breakable: false`: não viram item.
 
 ## items.json (itens que não são bloco)
-`{name, icon, stack?=9999, rarity?=0, pick_power?, axe_power?, hammer_power?, use_time? (s), tool_speed? (quadros de 1/60 s), autoswing? (bool), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
+Lava (wiki Lava): o item solto de raridade 0 (branca, moedas incluídas) ou −1 (cinza) queima ao boiar na lava, salvo `lava_safe: true` (baldes, corrente, obsidiana...). Os de raridade 1+ (minérios do mal, pedra infernal, armas...) não: o bloco-item precisa da `rarity` certa no blocks.json (o audit confere).
+`{name, icon, stack?=9999, rarity?=0, lava_safe?, pick_power?, axe_power?, hammer_power?, use_time? (s), tool_speed? (quadros de 1/60 s), autoswing? (bool), damage?, reach?, knockback?, ammo?, shoot_speed?, use_style?, places? (bloco que o item coloca)}`.
 `plants`: bloco de grama em que a semente transforma a terra da mira (Grass/Corrupt/Crimson Seeds). `ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
 `sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
 flecha = −90). `shoot`/`projectile`: nome em projectiles.json. `effects`: {glow, trail, particles} (cores).

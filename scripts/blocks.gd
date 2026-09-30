@@ -24,6 +24,7 @@ static var glow := PackedByteArray()       # id -> 1 se brilha sozinho (lava)
 static var no_item := PackedByteArray()    # id -> 1 se o bloco não vira item colocável (Life Crystal: o que cai é um item consumível à parte)
 static var grassy := PackedByteArray()     # id -> 1 se é grama (a muda só pega em cima dela)
 static var spreads := PackedByteArray()     # id -> 1 se espalha pela terra e grama em volta (grama do mal; world.gd spread)
+static var item_extra := {}                # id -> {rarity?, lava_safe?} do item do bloco (blocks.json); o resto do item é deduzido
 static var sapling := -1                   # id da muda de árvore (world.gd cresce)
 static var light := PackedInt32Array()     # id -> raio de luz em blocos (0 = não ilumina)
 static var station_as := PackedInt32Array() # id -> bloco de estação que ele equivale (bigorna de chumbo = bigorna)
@@ -60,6 +61,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	glow.clear()
 	grassy.clear()
 	spreads.clear()
+	item_extra.clear()
 	no_item.clear()
 	clear.clear()
 	light.clear()
@@ -91,6 +93,8 @@ static func load_pack(dir := "res://data/base") -> void:
 		glow.append(1 if b.get("glow", false) else 0)
 		grassy.append(1 if b.get("grass", false) else 0)
 		spreads.append(1 if b.get("spread", false) else 0)
+		if b.has("rarity") or b.has("lava_safe"):
+			item_extra[ids[b.name]] = {"rarity": b.get("rarity", 0), "lava_safe": b.get("lava_safe", false)}
 		no_item.append(1 if b.get("item", true) == false else 0)
 		clear.append(1 if b.get("clear", false) else 0)
 		light.append(b.get("light", 0))

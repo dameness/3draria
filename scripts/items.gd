@@ -38,7 +38,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	for block in Blocks.ids:
 		var b: int = Blocks.ids[block]
 		if Blocks.breakable[b] and (Blocks.solid[b] or Blocks.shape[b] != "") and Blocks.no_item[b] == 0:
-			_add({"name": block, "icon": Blocks.icons[b]}, Blocks.tiles[b * Blocks.FACES], b)
+			_add({"name": block, "icon": Blocks.icons[b]}.merged(Blocks.item_extra.get(b, {})), Blocks.tiles[b * Blocks.FACES], b)
 	var tile_index := Blocks.textures.keys()
 	for it in Blocks.read(dir + "/items.json"):
 		assert(tile_index.has(it.icon), "ícone desconhecido: " + it.icon)
