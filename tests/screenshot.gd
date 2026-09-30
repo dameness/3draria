@@ -69,6 +69,7 @@ const SHOTS := [
 	{"name": "particulas", "look": Vector2(0, -0.1), "fx": true},
 	{"name": "golpe_slime", "look": Vector2(0, -0.3), "enemies": ["green_slime"], "item": "wooden_sword", "hurt_late": true},
 	{"name": "flash", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "hurt": true},
+	{"name": "olhar_livre", "third": true, "look": Vector2(0.4, -0.25), "free": 2.4, "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "asas", "third": true, "look": Vector2(0.4, -0.2), "wings": true, "item": "copper_pickaxe"},
 	{"name": "pocoes", "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "ironskin_potion", "regeneration_potion", "swiftness_potion", "mining_potion", "archery_potion", "recall_potion", "magic_mirror"], "buffs": ["ironskin", "regeneration", "swiftness", "potion_sickness"], "hp": 60},
@@ -202,6 +203,13 @@ func _process(_delta: float) -> bool:
 					model._process(0.016)
 				else:
 					hand._process(0.016)
+		if shots[shot].has("free") and wait == 1:   # olhar livre: aperta o Alt de mentira e gira
+			var alt := InputEventKey.new()
+			alt.keycode = KEY_ALT
+			alt.pressed = true
+			Input.parse_input_event(alt)
+		if shots[shot].has("free") and wait >= 1:
+			player.free_yaw = shots[shot].free
 		if shots[shot].get("fx", false) and wait == 19:   # um de cada tipo, em fileira à frente da câmera
 			var ent: Node3D = main.get_node("Entities")
 			var fwd := Vector3(-sin(player.rotation.y), 0, -cos(player.rotation.y))

@@ -404,7 +404,7 @@ func npc_aimed(reach: float) -> Node3D:
 	for e in enemies:
 		if e.def.ai == "npc":
 			var eye: Vector3 = player.eye()
-			var dir: Vector3 = -player.cam.global_basis.z
+			var dir: Vector3 = player.aim_dir()
 			var to: Vector3 = e.position + Vector3.UP * e.tall * 0.5 - eye
 			if to.length() < reach and dir.dot(to.normalized()) > 0.9:
 				return e

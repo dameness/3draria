@@ -3450,7 +3450,8 @@ func integration():
 			var k: Vector2i = world.center
 			edit_mesh_id = world.meshes[k].get_instance_id()
 			edit_faces = world.meshes[k].mesh.surface_get_array_len(0)
-			player.cam.rotation.x = -PI / 2
+			player.pitch = -PI / 2
+			player.cam.rotation.x = player.pitch
 			player._process(0)
 			var below := Vector3i(player.position.floor()) - Vector3i(0, 1, 0)
 			check(player.target.get("pos") == below, "mira olhando para baixo acerta o bloco sob os pés")
@@ -3695,6 +3696,25 @@ func integration():
 			player.cam.rotation.x = -0.2
 			player._update_camera(0.0)
 			check(player.lens_clear(player.cam.global_position), "3ª pessoa: junto de uma parede do lado do ombro a câmera para antes dela")
+			# olhar livre (Alt): a câmera gira em volta, a mira fica; nunca dentro de bloco; solto, volta para trás do personagem
+			player.position = Vector3(px - 3.5, gy, pz + 0.5)
+			player.rotation.y = 0.0
+			player.pitch = -0.2
+			var aim0: Vector3 = player.aim_dir()
+			var free_bad := 0
+			for i in 200:
+				player.free_yaw = rng.randf_range(-PI, PI)
+				player.free_pitch = rng.randf_range(-1.0, 1.0)
+				player._update_camera(0.0)
+				free_bad += int(not player.lens_clear(player.cam.global_position))
+			check(free_bad == 0 and player.aim_dir().is_equal_approx(aim0), "olhar livre: a câmera nunca entra em bloco e a mira não muda (%d)" % free_bad)
+			player.free_yaw = PI * 0.5
+			player.free_pitch = 0.0
+			player._update_camera(0.0)
+			check(player.aim_dir().dot(-player.cam.global_basis.z) < 0.3, "olhar livre: a câmera olha para o lado enquanto a mira segue reta")
+			for i in 60:
+				player._update_camera(0.05)
+			check(absf(player.free_yaw) < 0.01 and player.aim_dir().dot(-player.cam.global_basis.z) > 0.99, "olhar livre: solto o Alt, a câmera volta atrás do personagem")
 			# modelos (mão, corpo, inimigos): o sol e o ambiente escurecem sob a terra e voltam na superfície
 			var dn: Node = main.get_node("DayNight")
 			var sun: DirectionalLight3D = main.get_node("Sun")

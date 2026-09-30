@@ -80,6 +80,8 @@ var auto_prev := -1           # slot de antes do Auto Select (Shift); -1 = não 
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
+var free_yaw := 0.0           # olhar livre (3ª pessoa, segurar Alt): a câmera gira em volta do corpo; a mira e o corpo não mexem
+var free_pitch := 0.0
 var hook_state := ""          # gancho (E): "" sem gancho, "fly" a corrente indo, "pull" preso e puxando
 var hook_at := Vector3.ZERO   # onde a corrente prende (o ponto da face do bloco)
 var hook_time := 0.0          # segundos que faltam para a corrente chegar
@@ -208,7 +210,12 @@ func _unhandled_input(e: InputEvent) -> void:
 		set_inventory(not inventory_open)
 	elif e is InputEventMouseMotion:
 		if not inventory_open and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			look(e.relative)
+			if third_person and Input.is_key_pressed(KEY_ALT):
+				var sens := LOOK * Settings.mouse_sens
+				free_yaw = wrapf(free_yaw - e.relative.x * sens, -PI, PI)
+				free_pitch = clampf(free_pitch - e.relative.y * sens, -1.55 - pitch, 1.55 - pitch)
+			else:
+				look(e.relative)
 	elif e is InputEventMouseButton:
 		if e.button_index == MOUSE_BUTTON_LEFT:
 			attack_held = e.pressed and not inventory_open
@@ -302,13 +309,18 @@ func find_target(from: Vector3, dir: Vector3) -> Dictionary:
 	return hit
 
 
+# A mira (independe da câmera, que no olhar livre gira sozinha).
+func aim_dir() -> Vector3:
+	return Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD
+
+
 func eye() -> Vector3:
 	return global_position + Vector3.UP * EYE
 
 
 func _process(delta: float) -> void:
 	_update_camera(delta)
-	target = find_target(eye(), -cam.global_basis.z)
+	target = find_target(eye(), aim_dir())
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
 		highlight.global_position = Vector3(target.pos) + Vector3.ONE * 0.5
@@ -331,8 +343,12 @@ func _process(delta: float) -> void:
 # houver bloco no caminho (o raio vai dos olhos até o ponto da câmera, ombro incluído), e o corpo do jogador aparece.
 func _update_camera(delta := 0.0) -> void:
 	var offset := Vector3.ZERO
+	if delta > 0.0 and not (third_person and not inventory_open and Input.is_key_pressed(KEY_ALT)):   # solto o Alt, a câmera volta suave para trás do personagem
+		free_yaw = lerp_angle(free_yaw, 0.0, minf(delta * 10.0, 1.0))
+		free_pitch = lerpf(free_pitch, 0.0, minf(delta * 10.0, 1.0))
 	if third_person:
-		var want := Basis(Vector3.RIGHT, pitch) * Vector3(0, 0, TPP_DISTANCE) + Vector3(TPP_SHOULDER, 0, 0)   # em relação aos olhos
+		cam.rotation = Vector3(pitch + free_pitch, free_yaw, 0)
+		var want := Basis(Vector3.UP, free_yaw) * Basis(Vector3.RIGHT, pitch + free_pitch) * Vector3(0, 0, TPP_DISTANCE) + Vector3(TPP_SHOULDER, 0, 0)   # em relação aos olhos
 		var hit: Dictionary = world.raycast(eye(), (global_basis * want).normalized(), want.length() + TPP_MARGIN)
 		var k := 1.0 if hit.is_empty() else clampf((hit.t - TPP_MARGIN) / want.length(), 0.0, 1.0)
 		for i in 6:   # rede de segurança: encosta na parede lateral ou no teto sem a lente entrar em bloco
@@ -351,6 +367,10 @@ func _update_camera(delta := 0.0) -> void:
 	if not third_person and delta > 0.0:   # em 1ª pessoa a câmera balança ao andar e treme nos golpes
 		cam.position += Vector3(cos(bob * 0.5) * 0.02, absf(sin(bob)) * 0.035, 0) * walk
 		cam.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * 0.05
+	if not third_person and (free_yaw != 0.0 or free_pitch != 0.0):
+		cam.rotation = Vector3(pitch, 0, 0)
+		free_yaw = 0.0
+		free_pitch = 0.0
 	cam.get_node("Hand").visible = not third_person
 	get_node("Model").visible = third_person
 
@@ -376,7 +396,7 @@ func tick(delta: float) -> void:
 			var hits := 0
 			cut_plants(swing_item.get("reach", 2.2))
 			if swing_item.get("damage", 0) > 0:
-				hits = swing(swing_item, eye(), -cam.global_basis.z)
+				hits = swing(swing_item, eye(), aim_dir())
 			if swing_item.has("pick_power") or swing_item.has("axe_power") or swing_item.has("hammer_power"):
 				break_target()
 			if hits > 0:
@@ -548,7 +568,7 @@ func use_hook(aim := Vector3.ZERO) -> void:
 	if h.is_empty():
 		say("sem gancho")
 		return
-	var dir := aim if aim != Vector3.ZERO else -cam.global_basis.z
+	var dir := aim if aim != Vector3.ZERO else aim_dir()
 	var from := position + Vector3.UP * EYE
 	var hit: Dictionary = world.raycast(from, dir, h.range)
 	if hit.is_empty() or not Blocks.solid[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]:
@@ -918,7 +938,7 @@ func cast(d: Dictionary, aim := Vector3.ZERO) -> void:   # aim: a direção (os 
 		use_len = cooldown
 	if cost > 0.0:
 		mana_use = 0.0
-	var forward := aim if aim != Vector3.ZERO else -cam.global_basis.z
+	var forward := aim if aim != Vector3.ZERO else aim_dir()
 	var from := position + Vector3.UP * EYE
 	if d.has("cloud"):   # Crimson Rod: uma nuvem no ponto da mira (para antes de um bloco) que chove sangue; uma por vez
 		var hit: Dictionary = world.raycast(from, forward, d.cloud)
@@ -980,10 +1000,10 @@ func use_item() -> void:
 		consume(slot)
 		return
 	if d.has("throw"):
-		throw_item(id, d, -cam.global_basis.z)
+		throw_item(id, d, aim_dir())
 		return
 	if d.has("boomerang"):
-		throw_boomerang(d, -cam.global_basis.z)
+		throw_boomerang(d, aim_dir())
 		return
 	if d.has("flail"):
 		throw_flail(id, d)
@@ -992,7 +1012,7 @@ func use_item() -> void:
 		cast(d)
 		return
 	if d.has("ammo"):
-		shoot(d, eye(), -cam.global_basis.z)
+		shoot(d, eye(), aim_dir())
 	elif Items.places[id] != -1:
 		place_block()
 	elif d.has("plants"):
