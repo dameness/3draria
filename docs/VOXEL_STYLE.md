@@ -22,6 +22,15 @@
 - Voxel `255,0,255` = ponto de encaixe (pivô: ombro, quadril, pescoço, empunhadura); não vira malha.
 - Eixos do MagicaVoxel: x largura, y profundidade (frente = y pequeno), z altura. O jogo gira para a frente olhar para -Z.
 
+## Padrão das estruturas (aprovado pelo dono na leva 1; vale para toda estrutura nova, Living Loom e similares)
+Receita `prop` (ou `loom`) + campos do `models.json`; nada de código novo por estrutura:
+- Sprite da wiki **de frente** extrudado (`depth`), nunca a malha chapada: dê volume com `profile` (domo da tampa, tampo que sobressai, chifre fino, cintura estreita) ou `round` (gema/altar).
+- **`"sides": true`**: as laterais repetem a textura da frente (`side_texture`), em vez de lajes lisas. `plain` pinta o miolo do contorno escuro. Exceção: peça com afinamento forte (bigorna).
+- Emissivo recuado (`recess`) onde há boca/fogo; vão no meio (`legs`) onde há pernas.
+- Bloco: `"shape": "model"`, **sólido** (colide como bloco inteiro) e o mesher não o usa para esconder faces vizinhas (`Blocks.cull`: o modelo é menor que a célula, senão abre buraco no chão/parede).
+- Largura = pixels do sprite × 1 voxel (0,0375): ~1,1 a 1,2 bloco; altar/larva reduzidos para 2,5 tiles. Não giram (frente = -Z). Fino demais ou de perfil (porta, cadeira, tocha, corda, trilho) fica no automático.
+- Conferir: `tests/model_preview.gd -- block:nome` (4 ângulos) e `tests/screenshot.gd -- estacoes`.
+
 ## Fluxo
 `models.json` (sprite da wiki + cores) → receita em `scripts/voxel/recipes.gd` → `assets/models/gen/*.vox` (update.sh) → jogo.
 Retoque: copie o `.vox` para `assets/models/` e edite; ele vence o gerado e o update nunca o toca. Conferir sem tela: `tests/model_preview.gd`.

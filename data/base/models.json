@@ -1,5 +1,5 @@
 {
-	"living_loom": {"recipe": "loom", "wiki": "Living_Loom_(placed)", "depth": 10},
+	"living_loom": {"recipe": "loom", "wiki": "Living_Loom_(placed)", "sides": true, "depth": 10},
 	"molten": {"recipe": "armor_set", "wiki": "Molten_armor", "emissive": ["#ff1800", "#f87e00", "#f8b600", "#420600"], "sparks": "#f8b600"},
 	"furnace": {"recipe": "prop", "wiki": "Furnace", "sides": true, "depth": 12, "plain": "#4c4c4c", "recess": 2, "emissive": ["#d84d28", "#fddd03", "#9f3c23"]},
 	"hellforge": {"recipe": "prop", "wiki": "Hellforge", "sides": true, "depth": 12, "plain": "#662222", "recess": 2, "emissive": ["#e99117", "#ef9b11", "#ee6646", "#e6831a", "#df5521", "#e34f1d", "#de6522", "#cb1202", "#bc1802"]},

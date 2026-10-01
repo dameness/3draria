@@ -258,16 +258,37 @@ static func loom(spec: Dictionary) -> VoxModel:
 		m.box(Vector3i(12, 4, 12), Vector3i(35, 5, 40), 0x345401)
 		return m
 	var d: int = spec.get("depth", 10)
-	return VoxModel.from_sprite(img, func(px: int, py: int, c: int) -> Vector2i:
+	var m := VoxModel.from_sprite(img, func(px: int, py: int, c: int) -> Vector2i:
 		var green: bool = (c >> 8 & 255) > (c >> 16 & 255)
 		if py >= 36:
 			return Vector2i(0, d)
 		if green:
 			return Vector2i(d / 2 - 2, d / 2 + 1) if (c >> 8 & 255) > 0x7a else Vector2i(d / 2 - 1, d / 2 + 1)
 		return Vector2i(2, d - 2))
+	if spec.get("sides", false):
+		side_texture(m, img, {})
+	return m
 
 
 # ---------- estações, baús e gemas (leva 1) ----------
+
+# Laterais com a textura da frente: as 2 colunas de cada ponta da linha amostram o sprite de dentro para o centro (profundidade y = distância
+# da borda); contorno escuro, vão e cores emissivas ficam como estão. Padrão de toda estrutura com modelo (`"sides": true` no models.json).
+static func side_texture(m: VoxModel, img: Image, glow: Dictionary) -> void:
+	var lo := {}
+	var hi := {}
+	for p in m.v:
+		lo[p.z] = mini(lo.get(p.z, 999), p.x)
+		hi[p.z] = maxi(hi.get(p.z, -999), p.x)
+	for p in m.v.keys():
+		var left: bool = p.x <= lo[p.z] + 1
+		if not left and p.x < hi[p.z] - 1:
+			continue
+		var px: int = (lo[p.z] + 2 if left else hi[p.z] - 2) + maxi(p.y, 0) * (1 if left else -1)
+		var c := img.get_pixel(clampi(px, 0, img.get_width() - 1), img.get_height() - 1 - p.z)
+		if c.a > 0.5 and c.get_luminance() >= 0.2 and not glow.has(VoxModel.rgb(c)):
+			m.v[p] = VoxModel.rgb(c)
+
 
 # Sprite da wiki (vista de frente) com profundidade: extrusão reta de `depth` voxels (padrão 10) ou, com `round` (teto, em voxels), "inflada" (gema, altar).
 # `profile: [[linha0, linha1, y0, y1, coluna0?, coluna1?]]`: faixa de profundidade [y0, y1) (y < 0 = sai da frente) das linhas/colunas do sprite (domo da tampa, chifre fino da bigorna). `recess`: as cores emissivas começam essa quantidade de voxels atrás da frente (boca da fornalha). `legs: [linha0, linha1]`: nessas linhas do
@@ -302,20 +323,8 @@ static func prop(spec: Dictionary) -> VoxModel:
 		for p in m.v.keys():
 			if p.y > 0 and p.y < d - 1 and not glow.has(m.v[p]) and VoxModel.color(m.v[p]).get_luminance() < 0.2:
 				m.v[p] = plain
-	if spec.get("sides", false):   # laterais com a textura da frente: as 2 colunas de cada ponta da linha amostram o sprite de dentro para o centro (profundidade y = distância da borda)
-		var lo := {}
-		var hi := {}
-		for p in m.v:
-			lo[p.z] = mini(lo.get(p.z, 999), p.x)
-			hi[p.z] = maxi(hi.get(p.z, -999), p.x)
-		for p in m.v.keys():
-			var left: bool = p.x <= lo[p.z] + 1
-			if not left and p.x < hi[p.z] - 1:
-				continue
-			var px: int = (lo[p.z] + 2 if left else hi[p.z] - 2) + maxi(p.y, 0) * (1 if left else -1)
-			var c := img.get_pixel(clampi(px, 0, img.get_width() - 1), img.get_height() - 1 - p.z)
-			if c.a > 0.5 and c.get_luminance() >= 0.2 and not glow.has(VoxModel.rgb(c)):
-				m.v[p] = VoxModel.rgb(c)
+	if spec.get("sides", false):
+		side_texture(m, img, glow)
 	return m
 
 

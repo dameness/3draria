@@ -24,6 +24,7 @@ Verificação (sessão sem tela, obrigatória):
 Lições do playtest do dono (valem para toda leva):
 - "Terraria em 3D, nunca Minecraft"; modelo bom = silhueta e paleta do sprite. O dono aprovou Loom e Molten.
 - Arma na mão: 3ª pessoa = o plano do sprite acompanha o golpe (de lado); 1ª pessoa = ROLL -90 em torno do eixo maior (espada com o sinal oposto, para o fio ir à frente), golpe para a frente em direção à mira (pose "swing" em held_item.gd), ferramenta segurada no meio do cabo (GRIP 0,3). Armas novas devem herdar isso sem ajuste; se uma não servir, campo no JSON, não exceção no código.
+- Estruturas (leva 1, aprovada): padrão em docs/VOXEL_STYLE.md ("Padrão das estruturas"): `prop`/`loom` + `profile`, `sides: true`, sólido, `Blocks.cull`. Mais volume foi pedido e atendido (tampa em domo, tampo grosso); laterais com a textura da frente. Estruturas novas (inclusive as do Living Tree) seguem o mesmo padrão.
 - Brilho moderado: halo de efeito fraco (Terra Blade estava forte demais); item na mão com ambient 0,85, corpo/armadura 0,6.
 - Olhos do corpo ficam 1 voxel à frente do rosto (piscar não pode abrir buraco); peças que se encostam não podem deixar fresta (linha preta).
 - Respostas curtas em português; ao fim: testes, prints, "como rebuildar" (git pull && scripts/update.sh && .tools/godot) e se precisa de mundo novo.

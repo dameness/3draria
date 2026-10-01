@@ -3710,6 +3710,8 @@ func test_voxel():
 	if VoxRecipes.sprite("Work_Bench") != null:
 		var wb := VoxRecipes.find("workbench")
 		check(not wb.v.has(Vector3i(8, 5, 4)) and wb.v.has(Vector3i(8, 1, 15)) and wb.size().y == 14, "bancada: pernas só na frente e no fundo (vão no meio)")
+		var sp := {"wiki": "Living_Loom_(placed)"}
+		check(VoxRecipes.loom(sp).v != VoxRecipes.loom({"wiki": "Living_Loom_(placed)", "sides": true}).v and VoxRecipes.specs().chest.get("sides", false) and VoxRecipes.specs().living_loom.get("sides", false), "estruturas com laterais texturizadas (sides) no baú e na Living Loom")
 		check(VoxRecipes.find("furnace").emit.size() == 3 and not VoxRecipes.find("furnace").v.has(Vector3i(14, 0, 10)), "fornalha: fogo emissivo recuado da frente")
 	# Molten: modelo por peça, brilho e cor do sprite
 	if VoxRecipes.sprite("Molten_armor") != null:
