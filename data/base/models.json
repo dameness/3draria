@@ -9,5 +9,16 @@
 	"lead_anvil": {"recipe": "prop", "wiki": "Lead_Anvil_(placed)", "depth": 10, "profile": [[2, 5, 0, 10], [2, 7, 3, 7, 0, 9], [2, 5, 1, 9, 0, 4], [2, 7, 2, 8, 26, 31], [6, 11, 2, 8], [12, 17, 0, 10]], "plain": "#5a6068"},
 	"demon_altar": {"recipe": "prop", "wiki": "Demon_Altar", "round": 7},
 	"life_crystal": {"recipe": "prop", "wiki": "Life_Crystal_(placed)", "round": 7, "emissive": ["#f8aebe", "#e381a8", "#d27ca0"]},
-	"bee_larva": {"recipe": "prop", "wiki": "Larva", "round": 9}
+	"bee_larva": {"recipe": "prop", "wiki": "Larva", "round": 9},
+	"copper": {"recipe": "armor_plate", "icons": ["Copper_Helmet", "Copper_Chainmail", "Copper_Greaves"]},
+	"tin": {"recipe": "armor_plate", "icons": ["Tin_Helmet", "Tin_Chainmail", "Tin_Greaves"]},
+	"iron": {"recipe": "armor_plate", "icons": ["Iron_Helmet", "Iron_Chainmail", "Iron_Greaves"]},
+	"lead": {"recipe": "armor_plate", "icons": ["Lead_Helmet", "Lead_Chainmail", "Lead_Greaves"]},
+	"silver": {"recipe": "armor_plate", "icons": ["Silver_Helmet", "Silver_Chainmail", "Silver_Greaves"]},
+	"tungsten": {"recipe": "armor_plate", "icons": ["Tungsten_Helmet", "Tungsten_Chainmail", "Tungsten_Greaves"]},
+	"gold": {"recipe": "armor_plate", "icons": ["Gold_Helmet", "Gold_Chainmail", "Gold_Greaves"], "gem": "#d02030"},
+	"platinum": {"recipe": "armor_plate", "icons": ["Platinum_Helmet", "Platinum_Chainmail", "Platinum_Greaves"], "gem": "#d02030", "horns": "#d8e8f8"},
+	"wood": {"recipe": "armor_plate", "icons": ["Wood_Helmet", "Wood_Breastplate", "Wood_Greaves"]},
+	"meteor": {"recipe": "armor_plate", "icons": ["Meteor_Helmet", "Meteor_Suit", "Meteor_Leggings"], "closed": true, "spikes": "#ff7a1a", "emissive": ["#ff7a1a"], "sparks": "#ff7a1a"},
+	"ninja": {"recipe": "armor_plate", "icons": ["Ninja_Hood", "Ninja_Shirt", "Ninja_Pants"], "cloth": true, "light": "#9a9aa4"}
 }

@@ -3713,6 +3713,14 @@ func test_voxel():
 		var sp := {"wiki": "Living_Loom_(placed)"}
 		check(VoxRecipes.loom(sp).v != VoxRecipes.loom({"wiki": "Living_Loom_(placed)", "sides": true}).v and VoxRecipes.specs().chest.get("sides", false) and VoxRecipes.specs().living_loom.get("sides", false), "estruturas com laterais texturizadas (sides) no baú e na Living Loom")
 		check(VoxRecipes.find("furnace").emit.size() == 3 and not VoxRecipes.find("furnace").v.has(Vector3i(14, 0, 10)), "fornalha: fogo emissivo recuado da frente")
+	# leva 2: todo conjunto de armadura tem as 4 peças voxel (placa/pano pelos ícones; sem ícone, a paleta `colors`)
+	for k in Items.sets:
+		var ok: bool = Items.sets[k].model == k
+		for part in ["head", "body", "arm", "leg"]:
+			ok = ok and VoxRecipes.part_mesh(k, part) != null
+		check(ok, "armadura %s: modelo voxel completo" % k)
+	var wood_head: VoxModel = VoxRecipes.make("wood").wood_head
+	check(wood_head.has_anchor and not wood_head.v.has(Vector3i(3, -6, 7)) and wood_head.v.has(Vector3i(0, 0, 12)), "capacete de placa: rosto aberto na frente, calota no alto")
 	# Molten: modelo por peça, brilho e cor do sprite
 	if VoxRecipes.sprite("Molten_armor") != null:
 		var mh := VoxRecipes.find("molten", "head")
@@ -5208,22 +5216,14 @@ func test_armor_looks():
 	m.player = d
 	d.add_child(m)
 	m._build()
-	for set in ["molten", "meteor", "ninja"]:
-		var ids := PackedInt32Array([Items.ids["%s_helmet" % set if set != "meteor" else "meteor_helmet"] if set != "ninja" else Items.ids.ninja_hood, 0, 0])
-		ids[1] = Items.ids["molten_breastplate" if set == "molten" else "meteor_suit" if set == "meteor" else "ninja_shirt"]
-		ids[2] = Items.ids["molten_greaves" if set == "molten" else "meteor_leggings" if set == "meteor" else "ninja_pants"]
-		m.worn = ids
+	var wear := {"molten": ["molten_helmet", "molten_breastplate", "molten_greaves"], "meteor": ["meteor_helmet", "meteor_suit", "meteor_leggings"], "ninja": ["ninja_hood", "ninja_shirt", "ninja_pants"], "gold": ["gold_helmet", "gold_chainmail", "gold_greaves"]}
+	for set in wear:   # casca voxel: uma malha na cabeça, tronco + 2 braços, 2 pernas
+		m.worn = PackedInt32Array(wear[set].map(func(n): return Items.ids[n]))
 		m._dress()
-		if set == "molten":   # casca voxel: uma malha na cabeça, tronco + 2 braços, 2 pernas (sem o sprite do conjunto baixado, cai nas formas em código)
-			var vox: bool = VoxRecipes.sprite("Molten_armor") != null
-			check(m.shells.size() == 3 and (m.shells.head.size() == 1 and m.shells.body.size() == 3 and m.shells.legs.size() == 2 if vox else m.shells.head.size() > 3), "molten: vestiu as 3 peças (casca voxel: %s)" % vox)
-		else:
-			check(m.shells.size() == 3 and m.shells.head.size() > 3, "%s: vestiu as 3 peças com formas próprias" % set)
-	m.worn = PackedInt32Array([Items.ids.gold_helmet, Items.ids.gold_chainmail, Items.ids.gold_greaves])   # metal comum: peças genéricas (formas em código)
+		check(m.shells.size() == 3 and m.shells.head.size() == 1 and m.shells.body.size() == 3 and m.shells.legs.size() == 2, "%s: vestiu as 3 peças (cascas voxel)" % set)
+	m.worn = PackedInt32Array([-1, -1, -1])
 	m._dress()
-	check(m.shells.head.size() > 3 and m.shells.body.size() > 3 and m.shells.legs.size() > 3, "gold: vestiu as 3 peças genéricas")
-	var pal: Array = m._colors(Items.ids.molten_helmet, true)
-	check(pal[3].r > 0.8 and pal[3].b < 0.35 and pal[0].s < 0.4, "molten: destaque laranja separado do metal cinza-oliva (%s / %s)" % [pal[3], pal[0]])
+	check(m.shells.is_empty() and m.hair_nodes[0].visible, "sem armadura: sem cascas e o cabelo aparece")
 	d.free()
 	return true
 

@@ -62,6 +62,8 @@ static func make(name: String) -> Dictionary:
 				out = {name: loom(spec)}
 			"armor_set":
 				out = armor_set(name, spec)
+			"armor_plate":
+				out = armor_plate(name, spec)
 			"prop":
 				out = {name: prop(spec)}
 		for f in out:   # cores emissivas do models.json
@@ -326,6 +328,166 @@ static func prop(spec: Dictionary) -> VoxModel:
 	if spec.get("sides", false):
 		side_texture(m, img, glow)
 	return m
+
+
+# ---------- armaduras de placa e de pano (leva 2) ----------
+
+# Paleta do conjunto a partir dos ícones das peças: [luz, base, sombra, destaque] (0xRRGGBB). Luz/base/sombra = médias de faixas de luminância
+# (sem o contorno quase preto); destaque = o pixel mais saturado e claro (gema, brasa, debrum). `light`/`base`/`dark`/`accent` no models.json
+# retocam; `colors` vale se faltar o ícone (sessão sem sprites).
+static func palette(spec: Dictionary) -> Array:
+	var px: Array[Color] = []
+	for n in spec.get("icons", []):
+		var img := sprite(n)
+		if img == null:
+			continue
+		for y in img.get_height():
+			for x in img.get_width():
+				var c := img.get_pixel(x, y)
+				if c.a > 0.5 and c.get_luminance() > 0.07:
+					px.append(c)
+	var pal := []
+	if px.size() < 20:
+		pal = spec.get("colors", ["#c8c8c8", "#8a8a8a", "#4a4a4a", "#d8c040"]).map(func(h): return VoxModel.rgb(Color(h)))
+	else:
+		px.sort_custom(func(a, b): return a.get_luminance() > b.get_luminance())
+		var n := px.size()
+		var avg := func(from: int, to: int) -> int:
+			var sum := Color(0, 0, 0)
+			for i in range(from, to):
+				sum += px[i]
+			return VoxModel.rgb(sum / maxi(1, to - from))
+		var best := px[0]
+		for c in px:
+			if c.s * c.v > best.s * best.v:
+				best = c
+		pal = [avg.call(0, maxi(1, n / 5)), avg.call(n / 5, n * 3 / 5), avg.call(n * 3 / 5, maxi(n * 3 / 5 + 1, n * 17 / 20)), VoxModel.rgb(best)]
+	var keys := ["light", "base", "dark", "accent"]
+	for i in 4:
+		if spec.has(keys[i]):
+			pal[i] = VoxModel.rgb(Color(spec[keys[i]]))
+	return pal
+
+
+static func _tone(c: int, k: float) -> int:   # k > 0 clareia, k < 0 escurece
+	var col := VoxModel.color(c)
+	return VoxModel.rgb(col.lightened(k) if k > 0 else col.darkened(-k))
+
+
+# Casca de caixa com as quinas verticais e os cantos cortados (como `shell`), pintada por `paint.call(x, y, z)`; a metade de trás é um tom mais
+# escura. `skip.call(x, y, z)` -> true deixa o voxel de fora (abertura).
+static func _plates(m: VoxModel, lo: Vector3i, hi: Vector3i, paint: Callable, skip := Callable()) -> void:
+	var mid := (lo.y + hi.y) / 2
+	for z in range(lo.z, hi.z + 1):
+		for y in range(lo.y, hi.y + 1):
+			for x in range(lo.x, hi.x + 1):
+				var ex := int(x == lo.x or x == hi.x)
+				var ey := int(y == lo.y or y == hi.y)
+				var ez := int(z == lo.z or z == hi.z)
+				if ex + ey + ez >= 3 or ex + ey == 2 or (skip.is_valid() and skip.call(x, y, z)):
+					continue
+				var c: int = paint.call(x, y, z)
+				m.put(Vector3i(x, y, z), c if y <= mid else _tone(c, -0.18))
+
+
+# Conjunto de placas (copper...wood, meteor) ou de pano (`cloth`: ninja): capacete de rosto aberto, peitoral com ombreiras, manga até o cotovelo,
+# greva com joelheira e bota; só a paleta (ícones) muda de um metal para outro. Opções do models.json: `crest`/`horns` (cor), `gem` (cor do
+# peito e da testa), `spikes` (cor: espinhos, gola e visor; meteor), `closed` (visor em vez de rosto aberto), `cloth`.
+static func armor_plate(name: String, spec: Dictionary) -> Dictionary:
+	var pal := palette(spec)
+	var light: int = pal[0]
+	var base: int = pal[1]
+	var dark: int = pal[2]
+	var cloth: bool = spec.get("cloth", false)
+	var closed: bool = spec.get("closed", false)
+	var gem := VoxModel.rgb(Color(spec.gem)) if spec.has("gem") else -1
+	var glow := VoxModel.rgb(Color(spec.spikes)) if spec.has("spikes") else -1
+	var out := {}
+	# capacete: calota (z 5-12), bochechas e nuca; a frente fica aberta do queixo à testa (o rosto aparece); no pano, capuz inteiro com fresta dos olhos
+	var head := VoxModel.new()
+	head.put(Vector3i.ZERO, VoxModel.ANCHOR)
+	var head_paint := func(x: int, y: int, z: int) -> int:
+		if z >= 11 or (z == 10 and absi(x) < 3):
+			return _tone(base, 0.1) if cloth else light
+		return dark if z <= 5 or (y == -6 and z == 9) else base
+	var head_skip := func(x: int, y: int, z: int) -> bool:
+		if cloth:
+			return y <= -5 and z >= 6 and z <= 8 and absi(x) <= 4
+		if z <= 4 and not ((absi(x) >= 5 and y >= -3) or y >= 5):
+			return true
+		return not closed and y <= -5 and absi(x) <= 3 and z <= 8
+	_plates(head, Vector3i(-6, -6, 1), Vector3i(6, 6, 12), head_paint, head_skip)
+	if closed:
+		head.box(Vector3i(-4, -7, 4), Vector3i(4, -7, 9), base)   # placa sobre os olhos (eles ficam no plano da casca)
+		head.box(Vector3i(-4, -7, 6), Vector3i(4, -7, 7), glow if glow >= 0 else light)   # visor
+	elif not cloth:
+		head.box(Vector3i(-1, -6, 4), Vector3i(1, -6, 8), base)   # protetor de nariz
+		head.box(Vector3i(0, -7, 4), Vector3i(0, -7, 9), light)
+		if gem >= 0:
+			head.box(Vector3i(0, -7, 10), Vector3i(0, -7, 11), gem)
+	if cloth:
+		head.box(Vector3i(-5, -6, 9), Vector3i(5, -6, 9), light)   # faixa da testa
+		head.box(Vector3i(0, 6, 5), Vector3i(2, 8, 6), dark)         # nó do capuz
+		head.box(Vector3i(1, 7, 3), Vector3i(2, 8, 4), dark)
+	if spec.has("crest"):   # crista da testa à nuca
+		var col := VoxModel.rgb(Color(spec.crest))
+		var profile := [2, 3, 4, 5, 5, 5, 5, 4, 4, 3, 2, 2, 1]
+		for i in profile.size():
+			head.box(Vector3i(0, i - 6, 13), Vector3i(0, i - 6, 12 + profile[i]), col)
+	if spec.has("horns"):
+		var col := VoxModel.rgb(Color(spec.horns))
+		for side in [-1, 1]:
+			head.box(Vector3i(side * 7, -1, 8), Vector3i(side * 8, 1, 9), col)
+			head.box(Vector3i(side * 9, -1, 10), Vector3i(side * 9, 1, 12), col)
+			head.box(Vector3i(side * 10, 0, 13), Vector3i(side * 10, 0, 14), col)
+	if glow >= 0:   # espinhos de lava no alto
+		for sp in [[-4, -3, 3], [0, 0, 5], [4, -3, 3], [-2, 3, 4], [2, 3, 4]]:
+			head.box(Vector3i(sp[0], sp[1], 13), Vector3i(sp[0], sp[1], 12 + sp[2]), glow)
+	out[name + "_head"] = head
+	# peitoral: gola clara, cós escuro, costura e emblema; pano: faixas cruzadas
+	var body := VoxModel.new()
+	body.put(Vector3i.ZERO, VoxModel.ANCHOR)
+	var body_paint := func(x: int, y: int, z: int) -> int:
+		if z >= 13:
+			return light
+		if z <= 2:
+			return dark
+		if cloth:
+			return light if y == -4 and absi(x) == absi(z - 8) else base   # faixas cruzadas
+		return dark if y == -4 and (z == 7 or (x == 0 and z > 3)) else base
+	_plates(body, Vector3i(-6, -4, 0), Vector3i(6, 4, 14), body_paint)
+	if gem >= 0:
+		body.box(Vector3i(0, -5, 8), Vector3i(0, -5, 10), gem)
+		body.box(Vector3i(-1, -5, 9), Vector3i(1, -5, 9), gem)
+	if glow >= 0:
+		body.box(Vector3i(-1, -5, 8), Vector3i(1, -5, 10), glow)   # gema de lava
+		body.box(Vector3i(-5, -4, 14), Vector3i(5, 3, 14), glow)   # gola de lava
+	out[name + "_body"] = body
+	# braço: ombreira grande (z 0-4) e manga até o cotovelo; a mão fica de fora
+	var arm := VoxModel.new()
+	arm.put(Vector3i.ZERO, VoxModel.ANCHOR)
+	var sleeve := func(_x: int, _y: int, z: int) -> int: return dark if z <= -8 else base
+	var pauldron := func(_x: int, _y: int, z: int) -> int: return dark if z == 0 else light if z == 4 else base
+	_plates(arm, Vector3i(-3, -3, -9), Vector3i(3, 3, -1), sleeve)
+	_plates(arm, Vector3i(-4, -4, 0), Vector3i(4, 4, 4), pauldron)
+	if cloth:
+		arm.box(Vector3i(-3, -3, -13), Vector3i(3, 3, -10), base)
+		arm.box(Vector3i(-3, -3, -13), Vector3i(3, 3, -13), light)   # atadura do punho
+	if glow >= 0:
+		arm.box(Vector3i(0, 0, 5), Vector3i(0, 0, 7), glow)
+	out[name + "_arm"] = arm
+	# greva: coxa, joelheira, canela e bota com a ponta para a frente
+	var leg := VoxModel.new()
+	leg.put(Vector3i.ZERO, VoxModel.ANCHOR)
+	var thigh := func(_x: int, _y: int, z: int) -> int: return light if z >= 2 or z == -15 else base
+	var boot := func(_x: int, _y: int, z: int) -> int: return dark if z < -18 else base
+	_plates(leg, Vector3i(-3, -3, -15), Vector3i(3, 3, 2), thigh)
+	_plates(leg, Vector3i(-3, -3, -20), Vector3i(3, 3, -16), func(_x: int, _y: int, _z: int) -> int: return dark)
+	_plates(leg, Vector3i(-3, -5, -20), Vector3i(3, -3, -17), boot)   # ponta da bota
+	if not cloth:
+		leg.box(Vector3i(-2, -4, -9), Vector3i(2, -4, -7), glow if glow >= 0 else light)   # joelheira
+	out[name + "_leg"] = leg
+	return out
 
 
 # ---------- conjunto de armadura ----------

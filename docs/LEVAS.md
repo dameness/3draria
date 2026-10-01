@@ -7,9 +7,9 @@ Status: **receita** = tem modelo próprio (models.json / campo `model`); **auto*
 - receita: workbench, furnace, anvil, demon_altar, lead_anvil, chest, hellforge, life_crystal, bee_larva, living_loom
 - auto: torch, chair, door, door_open, rope, minecart_track
 
-## Leva 2 — Armaduras (por conjunto) (12, 1 com receita)
-- receita: molten
-- auto: copper, tin, iron, lead, silver, tungsten, gold, platinum, meteor, ninja, wood
+## Leva 2 — Armaduras (por conjunto) (12, 12 com receita)
+- receita: copper, tin, iron, lead, silver, tungsten, gold, platinum, molten, meteor, ninja, wood
+- auto: 
 
 ## Leva 3 — Armas (69, 0 com receita)
 - receita: —

@@ -31,6 +31,11 @@ Receita `prop` (ou `loom`) + campos do `models.json`; nada de código novo por e
 - Largura = pixels do sprite × 1 voxel (0,0375): ~1,1 a 1,2 bloco; altar/larva reduzidos para 2,5 tiles. Não giram (frente = -Z). Fino demais ou de perfil (porta, cadeira, tocha, corda, trilho) fica no automático.
 - Conferir: `tests/model_preview.gd -- block:nome` (4 ângulos) e `tests/screenshot.gd -- estacoes`.
 
+## Padrão das armaduras (leva 2)
+- Conjunto = casca por peça (head 13³, body, arm, leg) no quadro do corpo; **rosto aberto** nos de placa (o rosto e os olhos aparecem; o cabelo some), `closed` só no Meteor, capuz de pano no Ninja.
+- Metais/madeira/Meteor/Ninja: receita `armor_plate`, uma só para todos (calota com nariz, peitoral com gola/cós/costura, ombreira grande, manga até o cotovelo, joelheira, bota); só a paleta (ícones) e poucas opções mudam. Conjunto novo = uma linha em `models.json` + `"model"` em `armor_sets.json`.
+- Brilho/projeção do sprite vestido (`armor_set`) só para conjuntos com detalhe emissivo que o ícone não dá (Molten).
+
 ## Fluxo
 `models.json` (sprite da wiki + cores) → receita em `scripts/voxel/recipes.gd` → `assets/models/gen/*.vox` (update.sh) → jogo.
 Retoque: copie o `.vox` para `assets/models/` e edite; ele vence o gerado e o update nunca o toca. Conferir sem tela: `tests/model_preview.gd`.
