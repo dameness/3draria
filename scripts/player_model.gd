@@ -9,7 +9,6 @@ const HeldItem := preload("res://scripts/held_item.gd")
 const OUTLINE := 0.014            # espessura do contorno em blocos
 const SPHERE_SEGMENTS := 14
 const LOOKS := ["meteor", "ninja"]       # conjuntos com formato próprio em código (_look); os outros usam o genérico por metal
-const TWIST := -45.0              # giro da arma na mão em torno do eixo maior, em graus
 const HEAD := 0.68                # escala da cabeça (o boneco tem ~1,8 de altura com o cabelo): proporção mais adulta que a do chibi
 
 @export var player: Node3D           # jogador, inimigo humanoide ou boneco do menu (lê velocity, pitch, held(), cooldown, inv, entities)
@@ -365,8 +364,6 @@ func _show_held(id: int) -> void:
 	var ang: float = Items.defs[id].get("sprite_angle", 45.0)
 	var align := Basis(Vector3.BACK, deg_to_rad(90.0 - ang)) if blade else Basis()
 	var m3 := frame * align
-	if blade:   # gira a arma 45° em torno do eixo maior (a lâmina vira o plano chato para fora, não só o fio de lado)
-		m3 = Basis(b, deg_to_rad(TWIST)) * m3
 	var origin := Vector3(0, -0.55, 0)
 	if not blade:
 		origin -= m3 * m[0].get_aabb().get_center()

@@ -6,6 +6,7 @@ extends Node3D
 # Toda arma de golpe deixa um arco pálido (Trail), na cor de effects.trail se o item tiver.
 
 const REST := Vector3(0.34, -0.36, -0.62)  # posição da mão em relação à câmera
+const ROLL := -60.0                        # giro da arma de golpe em torno do eixo da lâmina, em graus (-90 = o plano do sprite acompanha o golpe para a frente, como na 3ª pessoa)
 const LENGTH := 0.42                       # tamanho do maior lado do item, em blocos
 const SHOULDER := Vector3(0.55, -1.0, 0.4)    # o ombro (no espaço da câmera) fica fora da tela: o braço vem do canto de baixo à direita
 const PLACE_TIME := 0.18                   # duração do empurrão ao colocar bloco (player.gd place_anim)
@@ -205,7 +206,7 @@ func _show(id: int) -> void:
 		"swing", "thrust":
 			var ang: float = Items.defs[id].get("sprite_angle", 45.0)
 			mesh.transform = Transform3D(Basis(Vector3.BACK, deg_to_rad(90.0 - ang)), Vector3.ZERO)
-			mesh.rotate_object_local(Vector3.UP, deg_to_rad(-25))
+			mesh.rotate_object_local(Vector3.UP, deg_to_rad(ROLL))
 		_:
 			# arma de fogo: o cano aponta para a mira (o sprite visto por trás, espelhado); arco/poção/gancho: sobem para não sair da tela
 			var yaw := 150.0 if Items.defs[id].get("sprite_angle", 45.0) == 0.0 and st == "shoot" else -25.0
