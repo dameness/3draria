@@ -176,10 +176,10 @@ func _show(id: int) -> void:
 	if fx.has("glow"):
 		glow = MeshInstance3D.new()
 		glow.mesh = m[0]
-		var gm := _additive(Color(Color(fx.glow), 0.45))
+		var gm := _additive(Color(Color(fx.glow), 0.16))
 		glow.material_override = gm
 		var c := aabb.get_center()
-		glow.transform = Transform3D(Basis().scaled(Vector3.ONE * 1.15), c - c * 1.15)
+		glow.transform = Transform3D(Basis().scaled(Vector3.ONE * 1.08), c - c * 1.08)
 		mesh.add_child(glow)
 	if fx.has("particles"):
 		sparks = CPUParticles3D.new()

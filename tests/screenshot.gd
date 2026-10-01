@@ -81,6 +81,11 @@ const SHOTS := [
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "voxel_corpo", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
 	{"name": "voxel_molten", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["molten_helmet", "molten_breastplate", "molten_greaves"]},
+	{"name": "voxel_lado", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "iron_broadsword"},
+	{"name": "voxel_lado_pa", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "voxel_costas", "third": true, "look": Vector2(0.4, -0.25), "item": "iron_broadsword"},
+	{"name": "voxel_loom", "look": Vector2(0, -0.3), "row": ["living_loom"], "late": 70, "item": "copper_pickaxe"},
+	{"name": "voxel_loom_noite", "look": Vector2(0, -0.3), "row": ["living_loom"], "late": 70, "time": 1100.0, "item": "torch"},
 	{"name": "voxel_ouro", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "voxel_molten_noite", "third": true, "free": 2.4, "time": 1100.0, "look": Vector2(2.6, -0.25), "armor": ["molten_helmet", "molten_breastplate", "molten_greaves"]},
 	{"name": "asas", "third": true, "look": Vector2(0.4, -0.2), "wings": true, "item": "copper_pickaxe"},
@@ -191,7 +196,7 @@ func _process(_delta: float) -> bool:
 	wait += 1
 	if is_instance_valid(trail_pr) and wait > 4 and wait < 20:   # rastro: o projétil anda `slow` blocos por quadro (as partículas nascem a cada quadro)
 		trail_pr._physics_process(shots[shot].slow / trail_pr.velocity.length())
-	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
+	if wait < shots[shot].get("late", 20):  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.use_len = 0.4
 			player.cooldown = shots[shot].swing
@@ -619,7 +624,7 @@ func _setup(s: Dictionary) -> void:
 			else:
 				EnemyModel.set_phase(b.model, 2)
 	player.third_person = s.get("third", false)
-	player.get_node("Model").rotation.y = PI if s.get("front", false) else 0.0   # boneco de frente para a câmera
+	player.get_node("Model").rotation.y = s.get("turn", PI if s.get("front", false) else 0.0)   # boneco de frente para a câmera
 	for n in s.get("armor", []):
 		player.inv.add(Items.ids[n], 1)
 		player.inv.equip_from(player.inv.item.find(Items.ids[n]))

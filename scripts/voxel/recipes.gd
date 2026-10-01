@@ -14,9 +14,9 @@ const IRIS := 0x3a68c0
 const PUPIL := 0x10131c
 const BOOT := 0x5a3a2a
 # Pivôs do corpo em blocos, como no player_model.gd: upper (cintura) no mundo; head e arm em relação a upper (arm: x de um lado); leg no mundo.
-const PIV := {"upper": Vector3(0, 0.72, 0), "head": Vector3(0, 0.56, 0), "arm": Vector3(0.232, 0.47, 0), "leg": Vector3(0.105, 0.769, 0)}
-const EYE_L := Vector3(3, -4.5, 5)    # olhos: ponto do modelo (voxels, quadro da cabeça) onde fica o centro da base de body_eye_l / body_eye_r
-const EYE_R := Vector3(-2, -4.5, 5)
+const PIV := {"upper": Vector3(0, 0.72, 0), "head": Vector3(0, 0.56, 0), "arm": Vector3(0.232, 0.47, 0), "leg": Vector3(0.09375, 0.769, 0)}
+const EYE_L := Vector3(3, -5.5, 5)    # olhos: ponto do modelo (voxels, quadro da cabeça) onde fica o centro da base de body_eye_l / body_eye_r
+const EYE_R := Vector3(-2, -5.5, 5)
 
 static var _specs := {}
 static var _models := {}    # arquivo -> VoxModel (ou null)
@@ -139,14 +139,12 @@ static func pivot_pos(p: Vector3) -> Vector3:
 static func body() -> Dictionary:
 	var t := func(key: String, k: int) -> int: return tone(Color(LOOK[key]), k)
 	var out := {}
-	# cabeça: cubo de 11 com os cantos verticais cortados; olhos à parte (piscam), nariz, orelhas e boca
+	# cabeça: cubo de 11 com os cantos verticais cortados; olhos à parte (piscam; ficam 1 voxel à frente do rosto, senão o piscar abre um buraco escuro), nariz, orelhas e boca
 	var head := VoxModel.new()
 	head.put(Vector3i.ZERO, VoxModel.ANCHOR)
 	for z in range(1, 12):
 		for y in range(-5, 6):
 			for x in range(-5, 6):
-				if y == -5 and z in [5, 6, 7] and absi(x) in [2, 3]:
-					continue   # o vão do olho (body_eye_*)
 				if (absi(x) == 5 and absi(y) == 5) or (z == 11 and (absi(x) == 5 or absi(y) == 5)) or (z == 1 and absi(x) == 5 and absi(y) >= 4):
 					continue
 				head.put(Vector3i(x, y, z), t.call("skin", 2) if absi(x) == 5 or z == 1 else t.call("skin", 0) if z == 11 else t.call("skin", 1))
