@@ -3709,7 +3709,7 @@ func test_voxel():
 	check(VoxRecipes.prop({"wiki": "nao_existe"}).v.size() > 100, "prop sem o sprite baixado vira caixa")
 	if VoxRecipes.sprite("Work_Bench") != null:
 		var wb := VoxRecipes.find("workbench")
-		check(not wb.v.has(Vector3i(8, 5, 2)) and wb.v.has(Vector3i(8, 1, 15)) and wb.size().y == 10, "bancada: pernas só na frente e no fundo (vão no meio)")
+		check(not wb.v.has(Vector3i(8, 5, 4)) and wb.v.has(Vector3i(8, 1, 15)) and wb.size().y == 14, "bancada: pernas só na frente e no fundo (vão no meio)")
 		check(VoxRecipes.find("furnace").emit.size() == 3 and not VoxRecipes.find("furnace").v.has(Vector3i(14, 0, 10)), "fornalha: fogo emissivo recuado da frente")
 	# Molten: modelo por peça, brilho e cor do sprite
 	if VoxRecipes.sprite("Molten_armor") != null:

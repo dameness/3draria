@@ -270,7 +270,7 @@ static func loom(spec: Dictionary) -> VoxModel:
 # ---------- estações, baús e gemas (leva 1) ----------
 
 # Sprite da wiki (vista de frente) com profundidade: extrusão reta de `depth` voxels (padrão 10) ou, com `round` (teto, em voxels), "inflada" (gema, altar).
-# `recess`: as cores emissivas começam essa quantidade de voxels atrás da frente (boca da fornalha). `legs: [linha0, linha1]`: nessas linhas do
+# `profile: [[linha0, linha1, y0, y1, coluna0?, coluna1?]]`: faixa de profundidade [y0, y1) (y < 0 = sai da frente) das linhas/colunas do sprite (domo da tampa, chifre fino da bigorna). `recess`: as cores emissivas começam essa quantidade de voxels atrás da frente (boca da fornalha). `legs: [linha0, linha1]`: nessas linhas do
 # sprite só sobram 3 voxels em cada face (pernas da bancada: frente e trás, vão no meio). `plain`: cor do contorno escuro do sprite no miolo da
 # profundidade (só a frente e o fundo mantêm o contorno; senão os lados viram lajes pretas). Sem o sprite baixado: caixa na cor `color`.
 static func prop(spec: Dictionary) -> VoxModel:
@@ -284,8 +284,13 @@ static func prop(spec: Dictionary) -> VoxModel:
 	for h in spec.get("emissive", []):
 		glow[Color(h).to_rgba32() >> 8 & 0xffffff] = true
 	var recess: int = spec.get("recess", 0)
-	var m := VoxModel.from_sprite(img, VoxModel.inflate(img, spec.round) if spec.has("round") else func(_x: int, _y: int, c: int) -> Vector2i:
-		return Vector2i(recess if glow.has(c) else 0, d))
+	var profile: Array = spec.get("profile", [])
+	var m := VoxModel.from_sprite(img, VoxModel.inflate(img, spec.round) if spec.has("round") else func(px: int, py: int, c: int) -> Vector2i:
+		var r := Vector2i(recess if glow.has(c) else 0, d)
+		for e in profile:   # o último que casa vence
+			if py >= e[0] and py <= e[1] and (e.size() < 6 or (px >= e[4] and px <= e[5])):
+				r = Vector2i(e[2], e[3])
+		return r)
 	if spec.has("legs"):
 		var rows: Array = spec.legs
 		for p in m.v.keys():
