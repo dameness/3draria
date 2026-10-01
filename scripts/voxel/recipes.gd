@@ -104,8 +104,22 @@ static func weapon(spec: Dictionary) -> VoxModel:
 		return null
 	img = img.duplicate()
 	img.convert(Image.FORMAT_RGBA8)
-	var cap: int = mini(img.get_width(), img.get_height()) / 2 if spec.get("round", false) else spec.get("cap", VoxModel.auto_cap(img))
-	return VoxModel.from_sprite(img, VoxModel.inflate(img, cap))
+	if spec.get("round", false):   # esfera: espessura = corda de um círculo com a área do sprite, centrado no centro de massa (o pavio fica fino)
+		var sum := Vector2.ZERO
+		var area := 0
+		for y in img.get_height():
+			for x in img.get_width():
+				if img.get_pixel(x, y).a > 0.5:
+					sum += Vector2(x, y)
+					area += 1
+		var ctr := sum / maxf(area, 1)
+		var r := sqrt(area / PI)
+		var half := ceili(r)
+		return VoxModel.from_sprite(img, func(px: int, py: int, _c: int) -> Vector2i:
+			var t := maxi(2, roundi(2.0 * sqrt(maxf(0.0, r * r - Vector2(px, py).distance_squared_to(ctr)))))
+			var y0 := half - t / 2
+			return Vector2i(y0, y0 + t))
+	return VoxModel.from_sprite(img, VoxModel.inflate(img, spec.get("cap", VoxModel.auto_cap(img))))
 
 
 # ---------- malhas com cache ----------
