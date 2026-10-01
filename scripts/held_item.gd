@@ -6,7 +6,8 @@ extends Node3D
 # Toda arma de golpe deixa um arco pálido (Trail), na cor de effects.trail se o item tiver.
 
 const REST := Vector3(0.34, -0.36, -0.62)  # posição da mão em relação à câmera
-const ROLL := -60.0                        # giro da arma de golpe em torno do eixo da lâmina, em graus (-90 = o plano do sprite acompanha o golpe para a frente, como na 3ª pessoa)
+const ROLL := -45.0                        # giro da arma de golpe em torno do eixo da lâmina, em graus (-90 = o plano do sprite acompanha o golpe para a frente, como na 3ª pessoa)
+const GRIP := 0.3                         # onde a mão segura a ferramenta, de 0 (ponta do cabo) a 1 (a ponta da cabeça), ao longo do sprite
 const LENGTH := 0.42                       # tamanho do maior lado do item, em blocos
 const SHOULDER := Vector3(0.55, -1.0, 0.4)    # o ombro (no espaço da câmera) fica fora da tela: o braço vem do canto de baixo à direita
 const PLACE_TIME := 0.18                   # duração do empurrão ao colocar bloco (player.gd place_anim)
@@ -205,8 +206,12 @@ func _show(id: int) -> void:
 	match st:
 		"swing", "thrust":
 			var ang: float = Items.defs[id].get("sprite_angle", 45.0)
-			mesh.transform = Transform3D(Basis(Vector3.BACK, deg_to_rad(90.0 - ang)), Vector3.ZERO)
-			mesh.rotate_object_local(Vector3.UP, deg_to_rad(ROLL))
+			var tool: bool = Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or Items.hammer_power[id] > 0
+			var blade := Vector3(aabb.end.x, aabb.end.y, 0).normalized()   # o eixo maior do sprite: do canto da empunhadura ao da ponta
+			var roll := ROLL if tool else -ROLL   # a cabeça da ferramenta vai para a frente; na espada é o fio que vai (o giro oposto)
+			mesh.transform = Transform3D(Basis(Vector3.BACK, deg_to_rad(90.0 - ang)) * Basis(blade, deg_to_rad(roll)), Vector3.ZERO)
+			if tool:   # a mão segura o cabo no meio, não na ponta: o ponto de empunhadura sobe ao longo do sprite
+				mesh.position = -(mesh.transform.basis * (GRIP * Vector3(aabb.end.x, aabb.end.y, 0)))
 		_:
 			# arma de fogo: o cano aponta para a mira (o sprite visto por trás, espelhado); arco/poção/gancho: sobem para não sair da tela
 			var yaw := 150.0 if Items.defs[id].get("sprite_angle", 45.0) == 0.0 and st == "shoot" else -25.0
