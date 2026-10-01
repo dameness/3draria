@@ -1058,11 +1058,29 @@ func test_binds():
 	w.set_block(24, 11, 24, 0)
 	p.target = {}
 	p.auto_pick(true)
-	check(p.auto_slot == 3, "Shift sem bloco na mira: a tocha")
-	p.inv.item[20] = Items.ids.glowstick   # fora da hotbar: vale o inventário inteiro, e o glowstick vence a tocha
+	check(p.auto_slot == 3, "Shift sem bloco na mira (ferramenta na mão): a tocha")
+	p.inv.item[20] = Items.ids.glowstick   # fora da hotbar: vale o inventário inteiro; com tocha ela vem primeiro
 	p.inv.count[20] = 5
 	p.auto_pick(true)
-	check(p.auto_slot == 20 and p.held() == Items.ids.glowstick, "Shift sem bloco na mira: o glowstick do inventário (mira longe) antes da tocha")
+	check(p.auto_slot == 3, "com tocha e glowstick, a tocha vem primeiro")
+	p.position = Vector3(24.5, 11, 24.5)   # mirando a água: o glowstick tem prioridade
+	p.rotation.y = 0.0
+	p.pitch = 0.0
+	w.set_block(24, floori((p.position + Vector3.UP * p.EYE).y), 22, Blocks.ids.water)
+	p.auto_pick(true)
+	check(p.auto_slot == 20 and p.held() == Items.ids.glowstick, "Shift mirando a água: o glowstick antes da tocha")
+	w.set_block(24, floori((p.position + Vector3.UP * p.EYE).y), 22, 0)
+	p.inv.item[3] = -1   # sem tocha o glowstick é a opção
+	p.auto_pick(true)
+	check(p.auto_slot == 20, "sem tocha, o glowstick é a opção")
+	p.inv.item[3] = Items.ids.torch
+	p.inv.count[3] = 1
+	p.inv.add(Items.ids.copper_shortsword, 1)   # espada na mão (sem ferramenta): o Shift sugere a luz mesmo com um bloco na mira
+	p.slot = p.inv.item.find(Items.ids.copper_shortsword)
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
+	p.auto_pick(true)
+	check(p.auto_slot == 3, "Shift com a espada na mão e um bloco na mira: a tocha (não a picareta)")
+	p.slot = 1
 	p.auto_pick(false)
 	check(p.auto_slot == -1 and not p.auto_on and p.held() == Items.ids.copper_axe, "soltar o Shift devolve a mão ao slot da hotbar")
 	p.slot = 3   # tocha selecionada na hotbar: o Shift mirando um bloco não a troca pela picareta
@@ -1077,6 +1095,34 @@ func test_binds():
 	p.auto_pick(true)
 	check(p.auto_slot == -1 and p.auto_on and p.slot == 0, "sem ferramenta adequada o Auto Select não escolhe nada")
 	p.auto_pick(false)
+	# cursor inteligente: machado prefere a árvore perto da mira, espada sugere a face para a luz, bloco na mão fica como está
+	p.position = Vector3(24.95, 11, 24.5)
+	p.rotation.y = 0.0
+	p.pitch = 0.0
+	p.smart_cursor = true
+	var ey := floori((p.position + Vector3.UP * p.EYE).y)
+	w.set_block(25, ey, 22, Blocks.ids.wood)
+	w.set_block(24, ey, 23, Blocks.ids.stone)
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.copper_axe, 1)
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.inv.add(Items.ids.copper_shortsword, 1)
+	p.inv.add(Items.ids.dirt, 1)
+	p.slot = 0
+	var tg: Dictionary = p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir())
+	check(tg.get("pos") == Vector3i(25, ey, 22), "cursor inteligente: o machado pega a árvore perto da mira, mesmo com pedra na linha")
+	p.slot = 1
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).get("pos") == Vector3i(24, ey, 23), "a picareta fica com o que a mira acerta")
+	w.set_block(24, ey, 23, 0)
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).get("pos") == Vector3i(25, ey, 22), "a picareta sem alvo na mira pega o bloco mais perto do cone")
+	p.slot = 2
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).get("pos") == Vector3i(25, ey, 22), "com a espada o cursor inteligente sugere o bloco para a luz")
+	p.slot = 3
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).is_empty(), "com bloco na mão o cursor inteligente fica como está (só o que a mira acerta)")
+	p.smart_cursor = false
+	p.slot = 2
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).is_empty(), "desligado, nada é sugerido")
+	w.set_block(25, ey, 22, 0)
 	# glowstick (wiki): voa sem ferir e vira o bloco aceso na última célula livre; quebrar devolve o item
 	var gl: Node3D = p.entities.spawn_projectile("glowstick", Vector3(24.5, 14.5, 24.5), Vector3.DOWN, 0.0, 0, 0.0)
 	for i in 40:
@@ -4874,7 +4920,7 @@ func test_smart_cursor():
 	p.smart_cursor = true
 	check(p.find_target(from, Vector3.RIGHT).get("pos") == Vector3i(27, 13, 24), "com ele e a picareta, pega o bloco perto da linha de visada")
 	p.slot = p.inv.item.find(Items.ids.wooden_sword)
-	check(p.find_target(from, Vector3.RIGHT).is_empty(), "com uma espada na mão ele não age")
+	check(p.find_target(from, Vector3.RIGHT).get("pos") == Vector3i(27, 13, 24), "com uma espada na mão ele sugere o bloco para a luz (como com a picareta)")
 	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
 	w.set_block(27, 13, 24, 0)
 	w.set_block(27, 17, 24, Blocks.ids.stone)   # longe demais da linha (>12°)
