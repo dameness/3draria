@@ -304,23 +304,34 @@ func _physics_process(delta: float) -> void:
 	tick(delta)
 
 
-# O bloco da mira. Com o cursor inteligente (Ctrl) e uma ferramenta na mão, se a mira não pega nada, procura o bloco mais perto da linha de visada
-# num cone de 12° (dois anéis de 8 raios), como o Smart Cursor do Terraria escolhe o bloco perto do cursor.
+# O bloco da mira. Com o cursor inteligente (Ctrl) o jogo sugere o alvo num cone de 12° em volta da mira (dois anéis de 8 raios), como o Smart Cursor
+# do Terraria: picareta/martelo sem alvo na mira pegam o bloco mais perto da linha de visada; o machado prefere a árvore ou o cacto mais perto,
+# mesmo que a mira acerte outra coisa; tocha, glowstick e itens sem ferramenta (espada, mão vazia) sugerem a face onde a luz iria. Bloco na mão: como está.
 func find_target(from: Vector3, dir: Vector3) -> Dictionary:
 	var hit: Dictionary = world.raycast(from, dir, REACH)
+	if not smart_cursor:
+		return hit
 	var id := held()
-	if not hit.is_empty() or not smart_cursor or id == -1 or (Items.pick_power[id] == 0 and Items.axe_power[id] == 0 and Items.hammer_power[id] == 0):
+	var tool: bool = id != -1 and (Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or Items.hammer_power[id] > 0)
+	var light: bool = id != -1 and (Items.defs[id].get("throw") == "glowstick" or Items.places[id] == Blocks.ids.torch)
+	if not (tool or light or id == -1 or Items.places[id] == -1):
+		return hit
+	var trees: bool = id != -1 and Items.axe_power[id] > 0 and Items.pick_power[id] == 0
+	if not hit.is_empty() and not (trees and Blocks.axe[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)] == 0):
 		return hit
 	var side := dir.cross(Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT).normalized()
 	var up := side.cross(dir).normalized()
 	for ring in [SMART_CONE / 2.0, SMART_CONE]:
+		var best := {}
 		for k in 8:
 			var a := k * TAU / 8.0
 			var h: Dictionary = world.raycast(from, (dir + (side * cos(a) + up * sin(a)) * tan(ring)).normalized(), REACH)
-			if not h.is_empty() and (hit.is_empty() or h.t < hit.t):
-				hit = h
-		if not hit.is_empty():
-			return hit   # o anel de dentro tem prioridade
+			if h.is_empty() or (trees and Blocks.axe[world.get_block(h.pos.x, h.pos.y, h.pos.z)] == 0):
+				continue
+			if best.is_empty() or h.t < best.t:
+				best = h
+		if not best.is_empty():
+			return best   # o anel de dentro tem prioridade
 	return hit
 
 
@@ -1480,29 +1491,39 @@ func place_block() -> void:
 		place_anim = 0.18
 
 
-# Auto Select (Shift; wiki Cursor modes): segurado, a mão usa o item do inventário inteiro que serve para a mira, num slot extra ao lado da hotbar
-# (o slot da hotbar não muda): machado no tronco e no cacto, picareta no resto; sem bloco na mira, um glowstick (mira longe) ou uma tocha.
-# Empate: o primeiro do inventário. Sem item adequado a mão fica como está. Tocha ou glowstick já na hotbar ficam (senão a picareta ganharia sempre).
+# Auto Select (Shift; wiki Cursor modes), vale com o cursor inteligente ligado ou não: a mão usa um item do inventário inteiro, num slot extra ao lado
+# da hotbar (o slot da hotbar não muda). Com ferramenta na mão e um bloco na mira: a melhor ferramenta para ele (machado no tronco e no cacto, picareta no resto).
+# Sem ferramenta na mão (espada, bloco, mão vazia), ou com a mira sem bloco: luz, a tocha, ou o glowstick na falta dela; mirando a água, o glowstick vem primeiro.
+# Luz já na mão fica. Empate: o primeiro do inventário. Sem item adequado a mão fica como está.
 func auto_pick(hold: bool) -> void:
 	auto_on = hold
 	auto_slot = -1
 	if not hold:
 		return
 	var cur: int = inv.item[slot]
-	if cur != -1 and (Items.defs[cur].get("throw") == "glowstick" or Items.places[cur] == Blocks.ids.torch):
-		auto_slot = slot   # luz já escolhida na hotbar: o Shift não a troca pela picareta (em 3D, mirar o chão ou a parede sempre acerta um bloco)
-		return
+	var tool: bool = cur != -1 and (Items.pick_power[cur] > 0 or Items.axe_power[cur] > 0 or Items.hammer_power[cur] > 0)
 	var b: int = world.get_block(target.pos.x, target.pos.y, target.pos.z) if not target.is_empty() else 0
-	var best_score := 0
+	if tool and b != 0:
+		var best_score := 0
+		for i in Inventory.SIZE:
+			var id: int = inv.item[i]
+			var score: int = Items.power_on(id, b) if id != -1 and Blocks.breakable[b] else 0
+			if score > best_score:
+				auto_slot = i
+				best_score = score
+		return
+	if cur != -1 and (Items.defs[cur].get("throw") == "glowstick" or Items.places[cur] == Blocks.ids.torch):
+		auto_slot = slot
+		return
+	var wet_hit: Dictionary = world.raycast(position + Vector3.UP * EYE, aim_dir(), REACH, true)
+	var wet: bool = not wet_hit.is_empty() and Blocks.liquid[world.get_block(wet_hit.pos.x, wet_hit.pos.y, wet_hit.pos.z)]
+	var best_light := 0
 	for i in Inventory.SIZE:
 		var id: int = inv.item[i]
 		if id == -1:
 			continue
-		var score := 0
-		if b == 0:
-			score = 2 if Items.defs[id].get("throw") == "glowstick" else 1 if Items.places[id] == Blocks.ids.torch else 0
-		elif Blocks.breakable[b]:
-			score = Items.power_on(id, b)
-		if score > best_score:
+		var glow: bool = Items.defs[id].get("throw") == "glowstick"
+		var score := (2 if wet else 1) if glow else (1 if wet else 2) if Items.places[id] == Blocks.ids.torch else 0
+		if score > best_light:
 			auto_slot = i
-			best_score = score
+			best_light = score
