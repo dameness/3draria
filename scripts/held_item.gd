@@ -6,7 +6,7 @@ extends Node3D
 # Toda arma de golpe deixa um arco pálido (Trail), na cor de effects.trail se o item tiver.
 
 const REST := Vector3(0.34, -0.36, -0.62)  # posição da mão em relação à câmera
-const ROLL := -45.0                        # giro da arma de golpe em torno do eixo da lâmina, em graus (-90 = o plano do sprite acompanha o golpe para a frente, como na 3ª pessoa)
+const ROLL := -90.0                        # giro da arma de golpe em torno do eixo da lâmina, em graus (-90 = o plano do sprite acompanha o golpe para a frente, como na 3ª pessoa)
 const GRIP := 0.3                         # onde a mão segura a ferramenta, de 0 (ponta do cabo) a 1 (a ponta da cabeça), ao longo do sprite
 const LENGTH := 0.42                       # tamanho do maior lado do item, em blocos
 const SHOULDER := Vector3(0.55, -1.0, 0.4)    # o ombro (no espaço da câmera) fica fora da tela: o braço vem do canto de baixo à direita
@@ -90,11 +90,11 @@ static func style(id: int) -> String:
 static func pose(st: String, t: float) -> Transform3D:
 	var tr := Transform3D(Basis(), REST)
 	match st:
-		"swing":   # golpe em diagonal: da direita/alto (lâmina de pé, inclinada para fora) para a esquerda/baixo, cruzando a mira em t≈0.3; nos últimos 30% volta ao descanso
+		"swing":   # golpe para a frente (para dentro da tela, no sentido da mira): ergue a arma atrás/alto, desce batendo para a frente até o cursor e, nos últimos 30%, volta ao descanso
 			var w := 1.0 - smoothstep(0.7, 1.0, t)
 			var e := smoothstep(0.0, 0.7, t)
-			tr.basis = Basis(Vector3.BACK, lerpf(-0.6, 1.2, e) * w) * Basis(Vector3.RIGHT, lerpf(0.2, -0.9, e) * w - 1.3 * (1.0 - w))
-			tr.origin += Vector3(lerpf(0.08, -0.3, e), lerpf(0.16, -0.08, e), -0.15 * sin(PI * e)) * w
+			tr.basis = Basis(Vector3.RIGHT, lerpf(0.8, -0.9, e) * w) * Basis(Vector3.BACK, lerpf(-0.15, 0.05, e) * w)
+			tr.origin += Vector3(lerpf(0.04, -0.1, e), lerpf(0.22, -0.12, e), lerpf(0.12, -0.4, e)) * w
 		"thrust":
 			tr.origin += Vector3(-0.1, 0.08, -0.35) * sin(PI * t)
 		"shoot":
