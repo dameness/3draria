@@ -33,6 +33,7 @@ const SHOTS := [
 	{"name": "muda_cresce", "sapling": true, "grow": true, "item": "acorn", "look": Vector2(0, 0.35)},
 	{"name": "corda", "look": Vector2(0, -0.35), "row": ["rope", "torch", "rope", "rope", "sapling"]},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
+	{"name": "estacoes", "look": Vector2(0, -0.3), "row": ["workbench", "furnace", "anvil", "lead_anvil", "hellforge", "chest", "demon_altar", "life_crystal"]},
 	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
 	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},
 	{"name": "dungeon_fora", "dungeon": "out", "look": Vector2(0, -0.25), "creative": true, "time": 1100.0},

@@ -1404,7 +1404,7 @@ func world_census() -> Dictionary:
 func test_life_crystal():
 	var b: int = Blocks.ids.life_crystal
 	var id: int = Items.ids.life_crystal
-	check(Blocks.breakable[b] == 1 and Blocks.solid[b] == 0 and Blocks.shape[b] == "crystal" and Blocks.light[b] > 0 and Blocks.soft[b] == 0, "o cristal é um bloco que brilha, sem colisão e que a mira acerta")
+	check(Blocks.breakable[b] == 1 and Blocks.solid[b] == 0 and Blocks.shape[b] == "model" and Blocks.light[b] > 0 and Blocks.soft[b] == 0, "o cristal é um bloco que brilha, sem colisão e que a mira acerta")
 	check(Items.places[id] == -1 and Items.defs[id].life == 20 and Items.defs[id].consumable and Items.drop[b] == id, "o item é consumível (+20) e não se coloca; o bloco solta ele")
 	var w := floor_world()
 	var p := make_player(w)
@@ -3702,6 +3702,15 @@ func test_voxel():
 	ChunkMesher.build(d, [PackedByteArray(), PackedByteArray(), PackedByteArray(), PackedByteArray()], Blocks.textures.size(), [], [], models)
 	check(models.size() == 1 and models[0][0] == loom and models[0][1] == Vector3i(5, 20, 5), "mesher do chunk entrega o bloco com modelo e não o desenha na malha")
 	check(VoxRecipes.loom({"wiki": "nao_existe"}).v.size() > 100 and VoxRecipes.armor_set("x", {"wiki": "nao_existe"}).is_empty(), "sem o sprite baixado: loom vira caixa e o conjunto cai nas formas em código")
+	# leva 1: estações, baú e gemas são `prop` (sprite da wiki com profundidade); sem o sprite, caixa
+	for n in ["workbench", "furnace", "anvil", "hellforge", "chest", "demon_altar", "life_crystal", "bee_larva", "lead_anvil"]:
+		var pb: int = Blocks.ids[n]
+		check(Blocks.shape[pb] == "model" and Blocks.model[pb] == n and Blocks.solid[pb] == 0 and VoxRecipes.block_mesh(n, Blocks.model_size[pb]) != null, "%s: bloco com modelo voxel, sem colisão" % n)
+	check(VoxRecipes.prop({"wiki": "nao_existe"}).v.size() > 100, "prop sem o sprite baixado vira caixa")
+	if VoxRecipes.sprite("Work_Bench") != null:
+		var wb := VoxRecipes.find("workbench")
+		check(not wb.v.has(Vector3i(8, 5, 2)) and wb.v.has(Vector3i(8, 1, 15)) and wb.size().y == 10, "bancada: pernas só na frente e no fundo (vão no meio)")
+		check(VoxRecipes.find("furnace").emit.size() == 3 and not VoxRecipes.find("furnace").v.has(Vector3i(14, 0, 10)), "fornalha: fogo emissivo recuado da frente")
 	# Molten: modelo por peça, brilho e cor do sprite
 	if VoxRecipes.sprite("Molten_armor") != null:
 		var mh := VoxRecipes.find("molten", "head")
@@ -4877,7 +4886,7 @@ func test_housing():
 	w.set_block(22, 11, 22, Blocks.ids.chair)
 	var home := Vector3i(22, 12, 22)
 	var r := Housing.check(w, home)
-	check(r.valid and r.cells.size() == 4 * 3 * 2 - 2 and r.light and r.table and r.chair, "casa completa é válida (%d blocos de ar; %s)" % [r.cells.size(), r.reason])
+	check(r.valid and r.cells.size() == 4 * 3 * 2 - 1 and r.light and r.table and r.chair, "casa completa é válida (%d blocos de ar; %s)" % [r.cells.size(), r.reason])
 	check(Housing.report(w, Vector3i(22, 11, 22)).contains("Casa válida"), "a cadeira responde que a casa vale")
 	# faltas: uma de cada vez
 	w.set_block(21, 11, 21, 0)

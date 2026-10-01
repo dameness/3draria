@@ -1,4 +1,13 @@
 {
 	"living_loom": {"recipe": "loom", "wiki": "Living_Loom_(placed)", "depth": 10},
-	"molten": {"recipe": "armor_set", "wiki": "Molten_armor", "emissive": ["#ff1800", "#f87e00", "#f8b600", "#420600"], "sparks": "#f8b600"}
+	"molten": {"recipe": "armor_set", "wiki": "Molten_armor", "emissive": ["#ff1800", "#f87e00", "#f8b600", "#420600"], "sparks": "#f8b600"},
+	"furnace": {"recipe": "prop", "wiki": "Furnace", "depth": 12, "plain": "#4c4c4c", "recess": 2, "emissive": ["#d84d28", "#fddd03", "#9f3c23"]},
+	"hellforge": {"recipe": "prop", "wiki": "Hellforge", "depth": 12, "plain": "#662222", "recess": 2, "emissive": ["#e99117", "#ef9b11", "#ee6646", "#e6831a", "#df5521", "#e34f1d", "#de6522", "#cb1202", "#bc1802"]},
+	"chest": {"recipe": "prop", "wiki": "Chest", "depth": 14, "plain": "#6a4c34"},
+	"workbench": {"recipe": "prop", "wiki": "Work_Bench", "depth": 10, "legs": [5, 17], "plain": "#5a3a22"},
+	"anvil": {"recipe": "prop", "wiki": "Iron_Anvil_(placed)", "depth": 8, "plain": "#6a6a68"},
+	"lead_anvil": {"recipe": "prop", "wiki": "Lead_Anvil_(placed)", "depth": 8, "plain": "#5a6068"},
+	"demon_altar": {"recipe": "prop", "wiki": "Demon_Altar", "round": 7},
+	"life_crystal": {"recipe": "prop", "wiki": "Life_Crystal_(placed)", "round": 7, "emissive": ["#f8aebe", "#e381a8", "#d27ca0"]},
+	"bee_larva": {"recipe": "prop", "wiki": "Larva", "round": 9}
 }

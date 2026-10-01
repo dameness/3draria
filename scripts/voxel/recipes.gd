@@ -62,6 +62,8 @@ static func make(name: String) -> Dictionary:
 				out = {name: loom(spec)}
 			"armor_set":
 				out = armor_set(name, spec)
+			"prop":
+				out = {name: prop(spec)}
 		for f in out:   # cores emissivas do models.json
 			for h in spec.get("emissive", []):
 				out[f].emit[Color(h).to_rgba32() >> 8 & 0xffffff] = true
@@ -263,6 +265,39 @@ static func loom(spec: Dictionary) -> VoxModel:
 		if green:
 			return Vector2i(d / 2 - 2, d / 2 + 1) if (c >> 8 & 255) > 0x7a else Vector2i(d / 2 - 1, d / 2 + 1)
 		return Vector2i(2, d - 2))
+
+
+# ---------- estações, baús e gemas (leva 1) ----------
+
+# Sprite da wiki (vista de frente) com profundidade: extrusão reta de `depth` voxels (padrão 10) ou, com `round` (teto, em voxels), "inflada" (gema, altar).
+# `recess`: as cores emissivas começam essa quantidade de voxels atrás da frente (boca da fornalha). `legs: [linha0, linha1]`: nessas linhas do
+# sprite só sobram 3 voxels em cada face (pernas da bancada: frente e trás, vão no meio). `plain`: cor do contorno escuro do sprite no miolo da
+# profundidade (só a frente e o fundo mantêm o contorno; senão os lados viram lajes pretas). Sem o sprite baixado: caixa na cor `color`.
+static func prop(spec: Dictionary) -> VoxModel:
+	var img := sprite(spec.get("wiki", ""))
+	var d: int = spec.get("depth", 10)
+	if img == null:
+		var m := VoxModel.new()
+		m.box(Vector3i(0, 0, 0), Vector3i(23, d - 1, 15), Color(spec.get("color", "#8b6a4a")).to_rgba32() >> 8 & 0xffffff)
+		return m
+	var glow := {}
+	for h in spec.get("emissive", []):
+		glow[Color(h).to_rgba32() >> 8 & 0xffffff] = true
+	var recess: int = spec.get("recess", 0)
+	var m := VoxModel.from_sprite(img, VoxModel.inflate(img, spec.round) if spec.has("round") else func(_x: int, _y: int, c: int) -> Vector2i:
+		return Vector2i(recess if glow.has(c) else 0, d))
+	if spec.has("legs"):
+		var rows: Array = spec.legs
+		for p in m.v.keys():
+			var row: int = img.get_height() - 1 - p.z
+			if row >= rows[0] and row <= rows[1] and p.y >= 3 and p.y < d - 3:
+				m.v.erase(p)
+	if spec.has("plain"):
+		var plain := Color(spec.plain).to_rgba32() >> 8 & 0xffffff
+		for p in m.v.keys():
+			if p.y > 0 and p.y < d - 1 and not glow.has(m.v[p]) and VoxModel.color(m.v[p]).get_luminance() < 0.2:
+				m.v[p] = plain
+	return m
 
 
 # ---------- conjunto de armadura ----------

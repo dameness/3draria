@@ -3,9 +3,9 @@
 Leva 0 (infra + pilotos): `scripts/voxel/`, corpo do personagem, Living Loom, conjunto Molten.
 Status: **receita** = tem modelo próprio (models.json / campo `model`); **auto** = sprite inflado, já vale no jogo.
 
-## Leva 1 — Estruturas (15, 1 com receita)
-- receita: living_loom
-- auto: workbench, furnace, anvil, demon_altar, torch, chest, hellforge, life_crystal, chair, door, door_open, bee_larva, rope, minecart_track
+## Leva 1 — Estruturas (16, 10 com receita)
+- receita: workbench, furnace, anvil, demon_altar, lead_anvil, chest, hellforge, life_crystal, bee_larva, living_loom
+- auto: torch, chair, door, door_open, rope, minecart_track
 
 ## Leva 2 — Armaduras (por conjunto) (12, 1 com receita)
 - receita: molten
