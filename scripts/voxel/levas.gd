@@ -29,7 +29,7 @@ static func text() -> String:
 			levas[3].append([d.name, d.has("model") or specs.has(d.name)])
 	for e in Blocks.read("res://data/base/enemies.json"):
 		if not (e.name.ends_with("_body") or e.name.ends_with("_tail")):   # segmentos de verme contam pela cabeça
-			levas[5 if e.get("boss", false) else 4].append([e.name, false])
+			levas[5 if e.get("boss", false) else 4].append([e.name, specs.has(e.name)])
 	var names := {1: "Estruturas", 2: "Armaduras (por conjunto)", 3: "Armas", 4: "Inimigos", 5: "Chefes"}
 	var out := "# Levas do visual Voxel (gerado por `scripts/voxel/levas.gd` a partir dos JSON; não edite)\n\n"
 	out += "Leva 0 (infra + pilotos): `scripts/voxel/`, corpo do personagem, Living Loom, conjunto Molten.\n"

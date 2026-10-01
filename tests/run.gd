@@ -3728,6 +3728,17 @@ func test_voxel():
 	bomb_img.fill(Color.WHITE)
 	var bm := VoxModel.from_sprite(bomb_img, VoxModel.inflate(bomb_img, 11))
 	check(bm.size().y >= 20 and VoxRecipes.weapon({"wiki": "nao_existe"}) == null, "weapon: round infla até a esfera; sem o sprite devolve null (automático assume)")
+	# leva 4: inimigo de sprite em voxel; morcego com asas que batem
+	check(VoxRecipes.creature({"name": "x", "sprite": "nao_existe", "size": [1, 1]}).is_empty(), "creature sem o sprite: vazio (caixa colorida)")
+	if VoxRecipes.sprite("Cave_Bat") != null:
+		var bat := EnemyModel.build(enemy_def("cave_bat"))
+		check(bat.has_node("WingL") and bat.has_node("WingR") and bat.get_node("WingL").get_child_count() == 1, "cave_bat: duas asas voxel")
+		var dummy := Node3D.new()
+		EnemyModel.animate(bat, dummy, Vector3.ZERO, 0.1)
+		check(absf(bat.get_node("WingL").rotation.z + bat.get_node("WingR").rotation.z) < 0.001 and absf(bat.get_node("WingR").rotation.z) > 0.1, "asas batem em contratempo")
+		dummy.free()
+		bat.free()
+		check(EnemyModel.build(enemy_def("unicorn")).get_child(0) is MeshInstance3D, "unicorn: corpo voxel de sprite")
 	# Molten: modelo por peça, brilho e cor do sprite
 	if VoxRecipes.sprite("Molten_armor") != null:
 		var mh := VoxRecipes.find("molten", "head")

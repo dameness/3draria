@@ -30,5 +30,10 @@
 	"bomb": {"recipe": "weapon", "wiki": "Bomb", "round": true},
 	"grenade": {"recipe": "weapon", "wiki": "Grenade", "round": true},
 	"beenade": {"recipe": "weapon", "wiki": "Beenade", "round": true},
-	"musket_ball": {"recipe": "weapon", "wiki": "Musket_Ball", "round": true}
+	"musket_ball": {"recipe": "weapon", "wiki": "Musket_Ball", "round": true},
+	"cave_bat": {"recipe": "creature", "wings": true},
+	"ice_bat": {"recipe": "creature", "wings": true},
+	"jungle_bat": {"recipe": "creature", "wings": true},
+	"hellbat": {"recipe": "creature", "wings": true},
+	"pixie": {"recipe": "creature", "emissive": ["#fd8f4d", "#fdc621", "#fedd7c"]}
 }

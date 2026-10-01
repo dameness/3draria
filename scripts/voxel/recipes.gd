@@ -122,6 +122,43 @@ static func weapon(spec: Dictionary) -> VoxModel:
 	return VoxModel.from_sprite(img, VoxModel.inflate(img, spec.get("cap", VoxModel.auto_cap(img))))
 
 
+# Inimigo de sprite (leva 4): o sprite da wiki inflado em voxels (`cap` do models.json, padrão: 1/6 do lado menor, de 2 a 6), com o maior lado
+# medindo o do `size` do def; `emissive` = cores que brilham. Com `wings` (morcegos: asas em V) sai em duas metades, esquerda e direita, com
+# o pivô na altura `pivot` (fração do sprite, padrão 0,3) para o enemy_model bater as asas. Retorna {"body": malha} ou {"wings": [esq, dir],
+# "pivot_y": blocos}; {} sem o sprite baixado (o chamador faz uma caixa). Retoque à mão: `assets/models/<nome>.vox` (corpo inteiro; sem asas).
+static func creature(def: Dictionary) -> Dictionary:
+	var key := ["creature", def.name]
+	if not _meshes.has(key):
+		var out := {}
+		var spec: Dictionary = specs().get(def.name, {})
+		var img := Atlas.wiki_image(Blocks.textures.get(def.get("sprite", def.name), {}))
+		if img != null:
+			img = img.duplicate()
+			img.convert(Image.FORMAT_RGBA8)
+			var w := img.get_width()
+			var h := img.get_height()
+			var vs: float = maxf(def.size[0], def.size[1]) / maxi(w, h)
+			var m := VoxModel.read(DIRS[0] + def.name + ".vox")
+			if m == null:
+				m = VoxModel.from_sprite(img, VoxModel.inflate(img, spec.get("cap", clampi(mini(w, h) / 6, 2, 6))))
+			for h2 in spec.get("emissive", []):
+				m.emit[Color(h2).to_rgba32() >> 8 & 0xffffff] = true
+			if spec.get("wings", false):
+				var halves := [VoxModel.new(), VoxModel.new()]
+				for p in m.v:
+					halves[int(p.x >= w / 2)].v[p] = m.v[p]
+				var lo: Vector3i = m.bounds()[0]
+				var hi: Vector3i = m.bounds()[1]
+				var pz: float = h * spec.get("pivot", 0.3)
+				for half in halves:
+					half.emit = m.emit
+				out = {"wings": halves.map(func(half): return VoxMesh.build(half, vs, true, Vector3(w / 2.0, (lo.y + hi.y + 1) / 2.0, pz))), "pivot_y": pz * vs}
+			else:
+				out = {"body": VoxMesh.build(m, vs, true)}
+		_meshes[key] = out
+	return _meshes[key]
+
+
 # ---------- malhas com cache ----------
 
 # Item na mão/solto: [malha, material]. Modelo = campo `model` do item (senão o nome); sem modelo, o sprite (`icon`) inflado.

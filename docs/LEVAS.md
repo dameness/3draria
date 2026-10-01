@@ -15,9 +15,9 @@ Status: **receita** = tem modelo próprio (models.json / campo `model`); **auto*
 - receita: enchanted_sword, terra_blade, musket_ball, space_gun, crimson_rod, bomb, blue_moon, sunfury, grenade, beenade
 - auto: wooden_sword, copper_shortsword, wooden_bow, wooden_arrow, copper_broadsword, copper_bow, tin_broadsword, tin_bow, iron_broadsword, iron_bow, lead_broadsword, lead_bow, silver_broadsword, silver_bow, tungsten_broadsword, tungsten_bow, gold_broadsword, gold_bow, platinum_broadsword, platinum_bow, lights_bane, demon_bow, unholy_arrow, blood_butcherer, tendon_bow, cobalt_sword, palladium_sword, musket, the_undertaker, wand_of_sparking, vilethorn, the_rotted_fork, tin_shortsword, iron_shortsword, lead_shortsword, silver_shortsword, tungsten_shortsword, gold_shortsword, platinum_shortsword, spear, bone_sword, dynamite, flintlock_pistol, book_of_skulls, wooden_boomerang, bee_keeper, the_bees_knees, bee_gun, mace, ball_o'_hurt, the_meatball, shuriken, throwing_knife, flare_gun, flare, umbrella, slime_gun, seed, blowpipe
 
-## Leva 4 — Inimigos (49, 0 com receita)
-- receita: —
-- auto: green_slime, blue_slime, zombie, demon_eye, servant_of_cthulhu, eater_of_souls, crimera, angry_bones, cursed_skull, dark_caster, old_man, voodoo_demon, hellbat, the_hungry, pixie, unicorn, guide, merchant, nurse, red_slime, yellow_slime, black_slime, lava_slime, cave_bat, skeleton, meteor_head, demon, mother_slime, undead_miner, blood_crawler, face_monster, giant_worm, devourer, tim, fire_imp, demolitionist, arms_dealer, ice_slime, frozen_zombie, ice_bat, undead_viking, spiked_ice_slime, snow_flinx, vulture, antlion_charger, hornet, jungle_bat, jungle_slime, bee
+## Leva 4 — Inimigos (49, 5 com receita)
+- receita: hellbat, pixie, cave_bat, ice_bat, jungle_bat
+- auto: green_slime, blue_slime, zombie, demon_eye, servant_of_cthulhu, eater_of_souls, crimera, angry_bones, cursed_skull, dark_caster, old_man, voodoo_demon, the_hungry, unicorn, guide, merchant, nurse, red_slime, yellow_slime, black_slime, lava_slime, skeleton, meteor_head, demon, mother_slime, undead_miner, blood_crawler, face_monster, giant_worm, devourer, tim, fire_imp, demolitionist, arms_dealer, ice_slime, frozen_zombie, undead_viking, spiked_ice_slime, snow_flinx, vulture, antlion_charger, hornet, jungle_slime, bee
 
 ## Leva 5 — Chefes (9, 0 com receita)
 - receita: —

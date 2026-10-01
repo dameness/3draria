@@ -40,6 +40,10 @@ Receita `prop` (ou `loom`) + campos do `models.json`; nada de código novo por e
 - Todo item já tem modelo automático; a espessura vem da categoria (`VoxRecipes.auto_cap`): lâmina, arco e ferramenta finos (cap 2), arma de fogo/varinha/livro cheios (2 a 4), cabeça de flail redonda (3 a 6). Regra nova = uma linha ali, não um campo por item.
 - Receita `weapon` (models.json) só para destaque: brilho (`emissive`, moderado), `cap` próprio ou `round: true` (bomba, granada: esfera). A pose na mão não muda (ver PROMPT_LEVAS).
 
+## Padrão dos inimigos de sprite (leva 4)
+- Todo inimigo sem `model` em código (sprite da wiki) vira voxel sozinho (`VoxRecipes.creature`): sprite inflado, o maior lado = `size` do def, sempre virado para o jogador. Receita só para destaque: `wings` (morcegos: asas em V, meia-imagem esquerda/direita que bate em `EnemyModel.animate`), `emissive`, `cap`.
+- Slimes, olhos, vermes, caveiras e o Wall of Flesh continuam nos modelos de código; humanoides usam o corpo voxel. Ver `tests/model_preview.gd -- enemy:nome`.
+
 ## Fluxo
 `models.json` (sprite da wiki + cores) → receita em `scripts/voxel/recipes.gd` → `assets/models/gen/*.vox` (update.sh) → jogo.
 Retoque: copie o `.vox` para `assets/models/` e edite; ele vence o gerado e o update nunca o toca. Conferir sem tela: `tests/model_preview.gd`.
