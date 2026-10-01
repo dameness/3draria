@@ -93,15 +93,15 @@ static func item_mesh(name: String, icon: Image, length: float) -> ArrayMesh:
 
 
 # Peça da armadura/corpo (pivô no encaixe), na escala do personagem.
-static func part_mesh(name: String, part: String, look := {}) -> ArrayMesh:
-	var key := ["part", name, part, look]
+static func part_mesh(name: String, part: String, look := {}, vs := VoxMesh.V) -> ArrayMesh:
+	var key := ["part", name, part, look, vs]
 	if not _meshes.has(key):
 		var m := find(name, part)
 		if m == null:
 			return null
 		if not look.is_empty():
 			m = m.recolor(look_map(look))
-		_meshes[key] = VoxMesh.build(m)
+		_meshes[key] = VoxMesh.build(m, vs)
 	return _meshes[key]
 
 
@@ -224,6 +224,21 @@ static func body() -> Dictionary:
 	leg.box(Vector3i(-2, -4, -20), Vector3i(2, -3, -18), BOOT)   # ponta da bota
 	leg.box(Vector3i(-2, -2, -16), Vector3i(2, 2, -16), 0x73503c)  # cano da bota (luz)
 	out["body_leg"] = leg
+	# braço da 1ª pessoa: punho no encaixe (a mão) e antebraço + manga esticados para cima até o ombro, fora da tela; 1 voxel = 0,02 bloco (VoxMesh.FP_V)
+	var fp := VoxModel.new()
+	fp.put(Vector3i.ZERO, VoxModel.ANCHOR)
+	for z in range(1, 93):
+		for y in range(-2, 3):
+			for x in range(-2, 3):
+				var c: int = t.call("shirt", 1) if z >= 18 else t.call("skin", 1)
+				if z == 18:
+					c = t.call("shirt", 2)   # punho da manga
+				elif z <= 6 and (z == 1 or y == -2):
+					c = t.call("skin", 1) if z == 1 else t.call("skin", 0)   # ponta do punho e dedos à frente (tons claros)
+				if z <= 6 and (absi(x) == 2 and absi(y) == 2):
+					continue   # punho de cantos cortados
+				fp.put(Vector3i(x, y, z), c)
+	out["body_fparm"] = fp
 	return out
 
 

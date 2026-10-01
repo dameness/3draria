@@ -21,8 +21,8 @@ var sparks: CPUParticles3D
 var trail: Trail
 var trail_on := false          # o item atual deixa arco
 var arm: Node3D
-var skin_mat: StandardMaterial3D
-var sleeve_mat: StandardMaterial3D
+var arm_mesh: MeshInstance3D
+var arm_look := {}             # cores do personagem com que o braço foi montado
 var sway := Vector2.ZERO       # deslocamento da mão pela rotação da câmera (yaw, pitch)
 var last_yaw := 0.0
 var last_pitch := 0.0
@@ -43,35 +43,10 @@ func _build_arm() -> void:
 	arm = Node3D.new()
 	arm.top_level = true
 	add_child(arm)
-	skin_mat = _lit(Color("#f0b890"))
-	sleeve_mat = _lit(Color("#c0503c"))
-	for part in [[0.043, 0.34, 0.15, skin_mat], [0.06, 1.6, 1.07, sleeve_mat]]:   # raio, comprimento, centro ao longo do braço
-		var c := CapsuleMesh.new()
-		c.radius = part[0]
-		c.height = part[1]
-		c.radial_segments = 12
-		c.rings = 4
-		var mi := MeshInstance3D.new()
-		mi.mesh = c
-		mi.material_override = part[3]
-		mi.position = Vector3(0, part[2], 0)
-		arm.add_child(mi)
-	var fist := SphereMesh.new()
-	fist.radius = 0.062
-	fist.height = 0.124
-	fist.radial_segments = 12
-	fist.rings = 6
-	var f := MeshInstance3D.new()
-	f.mesh = fist
-	f.material_override = skin_mat
-	arm.add_child(f)
-
-
-static func _lit(c: Color) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = c
-	m.roughness = 0.85
-	return m
+	arm_mesh = MeshInstance3D.new()   # voxels como o corpo: a malha vem do personagem (_sync_arm)
+	arm_mesh.material_override = VoxMesh.material(0.9)
+	arm.add_child(arm_mesh)
+	_sync_arm()
 
 
 # Estilo de uso: campo "use_style" do item, senão deduzido (munição → shoot, arma/ferramenta → swing).
@@ -142,10 +117,11 @@ func _process(delta: float) -> void:
 
 # Cores do braço: as do personagem (pele e camiseta do PlayerModel).
 func _sync_arm() -> void:
-	var model: Node = player.get_node_or_null("Model")
-	if model and model.skin != skin_mat.albedo_color:
-		skin_mat.albedo_color = model.skin
-		sleeve_mat.albedo_color = model.shirt
+	var model: Node = player.get_node_or_null("Model") if player else null
+	var look := {"skin": model.skin, "hair": model.hair, "shirt": model.shirt, "pants": model.pants} if model else {"skin": Color(VoxRecipes.LOOK.skin), "hair": Color(VoxRecipes.LOOK.hair), "shirt": Color(VoxRecipes.LOOK.shirt), "pants": Color(VoxRecipes.LOOK.pants)}
+	if look != arm_look:
+		arm_look = look
+		arm_mesh.mesh = VoxRecipes.part_mesh("body", "fparm", look, VoxMesh.FP_V)
 
 
 func _additive(c: Color) -> StandardMaterial3D:

@@ -6,6 +6,7 @@ class_name VoxMesh
 # Não usa textura nem o atlas: funciona igual para item na mão, armadura, bloco com modelo e (nas próximas levas) inimigo.
 
 const V := 0.0375        # 1 voxel em blocos: 1 tile do Terraria (16 px) = 0.6 bloco
+const FP_V := 0.02        # 1 voxel do braço em 1ª pessoa, em blocos (o item na mão é ~0,012)
 const AO_LIGHT := [0.6, 0.75, 0.88, 1.0]
 const DIRS := ChunkMesher.DIRS
 const CORNERS := ChunkMesher.CORNERS
