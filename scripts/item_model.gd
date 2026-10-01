@@ -80,5 +80,5 @@ static func for_item(id: int, icon: Texture2D, length: float) -> Array:
 		var name := ""
 		if id >= 0 and id < Items.names.size():
 			name = Items.defs[id].get("model", Items.names[id])
-		cache[key] = [VoxRecipes.item_mesh(name, img, length), VoxMesh.material(0.6)]
+		cache[key] = [VoxRecipes.item_mesh(name, img, length), VoxMesh.material(0.85)]
 	return cache[key]
