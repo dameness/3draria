@@ -82,6 +82,35 @@ const SHOTS := [
 	{"name": "flash", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "hurt": true},
 	{"name": "olhar_livre", "third": true, "look": Vector2(0.4, -0.25), "free": 2.4, "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
+	{"name": "voxel_corpo", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "voxel_molten", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["molten_helmet", "molten_breastplate", "molten_greaves"]},
+	{"name": "voxel_lado", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "iron_broadsword"},
+	{"name": "voxel_lado_pa", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "voxel_costas", "third": true, "look": Vector2(0.4, -0.25), "item": "iron_broadsword"},
+	{"name": "voxel_loom", "look": Vector2(0, -0.3), "row": ["living_loom"], "late": 70, "item": "copper_pickaxe"},
+	{"name": "voxel_loom_noite", "look": Vector2(0, -0.3), "row": ["living_loom"], "late": 70, "time": 1100.0, "item": "torch"},
+	{"name": "arma_terra_costas", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade"},
+	{"name": "arma_terra_frente", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "terra_blade"},
+	{"name": "arma_terra_lado", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "terra_blade"},
+	{"name": "arma_pa_costas", "third": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "arma_pa_frente", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "arma_pa_lado", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "fp_terra", "look": Vector2(0.4, -0.2), "item": "terra_blade"},
+	{"name": "fp_terra_golpe", "look": Vector2(0.4, -0.2), "item": "terra_blade", "swing": 0.2},
+	{"name": "fp_pa", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe"},
+	{"name": "fp_pa_golpe", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.2},
+	{"name": "fp_sw0", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.38},
+	{"name": "fp_sw1", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.3},
+	{"name": "fp_sw2", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.22},
+	{"name": "fp_sw3", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.14},
+	{"name": "fp_sw4", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.06},
+	{"name": "fp_pk0", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.38},
+	{"name": "fp_pk1", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.3},
+	{"name": "fp_pk2", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.22},
+	{"name": "fp_pk3", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.14},
+	{"name": "fp_pk4", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.06},
+	{"name": "voxel_ouro", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
+	{"name": "voxel_molten_noite", "third": true, "free": 2.4, "time": 1100.0, "look": Vector2(2.6, -0.25), "armor": ["molten_helmet", "molten_breastplate", "molten_greaves"]},
 	{"name": "asas", "third": true, "look": Vector2(0.4, -0.2), "wings": true, "item": "copper_pickaxe"},
 	{"name": "pocoes", "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "ironskin_potion", "regeneration_potion", "swiftness_potion", "mining_potion", "archery_potion", "recall_potion", "magic_mirror"], "buffs": ["ironskin", "regeneration", "swiftness", "potion_sickness"], "hp": 60},
 	{"name": "pocoes_inv", "inventory": true, "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "cloud_in_a_bottle", "life_crystal"], "buffs": ["ironskin", "potion_sickness"], "gear": true, "max_hp": 260},
@@ -190,7 +219,7 @@ func _process(_delta: float) -> bool:
 	wait += 1
 	if is_instance_valid(trail_pr) and wait > 4 and wait < 20:   # rastro: o projétil anda `slow` blocos por quadro (as partículas nascem a cada quadro)
 		trail_pr._physics_process(shots[shot].slow / trail_pr.velocity.length())
-	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
+	if wait < shots[shot].get("late", 20):  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.use_len = 0.4
 			player.cooldown = shots[shot].swing
@@ -646,7 +675,7 @@ func _setup(s: Dictionary) -> void:
 			else:
 				EnemyModel.set_phase(b.model, 2)
 	player.third_person = s.get("third", false)
-	player.get_node("Model").rotation.y = PI if s.get("front", false) else 0.0   # boneco de frente para a câmera
+	player.get_node("Model").rotation.y = s.get("turn", PI if s.get("front", false) else 0.0)   # boneco de frente para a câmera
 	for n in s.get("armor", []):
 		player.inv.add(Items.ids[n], 1)
 		player.inv.equip_from(player.inv.item.find(Items.ids[n]))

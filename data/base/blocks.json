@@ -80,7 +80,7 @@
 	{"name": "ruby", "tiles": {"all": "ruby"}, "icon": "ruby_item"},
 	{"name": "minecart_track", "mine": 100, "solid": false, "shape": "track", "icon": "minecart_track", "tiles": {"all": "track_tile"}},
 	{"name": "living_wood", "mine": 1.5, "axe": true, "item": false, "drop": "wood", "tiles": {"all": "living_wood"}},
-	{"name": "living_loom", "mine": 4, "icon": "living_loom_item", "tiles": {"all": "living_loom"}},
+	{"name": "living_loom", "mine": 4, "solid": false, "shape": "model", "model": "living_loom", "size": [3, 3], "icon": "living_loom_item", "tiles": {"all": "living_loom"}},
 	{"name": "cactus", "mine": 2, "axe": true, "solid": false, "shape": "cactus", "icon": "cactus_item", "tiles": {"all": "cactus_tile"}},
 	{"name": "glowstick_lit", "mine": 100, "solid": false, "shape": "glowstick", "light": 10, "item": false, "drop": "glowstick", "tiles": {"all": "glowstick_tile"}}
 ]

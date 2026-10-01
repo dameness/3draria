@@ -54,6 +54,9 @@ scripts/update.sh                             # após cada git pull: Godot + spr
 scripts/fetch-sprites.sh                      # baixa os sprites da wiki em assets/wiki/ (idempotente, respeita o 429; opcional)
 scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki, lidos do snapshot data/ref/ (sem rede; commitado)
 scripts/wiki.py dump                          # refaz o snapshot (Items/Recipes/NPCs inteiros, ~3 MB; rode de vez em quando)
+`.tools/godot --headless -s scripts/voxel/build.gd`   # gera assets/models/gen/*.vox (modelos voxel; o update.sh roda)
+.tools/godot --headless -s scripts/voxel/levas.gd   # refaz docs/LEVAS.md (inventário por leva, dos JSON; o teste confere)
+.tools/godot --headless -s tests/model_preview.gd -- block:living_loom body armor:molten@1.2 copper_pickaxe   # folha textures/model_sheet.png (sprite + 4 ângulos)
 scripts/audit.py                              # data/base × snapshot: dano, use time, poder, raridade, receitas, vida/dano/defesa (roda também em tests/run.gd)
 # Referência em vídeo (rede liberada pelo dono): `yt-dlp <url do post do r/Terraria>` baixa v.redd.it (ok); busca de posts por `reddit.com/r/Terraria/search.rss?q=...`
 # (JSON dá 403, RSS passa); vídeo do YouTube dá 403 nos dados (só busca/metadados). Quadros: `ffmpeg -i v.mp4 -vf fps=2,scale=640:-1 f_%03d.png`.
@@ -109,7 +112,9 @@ scripts/             setup-godot.sh e um .gd por sistema:
   hud.gd             GUI no layout do Terraria (docs/UI.md): hotbar/inventário, criação, equipamento, vida, cursor, Configurações (pausa)
   settings.gd        opções (distância, volume, sensibilidade) em user://settings.cfg; o menu liga o caminho, testes usam os padrões
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  braço + item na mão (1ª pessoa): pose, inércia, balanço
-  player_model.gd    boneco chibi arredondado com contorno (3ª pessoa, tecla V): poses, arma na mão, armadura por peça
+  voxel/             modelos voxel (docs/VOXEL_STYLE.md, docs/LEVAS.md): vox_model.gd (.vox + operações), vox_mesh.gd (mesher), recipes.gd (receitas), build.gd (gera assets/models/gen/), levas.gd
+                     shaders/voxel.gdshader: cor por vértice, emissivo pulsando, luz do mundo nos blocos com modelo
+  player_model.gd    corpo em voxels (3ª pessoa, tecla V): poses, arma na mão, armadura por peça (Molten em cascas voxel; as outras ainda em formas de código)
 scripts/update.sh    após cada git pull: Godot + sprites + cache de classes
 tests/character_preview.gd  prévia dos personagens/armaduras (xvfb) → textures/personagens.png
 tests/world_map.gd  mapa do mundo inteiro pela geração (headless) → textures/mapa_mundo.png

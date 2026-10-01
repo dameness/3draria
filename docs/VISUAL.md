@@ -36,6 +36,16 @@ Palworld × Terraria (armas do Terraria reinterpretadas em 3D com brilho e part�
 5. **Inimigos e chefes**
    - Sprite da wiki extrudado como "papel 3D" ou billboard animado (frames do sprite sheet) — decidir no playtest.
 
+6. **Voxel** (camada nova, substitui aos poucos as camadas 2, 4 e 5): pixel art 3D no estilo Trove, 1 pixel do sprite = 1 voxel.
+   - Um sistema para tudo (`scripts/voxel/`): `.vox` do MagicaVoxel lido por `VoxModel`, mesher genérico `VoxMesh` (faces expostas, cor por vértice, AO, sem textura,
+     emissivo pulsando em `shaders/voxel.gdshader`) e receitas (`recipes.gd`) que geram o `.vox` a partir do sprite e da paleta.
+   - Campo `model` em items/blocks/armor_sets aponta para a receita (parâmetros em `data/<pacote>/models.json`). Sem campo = automático: o sprite inflado pela
+     distância à borda — todo item já tem volume. Bloco com modelo: `"shape": "model"` + `"size"` (instância à parte, fora da malha do chunk).
+   - Derivados do sprite são gerados no `update.sh` em `assets/models/gen/`; retoques à mão ficam em `assets/models/` (ambos fora do git, como os sprites).
+   - Estilo e escala: `docs/VOXEL_STYLE.md`; o que falta converter, por leva: `docs/LEVAS.md` (gerado dos JSON).
+   - Pilotos (leva 0): corpo do personagem em voxel, conjunto Molten (cascas por peça, lava emissiva, fagulhas na crista) e Living Loom. As outras armaduras
+     seguem em formas de código até a leva delas; inimigos seguem como V5.
+
 ## Ordem proposta
 - V1 ✅: fetch-sprites + ícones e blocos exatos + fallback (tests/atlas_preview.gd → textures/preview.png).
 - V2 ✅: item extrudado na mão (scripts/item_model.gd + held_item.gd) com swing/thrust/shoot/hold.

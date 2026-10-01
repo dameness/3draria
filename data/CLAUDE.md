@@ -62,6 +62,11 @@ Gancho: `hook: {range, launch, pull}` (blocos, blocos/s); a tecla E usa o primei
 `pickup: {heal?, mana?}`: coração/estrela, consumidos ao pegar (não entram no inventário).
 Item novo entra no FIM de `items.json` e de `blocks.json` (o mundo de teste o põe sozinho no baú da categoria: `TestWorld.category`).
 
+## models.json (modelos voxel; ver docs/VOXEL_STYLE.md)
+`nome: {recipe?, wiki?, emissive?: ["#rrggbb"], sparks?, depth?}`: `recipe` = função em `scripts/voxel/recipes.gd` (padrão: o próprio nome; `loom`, `armor_set`), `wiki` = sprite-base
+(o `fetch-sprites.sh` também o baixa), `emissive` = cores que brilham, `sparks` = cor das fagulhas do capacete. `"model": "nome"` em item/bloco/`armor_sets.json` escolhe o modelo
+(item sem `model` usa o nome dele, senão o sprite inflado). Bloco: `"shape": "model"`, `"size": [largura, altura]` em tiles da wiki, `"solid": false`.
+
 ## recipes.json
 `{result, count?=1, needs:{item: n}, station?: bloco}`; a estação precisa estar a até 4 blocos do jogador.
 

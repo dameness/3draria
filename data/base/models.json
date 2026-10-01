@@ -1,0 +1,4 @@
+{
+	"living_loom": {"recipe": "loom", "wiki": "Living_Loom_(placed)", "depth": 10},
+	"molten": {"recipe": "armor_set", "wiki": "Molten_armor", "emissive": ["#ff1800", "#f87e00", "#f8b600", "#420600"], "sparks": "#f8b600"}
+}

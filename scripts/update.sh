@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Depois de cada git pull: garante o Godot, os sprites da wiki e o cache de classes do projeto. Sem o passo do
+# Depois de cada git pull: garante o Godot, os sprites da wiki, o cache de classes do projeto e os modelos voxel derivados (assets/models/gen/). Sem o passo do
 # cache o jogo pode abrir com erro do tipo "Identifier ... not declared" quando chega script novo (class_name).
 # Idempotente e rápido quando nada mudou. Uso:
 #   git pull && scripts/update.sh && .tools/godot
@@ -13,4 +13,5 @@ if echo "$out" | grep -E "SCRIPT ERROR|Parse Error" >/dev/null; then
 	echo "ERRO ao importar o projeto (acima). Me mande esta saída."
 	exit 1
 fi
+.tools/godot --headless -s scripts/voxel/build.gd 2>&1 | grep -E "modelos voxel|SCRIPT ERROR|Parse Error" || echo "aviso: modelos voxel não gerados (o jogo usa as receitas em memória)"
 echo "pronto. Jogar: .tools/godot   |   testes: .tools/godot --headless -s tests/run.gd"
