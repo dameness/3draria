@@ -385,5 +385,9 @@
 	"living_loom": {"pattern": "planks", "colors": ["#6a9a3a", "#4f7a2a", "#83b24c"]},
 	"living_loom_item": {"wiki": "Living_Loom"},
 	"living_wood_wand": {"wiki": "Living_Wood_Wand", "pattern": "blob", "colors": ["#8a6840", "#5c3e22", "#c8a070"]},
-	"leaf_wand": {"wiki": "Leaf_Wand", "pattern": "blob", "colors": ["#3a9a2a", "#1f5518", "#8ade6a"]}
+	"leaf_wand": {"wiki": "Leaf_Wand", "pattern": "blob", "colors": ["#3a9a2a", "#1f5518", "#8ade6a"]},
+	"cactus_tile": {"pattern": "stripes", "colors": ["#3f8a3a", "#2e6e2a", "#58a24a"]},
+	"cactus_item": {"wiki": "Cactus"},
+	"glowstick": {"wiki": "Glowstick", "pattern": "blob", "colors": ["#7aff6a", "#2faa3a", "#d8ffb0"]},
+	"glowstick_tile": {"pattern": "noise", "colors": ["#8aff7a", "#5ae04a", "#c8ffb0"]}
 }

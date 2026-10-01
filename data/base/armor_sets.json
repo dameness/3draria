@@ -1,14 +1,14 @@
 {
-	"copper": {"pieces": ["copper_helmet", "copper_chainmail", "copper_greaves"], "defense": 2},
-	"tin": {"pieces": ["tin_helmet", "tin_chainmail", "tin_greaves"], "defense": 2},
-	"iron": {"pieces": ["iron_helmet", "iron_chainmail", "iron_greaves"], "defense": 2},
-	"lead": {"pieces": ["lead_helmet", "lead_chainmail", "lead_greaves"], "defense": 3},
-	"silver": {"pieces": ["silver_helmet", "silver_chainmail", "silver_greaves"], "defense": 3},
-	"tungsten": {"pieces": ["tungsten_helmet", "tungsten_chainmail", "tungsten_greaves"], "defense": 3},
-	"gold": {"pieces": ["gold_helmet", "gold_chainmail", "gold_greaves"], "defense": 3},
-	"platinum": {"pieces": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"], "defense": 4},
-	"molten": {"pieces": ["molten_helmet", "molten_breastplate", "molten_greaves"], "defense": 0},
-	"meteor": {"pieces": ["meteor_helmet", "meteor_suit", "meteor_leggings"], "defense": 0, "free_cost": ["space_gun"]},
-	"ninja": {"pieces": ["ninja_hood", "ninja_shirt", "ninja_pants"], "defense": 0},
-	"wood": {"pieces": ["wood_helmet", "wood_breastplate", "wood_greaves"], "defense": 1}
+	"copper": {"pieces": ["copper_helmet", "copper_chainmail", "copper_greaves"], "defense": 2, "model": "copper"},
+	"tin": {"pieces": ["tin_helmet", "tin_chainmail", "tin_greaves"], "defense": 2, "model": "tin"},
+	"iron": {"pieces": ["iron_helmet", "iron_chainmail", "iron_greaves"], "defense": 2, "model": "iron"},
+	"lead": {"pieces": ["lead_helmet", "lead_chainmail", "lead_greaves"], "defense": 3, "model": "lead"},
+	"silver": {"pieces": ["silver_helmet", "silver_chainmail", "silver_greaves"], "defense": 3, "model": "silver"},
+	"tungsten": {"pieces": ["tungsten_helmet", "tungsten_chainmail", "tungsten_greaves"], "defense": 3, "model": "tungsten"},
+	"gold": {"pieces": ["gold_helmet", "gold_chainmail", "gold_greaves"], "defense": 3, "model": "gold"},
+	"platinum": {"pieces": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"], "defense": 4, "model": "platinum"},
+	"molten": {"pieces": ["molten_helmet", "molten_breastplate", "molten_greaves"], "defense": 0, "model": "molten"},
+	"meteor": {"pieces": ["meteor_helmet", "meteor_suit", "meteor_leggings"], "defense": 0, "free_cost": ["space_gun"], "model": "meteor"},
+	"ninja": {"pieces": ["ninja_hood", "ninja_shirt", "ninja_pants"], "defense": 0, "model": "ninja"},
+	"wood": {"pieces": ["wood_helmet", "wood_breastplate", "wood_greaves"], "defense": 1, "model": "wood"}
 }

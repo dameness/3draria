@@ -95,9 +95,10 @@ static func _padded(d: PackedByteArray, nb: Array) -> PackedByteArray:
 # d: blocos do chunk. nb: vizinhos [+X, -X, +Z, -Z]; PackedByteArray vazio = fora do mundo (ar).
 # corners: vizinhos de canto [+X+Z, +X-Z, -X+Z, -X-Z], só como fontes de luz (vazio ou ausente = sem tocha de lá).
 # Retorna os arrays da superfície opaca para ArrayMesh.add_surface_from_arrays, ou [] se não houver faces.
-# water_out (opcional) recebe os arrays da superfície da água, se houver.
-static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [], corners := []) -> Array:
-	var solid := Blocks.solid
+# water_out (opcional) recebe os arrays da superfície da água, se houver. models_out (opcional) recebe [id, posição local, luz (céu, tocha)]
+# de cada bloco com modelo voxel (shape "model"): o world.gd os instancia à parte, fora da malha.
+static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [], corners := [], models_out := []) -> Array:
+	var solid := Blocks.cull
 	var special := Blocks.special
 	var liquid := Blocks.liquid
 	var tiles := Blocks.tiles
@@ -129,6 +130,8 @@ static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [
 				if special[b]:
 					if liquid[b]:
 						_liquid(a if Blocks.glow[b] else wd, p, hts, lights, b, x, y, z, tw)
+					elif Blocks.model[b] != "":
+						models_out.append([b, Vector3i(x, y, z), _light(p, hts, lights, x, y, z)])
 					else:
 						_shape(a, b, Vector3(x, y, z), tw, _light(p, hts, lights, x, y, z), p, pi)
 					continue
@@ -214,7 +217,7 @@ static func _light(p: PackedByteArray, hts: PackedInt32Array, lights: Array, x: 
 	var col := (x + 1) + (z + 1) * P
 	var ground := hts[col]
 	if ground < 0:
-		var solid := Blocks.solid
+		var solid := Blocks.cull
 		var clear := Blocks.clear
 		ground = 0
 		var canopy := 0
@@ -311,6 +314,19 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 		"torch":
 			var stick := tiles_of(b, 0) * tw
 			var flame := tiles_of(b, 2) * tw
+			var wall := Vector3.ZERO   # sem chão embaixo e com parede ao lado: a tocha sai da parede, inclinada para fora (em degraus)
+			if Blocks.solid[p[pi - PP]] == 0:
+				for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					if Blocks.solid[p[pi + d.x + d.y * P]] == 1:
+						wall = Vector3(d.x, 0, d.y)
+						break
+			if wall != Vector3.ZERO:
+				for f in 6:
+					var sh: float = SHADE[f]
+					for k in 3:
+						_face(a, pos + Vector3(0.44, 0.22 + 0.17 * k, 0.44) + wall * (0.44 - 0.09 * k), f, Vector3(0.12, 0.2, 0.12), stick, tw, Color(sh, sh, 0))
+					_face(a, pos + Vector3(0.41, 0.73, 0.41) + wall * 0.12, f, Vector3(0.18, 0.2, 0.18), flame, tw, Color(1, 1, 0.25))
+				return
 			for f in 6:
 				var sh: float = SHADE[f]
 				_face(a, pos + Vector3(0.44, 0, 0.44), f, Vector3(0.12, 0.55, 0.12), stick, tw, Color(sh, sh, 0))
@@ -325,6 +341,15 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 			for f in 6:
 				var sh: float = SHADE[f]
 				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 1.0, 0.14), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
+		"glowstick":   # graveto luminoso: uma barrinha no meio do bloco, acesa sozinha (b = 1)
+			var u0 := tiles_of(b, 0) * tw
+			for f in 6:
+				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 0.45, 0.14), u0, tw, Color(light.x, light.y, 1.0))
+		"cactus":   # cacto: coluna de 0,6 de largura, com a luz do lugar (atravessável, como no Terraria)
+			var u0 := tiles_of(b, 0) * tw
+			for f in 6:
+				var sh: float = SHADE[f]
+				_face(a, pos + Vector3(0.2, 0, 0.2), f, Vector3(0.6, 1.0, 0.6), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
 		"crystal":   # Life Crystal: dois quadros em cruz do tamanho do bloco, sem balançar e brilhando sozinho (b = 1)
 			var u0 := tiles_of(b, 0) * tw
 			var c := Color(light.x, light.y, 1.0)

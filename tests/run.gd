@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -85,6 +85,14 @@ func test_player():
 	p.creative = true
 	p.step(1.0, Vector3(1, 0, 0), false)
 	check(p.position.x > 28, "voo atravessa blocos")
+	var x0: float = p.position.x
+	p.step(0.1, Vector3(1, 0, 0), false)
+	var slow_step: float = p.position.x - x0
+	p.sprint = true
+	x0 = p.position.x
+	p.step(0.1, Vector3(1, 0, 0), false)
+	check(absf((p.position.x - x0) / slow_step - 3.0) < 0.01, "Shift no criativo voa 3x mais rápido")
+	p.sprint = false
 	p.free()
 	w.free()
 	return true
@@ -1032,29 +1040,125 @@ func test_binds():
 	check(w.get_block(24, 11, 24) == 0 and p.inv.total(Items.ids.dirt) == 5, "botão direito não coloca bloco")
 	p.use_item()
 	check(w.get_block(24, 11, 24) == Blocks.ids.dirt and p.inv.total(Items.ids.dirt) == 4 and is_equal_approx(p.cooldown, 0.25), "botão esquerdo coloca o bloco da mão (a cada 0,25 s segurando)")
-	# Auto Select
+	# Auto Select (wiki Cursor modes): o inventário inteiro, num slot extra; o slot da hotbar não muda
 	p.inv = Inventory.new()
 	for n in ["copper_pickaxe", "copper_axe", "iron_pickaxe", "torch"]:
 		p.inv.add(Items.ids[n], 1)
 	p.slot = 1
 	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}   # pedra
 	p.auto_pick(true)
-	check(p.slot == 2 and p.auto_prev == 1, "Shift em pedra: a melhor picareta (ferro), lembrando o slot da mão")
+	check(p.auto_slot == 2 and p.slot == 1 and p.auto_on and p.held() == Items.ids.iron_pickaxe, "Shift em pedra: a melhor picareta (ferro) na mão, sem mexer no slot da hotbar")
 	w.set_block(24, 11, 24, Blocks.ids.wood)
 	p.target = {"pos": Vector3i(24, 11, 24), "normal": Vector3i.UP}
 	p.auto_pick(true)
-	check(p.slot == 1 and p.auto_prev == 1, "segurando Shift e mirando o tronco: o machado (o slot de antes não se perde)")
+	check(p.auto_slot == 1 and p.held() == Items.ids.copper_axe, "segurando Shift e mirando o tronco: o machado")
+	w.set_block(24, 11, 24, Blocks.ids.cactus)
+	p.auto_pick(true)
+	check(p.auto_slot == 1, "mirando um cacto: o machado (wiki Cursor modes)")
+	w.set_block(24, 11, 24, 0)
 	p.target = {}
 	p.auto_pick(true)
-	check(p.slot == 3, "Shift sem bloco na mira: a tocha")
+	check(p.auto_slot == 3, "Shift sem bloco na mira (ferramenta na mão): a tocha")
+	p.inv.item[20] = Items.ids.glowstick   # fora da hotbar: vale o inventário inteiro; com tocha ela vem primeiro
+	p.inv.count[20] = 5
+	p.auto_pick(true)
+	check(p.auto_slot == 3, "com tocha e glowstick, a tocha vem primeiro")
+	p.position = Vector3(24.5, 11, 24.5)   # mirando a água: o glowstick tem prioridade
+	p.rotation.y = 0.0
+	p.pitch = 0.0
+	w.set_block(24, floori((p.position + Vector3.UP * p.EYE).y), 22, Blocks.ids.water)
+	p.auto_pick(true)
+	check(p.auto_slot == 20 and p.held() == Items.ids.glowstick, "Shift mirando a água: o glowstick antes da tocha")
+	w.set_block(24, floori((p.position + Vector3.UP * p.EYE).y), 22, 0)
+	p.inv.item[3] = -1   # sem tocha o glowstick é a opção
+	p.auto_pick(true)
+	check(p.auto_slot == 20, "sem tocha, o glowstick é a opção")
+	p.inv.item[3] = Items.ids.torch
+	p.inv.count[3] = 1
+	p.inv.add(Items.ids.copper_shortsword, 1)   # espada na mão (sem ferramenta): o Shift sugere a luz mesmo com um bloco na mira
+	p.slot = p.inv.item.find(Items.ids.copper_shortsword)
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
+	p.auto_pick(true)
+	check(p.auto_slot == 3, "Shift com a espada na mão e um bloco na mira: a tocha (não a picareta)")
+	p.slot = 1
 	p.auto_pick(false)
-	check(p.slot == 1 and p.auto_prev == -1, "soltar o Shift devolve o slot de antes")
+	check(p.auto_slot == -1 and not p.auto_on and p.held() == Items.ids.copper_axe, "soltar o Shift devolve a mão ao slot da hotbar")
+	p.slot = 3   # tocha selecionada na hotbar: o Shift mirando um bloco não a troca pela picareta
+	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
+	p.auto_pick(true)
+	check(p.auto_slot == 3 and p.held() == Items.ids.torch, "Shift com a tocha na hotbar e um bloco na mira: continua a tocha")
+	p.auto_pick(false)
 	p.inv = Inventory.new()
 	p.inv.add(Items.ids.dirt, 1)
 	p.slot = 0
 	p.target = {"pos": Vector3i(24, 10, 24), "normal": Vector3i.UP}
 	p.auto_pick(true)
-	check(p.slot == 0 and p.auto_prev == -1, "sem ferramenta adequada na hotbar o Auto Select não troca")
+	check(p.auto_slot == -1 and p.auto_on and p.slot == 0, "sem ferramenta adequada o Auto Select não escolhe nada")
+	p.auto_pick(false)
+	# cursor inteligente: machado prefere a árvore perto da mira, espada sugere a face para a luz, bloco na mão fica como está
+	p.position = Vector3(24.95, 11, 24.5)
+	p.rotation.y = 0.0
+	p.pitch = 0.0
+	p.smart_cursor = true
+	var ey := floori((p.position + Vector3.UP * p.EYE).y)
+	w.set_block(25, ey, 22, Blocks.ids.wood)
+	w.set_block(24, ey, 23, Blocks.ids.stone)
+	p.inv = Inventory.new()
+	p.inv.add(Items.ids.copper_axe, 1)
+	p.inv.add(Items.ids.copper_pickaxe, 1)
+	p.inv.add(Items.ids.copper_shortsword, 1)
+	p.inv.add(Items.ids.dirt, 1)
+	p.slot = 0
+	var tg: Dictionary = p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir())
+	check(tg.get("pos") == Vector3i(25, ey, 22), "cursor inteligente: o machado pega a árvore perto da mira, mesmo com pedra na linha")
+	p.slot = 1
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).get("pos") == Vector3i(24, ey, 23), "a picareta fica com o que a mira acerta")
+	w.set_block(24, ey, 23, 0)
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).get("pos") == Vector3i(25, ey, 22), "a picareta sem alvo na mira pega o bloco mais perto do cone")
+	p.slot = 2
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).get("pos") == Vector3i(25, ey, 22), "com a espada o cursor inteligente sugere o bloco para a luz")
+	p.slot = 3
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).is_empty(), "com bloco na mão o cursor inteligente fica como está (só o que a mira acerta)")
+	p.smart_cursor = false
+	p.slot = 2
+	check(p.find_target((p.position + Vector3.UP * p.EYE), p.aim_dir()).is_empty(), "desligado, nada é sugerido")
+	w.set_block(25, ey, 22, 0)
+	# glowstick (wiki): voa sem ferir e vira o bloco aceso na última célula livre; quebrar devolve o item
+	var gl: Node3D = p.entities.spawn_projectile("glowstick", Vector3(24.5, 14.5, 24.5), Vector3.DOWN, 0.0, 0, 0.0)
+	for i in 40:
+		if is_instance_valid(gl) and not gl.is_queued_for_deletion():
+			gl._physics_process(0.05)
+	check(w.get_block(24, 11, 24) == Blocks.ids.glowstick_lit and Blocks.light[Blocks.ids.glowstick_lit] >= 9 and Blocks.drop_names[Blocks.ids.glowstick_lit] == "glowstick", "glowstick: pousa no chão como bloco aceso que devolve o item")
+	w.set_block(24, 11, 24, 0)
+	# cacto: cortar a base derruba o pedaço de cima
+	w.set_block(24, 11, 24, Blocks.ids.cactus)
+	w.set_block(24, 12, 24, Blocks.ids.cactus)
+	w.set_block(24, 11, 24, 0)
+	check(w.get_block(24, 12, 24) == 0, "cacto: tirar o de baixo derruba o de cima")
+	# item no cursor (wiki Inventory + Game controls): esquerdo usa o item (1 bomba), direito joga a pilha
+	p.inv = Inventory.new()
+	p.inventory_open = true
+	p.inv.cursor_id = Items.ids.bomb
+	p.inv.cursor_count = 3
+	check(p.held() == Items.ids.bomb and p.hand() == Inventory.CURSOR, "com o inventário aberto o item do cursor é o da mão")
+	var lmb := InputEventMouseButton.new()
+	lmb.button_index = MOUSE_BUTTON_LEFT
+	lmb.pressed = true
+	p._unhandled_input(lmb)
+	check(p.attack_held, "botão esquerdo com item no cursor começa a usá-lo")
+	p.cooldown = 0.0
+	p.attack(0.016)
+	check(p.inv.cursor_count == 2 and p.inv.cursor_id == Items.ids.bomb, "esquerdo usa o item do cursor: joga 1 bomba e sobram 2")
+	p.attack_held = false
+	var rclick := InputEventMouseButton.new()
+	rclick.button_index = MOUSE_BUTTON_RIGHT
+	rclick.pressed = true
+	p._unhandled_input(rclick)
+	check(p.inv.cursor_id == -1 and p.entities.get_children().any(func(n): return n.get("count") == 2 and n.get("item") == Items.ids.bomb), "direito joga a pilha do cursor no chão")
+	for n in p.entities.get_children():
+		if n.get("count") != null:
+			n.free()
+	p.inventory_open = false
 	# Ctrl+clique: lixeira
 	var inv := Inventory.new()
 	inv.add(Items.ids.dirt, 30)
@@ -1300,7 +1404,7 @@ func world_census() -> Dictionary:
 func test_life_crystal():
 	var b: int = Blocks.ids.life_crystal
 	var id: int = Items.ids.life_crystal
-	check(Blocks.breakable[b] == 1 and Blocks.solid[b] == 0 and Blocks.shape[b] == "crystal" and Blocks.light[b] > 0 and Blocks.soft[b] == 0, "o cristal é um bloco que brilha, sem colisão e que a mira acerta")
+	check(Blocks.breakable[b] == 1 and Blocks.solid[b] == 1 and Blocks.shape[b] == "model" and Blocks.light[b] > 0 and Blocks.soft[b] == 0, "o cristal é um bloco que brilha, sólido e que a mira acerta")
 	check(Items.places[id] == -1 and Items.defs[id].life == 20 and Items.defs[id].consumable and Items.drop[b] == id, "o item é consumível (+20) e não se coloca; o bloco solta ele")
 	var w := floor_world()
 	var p := make_player(w)
@@ -2286,7 +2390,7 @@ func test_damage():
 		p.slot = 0
 		p.target = {"pos": Vector3i(20, 11, 20), "normal": Vector3i.UP}
 		p.auto_pick(true)
-		check(p.slot == 1 and p.auto_prev == 0, "Auto Select em %s escolhe o martelo" % orb)
+		check(p.auto_slot == 1 and p.slot == 0, "Auto Select em %s escolhe o martelo" % orb)
 		p.auto_pick(false)
 		w.set_block(20, 11, 20, 0)
 	free_player(p)
@@ -3225,6 +3329,22 @@ func test_missing_items():
 	bp.inv.add(Items.ids.shuriken, 3)
 	bp.throw_item(Items.ids.shuriken, Items.defs[Items.ids.shuriken], Vector3.RIGHT)
 	check(bp.inv.total(Items.ids.shuriken) == 2 and bent.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == "shuriken" and n.def.has("spin")), "Shuriken: joga, gasta um e gira")
+	# faca de arremesso: voa reta até a mira (sem o arco para cima da bomba)
+	bp.inv.add(Items.ids.throwing_knife, 2)
+	bp.inv.add(Items.ids.bomb, 2)
+	for k in bent.get_children():
+		if k.get("def") is Dictionary and k.def.get("name") in ["throwing_knife", "bomb"]:
+			k.free()
+	bp.throw_item(Items.ids.throwing_knife, Items.defs[Items.ids.throwing_knife], Vector3.RIGHT)
+	bp.throw_item(Items.ids.bomb, Items.defs[Items.ids.bomb], Vector3.RIGHT)
+	var kv := 99.0
+	var bv := 0.0
+	for k in bent.get_children():
+		if k.get("def") is Dictionary and k.def.get("name") == "throwing_knife":
+			kv = k.velocity.y
+		elif k.get("def") is Dictionary and k.def.get("name") == "bomb":
+			bv = k.velocity.y
+	check(absf(kv) < 0.001 and bv > 1.0, "a faca voa reta (vy %.2f) e a bomba sobe em arco (vy %.2f)" % [kv, bv])
 	# balde e corda: a corda tem geometria própria (um fio fino)
 	var Y := 60
 	var d := chunk(0)
@@ -3508,6 +3628,124 @@ func quads(mesh: ArrayMesh) -> int:
 	return mesh.surface_get_array_len(0) / 4
 
 
+# Modelos voxel (scripts/voxel): .vox ida e volta, mesher (faces internas somem, sentido das faces, encaixe, emissivo), inflado do sprite,
+# corpo, bloco com modelo e os pilotos (Living Loom, Molten).
+func test_voxel():
+	var m := VoxModel.new()
+	m.box(Vector3i(0, 0, 0), Vector3i(1, 1, 1), 0xc08040)
+	m.put(Vector3i(5, 0, 0), 0)
+	m.put(Vector3i(6, 0, 0), 0xff1800)
+	m.put(Vector3i(3, 3, 3), VoxModel.ANCHOR)
+	m.emit[0xff1800] = true
+	check(m.v[Vector3i(5, 0, 0)] != 0, "sem preto puro: voxel preto vira quase preto")
+	var path := "user://test_model.vox"
+	m.write(path)
+	var r := VoxModel.read(path)
+	check(r != null and r.v.size() == m.v.size() and r.has_anchor and r.anchor == Vector3i(3, 3, 3) and r.emit.has(0xff1800) and r.v[Vector3i(6, 0, 0)] == 0xff1800, "vox: grava e lê (voxels, encaixe, emissivo)")
+	check(VoxModel.read("user://nao_existe.vox") == null, "vox: arquivo ausente = null")
+	var cube := VoxModel.new()
+	cube.box(Vector3i.ZERO, Vector3i(1, 1, 1), 0x808080)
+	var mesh := VoxMesh.build(cube)
+	check(quads(mesh) == 24, "mesher: cubo 2x2x2 tem só as 24 faces de fora (%d)" % quads(mesh))
+	var bar := VoxModel.new()
+	bar.box(Vector3i.ZERO, Vector3i(2, 0, 0), 0x808080)
+	check(quads(VoxMesh.build(bar)) == 14, "mesher: barra 3x1x1 = 14 faces")
+	var a := mesh.surface_get_arrays(0)
+	var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
+	var nr: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
+	var ix: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+	var wound := true
+	for t in range(0, ix.size(), 3):
+		wound = wound and (v[ix[t + 1]] - v[ix[t]]).cross(v[ix[t + 2]] - v[ix[t]]).dot(nr[ix[t]]) < 0
+	check(wound, "mesher: faces viradas para fora")
+	check(is_equal_approx(mesh.get_aabb().size.x, 2 * VoxMesh.V) and is_equal_approx(mesh.get_aabb().position.y, 0.0), "mesher: voxel = V e a origem é o centro da base")
+	var anch := VoxModel.new()
+	anch.box(Vector3i(-2, -2, -2), Vector3i(2, 2, 2), 0x808080)
+	anch.put(Vector3i.ZERO, VoxModel.ANCHOR)
+	var ab := VoxMesh.build(anch).get_aabb()
+	check(ab.get_center().length() < VoxMesh.V * 0.6 and is_equal_approx(ab.size.y, 5 * VoxMesh.V), "mesher: origem no encaixe, que não vira voxel")
+	var glowing := VoxModel.new()
+	glowing.box(Vector3i.ZERO, Vector3i(1, 0, 0), 0xff1800)
+	glowing.emit[0xff1800] = true
+	var gm := VoxMesh.build(glowing)
+	check(gm.surface_get_arrays(0)[Mesh.ARRAY_COLOR][0].a == 0.0 and gm.get_meta("glow").size() == 2, "mesher: emissivo = alfa 0 e topos listados")
+	# sprite inflado: a silhueta de frente é a do sprite e há volume
+	var plus := Image.create(5, 5, false, Image.FORMAT_RGBA8)
+	plus.fill(Color.RED)
+	var inf := VoxModel.from_sprite(plus, VoxModel.inflate(plus, 2))
+	var cols := {}
+	for p in inf.v:
+		cols[Vector2i(p.x, p.z)] = (cols.get(Vector2i(p.x, p.z), 0) as int) + 1
+	check(cols.size() == 25 and cols[Vector2i(2, 2)] == 4 and cols[Vector2i(0, 0)] == 2 and inf.size().y == 4, "inflar: mesma silhueta de frente, centro mais grosso que a borda")
+	check(VoxModel.from_sprite(plus, VoxModel.inflate(plus, 2)).v.size() == inf.v.size(), "inflar: determinístico")
+	var icon := Items.icon_texture(Items.ids.copper_pickaxe, ImageTexture.create_from_image(Atlas.build(Blocks.textures)))
+	var held: Array = ItemModel.for_item(Items.ids.copper_pickaxe, icon, 0.9)
+	check(held[0].get_aabb().size.z > 0.03 and held[1] is ShaderMaterial and is_equal_approx(maxf(held[0].get_aabb().size.x, held[0].get_aabb().size.y), 0.9), "item na mão: volume do sprite inflado, lado maior = comprimento")
+	# corpo: altura de ~1,8 bloco, nas articulações do player_model; recolor troca a camisa
+	var look := {"skin": Color(VoxRecipes.LOOK.skin), "hair": Color(VoxRecipes.LOOK.hair), "shirt": Color(VoxRecipes.LOOK.shirt), "pants": Color(VoxRecipes.LOOK.pants)}
+	var top: float = VoxRecipes.PIV.upper.y + VoxRecipes.PIV.head.y + VoxRecipes.part_mesh("body", "hair", look).get_aabb().end.y
+	var feet: float = VoxRecipes.PIV.leg.y + VoxRecipes.part_mesh("body", "leg", look).get_aabb().position.y
+	check(absf(top - 1.8) < 0.1 and absf(feet) < 0.03, "corpo voxel: ~1,8 de altura e pés no chão (%.2f, %.2f)" % [top, feet])
+	var blue := look.duplicate()
+	blue.shirt = Color("#2060ff")
+	var c0: PackedColorArray = VoxRecipes.part_mesh("body", "torso", look).surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	var c1: PackedColorArray = VoxRecipes.part_mesh("body", "torso", blue).surface_get_arrays(0)[Mesh.ARRAY_COLOR]
+	check(c0 != c1 and c0.size() == c1.size(), "corpo voxel: a cor da camisa vem do personagem")
+	# bloco com modelo
+	var loom: int = Blocks.ids.living_loom
+	check(Blocks.shape[loom] == "model" and Blocks.model[loom] == "living_loom" and Blocks.model_size[loom] == Vector2(3, 3) and Blocks.solid[loom] == 1, "Living Loom: bloco com modelo, sólido")
+	var lm := VoxRecipes.block_mesh("living_loom", Blocks.model_size[loom])
+	check(is_equal_approx(lm.get_aabb().size.x, 1.8) and lm.get_aabb().size.z > 0.2, "Living Loom: 3 tiles = 1,8 bloco de largura, com profundidade (%s)" % lm.get_aabb().size)
+	var d := chunk(0)
+	d[5 + 5 * C + 20 * C * C] = loom
+	var models := []
+	ChunkMesher.build(d, [PackedByteArray(), PackedByteArray(), PackedByteArray(), PackedByteArray()], Blocks.textures.size(), [], [], models)
+	check(models.size() == 1 and models[0][0] == loom and models[0][1] == Vector3i(5, 20, 5), "mesher do chunk entrega o bloco com modelo e não o desenha na malha")
+	check(VoxRecipes.loom({"wiki": "nao_existe"}).v.size() > 100 and VoxRecipes.armor_set("x", {"wiki": "nao_existe"}).is_empty(), "sem o sprite baixado: loom vira caixa e o conjunto cai nas formas em código")
+	# leva 1: estações, baú e gemas são `prop` (sprite da wiki com profundidade); sem o sprite, caixa
+	for n in ["workbench", "furnace", "anvil", "hellforge", "chest", "demon_altar", "life_crystal", "bee_larva", "lead_anvil"]:
+		var pb: int = Blocks.ids[n]
+		check(Blocks.shape[pb] == "model" and Blocks.model[pb] == n and Blocks.solid[pb] == 1 and Blocks.cull[pb] == 0 and VoxRecipes.block_mesh(n, Blocks.model_size[pb]) != null, "%s: bloco com modelo voxel, sólido sem esconder as faces vizinhas" % n)
+	check(VoxRecipes.prop({"wiki": "nao_existe"}).v.size() > 100, "prop sem o sprite baixado vira caixa")
+	if VoxRecipes.sprite("Work_Bench") != null:
+		var wb := VoxRecipes.find("workbench")
+		check(not wb.v.has(Vector3i(8, 5, 4)) and wb.v.has(Vector3i(8, 1, 15)) and wb.size().y == 14, "bancada: pernas só na frente e no fundo (vão no meio)")
+		var sp := {"wiki": "Living_Loom_(placed)"}
+		check(VoxRecipes.loom(sp).v != VoxRecipes.loom({"wiki": "Living_Loom_(placed)", "sides": true}).v and VoxRecipes.specs().chest.get("sides", false) and VoxRecipes.specs().living_loom.get("sides", false), "estruturas com laterais texturizadas (sides) no baú e na Living Loom")
+		check(VoxRecipes.find("furnace").emit.size() == 3 and not VoxRecipes.find("furnace").v.has(Vector3i(14, 0, 10)), "fornalha: fogo emissivo recuado da frente")
+	# leva 2: todo conjunto de armadura tem as 4 peças voxel (placa/pano pelos ícones; sem ícone, a paleta `colors`)
+	for k in Items.sets:
+		var ok: bool = Items.sets[k].model == k
+		for part in ["head", "body", "arm", "leg"]:
+			ok = ok and VoxRecipes.part_mesh(k, part) != null
+		check(ok, "armadura %s: modelo voxel completo" % k)
+	var wood_head: VoxModel = VoxRecipes.make("wood").wood_head
+	check(wood_head.has_anchor and not wood_head.v.has(Vector3i(3, -6, 7)) and wood_head.v.has(Vector3i(0, 0, 12)), "capacete de placa: rosto aberto na frente, calota no alto")
+	# leva 3: espessura do modelo automático por categoria e receita `weapon` (bomba esférica, lâmina fina)
+	var cap := func(n: String) -> int: return VoxRecipes.auto_cap(n, Image.create(36, 36, false, Image.FORMAT_RGBA8))
+	check(cap.call("copper_broadsword") == 2 and cap.call("copper_bow") == 2 and cap.call("copper_pickaxe") == 2 and cap.call("mace") == 6 and cap.call("space_gun") == 4, "auto_cap: lâmina, arco e ferramenta finos, flail redondo, arma de fogo cheia")
+	var bomb_img := Image.create(22, 30, false, Image.FORMAT_RGBA8)
+	bomb_img.fill(Color.WHITE)
+	var bm := VoxModel.from_sprite(bomb_img, VoxModel.inflate(bomb_img, 11))
+	check(bm.size().y >= 20 and VoxRecipes.weapon({"wiki": "nao_existe"}) == null, "weapon: round infla até a esfera; sem o sprite devolve null (automático assume)")
+	# Molten: modelo por peça, brilho e cor do sprite
+	if VoxRecipes.sprite("Molten_armor") != null:
+		var mh := VoxRecipes.find("molten", "head")
+		check(mh != null and mh.has_anchor and mh.emit.size() >= 3 and VoxRecipes.find("molten", "leg") != null, "Molten: 4 peças voxel com encaixe e cores emissivas")
+		check(VoxRecipes.part_mesh("molten", "head").get_meta("glow").size() > 3, "Molten: topos da crista listados para as fagulhas")
+	check(FileAccess.get_file_as_string("res://docs/LEVAS.md") == load("res://scripts/voxel/levas.gd").text(), "docs/LEVAS.md em dia (rode .tools/godot --headless -s scripts/voxel/levas.gd)")
+	var used := {}   # todo `model` citado nos dados resolve para uma receita ou arquivo
+	for b in Blocks.model:
+		if b != "":
+			used[b] = true
+	for k in Items.sets:
+		if Items.sets[k].model != "":
+			used[Items.sets[k].model] = true
+	for n in used:
+		check(VoxRecipes.specs().has(n), "model '%s' está em models.json" % n)
+	return true
+
+
 func test_item_model():
 	var plus := Image.create(3, 3, false, Image.FORMAT_RGBA8)
 	for p in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(1, 2)]:
@@ -3752,7 +3990,7 @@ func integration():
 			hand._process(0)
 			hand._process(0)
 			check(hand.glow != null and hand.sparks != null and hand.trail.pts.size() >= 2, "Terra Blade na mão com brilho, faíscas e rastro (%s %s %d)" % [hand.glow, hand.sparks, hand.trail.pts.size()])
-			check(hand.arm != null and hand.arm.get_child_count() == 3, "braço em 1ª pessoa (antebraço, manga e punho)")
+			check(hand.arm != null and hand.arm_mesh != null and hand.arm_mesh.mesh != null and hand.arm_mesh.mesh.get_aabb().size.y > 1.5, "braço em 1ª pessoa: uma malha voxel do punho ao ombro (~1,9 de comprimento)")
 			player.cooldown = 0
 			player.third_person = true
 			player.creative = true
@@ -3807,7 +4045,7 @@ func integration():
 			check(not main.get_tree().paused and not player.menu_open, "Esc dentro do Configurações: o HUD despausa")
 			player.add_buff("ironskin", 125.0)
 			hud._process(0.0)
-			check(hud.buff_row.get_child_count() == 1 and hud.buff_row.get_child(0).get_node("Time").text == "2:05" and hud.defense_label.text == "Defesa: 8", "buff na HUD: ícone com o tempo (2:05) e a defesa sobe")
+			check(hud.buff_row.get_child_count() == 1 and hud.buff_row.get_child(0).get_node("Time").text == "2:05" and hud.defense_label.text == "8" and hud.defense_shield.tooltip_text == "Defesa: 8", "buff na HUD: ícone com o tempo (2:05) e a defesa sobe")
 			player.buffs.clear()
 			player.max_hp = 240
 			player.hp = 240.0
@@ -4142,6 +4380,18 @@ func test_gen():
 # Mundo de teste (menu → "Mundo de teste"): a arena entra na geração, os baús trazem TODOS os itens (por categoria, a partir de Items.names) e a fileira
 # TODOS os blocos; habitantes, vitrine parada e os atalhos do painel F9.
 func test_testworld():
+	var old_dir := SaveGame.worlds_dir   # um mundo de teste salvo em outro tamanho é refeito, não aberto como mundo comum
+	SaveGame.worlds_dir = "user://t_worlds/"
+	DirAccess.make_dir_recursive_absolute(SaveGame.worlds_dir)
+	var tw_path := SaveGame.worlds_dir + SaveGame.TEST_NAME + ".wld"
+	var tf := FileAccess.open(tw_path, FileAccess.WRITE)
+	tf.store_var({"version": SaveGame.VERSION, "name": "velho", "seed": 1, "time": 60.0, "chunks": {}, "test": true})   # sem "size": mundo pequeno antigo
+	tf.close()
+	SaveGame.test_world()
+	var fresh: Dictionary = SaveGame._read(tw_path)
+	check(fresh.get("size") == WorldGen.SIZE_CHUNKS and fresh.get("test") == true and fresh.seed == SaveGame.TEST_SEED, "mundo de teste de outro tamanho é recriado")
+	DirAccess.remove_absolute(tw_path)
+	SaveGame.worlds_dir = old_dir
 	TestWorld.build()
 	var seen := {}
 	var titles := {}
@@ -4788,7 +5038,7 @@ func test_smart_cursor():
 	p.smart_cursor = true
 	check(p.find_target(from, Vector3.RIGHT).get("pos") == Vector3i(27, 13, 24), "com ele e a picareta, pega o bloco perto da linha de visada")
 	p.slot = p.inv.item.find(Items.ids.wooden_sword)
-	check(p.find_target(from, Vector3.RIGHT).is_empty(), "com uma espada na mão ele não age")
+	check(p.find_target(from, Vector3.RIGHT).get("pos") == Vector3i(27, 13, 24), "com uma espada na mão ele sugere o bloco para a luz (como com a picareta)")
 	p.slot = p.inv.item.find(Items.ids.copper_pickaxe)
 	w.set_block(27, 13, 24, 0)
 	w.set_block(27, 17, 24, Blocks.ids.stone)   # longe demais da linha (>12°)
@@ -4973,15 +5223,14 @@ func test_armor_looks():
 	m.player = d
 	d.add_child(m)
 	m._build()
-	for set in ["molten", "meteor", "ninja"]:
-		var ids := PackedInt32Array([Items.ids["%s_helmet" % set if set != "meteor" else "meteor_helmet"] if set != "ninja" else Items.ids.ninja_hood, 0, 0])
-		ids[1] = Items.ids["molten_breastplate" if set == "molten" else "meteor_suit" if set == "meteor" else "ninja_shirt"]
-		ids[2] = Items.ids["molten_greaves" if set == "molten" else "meteor_leggings" if set == "meteor" else "ninja_pants"]
-		m.worn = ids
+	var wear := {"molten": ["molten_helmet", "molten_breastplate", "molten_greaves"], "meteor": ["meteor_helmet", "meteor_suit", "meteor_leggings"], "ninja": ["ninja_hood", "ninja_shirt", "ninja_pants"], "gold": ["gold_helmet", "gold_chainmail", "gold_greaves"]}
+	for set in wear:   # casca voxel: uma malha na cabeça, tronco + 2 braços, 2 pernas
+		m.worn = PackedInt32Array(wear[set].map(func(n): return Items.ids[n]))
 		m._dress()
-		check(m.shells.size() == 3 and m.shells.head.size() > 3, "%s: vestiu as 3 peças com formas próprias" % set)
-	var pal: Array = m._colors(Items.ids.molten_helmet, true)
-	check(pal[3].r > 0.8 and pal[3].b < 0.35 and pal[0].s < 0.4, "molten: destaque laranja separado do metal cinza-oliva (%s / %s)" % [pal[3], pal[0]])
+		check(m.shells.size() == 3 and m.shells.head.size() == 1 and m.shells.body.size() == 3 and m.shells.legs.size() == 2, "%s: vestiu as 3 peças (cascas voxel)" % set)
+	m.worn = PackedInt32Array([-1, -1, -1])
+	m._dress()
+	check(m.shells.is_empty() and m.hair_nodes[0].visible, "sem armadura: sem cascas e o cabelo aparece")
 	d.free()
 	return true
 
@@ -5214,6 +5463,16 @@ func test_wiki_review():
 		var dd := dg.generate(dc2.x, dc2.y)
 		check(dd.count(Blocks.ids.hardened_sand) > 40 and dd.count(Blocks.ids.sandstone) > 10, "seed %d: o chunk do deserto tem areia endurecida (%d) e arenito (%d)" % [sd, dd.count(Blocks.ids.hardened_sand), dd.count(Blocks.ids.sandstone)])
 		check(dg.desert_center.distance_to(dg.snow_center) > 30.0 and dg.desert_center.distance_to(dg.evil_center) > 30.0 and dg.desert_center.distance_to(dg.hallow_center) > 30.0, "seed %d: o deserto fica longe dos outros biomas" % sd)
+		var cacti := 0
+		var grounded := true
+		for ddx in range(-1, 2):   # cactos (wiki Cactus): 3-5 blocos sobre areia, só no deserto
+			for ddz in range(-1, 2):
+				var cd := dg.generate(dc2.x + ddx, dc2.y + ddz)
+				for ci in cd.size():
+					if cd[ci] == Blocks.ids.cactus:
+						cacti += 1
+						grounded = grounded and cd[ci - 256] in [Blocks.ids.cactus, Blocks.ids.sand]
+		check(cacti >= 6 and grounded, "seed %d: o deserto tem cactos sobre a areia (%d blocos)" % [sd, cacti])
 		dw.free()
 	var dw2 := dungeon_world(1)
 	var dp2 := make_player(dw2)

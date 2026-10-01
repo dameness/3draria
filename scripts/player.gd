@@ -14,6 +14,7 @@ const GRAVITY := 28.0
 const JUMP := 9.0        # sobe ~1,4 bloco
 const WALK := 6.6        # 11 tiles/s da wiki (1 bloco = 1,67 tile); não há corrida
 const FLY := 13.5        # modo criativo (F): blocos/s
+const FLY_SPRINT := 3.0  # Shift no modo criativo: voa 3x mais rápido
 const WING_ACCEL := 45.0   # asas: quanto sobe a velocidade vertical por segundo enquanto voa
 const GLIDE := 1.0 / 3.0   # planando (asas sem tempo de voo, Espaço apertado): gravidade e queda máxima em 1/3 (wiki Wings)
 const FALL_MAX := 50.0
@@ -66,6 +67,7 @@ var hit_wall := false         # o último passo bateu numa parede (usado para sa
 var depth := 0.0              # blocos de líquido acima dos pés
 var swimming := false         # mais fundo que SWIM_DEPTH
 var creative := false         # modo criativo (F): sem colisão, sem dano
+var sprint := false           # Shift segurado (com as mãos livres); no criativo acelera o voo, fora dele é o Auto Select
 var flight_left := 0.0        # segundos de voo que restam às asas; volta ao máximo no chão
 var gliding := false          # planando com as asas (a animação usa)
 var flapping := false         # batendo as asas agora (subindo)
@@ -76,7 +78,8 @@ var inv := Inventory.new()
 var slot := 0                 # slot da hotbar na mão
 var inventory_open := false
 var menu_open := false        # Configurações (pausa): botão do inventário
-var auto_prev := -1           # slot de antes do Auto Select (Shift); -1 = não trocou
+var auto_slot := -1           # Auto Select (Shift): slot do inventário (qualquer um) que a mão usa enquanto o Shift está segurado; -1 = nenhum
+var auto_on := false          # Auto Select ligado (o HUD abre o slot extra ao lado da hotbar)
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
@@ -223,16 +226,12 @@ func _unhandled_input(e: InputEvent) -> void:
 			else:
 				look(e.relative)
 	elif e is InputEventMouseButton:
-		if e.button_index == MOUSE_BUTTON_LEFT:
-			attack_held = e.pressed and not inventory_open
-			if e.pressed and inventory_open and inv.cursor_id != -1:   # Terraria: item no cursor + clique esquerdo fora dos painéis
-				if Items.defs[inv.cursor_id].get("consumable", false):
-					consume(0, true)   # poção = bebe
-				else:
-					drop_cursor()   # o resto = joga no chão
+		if e.button_index == MOUSE_BUTTON_LEFT:   # wiki Inventory: o item preso ao cursor vale como item na mão (golpeia, coloca, joga 1 bomba, bebe)
+			attack_held = e.pressed and (not inventory_open or inv.cursor_id != -1)
 			if attack_held:
 				attack_buffer = CLICK_BUFFER
-				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED   # clique com o mouse solto (voltou do Alt+Tab) recaptura
+				if not inventory_open:
+					Input.mouse_mode = Input.MOUSE_MODE_CAPTURED   # clique com o mouse solto (voltou do Alt+Tab) recaptura
 		elif e.pressed:
 			if e.button_index == MOUSE_BUTTON_WHEEL_UP:
 				slot = posmod(slot - 1, Inventory.HOTBAR)
@@ -242,6 +241,8 @@ func _unhandled_input(e: InputEvent) -> void:
 				Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 				if e.button_index == MOUSE_BUTTON_RIGHT:
 					interact()
+			elif e.button_index == MOUSE_BUTTON_RIGHT and inv.cursor_id != -1:   # wiki Game controls: botão direito com o item do cursor fora do inventário o joga (a pilha)
+				drop_cursor()
 	elif e is InputEventKey and e.pressed and not e.echo:
 		if e.physical_keycode >= KEY_0 and e.physical_keycode <= KEY_9:
 			slot = posmod(e.physical_keycode - KEY_1, Inventory.HOTBAR)  # 1..9 e 0 = décimo
@@ -303,28 +304,41 @@ func _physics_process(delta: float) -> void:
 	tick(delta)
 
 
-# O bloco da mira. Com o cursor inteligente (Ctrl) e uma ferramenta na mão, se a mira não pega nada, procura o bloco mais perto da linha de visada
-# num cone de 12° (dois anéis de 8 raios), como o Smart Cursor do Terraria escolhe o bloco perto do cursor.
+# O bloco da mira. Com o cursor inteligente (Ctrl) o jogo sugere o alvo num cone de 12° em volta da mira (dois anéis de 8 raios), como o Smart Cursor
+# do Terraria: picareta/martelo sem alvo na mira pegam o bloco mais perto da linha de visada; o machado prefere a árvore ou o cacto mais perto,
+# mesmo que a mira acerte outra coisa; tocha, glowstick e itens sem ferramenta (espada, mão vazia) sugerem a face onde a luz iria. Bloco na mão: como está.
 func find_target(from: Vector3, dir: Vector3) -> Dictionary:
 	var hit: Dictionary = world.raycast(from, dir, REACH)
+	if not smart_cursor:
+		return hit
 	var id := held()
-	if not hit.is_empty() or not smart_cursor or id == -1 or (Items.pick_power[id] == 0 and Items.axe_power[id] == 0 and Items.hammer_power[id] == 0):
+	var tool: bool = id != -1 and (Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or Items.hammer_power[id] > 0)
+	var light: bool = id != -1 and (Items.defs[id].get("throw") == "glowstick" or Items.places[id] == Blocks.ids.torch)
+	if not (tool or light or id == -1 or Items.places[id] == -1):
+		return hit
+	var trees: bool = id != -1 and Items.axe_power[id] > 0 and Items.pick_power[id] == 0
+	if not hit.is_empty() and not (trees and Blocks.axe[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)] == 0):
 		return hit
 	var side := dir.cross(Vector3.UP if absf(dir.y) < 0.99 else Vector3.RIGHT).normalized()
 	var up := side.cross(dir).normalized()
 	for ring in [SMART_CONE / 2.0, SMART_CONE]:
+		var best := {}
 		for k in 8:
 			var a := k * TAU / 8.0
 			var h: Dictionary = world.raycast(from, (dir + (side * cos(a) + up * sin(a)) * tan(ring)).normalized(), REACH)
-			if not h.is_empty() and (hit.is_empty() or h.t < hit.t):
-				hit = h
-		if not hit.is_empty():
-			return hit   # o anel de dentro tem prioridade
+			if h.is_empty() or (trees and Blocks.axe[world.get_block(h.pos.x, h.pos.y, h.pos.z)] == 0):
+				continue
+			if best.is_empty() or h.t < best.t:
+				best = h
+		if not best.is_empty():
+			return best   # o anel de dentro tem prioridade
 	return hit
 
 
 # A mira (independe da câmera, que no olhar livre gira sozinha).
 func aim_dir() -> Vector3:
+	if cursor_hand() and is_inside_tree():   # com o mouse solto e um item no cursor a mira é o ponteiro na tela
+		return cam.project_ray_normal(get_viewport().get_mouse_position())
 	return Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD
 
 
@@ -338,17 +352,19 @@ func _process(delta: float) -> void:
 	highlight.visible = not target.is_empty()
 	if highlight.visible:
 		highlight.global_position = Vector3(target.pos) + Vector3.ONE * 0.5
+		(highlight.mesh as BoxMesh).material.albedo_color = Color(1.0, 0.5, 0.05, 0.4) if smart_cursor else Color(0, 0, 0, 0.25)   # laranja: cursor inteligente ligado
 	if mine_damage > 0.0 and not target.is_empty() and target.pos == mine_pos:
 		crack.show_at(mine_pos, mine_damage / 100.0)
 	else:
 		crack.visible = false
 	_update_rope()
 	var free := not (inventory_open or menu_open or map_open or dead > 0.0)   # mãos livres: sem painel na frente
-	auto_pick(free and Input.is_physical_key_pressed(KEY_SHIFT))
-	if not free:
+	sprint = free and Input.is_physical_key_pressed(KEY_SHIFT)
+	auto_pick(sprint and not creative)   # voando, Shift é velocidade (trocar de item no meio do voo atrapalharia)
+	if not (free or (cursor_hand() and not menu_open and not map_open and dead <= 0.0)):
 		attack_held = false
 		attack_buffer = 0.0
-	elif attack_held and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+	elif attack_held and (Input.mouse_mode == Input.MOUSE_MODE_CAPTURED or inventory_open) and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		attack_held = false   # o soltar do botão se perdeu (ex.: foi solto sobre um painel)
 	attack(delta)
 
@@ -456,7 +472,7 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 	var speed := WALK * boots
 	if creative:
 		velocity = Vector3.ZERO
-		position += wish * FLY * boots * delta  # atravessa blocos
+		position += wish * FLY * boots * (FLY_SPRINT if sprint else 1.0) * delta  # atravessa blocos
 		fall_top = position.y
 		last_pos = position
 		return
@@ -747,8 +763,17 @@ func radar_count() -> int:
 	return entities.enemies.filter(func(e): return not e.display and e.def.ai != "npc" and e.position.distance_to(position) < 75.0).size()
 
 
+# A mão: o item preso ao cursor (inventário aberto; wiki Inventory) manda, depois o do Auto Select (Shift) e por fim o slot da hotbar.
+func cursor_hand() -> bool:
+	return inventory_open and inv.cursor_id != -1
+
+
+func hand() -> int:   # onde está o item da mão: slot do inventário ou Inventory.CURSOR
+	return Inventory.CURSOR if cursor_hand() else auto_slot if auto_slot != -1 else slot
+
+
 func held() -> int:
-	return inv.item[slot]
+	return inv.cursor_id if cursor_hand() else inv.item[hand()]
 
 
 func say(text: String) -> void:
@@ -864,7 +889,8 @@ func use_time(id: int) -> float:
 
 
 # Poção ou espelho do slot i faz o efeito e, sendo consumível, gasta um. false = não deu (Doença da poção).
-func consume(i: int, from_cursor := false) -> bool:   # from_cursor: bebe a poção presa ao mouse (o slot i é ignorado)
+func consume(i: int, from_cursor := false) -> bool:   # from_cursor (ou i = Inventory.CURSOR): bebe a poção presa ao mouse
+	from_cursor = from_cursor or i == Inventory.CURSOR
 	var id: int = inv.cursor_id if from_cursor else inv.item[i]
 	var d: Dictionary = Items.defs[id]
 	if d.has("heal"):
@@ -1013,7 +1039,7 @@ func use_item() -> void:
 		summon(d)
 		return
 	if d.has("heal") or d.has("buff") or d.has("recall") or d.has("life") or d.has("mana") or d.has("mana_max"):
-		consume(slot)
+		consume(hand())
 		return
 	if d.has("throw"):
 		throw_item(id, d, aim_dir())
@@ -1045,7 +1071,7 @@ func plant_seeds(d: Dictionary) -> void:
 	if target.is_empty() or world.get_block(target.pos.x, target.pos.y, target.pos.z) != Blocks.ids.dirt:
 		return
 	world.set_block(target.pos.x, target.pos.y, target.pos.z, Blocks.ids[d.plants])
-	inv.take_one(slot)
+	inv.take_one(hand())
 	place_anim = 0.18
 	Sfx.play(entities, "place", Vector3(target.pos) + Vector3.ONE * 0.5, -6.0, 1.4)
 	Fx.dust(entities, Vector3(target.pos) + Vector3(0.5, 1.0, 0.5), Color("#5aa82a"), 5)
@@ -1072,7 +1098,7 @@ func cut_plants(reach: float) -> void:
 
 # Jogar itens no chão (Terraria: o item sai à frente, no ar, e só volta a ser puxado depois de THROW_DELAY; quem aguarda no chão o pega de novo).
 func throw_drop(id: int, n: int) -> void:
-	var look := Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD   # a mira, sem depender da câmera na árvore
+	var look := aim_dir()
 	var d: Node3D = entities.spawn_drop(id, n, position + Vector3.UP * 1.3 + look * 0.5)
 	d.velocity = look * 6.0 + Vector3.UP * 2.0
 	d.delay = THROW_DELAY
@@ -1112,16 +1138,23 @@ func hovered_slot() -> int:
 	return -1
 
 
+# Troca o item da mão (balde enche/esvazia) sem mexer na quantidade.
+func set_hand(id: int) -> void:
+	if cursor_hand():
+		inv.cursor_id = id
+	else:
+		inv.item[hand()] = id
+	inv.version += 1
+
+
 # Balde: vazio pega o líquido da mira (8 unidades, um bloco cheio, juntando a sobra rasa em volta); cheio derrama um bloco cheio no ar junto do alvo. O líquido depois flui sozinho (liquid.gd).
 func use_bucket(d: Dictionary) -> void:
 	if d.bucket == "empty":
-		var look := Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD   # a mira, sem depender da câmera na árvore
-		var hit: Dictionary = world.raycast(position + Vector3.UP * EYE, look, REACH, true)
+		var hit: Dictionary = world.raycast(position + Vector3.UP * EYE, aim_dir(), REACH, true)
 		if hit.is_empty() or not Blocks.liquid[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]:
 			return
 		var kind: int = world.liquid.scoop(world, hit.pos)
-		inv.item[slot] = Items.ids["water_bucket" if kind == Blocks.ids.water else "lava_bucket"]
-		inv.version += 1
+		set_hand(Items.ids["water_bucket" if kind == Blocks.ids.water else "lava_bucket"])
 		Fx.splash(entities, Vector3(hit.pos) + Vector3(0.5, 0.8, 0.5), 8)
 		return
 	if target.is_empty():
@@ -1130,8 +1163,7 @@ func use_bucket(d: Dictionary) -> void:
 	var there: int = world.get_block(p.x, p.y, p.z)
 	if there == 0 or Blocks.soft[there]:
 		world.set_block(p.x, p.y, p.z, Blocks.ids[d.bucket])
-		inv.item[slot] = Items.ids.empty_bucket
-		inv.version += 1
+		set_hand(Items.ids.empty_bucket)
 		Fx.splash(entities, Vector3(p) + Vector3(0.5, 0.8, 0.5), 8)
 
 
@@ -1189,7 +1221,7 @@ func summon(d: Dictionary) -> void:
 		say("já há um chefe")
 	else:
 		var b: Node3D = entities.spawn_boss(d.summon)
-		inv.take_one(slot)
+		inv.take_one(hand())
 		say("%s despertou!" % Items.title(b.def.name))
 
 
@@ -1212,9 +1244,13 @@ func throw_flail(id: int, d: Dictionary) -> void:
 
 # Bomba e dinamite: joga um projétil com pavio (projectiles.json) em arco e gasta um.
 func throw_item(id: int, d: Dictionary, forward: Vector3) -> void:
-	inv.remove(id, 1)
-	var dir := forward + Vector3.UP * 0.2
-	entities.spawn_projectile(d.throw, eye() + dir.normalized() * 0.5, dir, d.get("shoot_speed", 11.0), d.damage, d.knockback)
+	if cursor_hand():
+		inv.take_one(Inventory.CURSOR)
+	else:
+		inv.remove(id, 1)
+	var speed: float = d.get("shoot_speed", 11.0)
+	var dir := forward + Vector3.UP * (0.2 if speed < 20.0 else 0.0)   # só o arremesso lento (bomba) sobe em arco; faca e shuriken voam retos até a mira
+	entities.spawn_projectile(d.throw, eye() + dir.normalized() * 0.5, dir, speed, d.get("damage", 0), d.get("knockback", 0.0))
 	Sfx.play(entities, "swing", position + Vector3.UP, -8.0, 0.7)
 
 
@@ -1451,34 +1487,43 @@ func place_block() -> void:
 		if wand != "":
 			inv.remove(Items.ids[wand], 1)
 		else:
-			inv.take_one(slot)
+			inv.take_one(hand())
 		place_anim = 0.18
 
 
-# Auto Select (Shift): segurado, a mão vai para a melhor ferramenta da hotbar para o bloco da mira (machado no tronco, picareta no resto)
-# ou, sem bloco na mira, para uma tocha; ao soltar volta ao slot de antes. Sem ferramenta adequada não troca.
+# Auto Select (Shift; wiki Cursor modes), vale com o cursor inteligente ligado ou não: a mão usa um item do inventário inteiro, num slot extra ao lado
+# da hotbar (o slot da hotbar não muda). Com ferramenta na mão e um bloco na mira: a melhor ferramenta para ele (machado no tronco e no cacto, picareta no resto).
+# Sem ferramenta na mão (espada, bloco, mão vazia), ou com a mira sem bloco: luz, a tocha, ou o glowstick na falta dela; mirando a água, o glowstick vem primeiro.
+# Luz já na mão fica. Empate: o primeiro do inventário. Sem item adequado a mão fica como está.
 func auto_pick(hold: bool) -> void:
+	auto_on = hold
+	auto_slot = -1
 	if not hold:
-		if auto_prev != -1:
-			slot = auto_prev
-			auto_prev = -1
 		return
+	var cur: int = inv.item[slot]
+	var tool: bool = cur != -1 and (Items.pick_power[cur] > 0 or Items.axe_power[cur] > 0 or Items.hammer_power[cur] > 0)
 	var b: int = world.get_block(target.pos.x, target.pos.y, target.pos.z) if not target.is_empty() else 0
-	var best := -1
-	var best_score := 0
-	for i in Inventory.HOTBAR:
+	if tool and b != 0:
+		var best_score := 0
+		for i in Inventory.SIZE:
+			var id: int = inv.item[i]
+			var score: int = Items.power_on(id, b) if id != -1 and Blocks.breakable[b] else 0
+			if score > best_score:
+				auto_slot = i
+				best_score = score
+		return
+	if cur != -1 and (Items.defs[cur].get("throw") == "glowstick" or Items.places[cur] == Blocks.ids.torch):
+		auto_slot = slot
+		return
+	var wet_hit: Dictionary = world.raycast(position + Vector3.UP * EYE, aim_dir(), REACH, true)
+	var wet: bool = not wet_hit.is_empty() and Blocks.liquid[world.get_block(wet_hit.pos.x, wet_hit.pos.y, wet_hit.pos.z)]
+	var best_light := 0
+	for i in Inventory.SIZE:
 		var id: int = inv.item[i]
 		if id == -1:
 			continue
-		var score := 0
-		if b == 0:
-			score = 1 if Items.places[id] == Blocks.ids.torch else 0
-		elif Blocks.breakable[b]:
-			score = Items.power_on(id, b)
-		if score > best_score:   # empate: fica o primeiro slot
-			best = i
-			best_score = score
-	if best != -1 and best != slot:
-		if auto_prev == -1:
-			auto_prev = slot
-		slot = best
+		var glow: bool = Items.defs[id].get("throw") == "glowstick"
+		var score := (2 if wet else 1) if glow else (1 if wet else 2) if Items.places[id] == Blocks.ids.torch else 0
+		if score > best_light:
+			auto_slot = i
+			best_light = score

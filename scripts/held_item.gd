@@ -6,6 +6,8 @@ extends Node3D
 # Toda arma de golpe deixa um arco pálido (Trail), na cor de effects.trail se o item tiver.
 
 const REST := Vector3(0.34, -0.36, -0.62)  # posição da mão em relação à câmera
+const ROLL := -90.0                        # giro da arma de golpe em torno do eixo da lâmina, em graus (-90 = o plano do sprite acompanha o golpe para a frente, como na 3ª pessoa)
+const GRIP := 0.3                         # onde a mão segura a ferramenta, de 0 (ponta do cabo) a 1 (a ponta da cabeça), ao longo do sprite
 const LENGTH := 0.42                       # tamanho do maior lado do item, em blocos
 const SHOULDER := Vector3(0.55, -1.0, 0.4)    # o ombro (no espaço da câmera) fica fora da tela: o braço vem do canto de baixo à direita
 const PLACE_TIME := 0.18                   # duração do empurrão ao colocar bloco (player.gd place_anim)
@@ -19,8 +21,8 @@ var sparks: CPUParticles3D
 var trail: Trail
 var trail_on := false          # o item atual deixa arco
 var arm: Node3D
-var skin_mat: StandardMaterial3D
-var sleeve_mat: StandardMaterial3D
+var arm_mesh: MeshInstance3D
+var arm_look := {}             # cores do personagem com que o braço foi montado
 var sway := Vector2.ZERO       # deslocamento da mão pela rotação da câmera (yaw, pitch)
 var last_yaw := 0.0
 var last_pitch := 0.0
@@ -41,35 +43,10 @@ func _build_arm() -> void:
 	arm = Node3D.new()
 	arm.top_level = true
 	add_child(arm)
-	skin_mat = _lit(Color("#f0b890"))
-	sleeve_mat = _lit(Color("#c0503c"))
-	for part in [[0.043, 0.34, 0.15, skin_mat], [0.06, 1.6, 1.07, sleeve_mat]]:   # raio, comprimento, centro ao longo do braço
-		var c := CapsuleMesh.new()
-		c.radius = part[0]
-		c.height = part[1]
-		c.radial_segments = 12
-		c.rings = 4
-		var mi := MeshInstance3D.new()
-		mi.mesh = c
-		mi.material_override = part[3]
-		mi.position = Vector3(0, part[2], 0)
-		arm.add_child(mi)
-	var fist := SphereMesh.new()
-	fist.radius = 0.062
-	fist.height = 0.124
-	fist.radial_segments = 12
-	fist.rings = 6
-	var f := MeshInstance3D.new()
-	f.mesh = fist
-	f.material_override = skin_mat
-	arm.add_child(f)
-
-
-static func _lit(c: Color) -> StandardMaterial3D:
-	var m := StandardMaterial3D.new()
-	m.albedo_color = c
-	m.roughness = 0.85
-	return m
+	arm_mesh = MeshInstance3D.new()   # voxels como o corpo: a malha vem do personagem (_sync_arm)
+	arm_mesh.material_override = VoxMesh.material(0.9)
+	arm.add_child(arm_mesh)
+	_sync_arm()
 
 
 # Estilo de uso: campo "use_style" do item, senão deduzido (munição → shoot, arma/ferramenta → swing).
@@ -88,11 +65,11 @@ static func style(id: int) -> String:
 static func pose(st: String, t: float) -> Transform3D:
 	var tr := Transform3D(Basis(), REST)
 	match st:
-		"swing":   # golpe em diagonal: da direita/alto (lâmina de pé, inclinada para fora) para a esquerda/baixo, cruzando a mira em t≈0.3; nos últimos 30% volta ao descanso
+		"swing":   # golpe para a frente (para dentro da tela, no sentido da mira): ergue a arma atrás/alto, desce batendo para a frente até o cursor e, nos últimos 30%, volta ao descanso
 			var w := 1.0 - smoothstep(0.7, 1.0, t)
 			var e := smoothstep(0.0, 0.7, t)
-			tr.basis = Basis(Vector3.BACK, lerpf(-0.6, 1.2, e) * w) * Basis(Vector3.RIGHT, lerpf(0.2, -0.9, e) * w - 1.3 * (1.0 - w))
-			tr.origin += Vector3(lerpf(0.08, -0.3, e), lerpf(0.16, -0.08, e), -0.15 * sin(PI * e)) * w
+			tr.basis = Basis(Vector3.RIGHT, lerpf(0.8, -0.9, e) * w) * Basis(Vector3.BACK, lerpf(-0.15, 0.05, e) * w)
+			tr.origin += Vector3(lerpf(0.04, -0.1, e), lerpf(0.22, -0.12, e), lerpf(0.12, -0.4, e)) * w
 		"thrust":
 			tr.origin += Vector3(-0.1, 0.08, -0.35) * sin(PI * t)
 		"shoot":
@@ -140,10 +117,11 @@ func _process(delta: float) -> void:
 
 # Cores do braço: as do personagem (pele e camiseta do PlayerModel).
 func _sync_arm() -> void:
-	var model: Node = player.get_node_or_null("Model")
-	if model and model.skin != skin_mat.albedo_color:
-		skin_mat.albedo_color = model.skin
-		sleeve_mat.albedo_color = model.shirt
+	var model: Node = player.get_node_or_null("Model") if player else null
+	var look := {"skin": model.skin, "hair": model.hair, "shirt": model.shirt, "pants": model.pants} if model else {"skin": Color(VoxRecipes.LOOK.skin), "hair": Color(VoxRecipes.LOOK.hair), "shirt": Color(VoxRecipes.LOOK.shirt), "pants": Color(VoxRecipes.LOOK.pants)}
+	if look != arm_look:
+		arm_look = look
+		arm_mesh.mesh = VoxRecipes.part_mesh("body", "fparm", look, VoxMesh.FP_V)
 
 
 func _additive(c: Color) -> StandardMaterial3D:
@@ -176,12 +154,10 @@ func _show(id: int) -> void:
 	if fx.has("glow"):
 		glow = MeshInstance3D.new()
 		glow.mesh = m[0]
-		var gm := _additive(Color(Color(fx.glow), 0.45))
-		gm.albedo_texture = m[1].albedo_texture  # usa a transparência do sprite: o halo segue a silhueta
-		gm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		var gm := _additive(Color(Color(fx.glow), 0.16))
 		glow.material_override = gm
 		var c := aabb.get_center()
-		glow.transform = Transform3D(Basis().scaled(Vector3.ONE * 1.15), c - c * 1.15)
+		glow.transform = Transform3D(Basis().scaled(Vector3.ONE * 1.08), c - c * 1.08)
 		mesh.add_child(glow)
 	if fx.has("particles"):
 		sparks = CPUParticles3D.new()
@@ -206,8 +182,12 @@ func _show(id: int) -> void:
 	match st:
 		"swing", "thrust":
 			var ang: float = Items.defs[id].get("sprite_angle", 45.0)
-			mesh.transform = Transform3D(Basis(Vector3.BACK, deg_to_rad(90.0 - ang)), Vector3.ZERO)
-			mesh.rotate_object_local(Vector3.UP, deg_to_rad(-25))
+			var tool: bool = Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or Items.hammer_power[id] > 0
+			var blade := Vector3(aabb.end.x, aabb.end.y, 0).normalized()   # o eixo maior do sprite: do canto da empunhadura ao da ponta
+			var roll := ROLL if tool else -ROLL   # a cabeça da ferramenta vai para a frente; na espada é o fio que vai (o giro oposto)
+			mesh.transform = Transform3D(Basis(Vector3.BACK, deg_to_rad(90.0 - ang)) * Basis(blade, deg_to_rad(roll)), Vector3.ZERO)
+			if tool:   # a mão segura o cabo no meio, não na ponta: o ponto de empunhadura sobe ao longo do sprite
+				mesh.position = -(mesh.transform.basis * (GRIP * Vector3(aabb.end.x, aabb.end.y, 0)))
 		_:
 			# arma de fogo: o cano aponta para a mira (o sprite visto por trás, espelhado); arco/poção/gancho: sobem para não sair da tela
 			var yaw := 150.0 if Items.defs[id].get("sprite_angle", 45.0) == 0.0 and st == "shoot" else -25.0

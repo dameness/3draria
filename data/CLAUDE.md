@@ -62,6 +62,11 @@ Gancho: `hook: {range, launch, pull}` (blocos, blocos/s); a tecla E usa o primei
 `pickup: {heal?, mana?}`: coração/estrela, consumidos ao pegar (não entram no inventário).
 Item novo entra no FIM de `items.json` e de `blocks.json` (o mundo de teste o põe sozinho no baú da categoria: `TestWorld.category`).
 
+## models.json (modelos voxel; ver docs/VOXEL_STYLE.md)
+`nome: {recipe?, wiki?, emissive?: ["#rrggbb"], sparks?, depth?}`: `recipe` = função em `scripts/voxel/recipes.gd` (padrão: o próprio nome; `loom`, `armor_set` (Molten: projeta o sprite vestido), `armor_plate` (metais, madeira, Meteor, Ninja: `icons` = ícones das 3 peças que dão a paleta; `light/base/dark/accent` retocam; `crest`, `horns`, `gem`, `spikes`, `closed`, `cloth`), `prop`, `weapon`: sprite inflado com `cap` (padrão: `VoxRecipes.auto_cap`) ou `round: true` esférico, `emissive` = cores que brilham), `wiki` = sprite-base
+(o `fetch-sprites.sh` também o baixa), `emissive` = cores que brilham, `sparks` = cor das fagulhas do capacete. `"model": "nome"` em item/bloco/`armor_sets.json` escolhe o modelo
+(item sem `model` usa o nome dele, senão o sprite inflado). `prop` (estação, baú, gema): sprite de frente + `depth` (extrusão) ou `round` (inflado, teto em voxels); `recess` recua o emissivo (boca da fornalha), `profile: [[linha0, linha1, y0, y1, col0?, col1?]]` muda a faixa de profundidade de linhas/colunas do sprite (y<0 sai da frente; tampa em domo, chifre da bigorna), `legs: [linha0, linha1]` esvazia o meio (pernas), `plain` pinta o contorno escuro no miolo (lados), `sides: true` repete a textura da frente nas laterais (`prop` e `loom`; padrão das estruturas, ver VOXEL_STYLE). Bloco: `"shape": "model"`, `"size": [largura, altura]` em tiles da wiki; sólido (colide como bloco inteiro; o mesher o ignora ao esconder faces vizinhas).
+
 ## recipes.json
 `{result, count?=1, needs:{item: n}, station?: bloco}`; a estação precisa estar a até 4 blocos do jogador.
 

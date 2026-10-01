@@ -4,6 +4,7 @@ extends RefCounted
 
 const SIZE := 50      # como no Terraria: 5 fileiras de 10 (a primeira é a hotbar)
 const HOTBAR := 10
+const CURSOR := -2   # "slot" do item preso ao mouse (take_one; Player.hand)
 const ARMOR := ["head", "body", "legs"]   # slots de equipamento
 const ACC := 5                            # slots de acessório
 const AMMO := 4                           # slots de munição (usados antes do inventário)
@@ -96,7 +97,13 @@ func remove(id: int, n: int) -> void:
 	version += 1
 
 
-func take_one(slot: int) -> void:
+func take_one(slot: int) -> void:   # slot = CURSOR: o item preso ao mouse
+	if slot == CURSOR:
+		cursor_count -= 1
+		if cursor_count == 0:
+			cursor_id = -1
+		version += 1
+		return
 	count[slot] -= 1
 	if count[slot] == 0:
 		item[slot] = -1

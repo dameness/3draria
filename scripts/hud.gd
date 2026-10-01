@@ -11,14 +11,19 @@ extends CanvasLayer
 #   corações batem com pouca vida, dicas surgem com fade, item preso ao cursor balança.
 # A lógica de itens fica em inventory.gd (com teste); aqui só desenho e entrada.
 
-const SLOT := 48
-const PITCH := 52
+const SLOT := 52      # medidas do print do dono (Terraria a ~105%): slot 52, passo 58
+const PITCH := 58
+const COIN := 40      # slots pequenos de moeda e munição
+const COIN_PITCH := 44
 const X0 := 20
 const Y0 := 20
 const HP_PER_HEART := 20
 const ARMOR_NAMES := ["cabeça", "corpo", "pernas"]   # na ordem de Inventory.ARMOR
 const CHEST_SLOTS := 40
 const OPEN_SPEED := 7.0
+const EQUIP_LEFT := -(3 * PITCH + 40)   # coluna de equipamento: 3 colunas (tinta, visual, equipamento) a 40 px da borda direita
+const EQUIP_RIGHT := -40
+const EQUIP_TOP := 74 + Minimap.PORTRAIT + 18   # abaixo do minimapa
 const REPEAT_FIRST := 0.4    # segurar para criar de novo: espera e depois intervalo
 const REPEAT_EVERY := 0.12
 
@@ -51,6 +56,8 @@ var buff_row: HBoxContainer
 var buff_key := ""                    # quais buffs a fileira mostra (refaz quando muda)
 var life_label: Label
 var defense_label: Label
+var defense_shield: Control
+var auto_view: Slot                  # slot extra ao lado da hotbar enquanto o Shift (Auto Select) está segurado
 var item_label: Label
 var note_label: Label
 var debug_label: Label
@@ -99,6 +106,7 @@ var hold_timer := 0.0
 var shown_version := -1
 var shown_slot := -1
 var shown_held := -2
+var shown_auto := -2
 var was_open := false
 var item_until := 0
 var sel_style := Ui.box(Ui.BLUE_HOVER, Ui.GOLD, 3)
@@ -207,10 +215,16 @@ func _ready() -> void:
 	debug_label.modulate = Color(1, 1, 1, 0.8)
 	root.add_child(debug_label)
 	buff_row = HBoxContainer.new()   # à direita da hotbar, na mesma altura
-	buff_row.position = Vector2(X0 + 10 * PITCH + 14, Y0)
+	buff_row.position = Vector2(X0 + 11 * PITCH + 14, Y0)
 	buff_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	buff_row.add_theme_constant_override("separation", 6)
 	root.add_child(buff_row)
+	auto_view = _slot()   # Auto Select (Shift): o slot extra à direita da hotbar mostra o item que a mão está usando
+	auto_view.position = Vector2(X0 + 10 * PITCH, Y0)
+	auto_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	auto_view.add_theme_stylebox_override("normal", sel_style)
+	auto_view.visible = false
+	root.add_child(auto_view)
 	cursor_view = Control.new()   # o item preso ao mouse, sempre por cima
 	cursor_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var ic := TextureRect.new()
@@ -253,8 +267,8 @@ func _animate_open() -> void:
 		n.modulate.a = e
 	craft_root.position.x = X0 - (1.0 - e) * 60.0
 	chest_root.position.x = X0 - (1.0 - e) * 60.0
-	equip_root.offset_left = -190 + (1.0 - e) * 60.0
-	equip_root.offset_right = -14 + (1.0 - e) * 60.0
+	equip_root.offset_left = EQUIP_LEFT + (1.0 - e) * 60.0
+	equip_root.offset_right = EQUIP_RIGHT + (1.0 - e) * 60.0
 
 
 func _label(text: String, size: int, align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
@@ -276,16 +290,16 @@ func _overlay() -> ColorRect:
 
 
 # Botão de slot: ícone do item e quantidade no canto (sem tratar o clique: quem cria liga o gui_input).
-func _slot() -> Slot:
+func _slot(size := SLOT) -> Slot:
 	var b := Slot.new()
-	b.custom_minimum_size = Vector2(SLOT, SLOT)
+	b.custom_minimum_size = Vector2(size, size)
 	b.expand_icon = true
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_constant_override("icon_max_width", 34)
+	b.add_theme_constant_override("icon_max_width", size - 14)
 	b.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var n := _label("", 13, HORIZONTAL_ALIGNMENT_RIGHT)
 	n.name = "Count"
-	n.position = Vector2(SLOT - 34, SLOT - 21)
+	n.position = Vector2(size - 34, size - 21)
 	n.size = Vector2(30, 18)
 	b.add_child(n)
 	return b
@@ -309,13 +323,17 @@ func _build_grid() -> void:
 		var s := _slot()
 		s.gui_input.connect(_on_slot_input.bind(i))
 		if i < Inventory.HOTBAR:
-			var num := _label(str((i + 1) % 10), 12)
-			num.position = Vector2(5, 1)
+			var num := _label(str((i + 1) % 10), 13)
+			num.position = Vector2(6, 2)
 			s.add_child(num)
 		slots.append(s)
 		grid.add_child(s)
 	trash_slot = _slot()   # a lixeira fica embaixo, no canto direito da grade
-	trash_slot.position = Vector2(X0 + 10 * PITCH + 6, Y0 + 5 * PITCH)
+	trash_slot.position = Vector2(X0 + 9 * PITCH, Y0 + 5 * PITCH + 8)
+	var title := _label("Inventário", 16)   # o título da grade aberta, por cima da borda superior, como no Terraria
+	title.position = Vector2(X0 + 14, 0)
+	root.add_child(title)
+	side_nodes.append(title)
 	trash_slot.tooltip_text = "[color=#ff9a8a]Lixeira[/color]\nO item que cair aqui é destruído\nquando outro chegar."
 	trash_slot.gui_input.connect(func(e: InputEvent):
 		if _pressed(e, MOUSE_BUTTON_LEFT):
@@ -396,50 +414,71 @@ func _build_craft() -> void:
 	craft_root.add_child(station_label)
 
 
-# Equipamento à direita: defesa, 3 slots de armadura, acessórios e o botão Configurações.
+# Equipamento à direita, como no Terraria: 3 colunas por fileira (tinta, visual, equipamento), 3 de armadura e 5 de acessório; o escudo da defesa
+# fica à esquerda das últimas fileiras e Configurações embaixo. Tinta e visual (vanity) ainda não existem: os slots são só o desenho (docs/UI.md).
 func _build_equipment() -> void:
-	equip_root = VBoxContainer.new()
+	equip_root = Control.new()
 	equip_root.anchor_left = 1.0
 	equip_root.anchor_right = 1.0
-	equip_root.offset_left = -190
-	equip_root.offset_right = -14
-	equip_root.offset_top = 250
+	equip_root.offset_left = EQUIP_LEFT
+	equip_root.offset_right = EQUIP_RIGHT
+	equip_root.offset_top = EQUIP_TOP
 	equip_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(equip_root)
-	defense_label = _label("", 18)
-	equip_root.add_child(defense_label)
-	var grid := GridContainer.new()   # armadura (cabeça, corpo, pernas) na 1ª fileira e os 5 acessórios nas outras duas
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", PITCH - SLOT)
-	grid.add_theme_constant_override("v_separation", PITCH - SLOT)
+	var equip_style := Ui.box(Color(0.2, 0.44, 0.3, 0.86))
+	var equip_hover := Ui.box(Color(0.3, 0.6, 0.42, 0.92), Ui.GOLD)
+	var ghost_style := Ui.box(Color(0.2, 0.38, 0.52, 0.66))
+	var grid := _grid(3)
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	equip_root.add_child(grid)
-	for k in Inventory.ARMOR.size():
-		var b := _slot()
-		b.gui_input.connect(func(e: InputEvent):
-			if _pressed(e, MOUSE_BUTTON_LEFT):
-				last_click = Engine.get_process_frames()
-				player.inv.click_equip(k)
-			elif _pressed(e, MOUSE_BUTTON_RIGHT):
-				last_click = Engine.get_process_frames()
-				player.inv.unequip(k))
-		equip_slots.append(b)
-		grid.add_child(b)
-	for k in Inventory.ACC:
-		var b := _slot()
-		b.gui_input.connect(func(e: InputEvent):
-			if _pressed(e, MOUSE_BUTTON_LEFT):
-				last_click = Engine.get_process_frames()
-				player.inv.click_acc(k)
-			elif _pressed(e, MOUSE_BUTTON_RIGHT):
-				last_click = Engine.get_process_frames()
-				if player.inv.acc[k] != -1 and player.inv.add(player.inv.acc[k], 1) == 0:
-					player.inv.acc[k] = -1)
-		acc_slots.append(b)
-		grid.add_child(b)
+	for row in Inventory.ARMOR.size() + Inventory.ACC:
+		for c in 3:
+			var b := _slot()
+			if c < 2:   # tinta e visual: só o desenho
+				b.disabled = true
+				b.add_theme_stylebox_override("disabled", ghost_style)
+				b.tooltip_text = ["[color=#aab4ff]Tinta[/color]\nainda não existe", "[color=#aab4ff]Visual (vanity)[/color]\nainda não existe"][c]
+				b.modulate.a = 0.75
+				grid.add_child(b)
+				continue
+			b.add_theme_stylebox_override("normal", equip_style)
+			b.add_theme_stylebox_override("hover", equip_hover)
+			b.add_theme_stylebox_override("pressed", equip_hover)
+			if row < Inventory.ARMOR.size():
+				b.gui_input.connect(func(e: InputEvent):
+					if _pressed(e, MOUSE_BUTTON_LEFT):
+						last_click = Engine.get_process_frames()
+						player.inv.click_equip(row)
+					elif _pressed(e, MOUSE_BUTTON_RIGHT):
+						last_click = Engine.get_process_frames()
+						player.inv.unequip(row))
+				equip_slots.append(b)
+			else:
+				var k := row - Inventory.ARMOR.size()
+				b.gui_input.connect(func(e: InputEvent):
+					if _pressed(e, MOUSE_BUTTON_LEFT):
+						last_click = Engine.get_process_frames()
+						player.inv.click_acc(k)
+					elif _pressed(e, MOUSE_BUTTON_RIGHT):
+						last_click = Engine.get_process_frames()
+						if player.inv.acc[k] != -1 and player.inv.add(player.inv.acc[k], 1) == 0:
+							player.inv.acc[k] = -1)
+				acc_slots.append(b)
+			grid.add_child(b)
+	var shield := PanelContainer.new()   # defesa: o escudo cinza com o número
+	shield.position = Vector2(-50, 6 * PITCH)
+	shield.custom_minimum_size = Vector2(44, 50)
+	shield.add_theme_stylebox_override("panel", Ui.box(Color(0.72, 0.74, 0.82), Color(0.3, 0.32, 0.4), 3, 16))
+	defense_label = _label("0", 20, HORIZONTAL_ALIGNMENT_CENTER)
+	defense_label.add_theme_color_override("font_color", Color.WHITE)
+	shield.add_child(defense_label)
+	equip_root.add_child(shield)
+	defense_shield = shield
 	var menu := Button.new()   # a engrenagem do Terraria: a pausa mora aqui, não no Esc
 	menu.text = "Configurações"
 	menu.focus_mode = Control.FOCUS_NONE
+	menu.position = Vector2(0, (Inventory.ARMOR.size() + Inventory.ACC) * PITCH + 4)
+	menu.custom_minimum_size = Vector2(3 * PITCH - 6, 0)
 	menu.pressed.connect(func():
 		player.set_inventory(false)
 		player.set_menu(true))
@@ -459,12 +498,12 @@ func _build_life() -> void:
 	life_box = box
 	box.anchor_left = 1.0
 	box.anchor_right = 1.0
-	box.offset_left = -360
+	box.offset_left = -Minimap.PORTRAIT - 44.0   # os corações começam na borda esquerda do minimapa, como no Terraria
 	box.offset_right = -44
 	box.offset_top = 10
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(box)
-	life_label = _label("", 18, HORIZONTAL_ALIGNMENT_RIGHT)
+	life_label = _label("", 18)
 	box.add_child(life_label)
 	star_col = VBoxContainer.new()
 	star_col.anchor_left = 1.0
@@ -483,7 +522,7 @@ func _build_life() -> void:
 		stars.append(st)
 	for r in 2:   # até 20 corações (400 de vida) em duas fileiras de 10, como no Terraria
 		var row := HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_END
+		row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_theme_constant_override("separation", 0)
 		box.add_child(row)
@@ -501,13 +540,14 @@ func _build_life() -> void:
 			hearts.append(h)
 
 
-# Coluna de moedas (as moedas giram), coluna de munição e o botão Ordenar, à direita da grade.
+# Moedas (giram) e munição: duas colunas de 4 slots pequenos à direita da grade, sob o rótulo "Moedas  Munição"; embaixo, o botão Ordenar.
 func _build_side() -> void:
-	var x := X0 + 10 * PITCH + 6
+	var x := X0 + 10 * PITCH + 2
+	var y := Y0 + PITCH + 44
 	for r in 4:
 		var box := Panel.new()   # moeda: cobre, prata, ouro, platina (de baixo para cima no Terraria; aqui a mais valiosa em cima)
-		box.position = Vector2(x, Y0 + (1 + r) * PITCH)
-		box.size = Vector2(SLOT, SLOT)
+		box.position = Vector2(x, y + r * COIN_PITCH)
+		box.size = Vector2(COIN, COIN)
 		box.pivot_offset = box.size / 2.0
 		box.add_theme_stylebox_override("panel", Ui.box(Ui.BLUE.darkened(0.15)))
 		box.mouse_filter = Control.MOUSE_FILTER_STOP   # clicável: pega a pilha de moedas para a mão ou guarda uma moeda do mesmo tipo
@@ -517,25 +557,25 @@ func _build_side() -> void:
 				player.inv.click_coin(r))
 		var ic := TextureRect.new()
 		ic.name = "Icon"
-		ic.position = Vector2(6, 6)
-		ic.size = Vector2(30, 30)
-		ic.pivot_offset = Vector2(15, 15)
+		ic.position = Vector2(5, 5)
+		ic.size = Vector2(COIN - 10, COIN - 10)
+		ic.pivot_offset = ic.size / 2.0
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		ic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		box.add_child(ic)
-		var n := _label("", 13, HORIZONTAL_ALIGNMENT_RIGHT)
+		var n := _label("", 12, HORIZONTAL_ALIGNMENT_RIGHT)
 		n.name = "Count"
-		n.position = Vector2(SLOT - 34, SLOT - 21)
+		n.position = Vector2(COIN - 34, COIN - 19)
 		n.size = Vector2(30, 18)
 		box.add_child(n)
 		root.add_child(box)
 		coin_views.append(box)
 		side_nodes.append(box)
 	for r in Inventory.AMMO:
-		var b := _slot()
-		b.position = Vector2(x + PITCH, Y0 + (1 + r) * PITCH)
+		var b := _slot(COIN)
+		b.position = Vector2(x + COIN_PITCH, y + r * COIN_PITCH)
 		b.gui_input.connect(func(e: InputEvent):
 			if _pressed(e, MOUSE_BUTTON_LEFT):
 				last_click = Engine.get_process_frames()
@@ -543,15 +583,16 @@ func _build_side() -> void:
 		root.add_child(b)
 		ammo_slots.append(b)
 		side_nodes.append(b)
-	var lab := _label("moedas  munição", 12)
-	lab.position = Vector2(x - 2, Y0 + PITCH - 2)
+	var lab := _label("Moedas  Munição", 12)
+	lab.position = Vector2(x - 2, y - 20)
 	root.add_child(lab)
 	side_nodes.append(lab)
 	sort_button = Button.new()
 	sort_button.text = "Ordenar"
 	sort_button.focus_mode = Control.FOCUS_NONE
 	sort_button.tooltip_text = "Junta o inventário por nome (favoritos e a hotbar ficam)"
-	sort_button.position = Vector2(X0 + 11 * PITCH + 6, Y0 + 5 * PITCH + 8)
+	sort_button.position = Vector2(x, Y0 + 5 * PITCH + 10)
+	sort_button.custom_minimum_size = Vector2(2 * COIN_PITCH - 4, 34)
 	sort_button.pressed.connect(func(): player.inv.sort_items())
 	root.add_child(sort_button)
 
@@ -782,7 +823,7 @@ const TIPS := ["Bem-vindo! Use o machado nas árvores para juntar madeira e faç
 	"Quebre 3 Shadow Orbs ou Crimson Hearts com um martelo para despertar um chefe.", "Fallen Stars caem à noite; 5 delas fazem um Mana Crystal.",
 	"Segure Shift para escolher a ferramenta certa sozinho.", "Poções de cura deixam a Doença da poção por 1 minuto."]
 const SHOPS := {   # preços em cobre (wiki)
-	"merchant": [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5], ["anvil", 5000], ["mining_helmet", 40000]],
+	"merchant": [["copper_pickaxe", 500], ["copper_axe", 400], ["torch", 50], ["glowstick", 10], ["lesser_healing_potion", 300], ["lesser_mana_potion", 100], ["wooden_arrow", 5], ["anvil", 5000], ["mining_helmet", 40000]],
 	"demolitionist": [["bomb", 300], ["dynamite", 2000]],
 	"arms_dealer": [["musket_ball", 7], ["flintlock_pistol", 50000]],
 }
@@ -1222,7 +1263,7 @@ func _process(delta: float) -> void:
 		var extra := 30.0 if want > 10 else 0.0
 		minimap.corner_y = 74.0 + extra
 		minimap._layout()
-		equip_root.offset_top = 250.0 + extra
+		equip_root.offset_top = EQUIP_TOP + extra
 	var beat := 1.0 + (0.14 * maxf(sin(spin * 7.0), 0.0) if low else 0.03 * sin(spin * 2.0))   # com pouca vida os corações batem
 	var hurt_shake: float = maxf(0.0, 0.35 - player.since_hit) * 14.0
 	for i in hearts.size():
@@ -1236,9 +1277,16 @@ func _process(delta: float) -> void:
 		stars[k].visible = k * 20 < player.mana_cap()
 		stars[k].modulate = Color(0.45, 0.65, 1.0, 0.3 + 0.7 * f) if f > 0.0 else Color(0.25, 0.3, 0.45, 0.5)
 		stars[k].scale = Vector2.ONE * (0.75 + 0.25 * f)
-	defense_label.text = "Defesa: %d" % player.defense()
+	defense_label.text = str(player.defense())
+	defense_shield.tooltip_text = "Defesa: %d" % player.defense()
 	_show_buffs()
 	var id: int = player.held()
+	var auto_id: int = player.inv.item[player.auto_slot] if player.auto_slot != -1 else -1
+	auto_view.visible = player.auto_on and not open
+	if auto_view.visible and (auto_id != shown_auto or player.inv.version != shown_version):
+		shown_auto = auto_id
+		_fill(auto_view, auto_id, player.inv.count[player.auto_slot] if auto_id != -1 else 0)
+	auto_view.modulate.a = 1.0 if auto_id != -1 else 0.55
 	var now := Time.get_ticks_msec()
 	if id != shown_held:  # o nome do item aparece um instante, na cor da raridade
 		shown_held = id

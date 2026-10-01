@@ -33,6 +33,7 @@ const SHOTS := [
 	{"name": "muda_cresce", "sapling": true, "grow": true, "item": "acorn", "look": Vector2(0, 0.35)},
 	{"name": "corda", "look": Vector2(0, -0.35), "row": ["rope", "torch", "rope", "rope", "sapling"]},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
+	{"name": "estacoes", "look": Vector2(0, -0.3), "row": ["workbench", "furnace", "anvil", "lead_anvil", "hellforge", "chest", "demon_altar", "life_crystal"]},
 	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
 	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},
 	{"name": "dungeon_fora", "dungeon": "out", "look": Vector2(0, -0.25), "creative": true, "time": 1100.0},
@@ -53,6 +54,9 @@ const SHOTS := [
 	{"name": "gancho", "look": Vector2(0.9, 0.25), "hook": true, "third": true, "creative": false},
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "neve", "snow": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
+	{"name": "deserto_cacto", "cactus": true, "creative": true, "look": Vector2(0, -0.12)},
+	{"name": "tocha_parede", "wall_torch": true, "smart": true, "look": Vector2(0, -0.2)},
+	{"name": "auto_select", "look": Vector2(0, 0.5), "give": ["glowstick", "torch"], "auto": true},
 	{"name": "deserto", "desert": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "selva", "jungle": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
 	{"name": "colmeia", "hive": true, "look": Vector2(0.4, -0.1), "creative": true},
@@ -79,6 +83,40 @@ const SHOTS := [
 	{"name": "flash", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "hurt": true},
 	{"name": "olhar_livre", "third": true, "look": Vector2(0.4, -0.25), "free": 2.4, "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
 	{"name": "3a_pessoa", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
+	{"name": "voxel_corpo", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "voxel_molten", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "terra_blade", "armor": ["molten_helmet", "molten_breastplate", "molten_greaves"]},
+	{"name": "voxel_ferro", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "iron_broadsword", "armor": ["iron_helmet", "iron_chainmail", "iron_greaves"]},
+	{"name": "voxel_meteor", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "space_gun", "armor": ["meteor_helmet", "meteor_suit", "meteor_leggings"]},
+	{"name": "voxel_ninja", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_shortsword", "armor": ["ninja_hood", "ninja_shirt", "ninja_pants"]},
+	{"name": "arma_bomba", "look": Vector2(0.4, -0.25), "item": "bomb"},
+	{"name": "arma_sunfury", "look": Vector2(0.4, -0.25), "item": "sunfury"},
+	{"name": "voxel_lado", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "iron_broadsword"},
+	{"name": "voxel_lado_pa", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "voxel_costas", "third": true, "look": Vector2(0.4, -0.25), "item": "iron_broadsword"},
+	{"name": "voxel_loom", "look": Vector2(0, -0.3), "row": ["living_loom"], "late": 70, "item": "copper_pickaxe"},
+	{"name": "voxel_loom_noite", "look": Vector2(0, -0.3), "row": ["living_loom"], "late": 70, "time": 1100.0, "item": "torch"},
+	{"name": "arma_terra_costas", "third": true, "look": Vector2(0.4, -0.25), "item": "terra_blade"},
+	{"name": "arma_terra_frente", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "terra_blade"},
+	{"name": "arma_terra_lado", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "terra_blade"},
+	{"name": "arma_pa_costas", "third": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "arma_pa_frente", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "arma_pa_lado", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
+	{"name": "fp_terra", "look": Vector2(0.4, -0.2), "item": "terra_blade"},
+	{"name": "fp_terra_golpe", "look": Vector2(0.4, -0.2), "item": "terra_blade", "swing": 0.2},
+	{"name": "fp_pa", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe"},
+	{"name": "fp_pa_golpe", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.2},
+	{"name": "fp_sw0", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.38},
+	{"name": "fp_sw1", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.3},
+	{"name": "fp_sw2", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.22},
+	{"name": "fp_sw3", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.14},
+	{"name": "fp_sw4", "look": Vector2(0.4, -0.2), "item": "iron_broadsword", "swing": 0.06},
+	{"name": "fp_pk0", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.38},
+	{"name": "fp_pk1", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.3},
+	{"name": "fp_pk2", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.22},
+	{"name": "fp_pk3", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.14},
+	{"name": "fp_pk4", "look": Vector2(0.4, -0.2), "item": "copper_pickaxe", "swing": 0.06},
+	{"name": "voxel_ouro", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe", "armor": ["gold_helmet", "gold_chainmail", "gold_greaves"]},
+	{"name": "voxel_molten_noite", "third": true, "free": 2.4, "time": 1100.0, "look": Vector2(2.6, -0.25), "armor": ["molten_helmet", "molten_breastplate", "molten_greaves"]},
 	{"name": "asas", "third": true, "look": Vector2(0.4, -0.2), "wings": true, "item": "copper_pickaxe"},
 	{"name": "pocoes", "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "ironskin_potion", "regeneration_potion", "swiftness_potion", "mining_potion", "archery_potion", "recall_potion", "magic_mirror"], "buffs": ["ironskin", "regeneration", "swiftness", "potion_sickness"], "hp": 60},
 	{"name": "pocoes_inv", "inventory": true, "look": Vector2(0.4, -0.2), "give": ["lesser_healing_potion", "cloud_in_a_bottle", "life_crystal"], "buffs": ["ironskin", "potion_sickness"], "gear": true, "max_hp": 260},
@@ -187,7 +225,7 @@ func _process(_delta: float) -> bool:
 	wait += 1
 	if is_instance_valid(trail_pr) and wait > 4 and wait < 20:   # rastro: o projétil anda `slow` blocos por quadro (as partículas nascem a cada quadro)
 		trail_pr._physics_process(shots[shot].slow / trail_pr.velocity.length())
-	if wait < 20:  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
+	if wait < shots[shot].get("late", 20):  # deixa o mundo remontar, a câmera assentar e o efeito aparecer
 		if shots[shot].has("swing") and wait > 12:
 			player.use_len = 0.4
 			player.cooldown = shots[shot].swing
@@ -211,6 +249,12 @@ func _process(_delta: float) -> bool:
 					model._process(0.016)
 				else:
 					hand._process(0.016)
+		if shots[shot].get("auto", false) and wait == 1:   # segura o Shift de mentira (Auto Select)
+			var sh := InputEventKey.new()
+			sh.keycode = KEY_SHIFT
+			sh.physical_keycode = KEY_SHIFT
+			sh.pressed = true
+			Input.parse_input_event(sh)
 		if shots[shot].has("free") and wait == 1:   # olhar livre: aperta o Alt de mentira e gira
 			var alt := InputEventKey.new()
 			alt.keycode = KEY_ALT
@@ -324,6 +368,19 @@ func _setup(s: Dictionary) -> void:
 	if s.get("desert", false):
 		var dc := Vector2i(world.gen.desert_center)
 		player.position = Vector3(dc.x + 0.5, world.surface_y(dc.x, dc.y) + s.get("up", 0.0), dc.y + 0.5)
+	if s.get("cactus", false):   # 7 blocos ao sul do cacto mais perto do meio do deserto, olhando para ele
+		var cc := Vector2i(world.gen.desert_center)
+		var best := Vector3i.ZERO
+		var bd := 1e9
+		for z in range(cc.y - 60, cc.y + 60):
+			for x in range(cc.x - 60, cc.x + 60):
+				var cy: int = world.surface_y(x, z)
+				if world.get_block(x, cy, z) == Blocks.ids.cactus and Vector2(x - cc.x, z - cc.y).length() < bd:
+					bd = Vector2(x - cc.x, z - cc.y).length()
+					best = Vector3i(x, cy, z)
+		print("  cacto em ", best)
+		player.position = Vector3(best.x + 0.5, best.y + 3.0, best.z + 9.5)
+		player.rotation.y = 0.0
 	if s.get("jungle", false):
 		var jc := Vector2i(world.gen.jungle_center)
 		player.position = Vector3(jc.x + 0.5, world.surface_y(jc.x, jc.y) + s.get("up", 0.0), jc.y + 0.5)
@@ -456,6 +513,15 @@ func _setup(s: Dictionary) -> void:
 	if s.get("ores", false):   # minérios, baú e cristal escondidos na rocha em volta da sala (o Espeleólogo os mostra através dela)
 		for t in [Vector3i(-7, -13, -2), Vector3i(-8, -12, 1), Vector3i(7, -14, -3), Vector3i(8, -13, 0), Vector3i(0, -16, -5), Vector3i(-3, -17, -8), Vector3i(4, -11, -10), Vector3i(-6, -15, -9)]:
 			world.set_block(sp.x + t.x, sp.y + t.y, sp.z + t.z, Blocks.ids[["copper_ore", "gold_ore", "iron_ore", "life_crystal", "chest"][(t.x + t.z + 20) % 5]])
+	if s.get("wall_torch", false):   # paredão de pedra 4 blocos à frente (norte) com tochas nele (x-1, x+1) e uma no chão (x)
+		var wy: int = world.surface_y(sp.x, sp.z - 6)
+		for wx in range(-3, 4):
+			for wyy in range(0, 4):
+				world.set_block(sp.x + wx, wy + wyy, sp.z - 6, Blocks.ids.stone)
+		for wx in [-2, 2]:
+			world.set_block(sp.x + wx, wy + 2, sp.z - 5, Blocks.ids.torch)
+		world.set_block(sp.x, wy, sp.z - 5, Blocks.ids.torch)
+		player.smart_cursor = s.get("smart", false)
 	if s.get("torches", false):
 		for t in [Vector3i(-2, 0, -4), Vector3i(3, 0, -5), Vector3i(0, 0, -9)]:
 			var y: int = world.surface_y(sp.x + t.x, sp.z + t.z)
@@ -615,7 +681,7 @@ func _setup(s: Dictionary) -> void:
 			else:
 				EnemyModel.set_phase(b.model, 2)
 	player.third_person = s.get("third", false)
-	player.get_node("Model").rotation.y = PI if s.get("front", false) else 0.0   # boneco de frente para a câmera
+	player.get_node("Model").rotation.y = s.get("turn", PI if s.get("front", false) else 0.0)   # boneco de frente para a câmera
 	for n in s.get("armor", []):
 		player.inv.add(Items.ids[n], 1)
 		player.inv.equip_from(player.inv.item.find(Items.ids[n]))

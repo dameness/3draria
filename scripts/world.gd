@@ -20,6 +20,8 @@ var gen: WorldGen
 var liquid := Liquid.new()   # água e lava fluindo (liquid.gd)
 var chunks := {}   # Vector2i -> PackedByteArray
 var meshes := {}   # Vector2i -> MeshInstance3D, ou null (sem faces / em construção)
+var model_nodes := {}   # Vector2i -> [MeshInstance3D]: blocos com modelo voxel do chunk (fora da malha; o material de cada um leva a luz do lugar)
+var daylight := [1.0, Vector3.ONE]   # última luz do dia (set_light), para os modelos novos
 var material := ShaderMaterial.new()   # shaders/chunk.gdshader: atlas × luz do céu/tochas
 var water_material := ShaderMaterial.new()   # shaders/water.gdshader: superfície translúcida da água
 var atlas_texture: ImageTexture
@@ -72,11 +74,16 @@ func set_aura(at: Vector3, radius: float, power: float) -> void:
 
 
 # Luz do dia (day_night.gd): claridade do céu, cor dela e direção de onde vem (sol ou lua).
-func set_light(daylight: float, tint: Vector3, dir: Vector3) -> void:
+func set_light(daylight_v: float, tint: Vector3, dir: Vector3) -> void:
 	for m in [material, water_material]:
-		m.set_shader_parameter("daylight", daylight)
+		m.set_shader_parameter("daylight", daylight_v)
 		m.set_shader_parameter("sky_tint", tint)
 	material.set_shader_parameter("light_dir", dir)
+	daylight = [daylight_v, tint]
+	for k in model_nodes:
+		for mi in model_nodes[k]:
+			mi.material_override.set_shader_parameter("daylight", daylight_v)
+			mi.material_override.set_shader_parameter("sky_tint", tint)
 
 
 func get_block(x: int, y: int, z: int) -> int:
@@ -105,6 +112,11 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 	chunks[c][lx + lz * C + y * C * C] = id
 	if y + 1 < H and Blocks.shape[chunks[c][lx + lz * C + (y + 1) * C * C]] == "plant" and not Blocks.solid[id]:
 		chunks[c][lx + lz * C + (y + 1) * C * C] = 0  # planta sem chão some
+	if Blocks.shape[id] != "cactus" and not Blocks.solid[id]:   # cortar o cacto derruba o pedaço de cima (ponytail: sem drop; corte de cima para baixo para aproveitar)
+		var ay := y + 1
+		while ay < H and Blocks.shape[chunks[c][lx + lz * C + ay * C * C]] == "cactus":
+			chunks[c][lx + lz * C + ay * C * C] = 0
+			ay += 1
 	edited[c] = true
 	if id == Blocks.sapling:
 		saplings[Vector3i(x, y, z)] = randf_range(GROW_MIN, GROW_MAX)
@@ -395,6 +407,7 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 			if meshes[k]:
 				meshes[k].queue_free()
 			meshes.erase(k)
+			_free_models(k)
 	for k in chunks.keys():   # o mundo é grande: chunks longe e sem edição saem da memória (get_block/a geração os refazem iguais)
 		if not edited.has(k) and (k - c).length_squared() > (r + 4) * (r + 4):
 			chunks.erase(k)
@@ -431,8 +444,9 @@ func _job(r: Dictionary) -> void:
 		return
 	var k: Vector2i = r.k
 	r.water = []
+	r.models = []
 	r.arrays = ChunkMesher.build(r.chunks[k], NB.map(func(o): return r.chunks.get(k + o, PackedByteArray())), Blocks.textures.size(), r.water,
-		DIAG.map(func(o): return r.chunks.get(k + o, PackedByteArray())))
+		DIAG.map(func(o): return r.chunks.get(k + o, PackedByteArray())), r.models)
 
 
 func _apply(r: Dictionary) -> void:
@@ -448,6 +462,8 @@ func _apply(r: Dictionary) -> void:
 	if meshes[k]:
 		meshes[k].queue_free()
 		meshes[k] = null
+	_free_models(k)
+	_spawn_models(k, r.models)
 	if r.arrays.is_empty() and r.water.is_empty():
 		return
 	var mesh := ArrayMesh.new()
@@ -460,6 +476,34 @@ func _apply(r: Dictionary) -> void:
 	mi.position = Vector3(k.x * C, 0, k.y * C)
 	add_child(mi)
 	meshes[k] = mi
+
+
+func _free_models(k: Vector2i) -> void:
+	for mi in model_nodes.get(k, []):
+		mi.queue_free()
+	model_nodes.erase(k)
+
+
+# Instâncias dos blocos com modelo voxel (scripts/voxel): a base no chão do bloco, centrado, olhando para -Z; cada uma com o próprio
+# material para levar a luz do lugar (céu e tocha, do mesher) e a do dia.
+func _spawn_models(k: Vector2i, list: Array) -> void:
+	for e in list:
+		var b: int = e[0]
+		var mesh := VoxRecipes.block_mesh(Blocks.model[b], Blocks.model_size[b])
+		if mesh == null:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		var mat: ShaderMaterial = VoxMesh.material().duplicate()
+		mat.set_shader_parameter("world_light", Vector2(e[2].x, e[2].y))
+		mat.set_shader_parameter("daylight", daylight[0])
+		mat.set_shader_parameter("sky_tint", daylight[1])
+		mi.material_override = mat
+		mi.position = Vector3(k.x * C + e[1].x + 0.5, e[1].y, k.y * C + e[1].z + 0.5)
+		add_child(mi)
+		if not model_nodes.has(k):
+			model_nodes[k] = []
+		model_nodes[k].append(mi)
 
 
 func _exit_tree() -> void:
