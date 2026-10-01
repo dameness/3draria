@@ -98,7 +98,7 @@ static func _padded(d: PackedByteArray, nb: Array) -> PackedByteArray:
 # water_out (opcional) recebe os arrays da superfície da água, se houver. models_out (opcional) recebe [id, posição local, luz (céu, tocha)]
 # de cada bloco com modelo voxel (shape "model"): o world.gd os instancia à parte, fora da malha.
 static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [], corners := [], models_out := []) -> Array:
-	var solid := Blocks.solid
+	var solid := Blocks.cull
 	var special := Blocks.special
 	var liquid := Blocks.liquid
 	var tiles := Blocks.tiles
@@ -217,7 +217,7 @@ static func _light(p: PackedByteArray, hts: PackedInt32Array, lights: Array, x: 
 	var col := (x + 1) + (z + 1) * P
 	var ground := hts[col]
 	if ground < 0:
-		var solid := Blocks.solid
+		var solid := Blocks.cull
 		var clear := Blocks.clear
 		ground = 0
 		var canopy := 0

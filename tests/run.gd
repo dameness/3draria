@@ -1404,7 +1404,7 @@ func world_census() -> Dictionary:
 func test_life_crystal():
 	var b: int = Blocks.ids.life_crystal
 	var id: int = Items.ids.life_crystal
-	check(Blocks.breakable[b] == 1 and Blocks.solid[b] == 0 and Blocks.shape[b] == "model" and Blocks.light[b] > 0 and Blocks.soft[b] == 0, "o cristal é um bloco que brilha, sem colisão e que a mira acerta")
+	check(Blocks.breakable[b] == 1 and Blocks.solid[b] == 1 and Blocks.shape[b] == "model" and Blocks.light[b] > 0 and Blocks.soft[b] == 0, "o cristal é um bloco que brilha, sólido e que a mira acerta")
 	check(Items.places[id] == -1 and Items.defs[id].life == 20 and Items.defs[id].consumable and Items.drop[b] == id, "o item é consumível (+20) e não se coloca; o bloco solta ele")
 	var w := floor_world()
 	var p := make_player(w)
@@ -3693,7 +3693,7 @@ func test_voxel():
 	check(c0 != c1 and c0.size() == c1.size(), "corpo voxel: a cor da camisa vem do personagem")
 	# bloco com modelo
 	var loom: int = Blocks.ids.living_loom
-	check(Blocks.shape[loom] == "model" and Blocks.model[loom] == "living_loom" and Blocks.model_size[loom] == Vector2(3, 3) and Blocks.solid[loom] == 0, "Living Loom: bloco com modelo, sem colisão")
+	check(Blocks.shape[loom] == "model" and Blocks.model[loom] == "living_loom" and Blocks.model_size[loom] == Vector2(3, 3) and Blocks.solid[loom] == 1, "Living Loom: bloco com modelo, sólido")
 	var lm := VoxRecipes.block_mesh("living_loom", Blocks.model_size[loom])
 	check(is_equal_approx(lm.get_aabb().size.x, 1.8) and lm.get_aabb().size.z > 0.2, "Living Loom: 3 tiles = 1,8 bloco de largura, com profundidade (%s)" % lm.get_aabb().size)
 	var d := chunk(0)
@@ -3705,7 +3705,7 @@ func test_voxel():
 	# leva 1: estações, baú e gemas são `prop` (sprite da wiki com profundidade); sem o sprite, caixa
 	for n in ["workbench", "furnace", "anvil", "hellforge", "chest", "demon_altar", "life_crystal", "bee_larva", "lead_anvil"]:
 		var pb: int = Blocks.ids[n]
-		check(Blocks.shape[pb] == "model" and Blocks.model[pb] == n and Blocks.solid[pb] == 0 and VoxRecipes.block_mesh(n, Blocks.model_size[pb]) != null, "%s: bloco com modelo voxel, sem colisão" % n)
+		check(Blocks.shape[pb] == "model" and Blocks.model[pb] == n and Blocks.solid[pb] == 1 and Blocks.cull[pb] == 0 and VoxRecipes.block_mesh(n, Blocks.model_size[pb]) != null, "%s: bloco com modelo voxel, sólido sem esconder as faces vizinhas" % n)
 	check(VoxRecipes.prop({"wiki": "nao_existe"}).v.size() > 100, "prop sem o sprite baixado vira caixa")
 	if VoxRecipes.sprite("Work_Bench") != null:
 		var wb := VoxRecipes.find("workbench")
@@ -4886,7 +4886,7 @@ func test_housing():
 	w.set_block(22, 11, 22, Blocks.ids.chair)
 	var home := Vector3i(22, 12, 22)
 	var r := Housing.check(w, home)
-	check(r.valid and r.cells.size() == 4 * 3 * 2 - 1 and r.light and r.table and r.chair, "casa completa é válida (%d blocos de ar; %s)" % [r.cells.size(), r.reason])
+	check(r.valid and r.cells.size() == 4 * 3 * 2 - 2 and r.light and r.table and r.chair, "casa completa é válida (%d blocos de ar; %s)" % [r.cells.size(), r.reason])
 	check(Housing.report(w, Vector3i(22, 11, 22)).contains("Casa válida"), "a cadeira responde que a casa vale")
 	# faltas: uma de cada vez
 	w.set_block(21, 11, 21, 0)

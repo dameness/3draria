@@ -271,7 +271,7 @@ static func loom(spec: Dictionary) -> VoxModel:
 
 # Sprite da wiki (vista de frente) com profundidade: extrusão reta de `depth` voxels (padrão 10) ou, com `round` (teto, em voxels), "inflada" (gema, altar).
 # `profile: [[linha0, linha1, y0, y1, coluna0?, coluna1?]]`: faixa de profundidade [y0, y1) (y < 0 = sai da frente) das linhas/colunas do sprite (domo da tampa, chifre fino da bigorna). `recess`: as cores emissivas começam essa quantidade de voxels atrás da frente (boca da fornalha). `legs: [linha0, linha1]`: nessas linhas do
-# sprite só sobram 3 voxels em cada face (pernas da bancada: frente e trás, vão no meio). `plain`: cor do contorno escuro do sprite no miolo da
+# sprite só sobram 3 voxels em cada face (pernas da bancada: frente e trás, vão no meio). `sides`: laterais com a textura da frente (amostra o sprite do canto para dentro). `plain`: cor do contorno escuro do sprite no miolo da
 # profundidade (só a frente e o fundo mantêm o contorno; senão os lados viram lajes pretas). Sem o sprite baixado: caixa na cor `color`.
 static func prop(spec: Dictionary) -> VoxModel:
 	var img := sprite(spec.get("wiki", ""))
@@ -302,6 +302,20 @@ static func prop(spec: Dictionary) -> VoxModel:
 		for p in m.v.keys():
 			if p.y > 0 and p.y < d - 1 and not glow.has(m.v[p]) and VoxModel.color(m.v[p]).get_luminance() < 0.2:
 				m.v[p] = plain
+	if spec.get("sides", false):   # laterais com a textura da frente: as 2 colunas de cada ponta da linha amostram o sprite de dentro para o centro (profundidade y = distância da borda)
+		var lo := {}
+		var hi := {}
+		for p in m.v:
+			lo[p.z] = mini(lo.get(p.z, 999), p.x)
+			hi[p.z] = maxi(hi.get(p.z, -999), p.x)
+		for p in m.v.keys():
+			var left: bool = p.x <= lo[p.z] + 1
+			if not left and p.x < hi[p.z] - 1:
+				continue
+			var px: int = (lo[p.z] + 2 if left else hi[p.z] - 2) + maxi(p.y, 0) * (1 if left else -1)
+			var c := img.get_pixel(clampi(px, 0, img.get_width() - 1), img.get_height() - 1 - p.z)
+			if c.a > 0.5 and c.get_luminance() >= 0.2 and not glow.has(VoxModel.rgb(c)):
+				m.v[p] = VoxModel.rgb(c)
 	return m
 
 
