@@ -3852,7 +3852,7 @@ func integration():
 			hand._process(0)
 			hand._process(0)
 			check(hand.glow != null and hand.sparks != null and hand.trail.pts.size() >= 2, "Terra Blade na mão com brilho, faíscas e rastro (%s %s %d)" % [hand.glow, hand.sparks, hand.trail.pts.size()])
-			check(hand.arm != null and hand.arm.get_child_count() == 3, "braço em 1ª pessoa (antebraço, manga e punho)")
+			check(hand.arm != null and hand.arm_mesh != null and hand.arm_mesh.mesh != null and hand.arm_mesh.mesh.get_aabb().size.y > 1.5, "braço em 1ª pessoa: uma malha voxel do punho ao ombro (~1,9 de comprimento)")
 			player.cooldown = 0
 			player.third_person = true
 			player.creative = true
