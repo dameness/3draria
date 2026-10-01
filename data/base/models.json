@@ -20,5 +20,15 @@
 	"platinum": {"recipe": "armor_plate", "icons": ["Platinum_Helmet", "Platinum_Chainmail", "Platinum_Greaves"], "gem": "#d02030", "horns": "#d8e8f8"},
 	"wood": {"recipe": "armor_plate", "icons": ["Wood_Helmet", "Wood_Breastplate", "Wood_Greaves"]},
 	"meteor": {"recipe": "armor_plate", "icons": ["Meteor_Helmet", "Meteor_Suit", "Meteor_Leggings"], "closed": true, "spikes": "#ff7a1a", "emissive": ["#ff7a1a"], "sparks": "#ff7a1a"},
-	"ninja": {"recipe": "armor_plate", "icons": ["Ninja_Hood", "Ninja_Shirt", "Ninja_Pants"], "cloth": true, "light": "#9a9aa4"}
+	"ninja": {"recipe": "armor_plate", "icons": ["Ninja_Hood", "Ninja_Shirt", "Ninja_Pants"], "cloth": true, "light": "#9a9aa4"},
+	"terra_blade": {"recipe": "weapon", "wiki": "Terra_Blade", "emissive": ["#b5e61d", "#00a2e8", "#66d1ff"]},
+	"enchanted_sword": {"recipe": "weapon", "wiki": "Enchanted_Sword", "emissive": ["#4560e9"]},
+	"sunfury": {"recipe": "weapon", "wiki": "Sunfury", "cap": 5, "emissive": ["#f42a0a", "#ffb32f", "#fc6619", "#ffd746"]},
+	"blue_moon": {"recipe": "weapon", "wiki": "Blue_Moon", "cap": 5, "emissive": ["#1b8deb", "#58bbda", "#0b2eff"]},
+	"space_gun": {"recipe": "weapon", "wiki": "Space_Gun", "emissive": ["#fca722", "#db3e07", "#f94b07"]},
+	"crimson_rod": {"recipe": "weapon", "wiki": "Crimson_Rod", "emissive": ["#d96c51", "#d02820"]},
+	"bomb": {"recipe": "weapon", "wiki": "Bomb", "round": true},
+	"grenade": {"recipe": "weapon", "wiki": "Grenade", "round": true},
+	"beenade": {"recipe": "weapon", "wiki": "Beenade", "round": true},
+	"musket_ball": {"recipe": "weapon", "wiki": "Musket_Ball", "round": true}
 }

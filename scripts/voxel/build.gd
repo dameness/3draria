@@ -4,7 +4,7 @@ extends SceneTree
 # prioridade (nunca são tocados). Uso: .tools/godot --headless -s scripts/voxel/build.gd   (o update.sh roda isto)
 
 const OUT := "res://assets/models/gen/"
-const AUTO_VERSION := 1   # muda quando o algoritmo do automático muda: refaz todos
+const AUTO_VERSION := 2   # muda quando o algoritmo do automático muda: refaz todos
 
 
 static func run() -> int:
@@ -30,7 +30,7 @@ static func run() -> int:
 			continue
 		var img := Items.icon_texture(id, atlas).get_image()
 		img.convert(Image.FORMAT_RGBA8)
-		VoxModel.from_sprite(img, VoxModel.inflate(img, VoxModel.auto_cap(img))).write(OUT + name + ".vox")
+		VoxModel.from_sprite(img, VoxModel.inflate(img, VoxRecipes.auto_cap(name, img))).write(OUT + name + ".vox")
 		done[name] = true
 		n += 1
 	DirAccess.make_dir_recursive_absolute(OUT)

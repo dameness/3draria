@@ -66,6 +66,10 @@ static func make(name: String) -> Dictionary:
 				out = armor_plate(name, spec)
 			"prop":
 				out = {name: prop(spec)}
+			"weapon":
+				var w := weapon(spec)
+				if w:
+					out = {name: w}
 		for f in out:   # cores emissivas do models.json
 			for h in spec.get("emissive", []):
 				out[f].emit[Color(h).to_rgba32() >> 8 & 0xffffff] = true
@@ -78,6 +82,32 @@ static func sprite(wiki: String) -> Image:
 	return Atlas.wiki_image({"wiki": wiki})
 
 
+# Cap (meia espessura máxima, em voxels) do modelo automático de um item: lâmina e arco finos, arma de fogo e varinha cheias, cabeça de
+# flail redonda, ferramenta fina; o resto segue o tamanho do sprite. Item sem regra aqui = `VoxModel.auto_cap`.
+static func auto_cap(name: String, img: Image) -> int:
+	var d: Dictionary = Items.defs[Items.ids[name]] if Items.ids.has(name) else {}
+	var side := mini(img.get_width(), img.get_height())
+	if d.has("flail"):
+		return clampi(side / 6, 3, 6)
+	if d.has("pick_power") or d.has("axe_power") or d.has("hammer_power") or d.get("ammo", "") == "arrow" or (d.get("damage", 0) > 0 and not d.has("ammo") and not d.has("shoot") and not d.has("throw")):
+		return 2   # ferramenta, arco, lâmina
+	if d.has("shoot") or d.has("cost") or d.has("ammo"):
+		return clampi(side / 5, 2, 4)   # arma de fogo, varinha, livro
+	return VoxModel.auto_cap(img)
+
+
+# Arma/item com receita própria (models.json, `recipe: weapon`): o sprite da wiki inflado com `cap` voxels (padrão: auto_cap), ou esférico com
+# `round` (bomba, granada); `emissive` lista as cores que brilham. null sem o sprite baixado (o automático assume).
+static func weapon(spec: Dictionary) -> VoxModel:
+	var img := sprite(spec.get("wiki", ""))
+	if img == null:
+		return null
+	img = img.duplicate()
+	img.convert(Image.FORMAT_RGBA8)
+	var cap: int = mini(img.get_width(), img.get_height()) / 2 if spec.get("round", false) else spec.get("cap", VoxModel.auto_cap(img))
+	return VoxModel.from_sprite(img, VoxModel.inflate(img, cap))
+
+
 # ---------- malhas com cache ----------
 
 # Item na mão/solto: [malha, material]. Modelo = campo `model` do item (senão o nome); sem modelo, o sprite (`icon`) inflado.
@@ -87,7 +117,7 @@ static func item_mesh(name: String, icon: Image, length: float) -> ArrayMesh:
 		var m := find(name)
 		var dim := 0
 		if m == null:
-			m = VoxModel.from_sprite(icon, VoxModel.inflate(icon, VoxModel.auto_cap(icon)))
+			m = VoxModel.from_sprite(icon, VoxModel.inflate(icon, auto_cap(name, icon)))
 			dim = maxi(icon.get_width(), icon.get_height())
 		else:
 			dim = maxi(m.size().x, m.size().z)

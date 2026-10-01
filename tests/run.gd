@@ -3721,6 +3721,13 @@ func test_voxel():
 		check(ok, "armadura %s: modelo voxel completo" % k)
 	var wood_head: VoxModel = VoxRecipes.make("wood").wood_head
 	check(wood_head.has_anchor and not wood_head.v.has(Vector3i(3, -6, 7)) and wood_head.v.has(Vector3i(0, 0, 12)), "capacete de placa: rosto aberto na frente, calota no alto")
+	# leva 3: espessura do modelo automático por categoria e receita `weapon` (bomba esférica, lâmina fina)
+	var cap := func(n: String) -> int: return VoxRecipes.auto_cap(n, Image.create(36, 36, false, Image.FORMAT_RGBA8))
+	check(cap.call("copper_broadsword") == 2 and cap.call("copper_bow") == 2 and cap.call("copper_pickaxe") == 2 and cap.call("mace") == 6 and cap.call("space_gun") == 4, "auto_cap: lâmina, arco e ferramenta finos, flail redondo, arma de fogo cheia")
+	var bomb_img := Image.create(22, 30, false, Image.FORMAT_RGBA8)
+	bomb_img.fill(Color.WHITE)
+	var bm := VoxModel.from_sprite(bomb_img, VoxModel.inflate(bomb_img, 11))
+	check(bm.size().y >= 20 and VoxRecipes.weapon({"wiki": "nao_existe"}) == null, "weapon: round infla até a esfera; sem o sprite devolve null (automático assume)")
 	# Molten: modelo por peça, brilho e cor do sprite
 	if VoxRecipes.sprite("Molten_armor") != null:
 		var mh := VoxRecipes.find("molten", "head")

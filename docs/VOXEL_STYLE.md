@@ -36,6 +36,10 @@ Receita `prop` (ou `loom`) + campos do `models.json`; nada de código novo por e
 - Metais/madeira/Meteor/Ninja: receita `armor_plate`, uma só para todos (calota com nariz, peitoral com gola/cós/costura, ombreira grande, manga até o cotovelo, joelheira, bota); só a paleta (ícones) e poucas opções mudam. Conjunto novo = uma linha em `models.json` + `"model"` em `armor_sets.json`.
 - Brilho/projeção do sprite vestido (`armor_set`) só para conjuntos com detalhe emissivo que o ícone não dá (Molten).
 
+## Padrão das armas e ferramentas (leva 3)
+- Todo item já tem modelo automático; a espessura vem da categoria (`VoxRecipes.auto_cap`): lâmina, arco e ferramenta finos (cap 2), arma de fogo/varinha/livro cheios (2 a 4), cabeça de flail redonda (3 a 6). Regra nova = uma linha ali, não um campo por item.
+- Receita `weapon` (models.json) só para destaque: brilho (`emissive`, moderado), `cap` próprio ou `round: true` (bomba, granada: esfera). A pose na mão não muda (ver PROMPT_LEVAS).
+
 ## Fluxo
 `models.json` (sprite da wiki + cores) → receita em `scripts/voxel/recipes.gd` → `assets/models/gen/*.vox` (update.sh) → jogo.
 Retoque: copie o `.vox` para `assets/models/` e edite; ele vence o gerado e o update nunca o toca. Conferir sem tela: `tests/model_preview.gd`.

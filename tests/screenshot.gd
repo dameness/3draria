@@ -88,6 +88,8 @@ const SHOTS := [
 	{"name": "voxel_ferro", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "iron_broadsword", "armor": ["iron_helmet", "iron_chainmail", "iron_greaves"]},
 	{"name": "voxel_meteor", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "space_gun", "armor": ["meteor_helmet", "meteor_suit", "meteor_leggings"]},
 	{"name": "voxel_ninja", "third": true, "front": true, "look": Vector2(0.4, -0.25), "item": "copper_shortsword", "armor": ["ninja_hood", "ninja_shirt", "ninja_pants"]},
+	{"name": "arma_bomba", "look": Vector2(0.4, -0.25), "item": "bomb"},
+	{"name": "arma_sunfury", "look": Vector2(0.4, -0.25), "item": "sunfury"},
 	{"name": "voxel_lado", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "iron_broadsword"},
 	{"name": "voxel_lado_pa", "third": true, "turn": PI / 2, "look": Vector2(0.4, -0.25), "item": "copper_pickaxe"},
 	{"name": "voxel_costas", "third": true, "look": Vector2(0.4, -0.25), "item": "iron_broadsword"},

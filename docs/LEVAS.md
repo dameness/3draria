@@ -11,9 +11,9 @@ Status: **receita** = tem modelo próprio (models.json / campo `model`); **auto*
 - receita: copper, tin, iron, lead, silver, tungsten, gold, platinum, molten, meteor, ninja, wood
 - auto: 
 
-## Leva 3 — Armas (69, 0 com receita)
-- receita: —
-- auto: wooden_sword, copper_shortsword, wooden_bow, wooden_arrow, enchanted_sword, terra_blade, copper_broadsword, copper_bow, tin_broadsword, tin_bow, iron_broadsword, iron_bow, lead_broadsword, lead_bow, silver_broadsword, silver_bow, tungsten_broadsword, tungsten_bow, gold_broadsword, gold_bow, platinum_broadsword, platinum_bow, lights_bane, demon_bow, unholy_arrow, blood_butcherer, tendon_bow, cobalt_sword, palladium_sword, musket_ball, musket, the_undertaker, wand_of_sparking, space_gun, vilethorn, the_rotted_fork, crimson_rod, tin_shortsword, iron_shortsword, lead_shortsword, silver_shortsword, tungsten_shortsword, gold_shortsword, platinum_shortsword, spear, bone_sword, bomb, dynamite, flintlock_pistol, book_of_skulls, wooden_boomerang, bee_keeper, the_bees_knees, bee_gun, mace, ball_o'_hurt, the_meatball, blue_moon, sunfury, grenade, shuriken, throwing_knife, flare_gun, flare, umbrella, slime_gun, beenade, seed, blowpipe
+## Leva 3 — Armas (69, 10 com receita)
+- receita: enchanted_sword, terra_blade, musket_ball, space_gun, crimson_rod, bomb, blue_moon, sunfury, grenade, beenade
+- auto: wooden_sword, copper_shortsword, wooden_bow, wooden_arrow, copper_broadsword, copper_bow, tin_broadsword, tin_bow, iron_broadsword, iron_bow, lead_broadsword, lead_bow, silver_broadsword, silver_bow, tungsten_broadsword, tungsten_bow, gold_broadsword, gold_bow, platinum_broadsword, platinum_bow, lights_bane, demon_bow, unholy_arrow, blood_butcherer, tendon_bow, cobalt_sword, palladium_sword, musket, the_undertaker, wand_of_sparking, vilethorn, the_rotted_fork, tin_shortsword, iron_shortsword, lead_shortsword, silver_shortsword, tungsten_shortsword, gold_shortsword, platinum_shortsword, spear, bone_sword, dynamite, flintlock_pistol, book_of_skulls, wooden_boomerang, bee_keeper, the_bees_knees, bee_gun, mace, ball_o'_hurt, the_meatball, shuriken, throwing_knife, flare_gun, flare, umbrella, slime_gun, seed, blowpipe
 
 ## Leva 4 — Inimigos (49, 0 com receita)
 - receita: —
