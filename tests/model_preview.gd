@@ -110,17 +110,6 @@ func figure(set := "") -> Array:
 	return list
 
 
-# Malhas de uma árvore de nós sem cena: [[malha, transformação acumulada]].
-func _collect(node: Node, xf: Transform3D) -> Array:
-	var out := []
-	var t: Transform3D = xf * (node.transform if node is Node3D else Transform3D())
-	if node is MeshInstance3D and node.mesh != null:
-		out.append([node.mesh, t])
-	for c in node.get_children():
-		out.append_array(_collect(c, t))
-	return out
-
-
 func _init() -> void:
 	Blocks.load_pack()
 	Items.load_pack()
@@ -142,15 +131,6 @@ func _init() -> void:
 			tiles = Blocks.model_size[b] if Blocks.model_size[b] != Vector2.ZERO else tiles
 			row.sprite = VoxRecipes.sprite(spec.get("wiki", ""))
 			row.parts = [[VoxRecipes.block_mesh(Blocks.model[b], tiles), Transform3D()]]
-		elif n.begins_with("enemy:"):   # inimigo de sprite (EnemyModel); wing: bate as asas no tempo `@` não se aplica
-			var def: Dictionary = {}
-			for e in Blocks.read("res://data/base/enemies.json"):
-				if e.name == n.substr(6):
-					def = e
-			var root := EnemyModel.build(def)
-			row.sprite = Atlas.wiki_image(Blocks.textures.get(def.get("sprite", def.name), {}))
-			row.parts = _collect(root, Transform3D())
-			row.front = 0.0
 		elif n == "body":
 			row.parts = figure()
 		elif n.begins_with("armor:"):

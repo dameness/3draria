@@ -9,7 +9,7 @@ class_name EnemyModel
 #   brain    cérebro rosado com dobras, olhos e tentáculos (Brain of Cthulhu).
 #   worm     segmento de verme (esfera com anéis; cabeça com mandíbula, rabo mais fino), centrado na origem; enemy.gd gira inteiro.
 #   humanoid corpo do jogador (player_model.gd) com as cores de "colors" e braços estendidos.
-#   (outro)  sprite da wiki em voxels (VoxRecipes.creature; morcegos com asas que batem); sem sprite, caixa colorida.
+#   (outro)  sprite da wiki extrudado com espessura; sem sprite, caixa colorida.
 # A frente de todos é -Z; enemy.gd gira o nó para o jogador.
 
 const PlayerModel := preload("res://scripts/player_model.gd")
@@ -48,26 +48,23 @@ static func build(def: Dictionary) -> Node3D:
 			body.name = "Body"
 			root.add_child(body)
 		_:
-			var cr := VoxRecipes.creature(def)   # sprite da wiki em voxels (receita em models.json: asas, brilho)
-			if cr.has("wings"):
-				for i in 2:
-					var pivot := Node3D.new()
-					pivot.name = "WingL" if i == 0 else "WingR"
-					pivot.position.y = cr.pivot_y
-					root.add_child(pivot)
-					_voxel(pivot, cr.wings[i])
-			elif cr.has("body"):
-				_voxel(root, cr.body)
+			var tex: Texture2D = null
+			var spec: Dictionary = Blocks.textures.get(def.get("sprite", ""), {})
+			var img := Atlas.wiki_image(spec)
+			if img:
+				var m := MeshInstance3D.new()
+				m.mesh = ItemModel.build(img, maxf(size[1], size[0]), img.get_width() * 0.25)
+				m.material_override = _mat(Color.WHITE)
+				m.material_override.albedo_texture = ImageTexture.create_from_image(img)
+				m.material_override.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+				m.material_override.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+				m.material_override.vertex_color_use_as_albedo = true
+				var box: AABB = m.mesh.get_aabb()
+				m.position = Vector3(-box.get_center().x, 0, -box.get_center().z)
+				root.add_child(m)
 			else:
 				_part(root, BoxMesh.new(), Vector3(size[0], size[1], size[0]), Color(def.color), Vector3(0, size[1] / 2.0, 0))
 	return root
-
-
-static func _voxel(parent: Node3D, mesh: ArrayMesh) -> void:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = VoxMesh.material(0.7)
-	parent.add_child(mi)
 
 
 static func _mat(c: Color) -> StandardMaterial3D:
@@ -367,11 +364,6 @@ static func animate(model: Node3D, enemy: Node3D, target: Vector3, t: float) -> 
 	var pulse := model.get_node_or_null("Pulse")
 	if pulse:   # a carne pulsa
 		pulse.scale = Vector3(1.0 + sin(t * 2.2) * 0.015, 1.0 + sin(t * 1.7) * 0.01, 1.0 + sin(t * 2.6) * 0.06)
-	var wing_l := model.get_node_or_null("WingL")
-	if wing_l:   # asas batem em contratempo (pontas para cima e para baixo)
-		var a := sin(t * 16.0 + enemy.get_instance_id() % 7) * 0.55
-		wing_l.rotation.z = -a
-		model.get_node("WingR").rotation.z = a
 	var squash := model.get_node_or_null("Squash")
 	if squash:   # estica com o pulo e balança parada, como gelatina
 		var k := clampf(enemy.velocity.y / 10.0, -0.3, 0.35) + sin(t * 4.0 + enemy.get_instance_id() % 7) * 0.04
