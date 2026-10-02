@@ -23,7 +23,7 @@
 	{"name": "balloh_ball", "flail": true, "color": "#5a4a7a", "size": 0.55, "length": 4.8, "life": 6},
 	{"name": "meatball_ball", "flail": true, "color": "#a83a3a", "size": 0.55, "length": 4.8, "life": 6},
 	{"name": "blue_moon_ball", "flail": true, "color": "#3a6ad0", "size": 0.6, "length": 4.8, "life": 6, "glow": "#5a9aff"},
-	{"name": "sunfury_ball", "flail": true, "color": "#e0651a", "size": 0.6, "length": 4.8, "life": 6, "glow": "#ff8a20"},
+	{"name": "sunfury_ball", "flail": true, "color": "#e0651a", "size": 0.6, "length": 4.8, "life": 6, "glow": "#ff8a20", "debuff": "on_fire", "debuff_time": [3], "debuff_chance": 0.25},
 	{"name": "grenade", "model_item": "grenade", "size": 0.5, "gravity": 22, "life": 10, "pierce": 1, "fuse": 3.0, "radius": 3.0, "keep_blocks": true, "contact": true},
 	{"name": "beenade", "model_item": "beenade", "size": 0.5, "gravity": 22, "life": 10, "pierce": 1, "fuse": 3.0, "radius": 2.4, "keep_blocks": true, "contact": true, "bees": 8},
 	{"name": "shuriken", "model_item": "shuriken", "size": 0.5, "gravity": 6, "life": 3, "pierce": 2, "spin": 22},
@@ -31,6 +31,7 @@
 	{"name": "flare", "size": 0.35, "gravity": 3, "life": 40, "pierce": 1, "glow": "#ff5a3a", "stick": true},
 	{"name": "syringe", "size": 0.4, "gravity": 0, "life": 2, "pierce": 1, "glow": "#ffffff"},
 	{"name": "slime_spray", "size": 0.3, "gravity": 12, "life": 0.8, "pierce": 1, "glow": "#5aa0ff"},
+	{"name": "poison_dart", "model_item": "poison_dart", "size": 0.3, "gravity": 6, "life": 1.6, "pierce": 1, "debuff": "poisoned", "debuff_time": [30, 30, 60]},
 	{"name": "seed", "model_item": "seed", "size": 0.3, "gravity": 6, "life": 1.6, "pierce": 1},
 	{"name": "glowstick", "model_item": "glowstick", "size": 0.5, "gravity": 12, "life": 6, "land": "glowstick_lit", "glow": "#7aff6a"}
 ]

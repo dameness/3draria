@@ -110,6 +110,7 @@
 	{"result": "tungsten_hammer", "needs": {"tungsten_bar": 8, "wood": 3}, "station": "anvil"},
 	{"result": "gold_hammer", "needs": {"gold_bar": 8, "wood": 3}, "station": "anvil"},
 	{"result": "platinum_hammer", "needs": {"platinum_bar": 8, "wood": 3}, "station": "anvil"},
+	{"result": "poison_dart", "count": 100, "needs": {"stinger": 1}, "station": "anvil"},
 	{"result": "chain", "count": 15, "needs": {"iron_bar": 1}, "station": "anvil"},
 	{"result": "grappling_hook", "needs": {"chain": 3, "hook": 1}, "station": "anvil"},
 	{"result": "chair", "needs": {"wood": 4}, "station": "workbench", "wiki": "Wooden Chair"},

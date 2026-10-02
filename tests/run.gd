@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -134,6 +134,44 @@ func run(node: Node, seconds: float) -> void:
 		if not is_instance_valid(node) or node.is_queued_for_deletion():
 			return
 		node._physics_process(1.0 / 60)
+
+
+# Veneno e fogo nos inimigos (wiki Poisoned: 6 de vida/s; On Fire!: 4/s; sem defesa): o Poison Dart envenena, o Sunfury queima em 25%.
+func test_debuffs():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var z: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(30, 11, 24.5))
+	z._ready()
+	z.display = false
+	var hp0: int = z.hp
+	z.afflict("poisoned", 2.0)
+	run(z, 1.05)
+	check(hp0 - z.hp >= 5 and hp0 - z.hp <= 7, "veneno tira ~6 de vida por segundo, ignorando a defesa (%d)" % (hp0 - z.hp))
+	run(z, 3.0)
+	check(not z.debuffs.has("poisoned") and hp0 - z.hp <= 14, "o veneno acaba no tempo (%d)" % (hp0 - z.hp))
+	z.afflict("on_fire", 1.0)
+	var hp1: int = z.hp
+	run(z, 2.05)
+	check(hp1 - z.hp >= 3 and hp1 - z.hp <= 5, "fogo tira ~4 de vida por segundo (%d)" % (hp1 - z.hp))
+	# dardo: dispara de Blowpipe e envenena (100%)
+	z.position = Vector3(26, 11, 24.5)
+	p.inv.add(Items.ids.poison_dart, 3)
+	p.shoot(Items.defs[Items.ids.blowpipe], p.position + Vector3.UP * p.EYE, Vector3.RIGHT)
+	run(ent.get_children().back(), 1.0)
+	check(z.debuffs.has("poisoned") and z.debuffs.poisoned > 25.0, "Poison Dart envenena por 30 s ou mais")
+	# Sunfury: 25% por acerto
+	var proj: Node = ent.spawn_projectile("sunfury_ball", z.position, Vector3.RIGHT, 0.0, 10, 0.0)
+	var hits := 0
+	for i in 400:
+		z.debuffs.erase("on_fire")
+		proj.afflict(z)
+		hits += 1 if z.debuffs.has("on_fire") else 0
+	check(hits > 60 and hits < 140 and z.debuffs.get("on_fire", 3.0) == 3.0, "Sunfury queima em ~25% dos acertos por 3 s (%d/400)" % hits)
+	check(Crafting.recipes.any(func(r): return r.result == Items.ids.poison_dart and r.count == 100 and r.needs.has(Items.ids.stinger)), "receita: 1 Stinger → 100 Poison Darts")
+	free_player(p)
+	w.free()
+	return true
 
 
 func test_day_night():

@@ -62,6 +62,8 @@ const SHOTS := [
 	{"name": "colmeia", "hive": true, "look": Vector2(0.4, -0.1), "creative": true},
 	{"name": "hallow", "hardmode": true, "up": 14.0, "look": Vector2(0.4, -0.45), "creative": true, "hallow": true},
 	{"name": "inimigos", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "numbers": true},
+	{"name": "inimigos_veneno", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "debuff": "poisoned"},
+	{"name": "inimigos_fogo", "look": Vector2(0, -0.1), "enemies": ["green_slime", "zombie", "demon_eye"], "debuff": "on_fire"},
 	{"name": "inimigos_voadores", "look": Vector2(0, -0.1), "enemies": ["eater_of_souls", "crimera", "voodoo_demon", "hellbat", "pixie", "unicorn"]},
 	{"name": "inimigos_cavernas", "look": Vector2(0, -0.1), "enemies": ["red_slime", "yellow_slime", "black_slime", "cave_bat", "skeleton"]},
 	{"name": "inimigos_biomas", "look": Vector2(0, -0.1), "enemies": ["mother_slime", "undead_miner", "blood_crawler", "face_monster", "devourer", "giant_worm"]},
@@ -623,6 +625,8 @@ func _setup(s: Dictionary) -> void:
 		pos.y = world.surface_y(int(pos.x), int(pos.z)) + (2.5 if n == "demon_eye" else 0.0)
 		var e: Node3D = ent.spawn_enemy(ent.def_named(n), pos)
 		e.set_physics_process(false)
+		if s.has("debuff"):
+			e.debuffs[s.debuff] = 99.0
 		if s.get("hurt", false):   # o clarão vermelho do golpe, congelado para o print
 			e.hurt(1, Vector3.ZERO, 0)
 			e.flash = 99.0

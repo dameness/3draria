@@ -173,9 +173,11 @@ func _flail(delta: float) -> void:
 			if full and not e in hit:
 				hit.append(e)
 				e.hurt(Combat.vary(damage, entities.rng), e.position - hand, knockback, Combat.is_crit(entities.rng, crit))
+				afflict(e)
 			elif not full and age - last_hit.get(e, -9.0) > 0.3:
 				last_hit[e] = age
 				e.hurt(Combat.vary(roundi(damage * 0.6), entities.rng), e.position - hand, knockback * 0.35, Combat.is_crit(entities.rng, crit))
+				afflict(e)
 	for i in chain.size():   # elos entre a mão e a bola
 		chain[i].global_position = hand.lerp(position, (i + 0.5) / chain.size())
 		if position.distance_to(hand) > 0.05:
@@ -242,6 +244,13 @@ func _boomerang(delta: float) -> void:
 		if not e in hit and VoxelBody.touches(position - Vector3.UP * 0.2, 0.3, 0.4, e.position, e.half, e.tall):
 			hit.append(e)
 			e.hurt(Combat.vary(damage, entities.rng), velocity, knockback, Combat.is_crit(entities.rng, crit))
+			afflict(e)
+
+
+# Debuff do projétil (`debuff`, `debuff_time` sorteado da lista, `debuff_chance`) no inimigo que ele acertou.
+func afflict(e: Node3D) -> void:
+	if def.has("debuff") and entities.rng.randf() < def.get("debuff_chance", 1.0):
+		e.afflict(def.debuff, def.debuff_time[entities.rng.randi() % def.debuff_time.size()])
 
 
 func _physics_process(delta: float) -> void:
@@ -315,6 +324,7 @@ func _physics_process(delta: float) -> void:
 		if e.def.ai != "npc" and not e in hit and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, e.position, e.half, e.tall):
 			hit.append(e)
 			e.hurt(Combat.vary(damage, entities.rng), velocity, knockback, Combat.is_crit(entities.rng, crit))
+			afflict(e)
 			if def.has("decay"):   # Terra Beam: cada alvo atravessado tira 25% do dano atual; chegou a 0, some
 				damage = int(damage * (1.0 - def.decay))
 				if damage <= 0:

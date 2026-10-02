@@ -5,6 +5,7 @@ extends Node3D
 
 const GRAVITY := 28.0
 const JUMP := 8.0
+const DOT_TICK := 0.5   # o veneno e o fogo tiram vida a cada tanto (wiki Poisoned/On Fire!: dano por segundo, sem a defesa)
 const FLASH_TIME := 0.25   # o inimigo fica vermelho e volta ao normal neste tempo depois de levar um golpe
 const WORM_GRAVITY := 14.85   # verme no ar: 0,11 px/quadro² da wiki (24,75 tiles/s²) × 0,6 bloco por tile
 const WORM_FREE := 37.0       # a wiki: cabeça a mais de 62,5 tiles (~37 blocos) do jogador voa livre
@@ -31,10 +32,13 @@ var hit_wall := false
 var timer := 0.0   # espera entre pulos do slime / tempo no estado do chefe
 var stun := 0.0    # após levar golpe a IA para e o knockback age
 var flash := 0.0
-var flashing := false   # a sobreposição vermelha está ligada nos modelos
+var debuffs := {}       # debuff (buffs.json, com `dot`) -> segundos que faltam
+var dot_timer := 0.0
+var tint := 0           # sobreposição ligada nos modelos: 0 nenhuma, 1 vermelha (golpe), 2 verde (veneno)
 var rng := RandomNumberGenerator.new()
 var model: Node3D
 var flash_mat: StandardMaterial3D
+var poison_mat: StandardMaterial3D
 # chefe
 var mode := "hover"
 var dashes := 0
@@ -84,6 +88,8 @@ func _ready() -> void:
 	flash_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	flash_mat.albedo_color = Color(1, 0.1, 0.1, 0.65)
 	flash_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	poison_mat = flash_mat.duplicate()
+	poison_mat.albedo_color = Color(0.2, 0.9, 0.2, 0.3)
 
 
 func _process(delta: float) -> void:
@@ -92,10 +98,13 @@ func _process(delta: float) -> void:
 	flash = maxf(flash - delta, 0.0)
 	if flash > 0.0:   # vermelho ao levar dano, esmaecendo até sumir
 		flash_mat.albedo_color.a = 0.65 * minf(flash / FLASH_TIME, 1.0)
-	if (flash > 0.0) != flashing:
-		flashing = flash > 0.0
+	var want := 1 if flash > 0.0 else 2 if debuffs.has("poisoned") else 0
+	if want != tint:
+		tint = want
 		for m in model.find_children("", "MeshInstance3D", true, false):
-			m.material_overlay = flash_mat if flashing else null
+			m.material_overlay = flash_mat if tint == 1 else poison_mat if tint == 2 else null
+	if debuffs.has("on_fire") and randf() < delta * 16.0:   # chamas subindo do corpo
+		Fx.sparks(entities, position + Vector3(0, tall * randf(), 0), Color(1.0, 0.5, 0.1), 1)
 	if def.ai == "skeletron":   # gira na fase 2, senão encara o jogador
 		model.rotation.y = model.rotation.y + delta * 14.0 if phase == 2 else PI
 	if def.ai == "worm":
@@ -109,6 +118,7 @@ func _physics_process(delta: float) -> void:
 	if display:
 		return
 	immune -= delta
+	tick_debuffs(delta)
 	think(delta)
 	move(delta)
 	var p: Node3D = entities.player
@@ -118,6 +128,28 @@ func _physics_process(delta: float) -> void:
 		for n in entities.enemies:   # o inimigo também fere o habitante que encosta nele
 			if n.def.ai == "npc" and n.immune <= 0.0 and VoxelBody.touches(position, half, tall, n.position, n.half, n.tall):
 				n.hurt(Combat.vary(damage, rng), n.position - position, 4.0, false, true)
+
+
+# Debuff do jogador no inimigo: renova o tempo (não soma). Vale só para quem ainda está vivo.
+func afflict(name: String, seconds: float) -> void:
+	if hp > 0 and not def.get("invulnerable", false):
+		debuffs[name] = maxf(debuffs.get(name, 0.0), seconds)
+
+
+# Dano por segundo dos debuffs ativos (`dot` em buffs.json), cobrado a cada DOT_TICK e sem a defesa.
+func tick_debuffs(delta: float) -> void:
+	if debuffs.is_empty():
+		return
+	var dps := 0.0
+	for n in debuffs.keys():
+		dps += Buffs.defs[n].get("dot", 0.0)
+		debuffs[n] -= delta
+		if debuffs[n] <= 0.0:
+			debuffs.erase(n)
+	dot_timer += delta
+	if dot_timer >= DOT_TICK and dps > 0.0:
+		dot_timer = 0.0
+		hurt(roundi(dps * DOT_TICK), Vector3.ZERO, 0.0, false, false, true)
 
 
 func think(delta: float) -> void:
@@ -642,7 +674,7 @@ func set_role(role: String) -> void:
 		model = EnemyModel.build(def)
 		model.position.y = tall / 2.0
 		add_child(model)
-		flashing = false
+		tint = 0
 
 
 # Morreu um segmento: a fila se divide como na wiki. Cabeça morta: quem vinha atrás vira cabeça; corpo morto: a frente vira rabo e o de
@@ -691,25 +723,31 @@ func move(delta: float) -> void:
 # Dano como no Terraria (modo normal): dano − defesa/2, mínimo 1. Retorna o dano causado.
 # dmg já vem com a variância (Combat.vary); a defesa entra agora e o crítico dobra depois dela (wiki Damage), com 40% mais recuo.
 # foe: o golpe vem de um inimigo (só assim o habitante apanha: as armas do jogador passam por ele, como no Terraria).
-func hurt(dmg: int, dir: Vector3, knockback: float, crit := false, foe := false) -> int:
+# dot: dano de veneno/fogo: ignora a defesa, sem recuo nem sangue (e vale até em quem não toma golpe de arma).
+func hurt(dmg: int, dir: Vector3, knockback: float, crit := false, foe := false, dot := false) -> int:
 	if def.get("invulnerable", false) or (def.ai == "npc" and (not foe or immune > 0.0)):
 		return 0
 	if def.ai == "brain" and phase == 1:   # imune enquanto houver Creepers
 		Fx.sparks(entities, position + Vector3.UP * tall * 0.5, Color(0.8, 0.8, 1.0), 4, dir)
 		return 0
-	var taken := maxi(1, dmg - ceili(defense / 2.0)) * (2 if crit else 1)
-	if def.ai == "caster":   # golpe: cancela os tiros e adia o teleporte
+	var taken := dmg if dot else maxi(1, dmg - ceili(defense / 2.0)) * (2 if crit else 1)
+	if def.ai == "caster" and not dot:   # golpe: cancela os tiros e adia o teleporte
 		timer = 4.17
 		shots = 0
 	hp -= taken
-	flash = FLASH_TIME
-	immune = NPC_IMMUNE
-	Sfx.play(entities, "die" if hp <= 0 else "hit", position)
-	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ff5a14") if crit else Color("#ffa050"), crit)
 	var blood := Color(def.get("blood", def.color))
-	var away := Vector3(dir.x, 0.4, dir.z).normalized()
-	Fx.blood(entities, position + Vector3.UP * tall * 0.55, blood, 8, away)
-	Fx.sparks(entities, position + Vector3.UP * tall * 0.55, Color(1, 0.95, 0.75), 3, away)
+	if dot:
+		if hp <= 0:
+			Sfx.play(entities, "die", position)
+		entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#6adf4a") if debuffs.has("poisoned") else Color("#ff8a20"), false)
+	else:
+		flash = FLASH_TIME
+		immune = NPC_IMMUNE
+		Sfx.play(entities, "die" if hp <= 0 else "hit", position)
+		entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ff5a14") if crit else Color("#ffa050"), crit)
+		var away := Vector3(dir.x, 0.4, dir.z).normalized()
+		Fx.blood(entities, position + Vector3.UP * tall * 0.55, blood, 8, away)
+		Fx.sparks(entities, position + Vector3.UP * tall * 0.55, Color(1, 0.95, 0.75), 3, away)
 	var kb: float = knockback * (Combat.CRIT_KNOCKBACK if crit else 1.0) * (1.0 - def.get("kb_resist", 0.0))
 	if kb > 0:
 		var flat := Vector3(dir.x, 0, dir.z).normalized()

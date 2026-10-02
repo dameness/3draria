@@ -188,7 +188,7 @@
 	{"name": "ball_o'_hurt", "icon": "ball_o'_hurt", "damage": 30, "use_time": 0.75, "flail": "balloh_ball", "shoot_speed": 12, "knockback": 5.5, "stack": 1, "rarity": 1, "use_style": "hold"},
 	{"name": "the_meatball", "icon": "the_meatball", "damage": 34, "use_time": 0.75, "flail": "meatball_ball", "shoot_speed": 12, "knockback": 5.5, "stack": 1, "rarity": 1, "use_style": "hold"},
 	{"name": "blue_moon", "icon": "blue_moon", "damage": 54, "use_time": 0.75, "flail": "blue_moon_ball", "shoot_speed": 12, "knockback": 6, "stack": 1, "rarity": 2, "use_style": "hold"},
-	{"name": "sunfury", "icon": "sunfury", "damage": 64, "use_time": 0.75, "flail": "sunfury_ball", "shoot_speed": 12, "knockback": 6.75, "crit": 0.11, "stack": 1, "rarity": 3, "use_style": "hold"},
+	{"name": "sunfury", "icon": "sunfury", "damage": 64, "use_time": 0.75, "tip": "25% de chance de causar Em chamas! por 3 s", "flail": "sunfury_ball", "shoot_speed": 12, "knockback": 6.75, "crit": 0.11, "stack": 1, "rarity": 3, "use_style": "hold"},
 	{"name": "grenade", "tip": "Uma pequena explosão que não destrói blocos", "icon": "grenade", "damage": 60, "use_time": 0.75, "knockback": 8, "throw": "grenade", "shoot_speed": 11, "consumable": true, "rarity": 0, "sprite_angle": 45},
 	{"name": "shuriken", "icon": "shuriken", "damage": 10, "use_time": 0.25, "knockback": 0, "throw": "shuriken", "shoot_speed": 33.75, "consumable": true, "rarity": 0, "sprite_angle": 45},
 	{"name": "throwing_knife", "icon": "throwing_knife", "damage": 12, "use_time": 0.25, "knockback": 2, "throw": "throwing_knife", "shoot_speed": 37.5, "consumable": true, "rarity": 0, "sprite_angle": 45},
@@ -215,5 +215,7 @@
 	{"name": "minecart", "tip": "Carregando-o, o carrinho é mais rápido e bate mais forte", "icon": "minecart", "stack": 1, "rarity": 1},
 	{"name": "living_wood_wand", "tip": "Coloca Living Wood, gastando Wood", "icon": "living_wood_wand", "places": "living_wood", "wand": "wood", "stack": 1, "rarity": 1, "use_time": 0.25},
 	{"name": "leaf_wand", "tip": "Coloca Leaf Blocks, gastando Wood", "icon": "leaf_wand", "places": "leaves", "wand": "wood", "stack": 1, "rarity": 1, "use_time": 0.25},
-	{"name": "glowstick", "tip": "Funciona molhado", "icon": "glowstick", "use_time": 0.25, "throw": "glowstick", "shoot_speed": 9, "consumable": true, "rarity": 0, "sprite_angle": 45}
+	{"name": "glowstick", "tip": "Funciona molhado", "icon": "glowstick", "use_time": 0.25, "throw": "glowstick", "shoot_speed": 9, "consumable": true, "rarity": 0, "sprite_angle": 45},
+	{"name": "stinger", "icon": "stinger", "rarity": 0},
+	{"name": "poison_dart", "tip": "Envenena o inimigo", "icon": "poison_dart", "damage": 10, "knockback": 2, "ammo_class": "dart", "projectile": "poison_dart", "sprite_angle": 0, "use_time": 0.25, "rarity": 2}
 ]
