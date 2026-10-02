@@ -21,7 +21,7 @@ Testes verdes (`tests/run.gd`, `tests/menu_flow.gd`). Não precisa de mundo novo
    - A grama comum não espalha; a do mal só espalha a colocada/plantada e o que ela contamina (a de nascença não anda), com teto de 64 por chunk (`SPREAD_CAP`) e sem espinhos da Corrupção; tire o teto quando houver Purification Powder/Dryad.
 
 - Projétil 3D só onde o sprite é pixel art pequeno (`"solid": true` em projectiles.json: Enchanted e Rotted Fork); Terra Beam (crescente 297x520), laser e espinho seguem billboard.
-- Efeitos de armadura da wiki ainda sem código (por isso sem texto na dica): Molten (+7% dano/velocidade/crítico corpo a corpo), Meteor (+9% dano mágico), Ninja (+3% crítico); bônus de conjunto de Molten/Ninja.
+- Armaduras (feito: Molten +17% dano/+7% crítico/+7% velocidade corpo a corpo, Meteor +27% dano mágico, Ninja +9% crítico e +20% movimento; `bonus` nos itens e em `armor_sets.json`, somados em `Inventory.bonus`). Falta: imunidade a On Fire!/Burning do Molten (o jogador não tem esse debuff) e o rastro de chamas do Molten/Meteor; a dica da arma não mostra o dano já com o bônus.
 
 - Flails (Mace, Ball O' Hurt, The Meatball, Blue Moon, Sunfury): faltam a fase de segurar de novo para a bola cair no chão (50% do dano), o On Fire! do Sunfury (25%, sem debuff de fogo nos inimigos), a sinergia Blue Moon + Sunfury (arremessa os dois espelhados), a Chain Knife (flail lançado, 1/250 do Cave Bat) e a origem do Blue Moon (baú trancado da Dungeon; não há baú de dungeon, só no mundo de teste).
 - **Botão direito em armas:** a wiki (tooltips) não lista nenhuma arma pré-Hardmode com ação no botão direito; só Hardmode (Sky Dragon's Fury, Flairon, Tome of Infinite Wisdom, Brand of the Inferno). Nada a fazer até lá.

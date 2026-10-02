@@ -117,6 +117,14 @@ static func heart() -> Texture2D:
 
 
 # Dica do item em BBCode: nome na cor da raridade e as estatísticas, como o balão do Terraria.
+const BONUS := {"melee_damage": "dano corpo a corpo", "magic_damage": "dano mágico", "damage": "dano", "melee_crit": "chance de crítico corpo a corpo",
+	"crit": "chance de acerto crítico", "melee_speed": "velocidade corpo a corpo", "speed": "velocidade de movimento"}
+
+
+static func bonus_text(stat: String, v: float) -> String:
+	return "%d%% de %s" % [roundi(v * 100), BONUS[stat]]
+
+
 static func item_tip(id: int) -> String:
 	if _tips.has(id):
 		return _tips[id]
@@ -132,6 +140,8 @@ static func item_tip(id: int) -> String:
 		lines.append(_knockback(d.get("knockback", 0.0)))
 	if d.has("armor"):
 		lines.append("%d de defesa" % d.defense)
+	for k in d.get("bonus", {}):
+		lines.append(bonus_text(k, d.bonus[k]))
 	if d.has("armor") or d.has("accessory"):
 		lines.append("Equipável")
 	if Inventory.coin_kind(id) != -1:
@@ -152,6 +162,8 @@ static func item_tip(id: int) -> String:
 		var s: Dictionary = Items.sets.get(d.set, {})
 		if s.get("defense", 0) > 0:
 			lines.append("Bônus do conjunto: %d de defesa" % s.defense)
+		for k in s.get("bonus", {}):
+			lines.append("Bônus do conjunto: " + bonus_text(k, s.bonus[k]).to_lower())
 		for w in s.get("free_cost", []):
 			lines.append("Bônus do conjunto: %s sem custo de mana" % Items.title(Items.label(w)))
 	if d.has("tip"):

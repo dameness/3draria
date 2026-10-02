@@ -502,6 +502,32 @@ func test_armor():
 		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
 	check(p.inv.defense() == 4 + 5 + 4 + 3 and p.hurt(30, Vector3.RIGHT) == 30 - 8, "conjunto de ouro: defesa 16 reduz o dano em 8")
 	free_player(p)
+	# bônus da wiki: Molten (corpo a corpo), Meteor (mágico), Ninja (crítico e velocidade)
+	p = make_player(w)
+	var sword: Dictionary = Items.defs[Items.ids.copper_shortsword]
+	var staff: Dictionary = Items.defs[Items.ids.space_gun]
+	for n in ["molten_helmet", "molten_breastplate", "molten_greaves"]:
+		p.inv.add(Items.ids[n], 1)
+		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
+	check(is_equal_approx(p.crit_chance(sword), 0.04 + 0.07) and p.power(sword) == roundi(sword.damage * 1.17), "Molten: +17% de dano e +7% de crítico corpo a corpo")
+	check(p.power(staff) == staff.damage and is_equal_approx(p.crit_chance(staff), Combat.CRIT), "Molten não afeta arma mágica")
+	check(is_equal_approx(p.use_time(Items.ids.copper_shortsword), Items.use_dur(Items.ids.copper_shortsword) / 1.07), "Molten Greaves: +7% de velocidade corpo a corpo")
+	free_player(p)
+	p = make_player(w)
+	for n in ["meteor_helmet", "meteor_suit", "meteor_leggings"]:
+		p.inv.add(Items.ids[n], 1)
+		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
+	check(p.power(staff) == roundi(staff.damage * 1.27), "Meteor: +27% de dano mágico")
+	free_player(p)
+	p = make_player(w)
+	for n in ["ninja_hood", "ninja_shirt"]:
+		p.inv.add(Items.ids[n], 1)
+		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
+	check(is_equal_approx(p.crit_chance(staff), Combat.CRIT + 0.06) and is_equal_approx(p.inv.bonus("speed"), 0.0), "Ninja: +3% de crítico por peça, sem a velocidade do conjunto incompleto")
+	p.inv.add(Items.ids.ninja_pants, 1)
+	p.inv.equip_from(p.inv.item.find(Items.ids.ninja_pants))
+	check(is_equal_approx(p.inv.bonus("speed"), 0.2) and is_equal_approx(p.crit_chance(sword), Combat.CRIT + 0.09), "Ninja completo: +9% de crítico e +20% de velocidade de movimento")
+	free_player(p)
 	w.free()
 	return true
 

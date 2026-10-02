@@ -7,8 +7,8 @@
 	"tungsten": {"pieces": ["tungsten_helmet", "tungsten_chainmail", "tungsten_greaves"], "defense": 3, "model": "tungsten"},
 	"gold": {"pieces": ["gold_helmet", "gold_chainmail", "gold_greaves"], "defense": 3, "model": "gold"},
 	"platinum": {"pieces": ["platinum_helmet", "platinum_chainmail", "platinum_greaves"], "defense": 4, "model": "platinum"},
-	"molten": {"pieces": ["molten_helmet", "molten_breastplate", "molten_greaves"], "defense": 0, "model": "molten"},
+	"molten": {"pieces": ["molten_helmet", "molten_breastplate", "molten_greaves"], "defense": 0, "bonus": {"melee_damage": 0.10}, "model": "molten"},
 	"meteor": {"pieces": ["meteor_helmet", "meteor_suit", "meteor_leggings"], "defense": 0, "free_cost": ["space_gun"], "model": "meteor"},
-	"ninja": {"pieces": ["ninja_hood", "ninja_shirt", "ninja_pants"], "defense": 0, "model": "ninja"},
+	"ninja": {"pieces": ["ninja_hood", "ninja_shirt", "ninja_pants"], "defense": 0, "bonus": {"speed": 0.20}, "model": "ninja"},
 	"wood": {"pieces": ["wood_helmet", "wood_breastplate", "wood_greaves"], "defense": 1, "model": "wood"}
 }

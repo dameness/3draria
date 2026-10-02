@@ -12,7 +12,7 @@ static var axe_power := PackedInt32Array()   # id -> poder de machado (só macha
 static var hammer_power := PackedInt32Array()   # id -> poder de martelo (só martelo quebra orbes e corações)
 static var stack := PackedInt32Array()
 static var drop := PackedInt32Array()     # bloco -> item que dropa, ou -1
-static var sets := {}                     # conjunto de armadura -> {pieces: [ids], defense: bônus, free_cost: [ids das armas que o conjunto completo deixa sem custo de mana], model: modelo voxel das peças ("" = formas em código do player_model)}
+static var sets := {}                     # conjunto de armadura -> {pieces: [ids], defense: bônus, bonus: {stat: fração} do conjunto completo, free_cost: [ids das armas que o conjunto completo deixa sem custo de mana], model: modelo voxel das peças ("" = formas em código do player_model)}
 static var rarity_colors := {}            # raridade (int) -> Color, de rarities.json
 static var defs: Array[Dictionary] = []   # id -> entrada crua do JSON (damage, use_time, reach, knockback, ammo, shoot_speed)
 
@@ -47,7 +47,7 @@ static func load_pack(dir := "res://data/base") -> void:
 		assert(not d.has("ammo") or defs.any(func(x): return x.get("ammo_class") == d.ammo), "munição sem itens: " + str(d.get("ammo")))
 	var set_data: Dictionary = Blocks.read(dir + "/armor_sets.json")
 	for k in set_data:
-		sets[k] = {"pieces": set_data[k].pieces.map(func(n): return ids[n]), "defense": set_data[k].defense, "free_cost": set_data[k].get("free_cost", []).map(func(n): return ids[n]), "model": set_data[k].get("model", "")}
+		sets[k] = {"pieces": set_data[k].pieces.map(func(n): return ids[n]), "defense": set_data[k].defense, "bonus": set_data[k].get("bonus", {}), "free_cost": set_data[k].get("free_cost", []).map(func(n): return ids[n]), "model": set_data[k].get("model", "")}
 	for n in Blocks.drop_names:
 		assert(n == "" or ids.has(n), "drop desconhecido: " + n)
 		drop.append(ids.get(n, -1))

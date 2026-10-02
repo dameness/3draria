@@ -395,6 +395,18 @@ func click_acc(k: int) -> void:
 	version += 1
 
 
+# Soma um bônus fracionário (ex.: "melee_damage", "crit", "speed") das peças vestidas (`bonus` do item) e dos conjuntos completos (`bonus` em armor_sets.json).
+func bonus(stat: String) -> float:
+	var t := 0.0
+	for id in equip:
+		if id != -1:
+			t += float(Items.defs[id].get("bonus", {}).get(stat, 0.0))
+	for s in Items.sets.values():
+		if s.pieces.all(func(p): return p in equip):
+			t += float(s.bonus.get(stat, 0.0))
+	return t
+
+
 # O conjunto de armadura completo vestido zera o custo de mana desta arma (Meteor: Space Gun)?
 func free_cast(id: int) -> bool:
 	for s in Items.sets.values():

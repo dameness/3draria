@@ -468,7 +468,7 @@ func tick(delta: float) -> void:
 
 
 func step(delta: float, wish: Vector3, jump: bool) -> void:
-	var boots := 1.0 + inv.acc_sum("speed") + buff_sum("speed")
+	var boots := 1.0 + inv.acc_sum("speed") + buff_sum("speed") + inv.bonus("speed")
 	var speed := WALK * boots
 	if creative:
 		velocity = Vector3.ZERO
@@ -859,6 +859,21 @@ func mana_cap() -> int:
 	return max_mana + int(inv.acc_sum("max_mana"))
 
 
+# Classe de uma arma para os bônus de armadura: mágica (gasta mana), à distância (usa munição) ou corpo a corpo.
+static func weapon_class(d: Dictionary) -> String:
+	return "magic" if d.has("cost") else "ranged" if d.has("ammo") else "melee"
+
+
+# Dano da arma com os bônus de armadura (wiki: somam em %) e chance de crítico (a da arma + os bônus).
+func power(d: Dictionary, base := -1) -> int:
+	var k := weapon_class(d)
+	return roundi((d.damage if base < 0 else base) * (1.0 + inv.bonus("damage") + inv.bonus(k + "_damage")))
+
+
+func crit_chance(d: Dictionary) -> float:
+	return d.get("crit", Combat.CRIT) + inv.bonus("crit") + inv.bonus(weapon_class(d) + "_crit")
+
+
 func defense() -> int:
 	return inv.defense() + int(buff_sum("defense"))
 
@@ -883,6 +898,9 @@ func add_buff(name: String, seconds: float) -> void:
 # Tempo de um uso: o do item; a picareta com o buff de Mineração usa ⌊tool speed × (1 − bônus)⌋ quadros (wiki Tool speed; o bônus vale só para picaretas, até 70%).
 func use_time(id: int) -> float:
 	var t := Items.use_dur(id)
+	var d: Dictionary = Items.defs[id]
+	if (d.get("damage", 0) > 0 and weapon_class(d) == "melee") or Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or Items.hammer_power[id] > 0:
+		t /= 1.0 + inv.bonus("melee_speed")   # Molten Greaves: +7% de velocidade corpo a corpo (também nas ferramentas)
 	if Items.pick_power[id] > 0 and has_buff("mining"):
 		t = floorf(t * 60.0 * (1.0 - minf(buff_sum("mining"), 0.7))) / 60.0
 	return t
@@ -987,9 +1005,9 @@ func cast(d: Dictionary, aim := Vector3.ZERO) -> void:   # aim: a direção (os 
 		at.y += 2.5
 		while Blocks.solid[world.get_block(floori(at.x), floori(at.y), floori(at.z))] and at.y > from.y - 3.0:
 			at.y -= 0.5
-		entities.spawn_cloud(at, d.damage)
+		entities.spawn_cloud(at, power(d))
 	else:
-		entities.spawn_projectile(d.shoot, from + forward * 0.6, forward, d.shoot_speed, d.damage, d.get("knockback", 0.0), d.get("crit", Combat.CRIT))
+		entities.spawn_projectile(d.shoot, from + forward * 0.6, forward, d.shoot_speed, power(d), d.get("knockback", 0.0), crit_chance(d))
 	Sfx.play(entities, "bow", position + Vector3.UP, -8.0, 1.6)
 
 
@@ -1191,12 +1209,12 @@ func melee_targets(eye: Vector3, forward: Vector3, reach: float) -> Array:
 func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 	var hits := melee_targets(eye, forward, d.reach)
 	for e in hits:
-		e.hurt(Combat.vary(d.damage, entities.rng), forward, d.knockback, Combat.is_crit(entities.rng))
+		e.hurt(Combat.vary(power(d), entities.rng), forward, d.knockback, Combat.is_crit(entities.rng, crit_chance(d)))
 	for n in entities.get_children():   # esferas dos conjuradores se destroem com um golpe (wiki)
 		if n.get("def") is Dictionary and n.def.get("destroy", false) and eye.distance_to(n.position) <= d.reach + 0.5 and forward.dot((n.position - eye).normalized()) > 0.5:
 			entities.pop_sphere(n)
 	if d.has("shoot"):
-		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, d.get("shoot_damage", d.damage), d.get("shoot_knockback", d.knockback))   # o feixe tem dano/recuo próprios quando a wiki os separa
+		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, power(d, d.get("shoot_damage", d.damage)), d.get("shoot_knockback", d.knockback), crit_chance(d))   # o feixe tem dano/recuo próprios quando a wiki os separa
 	return hits.size()
 
 
@@ -1229,7 +1247,7 @@ func summon(d: Dictionary) -> void:
 func throw_boomerang(d: Dictionary, forward: Vector3) -> void:
 	if entities.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == d.boomerang and not n.is_queued_for_deletion()):
 		return
-	entities.spawn_projectile(d.boomerang, position + Vector3.UP * EYE + forward * 0.5, forward, d.shoot_speed, d.damage, d.knockback, d.get("crit", Combat.CRIT))
+	entities.spawn_projectile(d.boomerang, position + Vector3.UP * EYE + forward * 0.5, forward, d.shoot_speed, power(d), d.knockback, crit_chance(d))
 	Sfx.play(entities, "swing", position + Vector3.UP, -8.0, 1.3)
 
 
@@ -1237,7 +1255,7 @@ func throw_boomerang(d: Dictionary, forward: Vector3) -> void:
 func throw_flail(id: int, d: Dictionary) -> void:
 	if entities.get_children().any(func(n): return n.get("def") is Dictionary and n.def.has("flail") and not n.is_queued_for_deletion()):
 		return
-	var a: Node3D = entities.spawn_projectile(d.flail, position + Vector3.UP, Vector3.FORWARD, d.shoot_speed, d.damage, d.knockback, d.get("crit", Combat.CRIT))
+	var a: Node3D = entities.spawn_projectile(d.flail, position + Vector3.UP, Vector3.FORWARD, d.shoot_speed, power(d), d.knockback, crit_chance(d))
 	a.item_id = id
 	Sfx.play(entities, "swing", position + Vector3.UP, -10.0, 0.8)
 
@@ -1259,13 +1277,13 @@ func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
 	if ammo == -1:
 		say("sem munição (%s)" % d.ammo)
 		return
-	var dmg: int = d.damage + Items.defs[ammo].get("damage", 0)
+	var dmg: int = power(d, d.damage + Items.defs[ammo].get("damage", 0))
 	var kb: float = d.knockback + Items.defs[ammo].get("knockback", 0.0)   # wiki Knockback: arma + munição
 	var speed: float = d.shoot_speed
 	if d.ammo == "arrow":   # Arquearia: +10% de dano e +20% de velocidade nas flechas
 		dmg = roundi(dmg * (1.0 + buff_sum("arrow_damage")))
 		speed *= 1.0 + buff_sum("arrow_speed")
-	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, speed, dmg, kb, d.get("crit", Combat.CRIT))
+	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, speed, dmg, kb, crit_chance(d))
 	Sfx.play(entities, "bow", position + Vector3.UP, -8.0, 1.0 if d.ammo == "arrow" else 2.2)   # a flecha estala, a bala é um estampido agudo
 
 
