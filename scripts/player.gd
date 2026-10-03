@@ -87,6 +87,7 @@ var flail: Node3D = null         # a bola do flail que está fora (ver flail_sta
 var flail_snap := 0.0         # segundos da animação de arremesso, depois que o flail é solto
 var aim_frame := -1          # quadro em que aim_3p foi calculado (aim_dir é chamada várias vezes por quadro)
 var aim_3p := Vector3.ZERO
+var aim_key := Vector4.ZERO
 var cart: Minecart = null     # andando de carrinho (R ou botão direito num trilho): o carrinho manda no movimento
 var cart_model: Node3D
 var cart_hit := {}            # inimigo -> segundos até o carrinho poder feri-lo de novo
@@ -344,8 +345,11 @@ func aim_dir() -> Vector3:
 	if cursor_hand() and is_inside_tree():   # com o mouse solto e um item no cursor a mira é o ponteiro na tela
 		return cam.project_ray_normal(get_viewport().get_mouse_position())
 	if third_person and is_inside_tree():
-		if aim_frame != Engine.get_process_frames() and free_yaw == 0.0 and free_pitch == 0.0:   # no olhar livre (Alt) a mira fica como estava
+		var key := Vector4(rotation.y, pitch, position.x + position.z * 1000.0, position.y)
+		if (aim_frame != Engine.get_process_frames() or aim_key != key) and free_yaw == 0.0 and free_pitch == 0.0:   # no olhar livre (Alt) a mira fica como estava
 			aim_frame = Engine.get_process_frames()
+			aim_key = key
+			_update_camera()   # o mouse (ou o passo da física) mexeu depois do último _process: a câmera de 3ª pessoa fica atrás e ao lado, então precisa estar na pose de agora
 			aim_3p = _aim_third()
 		if aim_3p != Vector3.ZERO:
 			return aim_3p

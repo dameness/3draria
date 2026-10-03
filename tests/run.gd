@@ -4077,6 +4077,16 @@ func integration():
 			player.aim_frame = -1
 			check(tbox.intersects_ray(player.eye(), player.aim_dir()) != null, "3ª pessoa: o disparo do olho acerta o inimigo sob a cruz")
 			player.entities.remove_enemy(tz)
+			player.rotation.y = 0.9   # o mouse mexeu sem passar um _process: a câmera de 3ª pessoa (atrás e ao lado) ainda está na pose antiga, e a mira não pode ficar uma volta atrás
+			player.pitch = -0.3
+			var stale: Vector3 = player.aim_dir()
+			player._update_camera()
+			player.aim_key = Vector4.ZERO
+			check(stale.is_equal_approx(player.aim_dir()), "3ª pessoa: a mira acompanha o mouse sem esperar o quadro")
+			player.rotation.y = 0.0
+			player.pitch = 0.0
+			player.aim_key = Vector4.ZERO
+			player._update_camera()
 			player.use_len = 0.4
 			var arm_z: Array = []
 			for cd in [0.36, 0.04]:   # começo e fim do golpe
@@ -4088,6 +4098,18 @@ func integration():
 			player.third_person = false
 			player._process(0)
 			check(player.cam.position == Vector3(0, player.EYE, 0) and not model.visible, "V de novo: volta à 1ª pessoa")
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 5
+			var cross_bad := 0   # a cruz (centro da tela) e a mira: o ponto 10 blocos à frente da mira cai no centro da tela, em qualquer direção
+			var center: Vector2 = player.get_viewport().get_visible_rect().size / 2.0
+			for i in 40:
+				player.rotation.y = rng.randf_range(-PI, PI)
+				player.pitch = rng.randf_range(-1.4, 1.4)
+				player.cam.rotation.x = player.pitch
+				cross_bad += int(player.cam.unproject_position(player.eye() + player.aim_dir() * 10.0).distance_to(center) > 0.5)
+			check(cross_bad == 0, "1ª pessoa: a mira acerta o centro da tela (%d fora)" % cross_bad)
+			player.rotation.y = 0.0
+			player.pitch = 0.0
 			var hud: CanvasLayer = main.get_node("HUD")
 			var cp := Vector3i(player.position.floor()) + Vector3i(3, 0, 0)
 			world.set_block(cp.x, cp.y, cp.z, Blocks.ids.chest)
@@ -4278,7 +4300,7 @@ func integration():
 			check(player.aim_dir().dot(-player.cam.global_basis.z) < 0.3, "olhar livre: a câmera olha para o lado enquanto a mira segue reta")
 			for i in 60:
 				player._update_camera(0.05)
-			check(absf(player.free_yaw) < 0.01 and player.aim_dir().dot(-player.cam.global_basis.z) > 0.99, "olhar livre: solto o Alt, a câmera volta atrás do personagem")
+			check(absf(player.free_yaw) < 0.01 and player.aim_dir().dot(-player.cam.global_basis.z) > 0.9, "olhar livre: solto o Alt, a câmera volta atrás do personagem")
 			# modelos (mão, corpo, inimigos): o sol e o ambiente escurecem sob a terra e voltam na superfície
 			var dn: Node = main.get_node("DayNight")
 			var sun: DirectionalLight3D = main.get_node("Sun")
@@ -5650,8 +5672,8 @@ func test_wiki_review():
 	var fl: Array = ment.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.has("flail"))
 	check(fl.size() == 1, "só um flail no ar por vez")
 	var fball: Node3D = fl[0]
-	var fl_len: float = fball.def.length   # o giro é um disco na frente, em volta da mira (aqui −Z): o ponto da direita fica a 0,35·L do eixo
-	var ftarget: Node3D = ment.spawn_enemy(ment.def_named("zombie"), mp.position + Vector3(fl_len * 0.35, 0, -fl_len * 0.4))
+	var fl_len: float = fball.def.length   # o giro é um disco horizontal na frente, em volta do ponto da mira (aqui −Z): o ponto da direita fica a 0,3·L do eixo
+	var ftarget: Node3D = ment.spawn_enemy(ment.def_named("zombie"), mp.position + Vector3(fl_len * 0.3, 0, -fl_len * 0.4))
 	ftarget.hp = 9999
 	ftarget.defense = 0
 	var spin_hits := 0

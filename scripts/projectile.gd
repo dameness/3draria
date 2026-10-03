@@ -189,7 +189,7 @@ func _flail_build() -> void:
 		chain.append(l)
 
 
-# Flail (wiki Flails): segurar o botão gira a bola num disco na frente do jogador, em volta da mira (o mouse escolhe a direção do giro; 60% do dano,
+# Flail (wiki Flails): segurar o botão gira a bola num disco horizontal na frente do jogador, em volta do ponto da mira (o mouse escolhe a altura e a direção do giro; 60% do dano,
 # 35% do recuo, golpes repetidos por inimigo); soltar arremessa pela linha da mira no instante da soltura (dano cheio) até `length`, ou até bater
 # num bloco, e ela volta. A corrente sai da ponta do cabo na mão. ponytail: sem a fase "cair no chão" de segurar de novo.
 func _flail(delta: float) -> void:
@@ -204,12 +204,14 @@ func _flail(delta: float) -> void:
 	if mode == "spin":
 		spin += delta * 9.0
 		var aim: Vector3 = p.aim_dir()
-		var u := aim.cross(Vector3.UP)
-		u = u.normalized() if u.length() > 0.01 else Vector3.RIGHT   # olhando reto para cima/baixo
-		var v := aim.cross(u)
-		var want: Vector3 = eye_pos + aim * def.length * 0.4 + (u * cos(spin) + v * sin(spin)) * def.length * 0.35
-		if not Blocks.solid[entities.world.get_block(floori(want.x), floori(want.y), floori(want.z))]:
-			position += (want - position) * minf(delta * 25.0, 1.0)
+		var flat := Vector3(aim.x, 0.0, aim.z)
+		flat = flat.normalized() if flat.length() > 0.01 else Basis(Vector3.UP, p.rotation.y) * Vector3.FORWARD   # olhando reto para cima/baixo
+		var want: Vector3 = eye_pos + aim * def.length * 0.4 + (flat.cross(Vector3.UP) * cos(spin) + flat * sin(spin)) * def.length * 0.3   # disco horizontal em volta do ponto da mira
+		for i in 4:   # o chão não segura a bola: sobe até achar espaço
+			if not Blocks.solid[entities.world.get_block(floori(want.x), floori(want.y), floori(want.z))]:
+				break
+			want.y += 0.5
+		position += (want - position) * minf(delta * 25.0, 1.0)
 		if not p.attack_held or p.inventory_open:
 			mode = "out"
 			hit.clear()
