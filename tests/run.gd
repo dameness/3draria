@@ -5650,7 +5650,8 @@ func test_wiki_review():
 	var fl: Array = ment.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.has("flail"))
 	check(fl.size() == 1, "só um flail no ar por vez")
 	var fball: Node3D = fl[0]
-	var ftarget: Node3D = ment.spawn_enemy(ment.def_named("zombie"), mp.position + Vector3(2.6, 0, 0))
+	var fl_len: float = fball.def.length   # o giro é um disco na frente, em volta da mira (aqui −Z): o ponto da direita fica a 0,35·L do eixo
+	var ftarget: Node3D = ment.spawn_enemy(ment.def_named("zombie"), mp.position + Vector3(fl_len * 0.35, 0, -fl_len * 0.4))
 	ftarget.hp = 9999
 	ftarget.defense = 0
 	var spin_hits := 0

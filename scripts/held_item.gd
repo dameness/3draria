@@ -15,6 +15,7 @@ const PLACE_TIME := 0.18                   # duração do empurrão ao colocar b
 @export var player: Node3D
 
 var mesh: MeshInstance3D
+var grip: Node3D               # flail: a pegada 3D (cabo e corrente) no lugar do sprite do item
 var shown := -2
 var glow: MeshInstance3D
 var sparks: CPUParticles3D
@@ -89,6 +90,8 @@ func _process(delta: float) -> void:
 	var dur: float = player.use_len if id != -1 else 0.25
 	var t: float = 1.0 - player.cooldown / dur if player.cooldown > 0 else 1.0
 	var tr := pose(st, clampf(t, 0, 1))
+	if grip:
+		tr = _flail_pose(tr)
 	# inércia ao girar a câmera, balanço ao andar e o empurrão de colocar bloco
 	var yaw: float = player.rotation.y
 	var vel := Vector2(wrapf(yaw - last_yaw, -PI, PI), player.pitch - last_pitch) / maxf(delta, 0.001)
@@ -135,7 +138,50 @@ func _additive(c: Color) -> StandardMaterial3D:
 	return m
 
 
+# Flail: pegada 3D (cabo com a bola pendurada; a bola some quando é arremessada) em vez do sprite do item.
+func _show_flail(id: int) -> void:
+	for n in [glow, sparks]:
+		if n:
+			n.queue_free()
+	glow = null
+	sparks = null
+	trail_on = false
+	mesh.mesh = null
+	var mount := Basis(Vector3.RIGHT, -1.0)   # o cabo aponta para a frente e para cima
+	mesh.transform = Transform3D(mount, Vector3(0, -0.05, 0.02))
+	grip = Projectile.flail_grip(player.entities.projectiles[Items.defs[id].flail], 1.0, mount.inverse() * Vector3.DOWN)
+	mesh.add_child(grip)
+
+
+# Pose da mão com o flail: girando, o braço sobe e faz círculos junto com a bola; solto, dá um chicote para a frente; fora, fica esticado.
+func _flail_pose(tr: Transform3D) -> Transform3D:
+	var fs: String = player.flail_state()
+	grip.get_node("tip/idle").visible = fs == ""
+	if fs == "spin":
+		var s: float = player.flail.spin
+		tr.origin += Vector3(cos(s) * 0.05, 0.1 + sin(s) * 0.05, -0.2)
+		tr.basis = Basis(Vector3.RIGHT, -0.3) * tr.basis
+	elif fs != "":
+		tr.origin += Vector3(0, 0.06, -0.15)
+	if player.flail_snap > 0.0:
+		var k := sin(PI * (1.0 - player.flail_snap / 0.3))
+		tr.origin += Vector3(0, 0.05, -0.32) * k
+		tr.basis = Basis(Vector3.RIGHT, -0.7 * k) * tr.basis
+	return tr
+
+
+# Ponta do cabo (de onde sai a corrente da bola), no mundo.
+func flail_tip() -> Vector3:
+	return grip.get_node("tip").global_position if grip else global_position
+
+
 func _show(id: int) -> void:
+	if grip:
+		grip.queue_free()
+		grip = null
+	if Items.defs[id].has("flail"):
+		_show_flail(id)
+		return
 	var st := style(id)
 	var m := ItemModel.for_item(id, player.entities.icon(id), LENGTH if st != "hold" else LENGTH * 0.5)
 	mesh.mesh = m[0]

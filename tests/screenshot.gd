@@ -75,6 +75,10 @@ const SHOTS := [
 	{"name": "martelo", "look": Vector2(0.5, -0.5), "item": "iron_hammer", "block": "shadow_orb", "mine": 1, "mine_late": true},
 	{"name": "arco", "look": Vector2(0.8, -0.1), "item": "iron_broadsword", "arc": true},
 	{"name": "arco_3a", "third": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "arc": true},
+	{"name": "flail_giro_fp", "look": Vector2(0.4, -0.1), "item": "sunfury", "flail": true},
+	{"name": "flail_solto_fp", "look": Vector2(0.4, -0.1), "item": "sunfury", "flail": true, "flail_out": true},
+	{"name": "flail_giro_3p", "third": true, "look": Vector2(0.4, -0.1), "item": "sunfury", "flail": true},
+	{"name": "flail_solto_3p", "third": true, "look": Vector2(0.4, -0.1), "item": "sunfury", "flail": true, "flail_out": true},
 	{"name": "golpe3_0", "third": true, "front": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "swing": 0.36},
 	{"name": "golpe3_1", "third": true, "front": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "swing": 0.30},
 	{"name": "golpe3_2", "third": true, "front": true, "look": Vector2(-0.6, -0.15), "item": "iron_broadsword", "swing": 0.22},
@@ -701,6 +705,11 @@ func _setup(s: Dictionary) -> void:
 			if n.get("def") is Dictionary and n.def.has("flail"):
 				for k in 9:
 					n._physics_process(1.0 / 30)
+				if s.get("flail_out", false):   # soltou o botão: a bola sai para a mira e o braço está no meio do chicote
+					player.attack_held = false
+					for k in 7:
+						n._physics_process(1.0 / 30)
+					player.flail_snap = 0.15
 				n.set_physics_process(false)
 	if s.get("hook", false):   # lança o gancho na parede: a mira é a da tela
 		player.inv.add(Items.ids.grappling_hook, 1)

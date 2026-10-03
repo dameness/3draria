@@ -83,6 +83,8 @@ var auto_on := false          # Auto Select ligado (o HUD abre o slot extra ao l
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
+var flail: Node3D = null         # a bola do flail que está fora (ver flail_state)
+var flail_snap := 0.0         # segundos da animação de arremesso, depois que o flail é solto
 var aim_frame := -1          # quadro em que aim_3p foi calculado (aim_dir é chamada várias vezes por quadro)
 var aim_3p := Vector3.ZERO
 var cart: Minecart = null     # andando de carrinho (R ou botão direito num trilho): o carrinho manda no movimento
@@ -445,6 +447,7 @@ func lens_clear(p: Vector3) -> bool:
 
 # Timers de vida: invencibilidade, cooldown de uso e regeneração lenta.
 func tick(delta: float) -> void:
+	flail_snap = maxf(flail_snap - delta, 0.0)
 	iframes -= delta
 	cooldown -= delta
 	place_anim = maxf(place_anim - delta, 0.0)
@@ -1285,7 +1288,20 @@ func throw_flail(id: int, d: Dictionary) -> void:
 		return
 	var a: Node3D = entities.spawn_projectile(d.flail, position + Vector3.UP, Vector3.FORWARD, d.shoot_speed, power(d), d.knockback, crit_chance(d))
 	a.item_id = id
+	flail = a
 	Sfx.play(entities, "swing", position + Vector3.UP, -10.0, 0.8)
+
+
+# "spin" | "out" | "back" enquanto a bola do flail está fora; "" com ele guardado.
+func flail_state() -> String:
+	return flail.mode if is_instance_valid(flail) and not flail.is_queued_for_deletion() else ""
+
+
+# Ponta do cabo do flail na mão (de onde sai a corrente): a da mão da câmera em 1ª pessoa, a do boneco em 3ª.
+func flail_tip() -> Vector3:
+	if not is_inside_tree():
+		return position + Vector3.UP
+	return (get_node("Model") if third_person else cam.get_node("Hand")).flail_tip()
 
 
 # Bomba e dinamite: joga um projétil com pavio (projectiles.json) em arco e gasta um.

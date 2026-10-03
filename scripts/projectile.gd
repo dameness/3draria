@@ -1,3 +1,4 @@
+class_name Projectile
 extends Node3D
 # Projétil de projectiles.json: voa com gravidade opcional, some ao bater em bloco ou ao fim da vida,
 # fere até `pierce` inimigos (cada um uma vez). Visual: ícone de item extrudado (model_item) ou sprite
@@ -15,6 +16,8 @@ var returning := false   # bumerangue: já está voltando
 var mode := "spin"       # flail: spin (gira em volta do jogador) | out (arremessado) | back (recolhe)
 var item_id := -1        # flail: o item que o jogador precisa manter na mão
 var spin := 0.0          # flail: ângulo do giro
+var throw_from := Vector3.ZERO   # flail: de onde (olho) e para onde (mira) foi arremessado
+var throw_dir := Vector3.FORWARD
 var last_hit := {}       # flail: inimigo -> instante do último golpe do giro
 var chain: Array[Node3D] = []
 var npc := false         # disparado por habitante: não fere o jogador
@@ -94,7 +97,7 @@ func _land(delta: float) -> void:
 
 
 # Flail: bola de ferro com espinhos na ponta de uma corrente de elos (nós soltos no mundo, reposicionados a cada quadro).
-func _flail_build() -> void:
+static func flail_ball(def: Dictionary) -> MeshInstance3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(def.color)
 	mat.metallic = 0.6
@@ -107,7 +110,6 @@ func _flail_build() -> void:
 	sph.rings = 6
 	ball.mesh = sph
 	ball.material_override = mat
-	add_child(ball)
 	var spike := CylinderMesh.new()   # cone: 6 espinhos nos eixos
 	spike.top_radius = 0.0
 	spike.bottom_radius = def.size * 0.16
@@ -120,6 +122,59 @@ func _flail_build() -> void:
 		sp.position = dir * def.size * 0.62
 		sp.basis = Basis(Quaternion(Vector3.UP, dir))
 		ball.add_child(sp)
+	return ball
+
+
+# Pegada do flail na mão (1ª e 3ª pessoa; `s` = escala): cabo com anel na cor da bola, `tip` na ponta do cabo (de onde sai a corrente) e, com o
+# flail guardado, a corrente curta com a bola pendurada ("idle"; `down` = a gravidade no espaço do cabo). O jogador esconde o "idle" quando a bola sai.
+static func flail_grip(def: Dictionary, s: float, down: Vector3) -> Node3D:
+	var g := Node3D.new()
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color("#6b4a2a")
+	var rod := CylinderMesh.new()
+	rod.top_radius = 0.02 * s
+	rod.bottom_radius = 0.022 * s
+	rod.height = 0.26 * s
+	var h := MeshInstance3D.new()
+	h.mesh = rod
+	h.material_override = wood
+	h.position = Vector3(0, 0.06 * s, 0)
+	g.add_child(h)
+	var cap := SphereMesh.new()
+	cap.radius = 0.03 * s
+	cap.height = 0.06 * s
+	var ring := MeshInstance3D.new()
+	ring.mesh = cap
+	ring.material_override = flail_ball(def).material_override
+	ring.position = Vector3(0, 0.2 * s, 0)
+	g.add_child(ring)
+	var tip := Node3D.new()
+	tip.name = "tip"
+	tip.position = Vector3(0, 0.22 * s, 0)
+	g.add_child(tip)
+	var idle := Node3D.new()
+	idle.name = "idle"
+	tip.add_child(idle)
+	var link := BoxMesh.new()
+	link.size = Vector3(0.012, 0.012, 0.028) * s
+	var lm := StandardMaterial3D.new()
+	lm.albedo_color = Color("#6b6f78")
+	for i in 3:
+		var l := MeshInstance3D.new()
+		l.mesh = link
+		l.material_override = lm
+		l.position = down * 0.04 * s * (i + 1)
+		l.basis = Basis(Quaternion(Vector3.BACK, down))
+		idle.add_child(l)
+	var ball := flail_ball(def)
+	ball.scale = Vector3.ONE * 0.2 * s
+	ball.position = down * 0.19 * s
+	idle.add_child(ball)
+	return g
+
+
+func _flail_build() -> void:
+	add_child(flail_ball(def))
 	var link := BoxMesh.new()
 	link.size = Vector3(0.05, 0.05, 0.11)
 	var lm := StandardMaterial3D.new()
@@ -134,29 +189,38 @@ func _flail_build() -> void:
 		chain.append(l)
 
 
-# Flail (wiki Flails): segurar o botão gira a bola em volta do jogador (60% do dano, 35% do recuo, golpes repetidos por inimigo);
-# soltar arremessa para a mira (dano cheio) até `length`, ou até bater num bloco, e ela volta. ponytail: sem a fase "cair no chão" de segurar de novo.
+# Flail (wiki Flails): segurar o botão gira a bola num disco na frente do jogador, em volta da mira (o mouse escolhe a direção do giro; 60% do dano,
+# 35% do recuo, golpes repetidos por inimigo); soltar arremessa pela linha da mira no instante da soltura (dano cheio) até `length`, ou até bater
+# num bloco, e ela volta. A corrente sai da ponta do cabo na mão. ponytail: sem a fase "cair no chão" de segurar de novo.
 func _flail(delta: float) -> void:
 	var p: Node3D = entities.player
-	var hand: Vector3 = p.position + Vector3.UP * 1.0
+	var hand: Vector3 = p.flail_tip()
 	if p.held() != item_id or p.dead > 0.0:
 		queue_free()
 		return
 	var r: float = def.size * 0.5
 	var full := mode != "spin"
+	var eye_pos: Vector3 = p.position + Vector3.UP * p.EYE
 	if mode == "spin":
 		spin += delta * 9.0
-		var want: Vector3 = hand + Vector3(cos(spin), 0.0, sin(spin)) * def.length * 0.6
+		var aim: Vector3 = p.aim_dir()
+		var u := aim.cross(Vector3.UP)
+		u = u.normalized() if u.length() > 0.01 else Vector3.RIGHT   # olhando reto para cima/baixo
+		var v := aim.cross(u)
+		var want: Vector3 = eye_pos + aim * def.length * 0.4 + (u * cos(spin) + v * sin(spin)) * def.length * 0.35
 		if not Blocks.solid[entities.world.get_block(floori(want.x), floori(want.y), floori(want.z))]:
-			position = want
+			position += (want - position) * minf(delta * 25.0, 1.0)
 		if not p.attack_held or p.inventory_open:
 			mode = "out"
 			hit.clear()
-			var aim: Vector3 = Basis(Vector3.UP, p.rotation.y) * Basis(Vector3.RIGHT, p.pitch) * Vector3.FORWARD   # a mira, sem depender da câmera na árvore
+			throw_from = eye_pos
+			throw_dir = aim
 			velocity = aim * velocity.length() * 1.6
+			p.flail_snap = 0.3
 			Sfx.play(entities, "swing", position, -8.0, 1.2)
 	elif mode == "out":
-		var next := position + velocity * delta
+		var lateral: Vector3 = throw_from + throw_dir * (position - throw_from).dot(throw_dir) - position   # a bola converge para a linha da mira
+		var next := position + (throw_dir * velocity.length() + lateral * 12.0) * delta
 		if position.distance_to(hand) > def.length or Blocks.solid[entities.world.get_block(floori(next.x), floori(next.y), floori(next.z))]:
 			mode = "back"
 			hit.clear()
