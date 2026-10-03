@@ -277,6 +277,8 @@ func _vox_shell(slot: String, vset: String) -> bool:
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
 		mi.material_override = VoxMesh.material(0.6)
+		if t[0] != "head" and t[0] != "body":
+			mi.scale = Vector3.ONE * 1.03   # braço e perna invadem a casca do tronco com faces no mesmo plano (ombreira × gola, cós × coxa): sem isto elas brigam (z-fighting) e piscam listras
 		parts[t[1]].add_child(mi)
 		list.append(mi)
 	shells[slot] = list
