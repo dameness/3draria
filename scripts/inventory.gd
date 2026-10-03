@@ -7,6 +7,7 @@ const HOTBAR := 10
 const CURSOR := -2   # "slot" do item preso ao mouse (take_one; Player.hand)
 const ARMOR := ["head", "body", "legs"]   # slots de equipamento
 const ACC := 5                            # slots de acessório
+const MISC := 2                           # slots de equipamento diverso (Terraria: aba Equipamento): 0 gancho, 1 carrinho
 const AMMO := 4                           # slots de munição (usados antes do inventário)
 const COINS := ["copper_coin", "silver_coin", "gold_coin", "platinum_coin"]   # 100 de um valem 1 do próximo
 const COIN_VALUE := [1, 100, 10000, 1000000]   # em cobre
@@ -15,6 +16,7 @@ var item := PackedInt32Array()    # -1 = vazio
 var count := PackedInt32Array()
 var equip := PackedInt32Array([-1, -1, -1])   # armadura vestida, na ordem de ARMOR
 var acc := PackedInt32Array([-1, -1, -1, -1, -1])   # acessórios vestidos
+var misc := PackedInt32Array([-1, -1])   # gancho e carrinho equipados
 var ammo := PackedInt32Array([-1, -1, -1, -1])      # slots de munição
 var ammo_count := PackedInt32Array([0, 0, 0, 0])
 var coin := PackedInt32Array([0, 0, 0, 0])          # moedas nos slots de moeda (cobre, prata, ouro, platina)
@@ -390,6 +392,22 @@ func click_acc(k: int) -> void:
 		return
 	var old := acc[k]
 	acc[k] = cursor_id
+	cursor_id = old
+	cursor_count = 1 if old != -1 else 0
+	version += 1
+
+
+# O item cabe no slot diverso k? (0: qualquer gancho; 1: o item Minecart)
+static func misc_ok(k: int, id: int) -> bool:
+	return Items.defs[id].has("hook") if k == 0 else Items.names[id] == "minecart"
+
+
+# Clique no slot diverso k: troca com o item do cursor, se for do tipo certo.
+func click_misc(k: int) -> void:
+	if cursor_id != -1 and not misc_ok(k, cursor_id):
+		return
+	var old := misc[k]
+	misc[k] = cursor_id
 	cursor_id = old
 	cursor_count = 1 if old != -1 else 0
 	version += 1

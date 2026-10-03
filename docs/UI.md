@@ -42,7 +42,7 @@ minimapa (mapa de exploração do mundo inteiro; Tab troca retrato/sobreposiçã
 dicas com fade, cursor balança.
 Mundo de teste: **F9** abre o painel de atalhos (modal: esconde o inventário; hora, vida/mana, hardmode, chefes, viagem) e um rodapé lista as teclas.
 Criação: o botão do martelo alterna a lista completa. Ctrl (inventário fechado) liga o cursor inteligente: com ferramenta na mão e a mira no vazio, pega o bloco mais perto da linha de visada (mira dourada).
-Pendente: vanity/dye (as colunas de tinta e visual já aparecem no equipamento, como no Terraria, mas os slots são só o desenho).
+Equipamento diverso (aba Equipamento do Terraria, sem a aba): fileira extra sob os acessórios com Gancho (E usa o do slot antes dos do inventário) e Carrinho (o item Minecart equipado deixa o carrinho rápido); faltam pet, luz e montaria. Pendente: vanity/dye (as colunas de tinta e visual já aparecem no equipamento, como no Terraria, mas os slots são só o desenho).
 
 ## Menu inicial (sessão 4, a partir das imagens do dono)
 Título com o logo do Terraria (wiki, `logo` em textures.json) e lista "Um Jogador / Multijogador / Sair"; "Selecionar Personagem" e "Selecionar Mundo" com a placa azul no topo,

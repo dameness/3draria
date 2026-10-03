@@ -108,7 +108,7 @@ static func save_player(player, path: String) -> Error:
 	var equip := Array(player.inv.equip).map(func(id): return Items.names[id] if id != -1 else "")
 	var name := func(id): return Items.names[id] if id != -1 else ""
 	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "max_hp": player.max_hp, "max_mana": player.max_mana, "buffs": player.buffs, "inv": inv, "equip": equip,
-		"look": _read(path).get("look", {}), "acc": Array(player.inv.acc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
+		"look": _read(path).get("look", {}), "acc": Array(player.inv.acc).map(name), "misc": Array(player.inv.misc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
 		"coin": Array(player.inv.coin), "fav": Array(player.inv.fav)})
 
 
@@ -137,6 +137,9 @@ static func load_player(player, path: String) -> bool:
 	var acc: Array = data.get("acc", [])
 	for k in mini(acc.size(), Inventory.ACC):
 		player.inv.acc[k] = Items.ids.get(acc[k], -1)
+	var misc: Array = data.get("misc", [])
+	for k in mini(misc.size(), Inventory.MISC):
+		player.inv.misc[k] = Items.ids.get(misc[k], -1)
 	var ammo: Array = data.get("ammo", [])
 	for k in mini(ammo.size(), Inventory.AMMO):
 		player.inv.ammo[k] = Items.ids.get(ammo[k], -1)

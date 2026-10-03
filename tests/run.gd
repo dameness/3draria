@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -137,6 +137,34 @@ func run(node: Node, seconds: float) -> void:
 
 
 # Veneno e fogo nos inimigos (wiki Poisoned: 6 de vida/s; On Fire!: 4/s; sem defesa): o Poison Dart envenena, o Sunfury queima em 25%.
+# Slots de equipamento diverso: o gancho equipado vale antes dos do inventário; o Minecart equipado deixa o carrinho rápido; só entra o item do tipo certo.
+func test_misc_slots():
+	var inv := Inventory.new()
+	inv.cursor_id = Items.ids.copper_pickaxe
+	inv.cursor_count = 1
+	inv.click_misc(0)
+	check(inv.misc[0] == -1 and inv.cursor_id == Items.ids.copper_pickaxe, "slot de gancho recusa o que não é gancho")
+	inv.cursor_id = Items.ids.skeletron_hand
+	inv.click_misc(0)
+	check(inv.misc[0] == Items.ids.skeletron_hand and inv.cursor_id == -1, "gancho entra no slot de gancho")
+	inv.cursor_id = Items.ids.grappling_hook
+	inv.cursor_count = 1
+	inv.click_misc(1)
+	check(inv.misc[1] == -1, "gancho não entra no slot de carrinho")
+	inv.cursor_id = Items.ids.minecart
+	inv.click_misc(1)
+	check(inv.misc[1] == Items.ids.minecart, "Minecart entra no slot de carrinho")
+	var w := floor_world()
+	var p := make_player(w)
+	p.inv.add(Items.ids.grappling_hook, 1)
+	check(p._hook_def().range == Items.defs[Items.ids.grappling_hook].hook.range, "sem slot equipado, vale o gancho do inventário")
+	p.inv.misc[0] = Items.ids.skeletron_hand
+	check(p._hook_def().range == Items.defs[Items.ids.skeletron_hand].hook.range, "o gancho do slot vale antes do do inventário")
+	free_player(p)
+	w.free()
+	return true
+
+
 func test_debuffs():
 	var w := floor_world()
 	var p := make_player(w)
@@ -2156,7 +2184,7 @@ func test_minecart():
 	p.position = Vector3(20.5, 11.0, 24.5)
 	p.rotation.y = -PI / 2.0   # olhando para +x
 	p.mount_cart(p.nearest_track())
-	check(p.cart != null and p.cart.dir == Vector3i.RIGHT and p.position.distance_to(Vector3(20.5, 11.35, 24.5)) < 0.1, "R/direito num trilho monta virado para onde se olha")
+	check(p.cart != null and p.cart.dir == Vector3i.RIGHT and p.position.distance_to(Vector3(20.5, 10.75, 24.5)) < 0.1, "R/direito num trilho monta virado para onde se olha")
 	var z: Node3D = p.entities.spawn_enemy(p.entities.def_named("zombie"), Vector3(28.5, 11, 24.5))
 	z._ready()
 	z.hp = 500
@@ -4126,7 +4154,7 @@ func integration():
 			# Configurações: o botão do inventário pausa de verdade; os controles aplicam na hora e o Esc fecha
 			player.set_inventory(true)
 			hud._process(0.1)
-			hud.equip_root.get_children().filter(func(n): return n is Button)[0].pressed.emit()
+			hud.equip_root.get_children().filter(func(n): return n is Button and n.text == "Configurações")[0].pressed.emit()
 			hud._process(0.1)
 			check(main.get_tree().paused and player.menu_open and not player.inventory_open and hud.pause.visible, "botão Configurações: pausa de verdade (a árvore para) e fecha o inventário")
 			var sliders: Array = hud.pause.find_children("*", "HSlider", true, false)

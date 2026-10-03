@@ -123,6 +123,11 @@ func _process(delta: float) -> void:
 		arm = 2.4 if player.velocity.y > 0 else 0.6
 	parts.leg_l.rotation.x = leg
 	parts.leg_r.rotation.x = -leg if not (swimming or not grounded) else -leg * 0.6
+	if player.get("cart") != null:   # sentado no carrinho: pernas esticadas para a frente
+		parts.leg_l.rotation.x = 1.5
+		parts.leg_r.rotation.x = 1.5
+		parts.upper.rotation.x = 0.0
+		arm = 0.9
 	parts.arm_l.rotation.x = arm
 	parts.arm_l.rotation.z = -0.12 - (0.35 if not grounded and not swimming else 0.0)
 	parts.arm_r.rotation.z = 0.12 + (0.35 if not grounded and not swimming else 0.0)

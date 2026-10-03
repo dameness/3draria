@@ -8,7 +8,7 @@ const WOOD_ACCEL := 4.05
 const FAST_SPEED := 29.25
 const FAST_ACCEL := 5.4
 const RAIL := 0.05    # altura do trilho sobre o chão do bloco (chunk_mesher._track_quad)
-const SEAT := 0.3     # o jogador vai em pé no carrinho, um pouco acima do trilho
+const SEAT := -0.3    # o jogador vai sentado: o corpo afunda no carrinho (as pernas vão esticadas para a frente, ver player_model.gd)
 
 var world: Node3D
 var from: Vector3i

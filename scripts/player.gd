@@ -646,8 +646,10 @@ func use_hook(aim := Vector3.ZERO) -> void:
 	Sfx.play(entities, "swing", position + Vector3.UP, -6.0, 1.6)
 
 
-# Os números ({range, launch, pull}) do primeiro gancho do inventário, ou {}.
+# Os números ({range, launch, pull}) do gancho do slot de equipamento ou, senão, do primeiro do inventário, ou {}.
 func _hook_def() -> Dictionary:
+	if inv.misc[0] != -1:   # o gancho do slot de equipamento vale antes dos do inventário
+		return Items.defs[inv.misc[0]].hook
 	for id in inv.item:
 		if id != -1 and Items.defs[id].has("hook"):
 			return Items.defs[id].hook
@@ -1454,7 +1456,7 @@ func mount_cart(at: Vector3i) -> void:
 	var facing := Vector3i(1 if look.x > 0.0 else -1, 0, 0) if absf(look.x) > absf(look.z) else Vector3i(0, 0, 1 if look.z > 0.0 else -1)
 	cart = Minecart.new()
 	cart.world = world
-	cart.fast = inv.total(Items.ids.minecart) > 0   # carregar o item Minecart: o carrinho é mais rápido e bate mais forte
+	cart.fast = inv.total(Items.ids.minecart) > 0 or inv.misc[1] == Items.ids.minecart   # carregar o item Minecart: o carrinho é mais rápido e bate mais forte
 	cart.start(at, facing)
 	cart_model = Minecart.build_model()
 	cart_model.top_level = true
