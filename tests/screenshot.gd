@@ -308,7 +308,7 @@ func _process(_delta: float) -> bool:
 func _setup(s: Dictionary) -> void:
 	s = s.duplicate()   # SHOTS é constante: a cena pode acertar o olhar (ex.: árvore)
 	player.set_physics_process(true)
-	player.hook_state = ""
+	player._hook_release()
 	player.creative = s.has("up") or s.has("cave") or s.get("creative", false)
 	player.position = player.spawn + Vector3.UP * s.get("up", 0.0)
 	if s.has("from"):
@@ -716,7 +716,7 @@ func _setup(s: Dictionary) -> void:
 		var pitch: float = s.look.y
 		player.use_hook(Vector3(-sin(s.look.x) * cos(pitch), sin(pitch), -cos(s.look.x) * cos(pitch)).normalized())
 		player.rotation.y = s.look.x + 1.1   # a câmera de lado: a corrente não fica de ponta para o olhar
-		player.hook_time = 0.12   # congelado no meio do voo da corrente (a física do jogador fica parada para o print)
+		player.hooks[0].t = player.hooks[0].dur * 0.5   # congelado no meio do voo da corrente (a física do jogador fica parada para o print)
 		player.set_physics_process(false)
 	if s.has("fire"):   # dispara no 1º inimigo e congela o projétil a `fire` blocos dele; a câmera vai para o lado do voo
 		var t: Node3D = ent.enemies[0]

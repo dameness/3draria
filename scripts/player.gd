@@ -93,11 +93,11 @@ var cart_model: Node3D
 var cart_hit := {}            # inimigo -> segundos até o carrinho poder feri-lo de novo
 var free_yaw := 0.0           # olhar livre (3ª pessoa, segurar Alt): a câmera gira em volta do corpo; a mira e o corpo não mexem
 var free_pitch := 0.0
-var hook_state := ""          # gancho (E): "" sem gancho, "fly" a corrente indo, "pull" preso e puxando
-var hook_at := Vector3.ZERO   # onde a corrente prende (o ponto da face do bloco)
-var hook_time := 0.0          # segundos que faltam para a corrente chegar
-var hook_from := Vector3.ZERO # de onde a corrente saiu
-var hook_rope: MeshInstance3D
+var hooks: Array = []         # gancho (E): as correntes no ar ou presas: {from, at, t, dur, hit, state: "fly" indo | "hit" presa | "back" voltando sem prender}
+var hook_state := ""          # resumo de hooks: "" nenhuma, "fly" só correntes no ar, "pull" alguma presa (puxando)
+var hook_stuck := 0.0         # segundos que o puxão está encostando em algo no caminho (0,4 s assim e solta)
+var hook_nodes: Array[Node3D] = []   # uma corrente com garra por gancho, reaproveitadas
+var hook_mat: StandardMaterial3D
 var smart_cursor := false     # Ctrl liga o cursor inteligente (find_target)
 var message := ""             # aviso curto para o HUD
 var message_until := 0
@@ -177,21 +177,9 @@ func _ready() -> void:
 	add_child(highlight)
 	crack = BlockCrack.new()
 	add_child(crack)
-	hook_rope = MeshInstance3D.new()   # a corrente do gancho: um cilindro fino esticado entre a mão e a âncora
-	var rope := CylinderMesh.new()
-	rope.top_radius = 0.06
-	rope.bottom_radius = 0.06
-	rope.height = 1.0
-	rope.radial_segments = 6
-	rope.rings = 1
-	var rope_mat := StandardMaterial3D.new()
-	rope_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	rope_mat.albedo_color = Color("#e6e9ef")
-	rope.material = rope_mat
-	hook_rope.mesh = rope
-	hook_rope.top_level = true
-	hook_rope.visible = false
-	add_child(hook_rope)
+	hook_mat = StandardMaterial3D.new()
+	hook_mat.metallic = 0.5
+	hook_mat.roughness = 0.5
 	spelunker = Spelunker.new()   # os brilhos do Espeleólogo (só aparecem com o buff)
 	spelunker.world = world
 	spelunker.player = self
@@ -623,30 +611,29 @@ func _breathe(delta: float) -> void:
 		die()
 
 
-# Gancho (tecla E): o 1º item com "hook" do inventário. Solta a corrente na mira; se ela prende num bloco sólido dentro do alcance, chega depois de distância /
-# velocidade de lançamento e puxa o jogador em linha reta até o bloco (fica pendurado a HOOK_HANG dele). E de novo ou Espaço solta; a âncora quebrada também.
+# Gancho (tecla E): o do slot de equipamento ou o 1º item com "hook" do inventário. Cada toque lança uma corrente (com garra, na cor do gancho) para a mira, alcance
+# `range`, sem avisar se não alcança: sem bloco sólido à vista ela vai até o fim e volta. Presa, chega depois de distância / velocidade de lançamento e puxa o jogador
+# até a âncora (com várias, até o meio delas; fica pendurado a HOOK_HANG). `hooks` (padrão 1) = quantas ficam presas: com todas no ar/presas, o toque seguinte
+# solta a mais antiga e lança outra (`extra`: o gancho deixa lançar uma a mais). Espaço solta todas, a âncora quebrada solta a sua.
 func use_hook(aim := Vector3.ZERO) -> void:
-	if hook_state != "":
-		_hook_release()
-		return
 	var h := _hook_def()
 	if h.is_empty():
 		say("sem gancho")
 		return
+	var limit: int = h.get("hooks", 1) + (1 if h.get("extra", false) else 0)
+	while hooks.size() >= limit:
+		hooks.pop_front()
 	var dir := aim if aim != Vector3.ZERO else aim_dir()
 	var from := position + Vector3.UP * EYE
 	var hit: Dictionary = world.raycast(from, dir, h.range)
-	if hit.is_empty() or not Blocks.solid[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]:
-		say("nada ao alcance do gancho")
-		return
-	hook_from = from
-	hook_at = from + dir * hit.t + dir * 0.02
-	hook_state = "fly"
-	hook_time = hit.t / h.launch
+	var ok: bool = not hit.is_empty() and Blocks.solid[world.get_block(hit.pos.x, hit.pos.y, hit.pos.z)]
+	var dist: float = hit.t if ok else h.range
+	hooks.append({"from": from, "at": from + dir * dist + (dir * 0.02 if ok else Vector3.ZERO), "t": 0.0, "dur": dist / h.launch, "hit": ok, "state": "fly"})
+	_hook_sync()
 	Sfx.play(entities, "swing", position + Vector3.UP, -6.0, 1.6)
 
 
-# Os números ({range, launch, pull}) do gancho do slot de equipamento ou, senão, do primeiro do inventário, ou {}.
+# Os números ({range, launch, pull, color, hooks, extra}) do gancho do slot de equipamento ou, senão, do primeiro do inventário, ou {}.
 func _hook_def() -> Dictionary:
 	if inv.misc[0] != -1:   # o gancho do slot de equipamento vale antes dos do inventário
 		return Items.defs[inv.misc[0]].hook
@@ -657,40 +644,67 @@ func _hook_def() -> Dictionary:
 
 
 func _hook_release() -> void:
-	hook_state = ""
-	if hook_rope:
-		hook_rope.visible = false
+	hooks.clear()
+	_hook_sync()
+
+
+func _hook_sync() -> void:
+	hook_state = "pull" if hooks.any(func(k): return k.state == "hit") else "fly" if not hooks.is_empty() else ""
+	if hook_state == "":
+		hook_stuck = 0.0
+		for n in hook_nodes:
+			n.visible = false
 
 
 # Um passo com o gancho. Retorna true se ele controlou o movimento deste passo (puxando ou pendurado).
 func _hook_step(delta: float, jump: bool) -> bool:
-	var anchor := Vector3i(hook_at.floor())
-	if hook_state == "fly":
-		hook_time -= delta
-		if hook_time > 0.0:
-			return false
-		hook_state = "pull"
-		hook_time = 0.0
-		Sfx.play(entities, "place", hook_at, -4.0, 1.5)
-	if not Blocks.solid[world.get_block(anchor.x, anchor.y, anchor.z)] or _hook_def().is_empty():
-		_hook_release()   # a âncora foi quebrada (ou o gancho saiu do inventário)
+	var h := _hook_def()
+	if h.is_empty():
+		_hook_release()   # o gancho saiu do inventário
+		return false
+	for k in hooks.duplicate():
+		if k.state == "hit":
+			var a := Vector3i(k.at.floor())
+			if not Blocks.solid[world.get_block(a.x, a.y, a.z)]:
+				hooks.erase(k)   # a âncora foi quebrada
+			continue
+		k.t += delta
+		if k.t < k.dur:
+			continue
+		if k.state == "back":
+			hooks.erase(k)
+		elif k.hit:
+			k.state = "hit"
+			Sfx.play(entities, "place", k.at, -4.0, 1.5)
+			var held_hooks := hooks.filter(func(x): return x.state == "hit")
+			if held_hooks.size() > h.get("hooks", 1):
+				hooks.erase(held_hooks[0])   # presa a mais do que o gancho aguenta: a mais antiga solta
+		else:
+			k.state = "back"
+			k.t = 0.0   # errou: a corrente volta pelo mesmo tempo
+	_hook_sync()
+	var anchors := hooks.filter(func(x): return x.state == "hit").map(func(x): return x.at)
+	if anchors.is_empty():
 		return false
 	if jump and not jump_was:   # Espaço solta com um pulinho
 		_hook_release()
 		velocity = Vector3(velocity.x, JUMP * 0.7, velocity.z)
 		jump_was = jump
 		return false
-	var to := hook_at - (position + Vector3.UP * 1.0)
-	velocity = Vector3.ZERO if to.length() < HOOK_HANG else to.normalized() * _hook_def().pull
+	var mid := Vector3.ZERO
+	for a in anchors:
+		mid += a
+	var to: Vector3 = mid / anchors.size() - (position + Vector3.UP * 1.0)   # com várias presas, fica no meio delas
+	velocity = Vector3.ZERO if to.length() < HOOK_HANG else to.normalized() * h.pull
 	knock = Vector3.ZERO
 	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta)
 	if to.length() >= HOOK_HANG and (r[0] - position).length() < velocity.length() * delta * 0.25:
-		hook_time -= delta   # encostou em algo no caminho (hook_time conta o tempo preso): 0,4 s assim e solta
-		if hook_time < -0.4:
+		hook_stuck += delta   # encostou em algo no caminho: 0,4 s assim e solta
+		if hook_stuck > 0.4:
 			_hook_release()
 			return false
 	else:
-		hook_time = 0.0
+		hook_stuck = 0.0
 	position = r[0]
 	on_floor = r[1].y < 0
 	hit_wall = r[1].x != 0 or r[1].z != 0
@@ -700,24 +714,83 @@ func _hook_step(delta: float, jump: bool) -> bool:
 	return true
 
 
-# A corrente entre a mão e a âncora (ou a ponta que está indo).
+# Corrente com garra de um gancho: cilindro fino esticado da mão à ponta e três garras na ponta, na cor do gancho (`color` em items.json).
+func _hook_node() -> Node3D:
+	var n := Node3D.new()
+	n.top_level = true
+	var chain := MeshInstance3D.new()
+	chain.name = "Chain"
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.035
+	cyl.bottom_radius = 0.035
+	cyl.height = 1.0
+	cyl.radial_segments = 6
+	cyl.rings = 1
+	chain.mesh = cyl
+	chain.material_override = hook_mat
+	n.add_child(chain)
+	var claw := Node3D.new()
+	claw.name = "Claw"
+	var palm := MeshInstance3D.new()
+	var sph := SphereMesh.new()
+	sph.radius = 0.07
+	sph.height = 0.14
+	sph.radial_segments = 8
+	sph.rings = 4
+	palm.mesh = sph
+	palm.material_override = hook_mat
+	claw.add_child(palm)
+	var prong := CylinderMesh.new()
+	prong.top_radius = 0.0
+	prong.bottom_radius = 0.035
+	prong.height = 0.24
+	prong.radial_segments = 5
+	for i in 3:
+		var arm := Node3D.new()
+		arm.rotation.y = i * TAU / 3.0
+		var tooth := MeshInstance3D.new()
+		tooth.mesh = prong
+		tooth.material_override = hook_mat
+		tooth.position = Vector3(0.1, -0.02, 0)
+		tooth.rotation.z = -(PI - 0.8)   # as garras se curvam para trás, como a âncora de um gancho
+		arm.add_child(tooth)
+		claw.add_child(arm)
+	n.add_child(claw)
+	add_child(n)
+	return n
+
+
+# As correntes entre a mão e a âncora (ou a ponta que está indo ou voltando), cada uma com a garra na ponta.
 func _update_rope() -> void:
-	if hook_state == "" or hook_rope == null:
+	if hooks.is_empty():
 		return
+	var h := _hook_def()
+	if h.is_empty():
+		return
+	hook_mat.albedo_color = Color(h.get("color", "#aab0ba"))
 	var hand := position + Vector3(0, 1.25, 0)
-	var end := hook_at
-	if hook_state == "fly":
-		var total := maxf(hook_at.distance_to(hook_from), 0.01)
-		var sent := clampf(1.0 - hook_time * 25.8 / total, 0.0, 1.0)
-		end = hook_from.lerp(hook_at, sent)
-	var dir := end - hand
-	if dir.length() < 0.05:
-		hook_rope.visible = false
-		return
-	hook_rope.visible = true
-	var up := dir.normalized()
-	var basis := Basis(Vector3.RIGHT, PI) if up.dot(Vector3.UP) < -0.9999 else Basis(Quaternion(Vector3.UP, up))
-	hook_rope.global_transform = Transform3D(basis * Basis.from_scale(Vector3(1, dir.length(), 1)), (hand + end) / 2.0)
+	while hook_nodes.size() < hooks.size():
+		hook_nodes.append(_hook_node())
+	for i in hook_nodes.size():
+		var n := hook_nodes[i]
+		if i >= hooks.size():
+			n.visible = false
+			continue
+		var k: Dictionary = hooks[i]
+		var end: Vector3 = k.at
+		if k.state != "hit":
+			var sent := clampf(k.t / maxf(k.dur, 0.001), 0.0, 1.0)
+			end = k.from.lerp(k.at, sent if k.state == "fly" else 1.0 - sent)
+		var dir := end - hand
+		n.visible = dir.length() >= 0.05
+		if not n.visible:
+			continue
+		var up := dir.normalized()
+		var basis := Basis(Vector3.RIGHT, PI) if up.dot(Vector3.UP) < -0.9999 else Basis(Quaternion(Vector3.UP, up))
+		n.global_transform = Transform3D(basis, hand)
+		var chain: Node3D = n.get_node("Chain")
+		chain.transform = Transform3D(Basis.from_scale(Vector3(1, dir.length(), 1)), Vector3(0, dir.length() / 2.0, 0))
+		n.get_node("Claw").position = Vector3(0, dir.length(), 0)
 
 
 # Partículas do movimento: poeira dos passos e do pouso (na cor do chão), respingo ao entrar ou sair da água e bolhas nadando.

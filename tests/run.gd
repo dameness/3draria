@@ -5205,21 +5205,21 @@ func test_hook():
 		w.set_block(32, y, 24, Blocks.ids.stone)   # a âncora: uma parede a ~8 blocos
 	var aim: Vector3 = (Vector3(32.0, 15.5, 24.5) - (p.position + Vector3.UP * p.EYE)).normalized()
 	p.use_hook(aim)
-	check(p.hook_state == "fly" and absf(p.hook_time - p.hook_at.distance_to(p.hook_from) / hook.launch) < 0.001, "a corrente sai e leva distância / velocidade para chegar")
+	check(p.hook_state == "fly" and p.hooks.size() == 1 and absf(p.hooks[0].dur - p.hooks[0].at.distance_to(p.hooks[0].from) / hook.launch) < 0.001, "a corrente sai e leva distância / velocidade para chegar")
 	for i in 10:
 		p.step(dt, Vector3.ZERO, false)
 	check(p.hook_state == "fly", "ainda voando aos 0,17 s")
 	for i in 12:
 		p.step(dt, Vector3.ZERO, false)
 	check(p.hook_state == "pull", "prendeu")
-	var d0: float = p.hook_at.distance_to(p.position + Vector3.UP)
+	var d0: float = p.hooks[0].at.distance_to(p.position + Vector3.UP)
 	for i in 5:
 		p.step(dt, Vector3.ZERO, false)
-	var d1: float = p.hook_at.distance_to(p.position + Vector3.UP)
+	var d1: float = p.hooks[0].at.distance_to(p.position + Vector3.UP)
 	check(absf((d0 - d1) / (5 * dt) - hook.pull) < 1.5, "puxa na velocidade do gancho (%.1f de %.1f blocos/s)" % [(d0 - d1) / (5 * dt), hook.pull])
 	for i in 60:
 		p.step(dt, Vector3.ZERO, false)
-	var hang: float = p.hook_at.distance_to(p.position + Vector3.UP)
+	var hang: float = p.hooks[0].at.distance_to(p.position + Vector3.UP)
 	check(p.hook_state == "pull" and hang < 1.6 and p.velocity == Vector3.ZERO and not p.overlaps_solid(p.position), "chega e fica pendurado a ~1,4 bloco da âncora (%.2f)" % hang)
 	var y0 := p.position.y
 	for i in 30:
@@ -5227,13 +5227,14 @@ func test_hook():
 	check(absf(p.position.y - y0) < 0.01, "pendurado não cai")
 	p.step(dt, Vector3.ZERO, true)
 	check(p.hook_state == "" and p.velocity.y > 0.0, "Espaço solta com um pulinho")
-	# E de novo solta; âncora quebrada solta; fora do alcance não prende
+	# E de novo lança outra corrente (gancho de uma ponta: a antiga solta); âncora quebrada solta; sem bloco ao alcance ela vai e volta, sem aviso
 	p.position = Vector3(24.5, 11.0, 24.5)
 	p.velocity = Vector3.ZERO
 	p.jump_was = false
 	p.use_hook(aim)
-	p.use_hook(aim)
-	check(p.hook_state == "", "E com o gancho solto")
+	var first: Dictionary = p.hooks[0]
+	p.use_hook(Vector3.UP)
+	check(p.hooks.size() == 1 and p.hooks[0] != first and not p.hooks[0].hit, "E de novo lança outra corrente para a mira (a antiga solta, gancho de uma ponta)")
 	p.use_hook(aim)
 	for i in 30:
 		p.step(dt, Vector3.ZERO, false)
@@ -5244,23 +5245,48 @@ func test_hook():
 	check(p.hook_state == "", "a âncora quebrada solta o gancho")
 	p.position = Vector3(24.5, 11.0, 24.5)
 	w.set_block(40, 12, 24, Blocks.ids.stone)   # 15 blocos: fora do alcance
+	p.message = ""
 	p.use_hook(Vector3.RIGHT)
-	check(p.hook_state == "" and p.message.contains("alcance"), "fora do alcance não prende")
+	check(p.hook_state == "fly" and not p.hooks[0].hit and p.message == "", "fora do alcance a corrente sai, sem aviso")
+	for i in 60:
+		p.step(dt, Vector3.ZERO, false)
+	check(p.hooks.is_empty() and p.hook_state == "", "e volta sem prender")
 	p.use_hook(Vector3.UP)
-	check(p.hook_state == "", "para o céu (nenhum bloco) não prende")
+	check(not p.hooks[0].hit, "para o céu (nenhum bloco) não prende")
 	w.set_block(28, 12, 24, Blocks.ids.torch)
 	p.use_hook(Vector3.RIGHT)
-	check(p.hook_state == "", "tocha não segura o gancho (só bloco sólido)")
+	check(not p.hooks[p.hooks.size() - 1].hit, "tocha não segura o gancho (só bloco sólido)")
+	p._hook_release()
+	# vários ganchos: Skeletron Hand segura 2 (o terceiro toque solta o mais antigo); Slime Hook segura 3 e lança um a mais
+	p.inv.misc[0] = Items.ids.skeletron_hand
+	p.position = Vector3(24.5, 11.0, 24.5)
+	for y in range(12, 15):
+		w.set_block(24, y, 30, Blocks.ids.stone)   # parede ao sul (+z)
+		w.set_block(18, y, 24, Blocks.ids.stone)   # parede a oeste (−x)
+	p.use_hook(Vector3(0, 0.1, 1.0).normalized())
+	p.use_hook(Vector3(-1.0, 0.1, 0).normalized())
+	for i in 40:
+		p.step(dt, Vector3.ZERO, false)
+	check(p.hooks.size() == 2 and p.hooks.all(func(k): return k.state == "hit"), "Skeletron Hand prende 2 ganchos ao mesmo tempo")
+	var oldest: Dictionary = p.hooks[0]
+	p.use_hook(Vector3.UP)
+	check(p.hooks.size() == 2 and not oldest in p.hooks, "com todos no limite, o toque solta o mais antigo e lança outro")
+	p._hook_release()
+	p.inv.misc[0] = Items.ids.slime_hook
+	for i in 5:
+		p.use_hook(Vector3.UP)
+	check(p.hooks.size() == 4, "Slime Hook: 3 presos e mais 1 no ar (%d)" % p.hooks.size())
+	p._hook_release()
+	p.inv.misc[0] = -1
 	# queda: o gancho zera a queda
 	p.position = Vector3(24.5, 11.0 + 40.0, 24.5)
 	p.last_pos = p.position
 	p.hp = float(p.max_hp)
-	p.hook_state = ""
+	p._hook_release()
 	p.step(dt, Vector3.ZERO, false)
-	p.hook_state = "pull"
-	p.hook_at = Vector3(24.5, 11.0 + 39.0, 25.5)
 	w.set_block(24, 50, 25, Blocks.ids.stone)
-	p.hook_at = Vector3(24.5, 50.5, 25.5)
+	p.hooks = [{"from": p.position, "at": Vector3(24.5, 50.5, 25.5), "t": 1.0, "dur": 0.1, "hit": true, "state": "hit"}]
+	p._hook_sync()
 	for i in 5:
 		p.step(dt, Vector3.ZERO, false)
 	check(p.fall_top == p.position.y, "puxado pelo gancho a queda recomeça")
