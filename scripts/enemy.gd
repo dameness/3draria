@@ -115,10 +115,10 @@ func _process(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	tick_debuffs(delta)   # a vitrine do mundo de teste também sofre veneno e fogo
 	if display:
 		return
 	immune -= delta
-	tick_debuffs(delta)
 	think(delta)
 	move(delta)
 	var p: Node3D = entities.player

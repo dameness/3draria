@@ -154,6 +154,14 @@ func test_debuffs():
 	var hp1: int = z.hp
 	run(z, 2.05)
 	check(hp1 - z.hp >= 3 and hp1 - z.hp <= 5, "fogo tira ~4 de vida por segundo (%d)" % (hp1 - z.hp))
+	var vit: Node3D = ent.spawn_enemy(enemy_def("skeleton"), Vector3(30, 11, 28.5))
+	vit._ready()
+	vit.display = true   # a vitrine do mundo de teste também sofre veneno
+	vit.afflict("poisoned", 5.0)
+	var vhp: int = vit.hp
+	run(vit, 1.05)
+	check(vhp - vit.hp >= 5, "inimigo da vitrine (parado) também perde vida com o veneno (%d)" % (vhp - vit.hp))
+	ent.remove_enemy(vit)
 	# dardo: dispara de Blowpipe e envenena (100%)
 	z.position = Vector3(26, 11, 24.5)
 	p.inv.add(Items.ids.poison_dart, 3)
@@ -4062,6 +4070,13 @@ func integration():
 			player._process(0)
 			var model: Node3D = player.get_node("Model")
 			check(player.cam.position.distance_to(Vector3(0, player.EYE, 0)) > 3.5 and model.visible and not hand.visible, "V: 3ª pessoa afasta a câmera e mostra o corpo")
+			var ray: Vector3 = -player.cam.global_basis.z   # mira em 3ª pessoa: o tiro sai do olho e acerta o que a cruz (raio da câmera) acerta, apesar do ombro
+			var tz: Node3D = player.entities.spawn_enemy(player.entities.def_named("zombie"), player.cam.global_position + ray * 8.0 - Vector3(0, 0.9, 0))
+			tz.set_physics_process(false)
+			var tbox := AABB(tz.position + Vector3(-tz.half, 0, -tz.half), Vector3(tz.half * 2, tz.tall, tz.half * 2))
+			player.aim_frame = -1
+			check(tbox.intersects_ray(player.eye(), player.aim_dir()) != null, "3ª pessoa: o disparo do olho acerta o inimigo sob a cruz")
+			player.entities.remove_enemy(tz)
 			player.use_len = 0.4
 			var arm_z: Array = []
 			for cd in [0.36, 0.04]:   # começo e fim do golpe

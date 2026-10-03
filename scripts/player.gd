@@ -83,6 +83,8 @@ var auto_on := false          # Auto Select ligado (o HUD abre o slot extra ao l
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
+var aim_frame := -1          # quadro em que aim_3p foi calculado (aim_dir é chamada várias vezes por quadro)
+var aim_3p := Vector3.ZERO
 var cart: Minecart = null     # andando de carrinho (R ou botão direito num trilho): o carrinho manda no movimento
 var cart_model: Node3D
 var cart_hit := {}            # inimigo -> segundos até o carrinho poder feri-lo de novo
@@ -339,7 +341,33 @@ func find_target(from: Vector3, dir: Vector3) -> Dictionary:
 func aim_dir() -> Vector3:
 	if cursor_hand() and is_inside_tree():   # com o mouse solto e um item no cursor a mira é o ponteiro na tela
 		return cam.project_ray_normal(get_viewport().get_mouse_position())
+	if third_person and is_inside_tree():
+		if aim_frame != Engine.get_process_frames() and free_yaw == 0.0 and free_pitch == 0.0:   # no olhar livre (Alt) a mira fica como estava
+			aim_frame = Engine.get_process_frames()
+			aim_3p = _aim_third()
+		if aim_3p != Vector3.ZERO:
+			return aim_3p
 	return Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD
+
+
+# 3ª pessoa: a câmera fica atrás e ao lado do ombro, então a mira do olho (paralela à câmera) passaria ao lado da cruz. Mira do olho até o ponto
+# que a cruz (raio da câmera) acerta: o primeiro bloco ou inimigo, ou 60 blocos adiante. ZERO = sem ponto útil (usa a mira reta).
+func _aim_third() -> Vector3:
+	var from := cam.global_position
+	var dir := -cam.global_basis.z
+	var reach := 60.0
+	var hit: Dictionary = world.raycast(from, dir, reach)
+	if not hit.is_empty():
+		reach = hit.t
+	for e in entities.enemies:
+		if e.def.ai == "npc":
+			continue
+		var w: float = e.half + PAD
+		var at = AABB(e.position + Vector3(-w, -PAD, -w), Vector3(2.0 * w, e.tall + 2.0 * PAD, 2.0 * w)).intersects_ray(from, dir)
+		if at != null and from.distance_to(at) < reach:
+			reach = from.distance_to(at)
+	var to := (from + dir * reach) - eye()
+	return to.normalized() if to.length() > 0.5 else Vector3.ZERO
 
 
 func eye() -> Vector3:
