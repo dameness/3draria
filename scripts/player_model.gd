@@ -303,11 +303,17 @@ func _dress() -> void:
 	spark_node = null
 	for n in hair_nodes:
 		n.visible = worn[0] < 0   # o cabelo não atravessa o capacete
+	for e in eyes:
+		e.visible = true
 	for k in Inventory.ARMOR.size():
 		var id: int = worn[k]
 		var vset: String = Items.sets.get(Items.defs[id].get("set", ""), {}).get("model", "") if id >= 0 else ""
 		if vset != "":
 			_vox_shell(Inventory.ARMOR[k], vset)
+			var spec: Dictionary = VoxRecipes.specs().get(vset, {})
+			if Inventory.ARMOR[k] == "head" and (spec.get("recipe") == "armor_set" or spec.get("closed", false)):
+				for e in eyes:
+					e.visible = false   # capacete fechado: os olhos do rosto ficariam no mesmo plano da casca (z-fighting); o capacete traz os seus
 
 
 # Casca voxel de `vset` para o espaço `slot`: uma malha por articulação que a peça cobre, com o encaixe no pivô. false se o modelo não existe.
