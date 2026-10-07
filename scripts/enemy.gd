@@ -754,5 +754,6 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false, foe := false)
 				picked[d.pick] = true
 			if rng.randf() < d.chance:
 				entities.spawn_drop(entities.drop_id(d.item), rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
+		EnemyModel.death(self)
 		entities.remove_enemy(self)
 	return taken

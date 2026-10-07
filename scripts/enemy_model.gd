@@ -9,16 +9,28 @@ class_name EnemyModel
 #   brain    cérebro rosado com dobras, olhos e tentáculos (Brain of Cthulhu).
 #   worm     segmento de verme (esfera com anéis; cabeça com mandíbula, rabo mais fino), centrado na origem; enemy.gd gira inteiro.
 #   humanoid corpo do jogador (player_model.gd) com as cores de "colors" e braços estendidos.
+#   bb:nome  modelo feito no Blockbench (assets/models/bb/nome.glb, só em sessão local, fora do git): ossos nomeados e animações idle, move,
+#            attack, hurt, death (+ phase2) tocadas por animate(); sem o .glb vale o "fallback" do def (um dos modelos acima).
 #   (outro)  sprite da wiki extrudado com espessura; sem sprite, caixa colorida.
 # A frente de todos é -Z; enemy.gd gira o nó para o jogador.
 
 const PlayerModel := preload("res://scripts/player_model.gd")
+const BB_DIR := "res://assets/models/bb/"
+const BB_SCALE := 0.6   # Blockbench: 1 unidade = 1 texel = 1 voxel (0,0375 bloco), e o glTF sai dividido por 16
+const LOOPED := ["idle", "move", "attack", "phase2"]
+static var _bb := {}    # nome → cena do .glb já lida (null = arquivo não existe)
 
 
 static func build(def: Dictionary) -> Node3D:
 	var root := Node3D.new()
 	var size: Array = def.size
-	match def.get("model", ""):
+	var kind: String = def.get("model", "")
+	if kind.begins_with("bb:"):
+		var bb := _bb_model(kind.substr(3), def)
+		if bb:
+			return bb
+		kind = def.get("fallback", "")
+	match kind:
 		"eye":
 			_eye(root, size[1] / 2.0, def)
 		"slime":
@@ -64,6 +76,40 @@ static func build(def: Dictionary) -> Node3D:
 				root.add_child(m)
 			else:
 				_part(root, BoxMesh.new(), Vector3(size[0], size[1], size[0]), Color(def.color), Vector3(0, size[1] / 2.0, 0))
+	return root
+
+
+# Modelo do Blockbench: o .glb é lido uma vez (GLTFDocument, sem import do editor) e cada inimigo leva uma cópia. "look": o modelo todo
+# gira para o jogador (nó Look no centro do corpo, como o olho procedural); senão ele fica com os pés na origem.
+static func _bb_model(name: String, def: Dictionary) -> Node3D:
+	if not _bb.has(name):
+		var scene: Node = null
+		var st := GLTFState.new()
+		var doc := GLTFDocument.new()
+		if FileAccess.file_exists(BB_DIR + name + ".glb") and doc.append_from_file(BB_DIR + name + ".glb", st) == OK:
+			scene = doc.generate_scene(st)
+			var ap := scene.find_child("AnimationPlayer", true, false) as AnimationPlayer
+			if ap == null:   # .glb sem animações (modelo ainda parado)
+				ap = AnimationPlayer.new()
+				ap.name = "AnimationPlayer"
+				scene.add_child(ap)
+			for a in ap.get_animation_list():
+				ap.get_animation(a).loop_mode = Animation.LOOP_LINEAR if a in LOOPED else Animation.LOOP_NONE
+		_bb[name] = scene
+	if _bb[name] == null:
+		return null
+	var root := Node3D.new()
+	var holder: Node3D = root
+	if def.get("look", false):
+		holder = Node3D.new()
+		holder.name = "Look"
+		holder.position.y = def.size[1] / 2.0
+		root.add_child(holder)
+	var inner: Node3D = _bb[name].duplicate()
+	inner.scale = Vector3.ONE * BB_SCALE
+	holder.add_child(inner)
+	root.set_meta("ap", inner.find_child("AnimationPlayer", true, false))
+	set_phase(root, 1)
 	return root
 
 
@@ -372,6 +418,62 @@ static func animate(model: Node3D, enemy: Node3D, target: Vector3, t: float) -> 
 
 static func set_phase(model: Node3D, phase: int) -> void:
 	var look := model.get_node_or_null("Look")
-	if look:
+	if model.has_meta("ap"):   # Blockbench: grupos iris (fase 1) e mouth (fase 2)
+		var iris := model.find_child("iris", true, false)
+		var mouth := model.find_child("mouth", true, false)
+		if iris and mouth:
+			iris.visible = phase == 1
+			mouth.visible = phase == 2
+	elif look:
 		look.get_node("Iris").visible = phase == 1
 		look.get_node("Mouth").visible = phase == 2
+
+
+# Animação do modelo bb pelo estado da IA: hurt (uma vez, ao levar o golpe) > attack (investida / encostado no jogador) > phase2 > move > idle.
+static func _clip(model: Node3D, enemy: Node3D, target: Vector3) -> void:
+	var ap: AnimationPlayer = model.get_meta("ap")
+	if ap == null:
+		return
+	var hit: bool = enemy.flash > model.get_meta("flash", 0.0)
+	model.set_meta("flash", enemy.flash)
+	if hit and ap.has_animation("hurt"):
+		ap.play("hurt", 0.05)
+		return
+	if ap.current_animation == "hurt" and ap.is_playing():
+		return
+	var clip := clip_name(enemy, target)
+	if clip == "phase2" and not ap.has_animation(clip):
+		clip = "move"
+	if ap.has_animation(clip) and (ap.current_animation != clip or not ap.is_playing()):
+		ap.play(clip, 0.2)
+
+
+# Clipe de repouso/andar/ataque pelo estado da IA (o hurt é um disparo à parte, em _clip).
+static func clip_name(enemy: Node3D, target: Vector3) -> String:
+	var near := Vector2(target.x - enemy.position.x, target.z - enemy.position.z).length() < 1.5
+	if enemy.mode == "dash" or (near and enemy.def.ai == "walk" and not enemy.display):
+		return "attack"
+	if enemy.phase == 2:
+		return "phase2"
+	if Vector2(enemy.velocity.x, enemy.velocity.z).length() > 0.3 or enemy.velocity.length() > 3.0:
+		return "move"
+	return "idle"
+
+
+# Morte: o modelo sai do inimigo (que some já) e toca "death" no mundo; depois se apaga.
+static func death(enemy: Node3D) -> void:
+	var m: Node3D = enemy.model
+	if m == null or not m.has_meta("ap") or not enemy.entities.is_inside_tree():
+		return
+	var ap: AnimationPlayer = m.get_meta("ap")
+	if ap == null or not ap.has_animation("death"):
+		return
+	for mi in m.find_children("", "MeshInstance3D", true, false):
+		mi.material_overlay = null
+	var at := m.global_transform
+	enemy.remove_child(m)
+	enemy.entities.add_child(m)
+	m.global_transform = at
+	enemy.model = null
+	ap.play("death", 0.05)
+	enemy.entities.get_tree().create_timer(ap.get_animation("death").length + 0.6).timeout.connect(m.queue_free)

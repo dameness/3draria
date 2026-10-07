@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -506,6 +506,76 @@ func test_armor():
 	return true
 
 
+class FakeFoe extends Node3D:
+	var flash := 0.0
+	var velocity := Vector3.ZERO
+	var mode := "hover"
+	var phase := 1
+	var display := false
+	var def := {"ai": "walk"}
+
+
+# Modelos do Blockbench (.glb, só em sessão local): sem o arquivo vale o fallback; com ele, ossos, animações com nome fixo, loops sem salto, escala e escolha do clipe.
+func test_bb_models():
+	var d := {"name": "x", "ai": "hop", "size": [1.0, 1.0], "color": "#88aa88", "model": "bb:nao_existe", "fallback": "slime"}
+	var f := EnemyModel.build(d)
+	check(f.find_children("", "MeshInstance3D", true, false).size() > 0 and not f.has_meta("ap"), "sem o .glb o modelo procedural (fallback) entra no lugar")
+	f.free()
+	var ent: Node3D = load("res://scripts/entities.gd").new()
+	ent.load_defs()
+	for def in ent.defs:
+		if not def.get("model", "").begins_with("bb:") or not FileAccess.file_exists(EnemyModel.BB_DIR + def.model.substr(3) + ".glb"):
+			continue
+		var m := EnemyModel.build(def)
+		var ap: AnimationPlayer = m.get_meta("ap")
+		var want := ["idle", "move", "attack", "hurt", "death"] + (["phase2"] if def.has("phase2") else [])
+		for a in want:
+			check(ap.has_animation(a), "%s: animação %s" % [def.name, a])
+		for a in ["idle", "move", "attack", "phase2"]:
+			if not ap.has_animation(a):
+				continue
+			var an := ap.get_animation(a)
+			var jump := 0.0
+			for t in an.get_track_count():
+				match an.track_get_type(t):
+					Animation.TYPE_POSITION_3D:
+						jump = maxf(jump, (an.position_track_interpolate(t, 0.0) - an.position_track_interpolate(t, an.length)).length())
+					Animation.TYPE_ROTATION_3D:
+						jump = maxf(jump, an.rotation_track_interpolate(t, 0.0).angle_to(an.rotation_track_interpolate(t, an.length)))
+			check(an.loop_mode == Animation.LOOP_LINEAR and jump < 0.01, "%s/%s: loop sem salto (%.3f)" % [def.name, a, jump])
+		var box := AABB()
+		for mi in m.find_children("", "MeshInstance3D", true, false):
+			box = box.merge(mi.get_aabb()) if box.size != Vector3.ZERO else mi.get_aabb()
+		box.size *= EnemyModel.BB_SCALE   # (as cenas dos testes ficam fora da árvore: sem transform global)
+		check(absf(box.size.x - def.size[0]) < def.size[0] * 0.35 or absf(box.size.y - def.size[1]) < def.size[1] * 0.35, "%s: tamanho do modelo bate com o hitbox (%s)" % [def.name, box.size])
+		var foe := FakeFoe.new()
+		foe.def.ai = def.ai
+		var at := Vector3(0, 0, -20)
+		check(EnemyModel.clip_name(foe, at) == "idle", "%s: parado toca idle" % def.name)
+		foe.velocity = Vector3(5, 0, 0)
+		check(EnemyModel.clip_name(foe, at) == "move", "%s: andando toca move" % def.name)
+		foe.mode = "dash"
+		check(EnemyModel.clip_name(foe, at) == "attack", "%s: investida toca attack" % def.name)
+		foe.mode = "hover"
+		foe.phase = 2
+		check(EnemyModel.clip_name(foe, at) == "phase2", "%s: fase 2 toca phase2" % def.name)
+		foe.free()
+		m.queue_free()
+	var eye := EnemyModel.build(ent.def_named("eye_of_cthulhu"))
+	EnemyModel.set_phase(eye, 2)
+	if eye.has_meta("ap"):
+		check(not eye.find_child("iris", true, false).visible and eye.find_child("mouth", true, false).visible, "bb fase 2: íris vira boca")
+	eye.free()
+	return true
+
+
+# Cópia do def com o modelo procedural (o "fallback"), para os testes não dependerem do .glb do Blockbench (só existe em sessão local).
+func procedural(d: Dictionary) -> Dictionary:
+	var c := d.duplicate()
+	c.model = d.get("fallback", d.model)
+	return c
+
+
 func test_enemy_models():
 	var ent: Node3D = load("res://scripts/entities.gd").new()
 	ent.load_defs()
@@ -513,13 +583,13 @@ func test_enemy_models():
 		var m := EnemyModel.build(d)
 		check(m.find_children("", "MeshInstance3D", true, false).size() > 0 or m.get_node_or_null("Body") != null, "%s tem modelo 3D" % d.name)
 		m.free()
-	var eye := EnemyModel.build(ent.def_named("eye_of_cthulhu"))
+	var eye := EnemyModel.build(procedural(ent.def_named("eye_of_cthulhu")))
 	EnemyModel.set_phase(eye, 2)
 	check(not eye.get_node("Look/Iris").visible and eye.get_node("Look/Mouth").visible, "fase 2: íris vira boca")
 	eye.free()
 	check(ent.def_named("the_hungry").model == "hungry" and EnemyModel.build(ent.def_named("the_hungry")).find_children("", "MeshInstance3D", true, false).size() > 20, "The Hungry é carne com boca, não um olho")
 	check(Items.title("brain_of_cthulhu") == "Brain of Cthulhu" and Items.title("the_rotted_fork") == "The Rotted Fork" and Items.title("wand_of_sparking") == "Wand of Sparking", "nomes em title case da wiki")
-	check(ent.def_named("zombie").model == "humanoid", "zumbi usa o corpo humanoide")
+	check(ent.def_named("zombie").fallback == "humanoid", "zumbi usa o corpo humanoide quando não há o .glb")
 	var icon := Items.icon_texture(Items.ids.copper_pickaxe, ImageTexture.create_from_image(Atlas.build(Blocks.textures)))
 	var small: Array = ItemModel.for_item(Items.ids.copper_pickaxe, icon, 0.4)
 	var big: Array = ItemModel.for_item(Items.ids.copper_pickaxe, icon, 0.9)
@@ -1679,7 +1749,7 @@ func test_npc_walk():
 			closed = true
 	check(opened and closed and guide.position.x < 31.5, "abre a porta, passa e a fecha atrás de si (x=%.2f)" % guide.position.x)
 	var m := EnemyModel.build(guide.def)
-	var z := EnemyModel.build(enemy_def("zombie"))
+	var z := EnemyModel.build(procedural(enemy_def("zombie")))
 	check(not m.get_node("Body").arms_forward and m.get_node("Body").townsfolk and z.get_node("Body").arms_forward, "habitante de braços soltos; o zumbi segue de braços esticados")
 	m.free()
 	z.free()

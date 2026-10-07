@@ -1,7 +1,8 @@
 extends SceneTree
 # Folha de modelos voxel (sem GPU): cada linha = o sprite da wiki + o modelo em 4 ângulos (frente, lado, 3/4, costas).
 # Uso: .tools/godot --headless -s tests/model_preview.gd [-- alvo ...]  → textures/model_sheet.png
-# Alvos: nome de item (copper_pickaxe), `block:living_loom`, `body`, `armor:molten` (corpo vestido com o conjunto); `@2` no fim aproxima
+# Alvos: `enemy:zombie` / `enemy2:eye_of_cthulhu` (inimigo com .glb do Blockbench, fase 1 / 2; grava também textures/enemy_anims.png com um quadro de cada
+# animação), nome de item (copper_pickaxe), `block:living_loom`, `body`, `armor:molten` (corpo vestido com o conjunto); `@2` no fim aproxima
 # a parte de cima (ex.: `armor:molten@2`). Sem alvo: os pilotos.
 # Antes de desenhar, refaz os .vox derivados (scripts/voxel/build.gd), então a folha mostra o que o jogo carregaria.
 # Rasterizador de CPU ortográfico com z-buffer; emissivo (alfa 0) sai mais claro e sem sombra.
@@ -34,8 +35,10 @@ func render(parts: Array, yaw: float, zoom := 1.0) -> Image:
 		var a: Array = p[0].surface_get_arrays(0)
 		var v: PackedVector3Array = a[Mesh.ARRAY_VERTEX]
 		var nr: PackedVector3Array = a[Mesh.ARRAY_NORMAL]
-		var col: PackedColorArray = a[Mesh.ARRAY_COLOR]
+		var col: PackedColorArray = a[Mesh.ARRAY_COLOR] if a[Mesh.ARRAY_COLOR] != null else PackedColorArray()
 		var ix: PackedInt32Array = a[Mesh.ARRAY_INDEX]
+		var uv: PackedVector2Array = a[Mesh.ARRAY_TEX_UV] if a[Mesh.ARRAY_TEX_UV] != null else PackedVector2Array()
+		var tex: Image = p[2] if p.size() > 2 else null
 		var xf: Transform3D = p[1]
 		for t in range(0, ix.size(), 3):
 			var q := []
@@ -62,8 +65,13 @@ func render(parts: Array, yaw: float, zoom := 1.0) -> Image:
 					if z <= zb[y * SIZE + x]:
 						continue
 					zb[y * SIZE + x] = z
-					var cc: Color = col[ix[t]] * w0 + col[ix[t + 1]] * w1 + col[ix[t + 2]] * w2
-					out.set_pixel(x, y, Color(minf(cc.r * 1.15, 1), minf(cc.g * 1.15, 1), minf(cc.b * 1.15, 1)) if col[ix[t]].a < 0.5 else Color(cc.r * shade, cc.g * shade, cc.b * shade))
+					var cc := Color.WHITE
+					if tex and not uv.is_empty():
+						var tc: Vector2 = uv[ix[t]] * w0 + uv[ix[t + 1]] * w1 + uv[ix[t + 2]] * w2
+						cc = tex.get_pixel(clampi(int(tc.x * tex.get_width()), 0, tex.get_width() - 1), clampi(int(tc.y * tex.get_height()), 0, tex.get_height() - 1))
+					elif not col.is_empty():
+						cc = col[ix[t]] * w0 + col[ix[t + 1]] * w1 + col[ix[t + 2]] * w2
+					out.set_pixel(x, y, Color(minf(cc.r * 1.15, 1), minf(cc.g * 1.15, 1), minf(cc.b * 1.15, 1)) if not col.is_empty() and col[ix[t]].a < 0.5 else Color(cc.r * shade, cc.g * shade, cc.b * shade))
 	return out
 
 
@@ -110,7 +118,26 @@ func figure(set := "") -> Array:
 	return list
 
 
-func _init() -> void:
+# Modelo bb na pose atual: [[malha, transform no quadro do modelo, imagem da textura]].
+func bb_parts(m: Node3D) -> Array:
+	var list := []
+	for mi in m.find_children("", "MeshInstance3D", true, false):
+		if not mi.is_visible_in_tree():
+			continue
+		var img: Image = mi.get_active_material(0).albedo_texture.get_image()
+		if img.is_compressed():
+			img.decompress()
+		list.append([mi.mesh, m.global_transform.affine_inverse() * mi.global_transform, img])
+	return list
+
+
+func pose(m: Node3D, anim: String, k: float) -> void:
+	var ap: AnimationPlayer = m.get_meta("ap")
+	ap.play(anim)
+	ap.seek(ap.get_animation(anim).length * k, true)
+
+
+func _process(_delta: float) -> bool:   # no primeiro quadro, com a árvore rodando (a animação do .glb precisa dela)
 	Blocks.load_pack()
 	Items.load_pack()
 	VoxRecipes.clear_cache()
@@ -121,6 +148,7 @@ func _init() -> void:
 	if names.is_empty():
 		names = ["block:living_loom", "body", "armor:molten", "armor:molten@1.6", "copper_pickaxe", "terra_blade"]
 	var rows := []
+	var anim_rows := {}
 	for target in names:
 		var n: String = target.get_slice("@", 0)
 		var row := {"sprite": null, "parts": [], "front": PI, "zoom": float(target.get_slice("@", 1)) if "@" in target else 1.0}
@@ -131,6 +159,23 @@ func _init() -> void:
 			tiles = Blocks.model_size[b] if Blocks.model_size[b] != Vector2.ZERO else tiles
 			row.sprite = VoxRecipes.sprite(spec.get("wiki", ""))
 			row.parts = [[VoxRecipes.block_mesh(Blocks.model[b], tiles), Transform3D()]]
+		elif n.begins_with("enemy"):
+			var ent: Node3D = load("res://scripts/entities.gd").new()
+			ent.load_defs()
+			var def: Dictionary = ent.def_named(n.get_slice(":", 1))
+			var m := EnemyModel.build(def)
+			get_root().add_child(m)
+			assert(m.has_meta("ap"), "%s não tem .glb em assets/models/bb/" % def.name)
+			EnemyModel.set_phase(m, 2 if n.begins_with("enemy2") else 1)
+			row.sprite = Atlas.wiki_image(Blocks.textures.get(def.get("phase2", {}).get("sprite", def.sprite) if n.begins_with("enemy2") else def.sprite, {}))
+			row.parts = bb_parts(m)
+			if not anim_rows.has(n):
+				var frames := []
+				for an in ["idle", "move", "attack", "hurt", "death", "phase2"]:
+					if m.get_meta("ap").has_animation(an):
+						pose(m, an, 0.4)
+						frames.append(render(bb_parts(m), PI - 0.6, row.zoom))
+				anim_rows[n] = frames
 		elif n == "body":
 			row.parts = figure()
 		elif n.begins_with("armor:"):
@@ -152,6 +197,18 @@ func _init() -> void:
 			var yaw: float = r.front + [0.0, -PI / 2, -0.6, PI][a]
 			sheet.blit_rect(render(r.parts, yaw, r.zoom), Rect2i(0, 0, SIZE, SIZE), Vector2i((a + 1) * SIZE, i * SIZE))
 	DirAccess.make_dir_recursive_absolute("res://textures")
+	var wide := 0
+	for k in anim_rows:
+		wide = maxi(wide, anim_rows[k].size())
+	if wide > 0:
+		var anims := Image.create(SIZE * wide, SIZE * anim_rows.size(), false, Image.FORMAT_RGBA8)
+		var y := 0
+		for k in anim_rows:
+			for i in anim_rows[k].size():
+				anims.blit_rect(anim_rows[k][i], Rect2i(0, 0, SIZE, SIZE), Vector2i(i * SIZE, y * SIZE))
+			y += 1
+		anims.save_png("res://textures/enemy_anims.png")
 	sheet.save_png("res://textures/model_sheet.png")
 	print("folha: ", ProjectSettings.globalize_path("res://textures/model_sheet.png"))
 	quit()
+	return true

@@ -25,6 +25,11 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
   cache de classes; sem ele script novo dá "Identifier ... not declared"), e se **precisa de mundo novo** (mudou a geração).
 - O dono lê o chat no app: respostas curtas em português, com o guia de teste no fim.
 
+## Modelos bb (Blockbench) — só em sessão LOCAL, com o Blockbench aberto e o MCP ligado (`claude mcp`; skills blockbench-* em .claude/skills/)
+- Cubos alinhados à grade (1 unidade = 1 texel = 1 voxel; rotação só em múltiplos de 22,5°), textura com a paleta do sprite da wiki, ossos nomeados (root, body, head, tentacle_1_1…),
+  animações idle/move/attack/hurt/death (+ phase2, e grupos iris/mouth por fase), loops sem salto. Exporte glTF binário com animações para `assets/models/bb/nome.glb` (+ `.bbmodel` ao lado).
+- Sessão remota não tem o .glb: nunca dependa dele nos testes (use `"fallback"`); conferir o visual = `tests/model_preview.gd -- enemy:nome`.
+
 ## Ponytail (skills em .claude/skills/, licença MIT em PONYTAIL-LICENSE)
 - Antes de codar, pare no primeiro degrau que resolve: precisa existir? já existe no repo? stdlib/engine faz? dá pra ser uma linha? só então o mínimo.
 - Entenda o problema primeiro: leia a tarefa e o fluxo real de ponta a ponta.
@@ -56,6 +61,7 @@ scripts/wiki.py items|recipes|npcs "Nome" ...  # números oficiais da wiki, lido
 scripts/wiki.py dump                          # refaz o snapshot (Items/Recipes/NPCs inteiros, ~3 MB; rode de vez em quando)
 `.tools/godot --headless -s scripts/voxel/build.gd`   # gera assets/models/gen/*.vox (modelos voxel; o update.sh roda)
 .tools/godot --headless -s scripts/voxel/levas.gd   # refaz docs/LEVAS.md (inventário por leva, dos JSON; o teste confere)
+.tools/godot --headless -s tests/model_preview.gd -- enemy:zombie enemy2:eye_of_cthulhu   # modelo bb em 4 ângulos (textures/model_sheet.png) + um quadro por animação (textures/enemy_anims.png)
 .tools/godot --headless -s tests/model_preview.gd -- block:living_loom body armor:molten@1.2 copper_pickaxe   # folha textures/model_sheet.png (sprite + 4 ângulos)
 scripts/audit.py                              # data/base × snapshot: dano, use time, poder, raridade, receitas, vida/dano/defesa (roda também em tests/run.gd)
 # Referência em vídeo (rede liberada pelo dono): `yt-dlp <url do post do r/Terraria>` baixa v.redd.it (ok); busca de posts por `reddit.com/r/Terraria/search.rss?q=...`
@@ -114,6 +120,8 @@ scripts/             setup-godot.sh e um .gd por sistema:
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  braço + item na mão (1ª pessoa): pose, inércia, balanço
   voxel/             modelos voxel (docs/VOXEL_STYLE.md, docs/LEVAS.md): vox_model.gd (.vox + operações), vox_mesh.gd (mesher), recipes.gd (receitas), build.gd (gera assets/models/gen/), levas.gd
                      shaders/voxel.gdshader: cor por vértice, emissivo pulsando, luz do mundo nos blocos com modelo
+  assets/models/bb/  modelos de inimigos/chefes feitos no Blockbench (.bbmodel fonte + .glb exportado; fora do git, como os sprites). enemy_model.gd lê o .glb em runtime
+                     (GLTFDocument) por `"model": "bb:nome"` + `"fallback"` procedural (sem o .glb os testes passam do mesmo jeito) e toca idle/move/attack/hurt/death/phase2 pelo estado da IA
   player_model.gd    corpo em voxels (3ª pessoa, tecla V): poses, arma na mão, armadura por peça (Molten em cascas voxel; as outras ainda em formas de código)
 scripts/update.sh    após cada git pull: Godot + sprites + cache de classes
 tests/character_preview.gd  prévia dos personagens/armaduras (xvfb) → textures/personagens.png
