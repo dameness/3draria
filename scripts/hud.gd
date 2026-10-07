@@ -74,6 +74,7 @@ var toggle_all: Button
 var equip_root: Control
 var equip_slots: Array[Slot] = []
 var acc_slots: Array[Slot] = []
+var misc_slots: Array[Slot] = []
 var ammo_slots: Array[Slot] = []
 var coin_views: Array[Control] = []   # 4 slots de moeda: painel + ícone que gira + quantidade
 var side_nodes: Array[Control] = []   # coisas que só aparecem com o inventário aberto e animam junto (moedas, munição, Ordenar)
@@ -465,6 +466,22 @@ func _build_equipment() -> void:
 							player.inv.acc[k] = -1)
 				acc_slots.append(b)
 			grid.add_child(b)
+	for k in Inventory.MISC:   # equipamento diverso (aba Equipamento do Terraria): gancho e carrinho, na fileira de baixo
+		var b := _slot()
+		b.position = Vector2((k + 1) * PITCH, (Inventory.ARMOR.size() + Inventory.ACC) * PITCH)
+		b.add_theme_stylebox_override("normal", equip_style)
+		b.add_theme_stylebox_override("hover", equip_hover)
+		b.add_theme_stylebox_override("pressed", equip_hover)
+		b.gui_input.connect(func(e: InputEvent):
+			if _pressed(e, MOUSE_BUTTON_LEFT):
+				last_click = Engine.get_process_frames()
+				player.inv.click_misc(k)
+			elif _pressed(e, MOUSE_BUTTON_RIGHT):
+				last_click = Engine.get_process_frames()
+				if player.inv.misc[k] != -1 and player.inv.add(player.inv.misc[k], 1) == 0:
+					player.inv.misc[k] = -1)
+		equip_root.add_child(b)
+		misc_slots.append(b)
 	var shield := PanelContainer.new()   # defesa: o escudo cinza com o número
 	shield.position = Vector2(-50, 6 * PITCH)
 	shield.custom_minimum_size = Vector2(44, 50)
@@ -477,7 +494,7 @@ func _build_equipment() -> void:
 	var menu := Button.new()   # a engrenagem do Terraria: a pausa mora aqui, não no Esc
 	menu.text = "Configurações"
 	menu.focus_mode = Control.FOCUS_NONE
-	menu.position = Vector2(0, (Inventory.ARMOR.size() + Inventory.ACC) * PITCH + 4)
+	menu.position = Vector2(0, (Inventory.ARMOR.size() + Inventory.ACC + 1) * PITCH + 4)
 	menu.custom_minimum_size = Vector2(3 * PITCH - 6, 0)
 	menu.pressed.connect(func():
 		player.set_inventory(false)
@@ -1320,6 +1337,14 @@ func _process(delta: float) -> void:
 				_fill(acc_slots[k], inv.acc[k], 1)
 				if inv.acc[k] == -1:
 					acc_slots[k].tooltip_text = "[color=#aab4ff]Acessório[/color]"
+			for k in Inventory.MISC:   # vazio: o ícone do que cabe, apagado
+				var empty: bool = inv.misc[k] == -1
+				_fill(misc_slots[k], inv.misc[k], 1)
+				if empty:
+					misc_slots[k].icon = _icon(Items.ids["grappling_hook" if k == 0 else "minecart"])
+					misc_slots[k].tooltip_text = "[color=#aab4ff]%s[/color]" % ["Gancho (tecla E)", "Carrinho (mais rápido e forte)"][k]
+				for c in ["icon_normal_color", "icon_hover_color", "icon_pressed_color"]:
+					misc_slots[k].add_theme_color_override(c, Color(1, 1, 1, 0.3 if empty else 1.0))
 			for k in Inventory.AMMO:
 				_fill(ammo_slots[k], inv.ammo[k], inv.ammo_count[k])
 			for k in 4:

@@ -373,6 +373,8 @@
 	"ruby_item": {"wiki": "Ruby"},
 	"gold_crown": {"wiki": "Gold_Crown"},
 	"platinum_crown": {"wiki": "Platinum_Crown"},
+	"stinger": {"wiki": "Stinger", "pattern": "blob", "colors": ["#d8b030", "#8a6a1a", "#f0d870"]},
+	"poison_dart": {"wiki": "Poison Dart", "pattern": "blob", "colors": ["#4ab040", "#2a6a20", "#a8e090"]},
 	"seed": {"wiki": "Seed", "pattern": "blob", "colors": ["#8a6a3a", "#5a4020", "#b08a4a"]},
 	"blowpipe": {"wiki": "Blowpipe", "pattern": "sword", "colors": ["#b08a4a", "#6e4b2a"]},
 	"grass_seeds": {"wiki": "Grass_Seeds", "pattern": "blob", "colors": ["#5aa82a", "#3a7a1a", "#8ad04a"]},

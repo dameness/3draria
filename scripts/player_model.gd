@@ -18,6 +18,7 @@ var shells := {}     # slot de armadura -> [MeshInstance3D]
 var held: MeshInstance3D
 var held_id := -2
 var trail: Trail            # arco do golpe da arma na mão
+var grip: Node3D             # flail: pegada 3D na mão (no lugar do sprite)
 var trail_on := false
 var worn := PackedInt32Array([-2, -2, -2])
 var wing_id := -2
@@ -122,6 +123,11 @@ func _process(delta: float) -> void:
 		arm = 2.4 if player.velocity.y > 0 else 0.6
 	parts.leg_l.rotation.x = leg
 	parts.leg_r.rotation.x = -leg if not (swimming or not grounded) else -leg * 0.6
+	if player.get("cart") != null:   # sentado no carrinho: pernas esticadas para a frente
+		parts.leg_l.rotation.x = 1.5
+		parts.leg_r.rotation.x = 1.5
+		parts.upper.rotation.x = 0.0
+		arm = 0.9
 	parts.arm_l.rotation.x = arm
 	parts.arm_l.rotation.z = -0.12 - (0.35 if not grounded and not swimming else 0.0)
 	parts.arm_r.rotation.z = 0.12 + (0.35 if not grounded and not swimming else 0.0)
@@ -149,7 +155,10 @@ func _process(delta: float) -> void:
 	if id != -1:   # com item na mão o braço fica à frente
 		rest = {"swing": 1.0, "thrust": 1.35, "shoot": 0.7, "hold": 0.8}[st] + rest * 0.3
 	var target_twist := 0.0
-	if player.cooldown > 0 and id != -1:
+	var flail_pose := id != -1 and grip != null and _flail_arm(delta)
+	if flail_pose:
+		pass   # o braço já foi posto por _flail_arm
+	elif player.cooldown > 0 and id != -1:
 		match st:
 			"swing":   # diagonal como em 1ª pessoa: do alto à direita, por cima da cabeça, cruzando o corpo até embaixo à esquerda; o corpo gira junto
 				parts.arm_r.rotation.z = lerpf(0.9, -0.6, ease(use, 0.6))
@@ -177,6 +186,36 @@ func _process(delta: float) -> void:
 	if player.inv.equip != worn:
 		worn = player.inv.equip.duplicate()
 		_dress()
+
+
+# Braço com o flail: girando, sobe e faz círculos com a bola; solto, o chicote por cima da cabeça para a mira; fora, esticado. false = flail guardado.
+func _flail_arm(delta: float) -> bool:
+	var fs: String = player.flail_state()
+	grip.get_node("tip/idle").visible = fs == ""
+	var snap: float = player.flail_snap
+	var twist := 0.0
+	if snap > 0.0:
+		var u: float = 1.0 - snap / 0.3
+		parts.arm_r.rotation.x = lerpf(2.9, 1.4, ease(u, 0.4))
+		parts.arm_r.rotation.z = lerpf(0.5, -0.1, u)
+		twist = lerpf(-0.3, 0.3, ease(u, 0.5))
+	elif fs == "spin":
+		var s: float = player.flail.spin
+		parts.arm_r.rotation.x = 2.3 + 0.35 * sin(s)
+		parts.arm_r.rotation.z = 0.25 + 0.4 * cos(s)
+		twist = 0.15 * cos(s)
+	elif fs != "":
+		parts.arm_r.rotation.x = 1.5
+		parts.arm_r.rotation.z = 0.1
+	else:
+		return false
+	parts.upper.rotation.y = lerpf(parts.upper.rotation.y, twist, minf(1.0, delta * 20.0))
+	return true
+
+
+# Ponta do cabo (de onde sai a corrente da bola), no mundo.
+func flail_tip() -> Vector3:
+	return grip.get_node("tip").global_position if grip else global_position
 
 
 # Fagulhas saindo da crista do capacete (fx.gd), só com o corpo à vista.
@@ -228,7 +267,17 @@ func _wings(t: float) -> void:
 # arcos e itens de segurar ficam de pé, centrados. O plano do sprite é o do golpe (o lado da lâmina fica para fora).
 func _show_held(id: int) -> void:
 	held.visible = id != -1
+	if grip:
+		grip.queue_free()
+		grip = null
 	if id == -1:
+		return
+	if Items.defs[id].has("flail"):   # pegada 3D no lugar do sprite: o cabo sai da mão no sentido do braço
+		held.mesh = null
+		trail_on = false
+		held.transform = Transform3D(Basis(Vector3.RIGHT, PI), Vector3(0, -0.5, 0))
+		grip = Projectile.flail_grip(player.entities.projectiles[Items.defs[id].flail], 2.1, (Basis(Vector3.RIGHT, 0.8) * held.transform.basis).inverse() * Vector3.DOWN)
+		held.add_child(grip)
 		return
 	var st := HeldItem.style(id)
 	var m := ItemModel.for_item(id, player.entities.icon(id), 0.9 if st != "hold" else 0.5)
@@ -259,11 +308,17 @@ func _dress() -> void:
 	spark_node = null
 	for n in hair_nodes:
 		n.visible = worn[0] < 0   # o cabelo não atravessa o capacete
+	for e in eyes:
+		e.visible = true
 	for k in Inventory.ARMOR.size():
 		var id: int = worn[k]
 		var vset: String = Items.sets.get(Items.defs[id].get("set", ""), {}).get("model", "") if id >= 0 else ""
 		if vset != "":
 			_vox_shell(Inventory.ARMOR[k], vset)
+			var spec: Dictionary = VoxRecipes.specs().get(vset, {})
+			if Inventory.ARMOR[k] == "head" and (spec.get("recipe") == "armor_set" or spec.get("closed", false)):
+				for e in eyes:
+					e.visible = false   # capacete fechado: os olhos do rosto ficariam no mesmo plano da casca (z-fighting); o capacete traz os seus
 
 
 # Casca voxel de `vset` para o espaço `slot`: uma malha por articulação que a peça cobre, com o encaixe no pivô. false se o modelo não existe.
@@ -277,6 +332,8 @@ func _vox_shell(slot: String, vset: String) -> bool:
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
 		mi.material_override = VoxMesh.material(0.6)
+		if t[0] != "head" and t[0] != "body":
+			mi.scale = Vector3.ONE * 1.03   # braço e perna invadem a casca do tronco com faces no mesmo plano (ombreira × gola, cós × coxa): sem isto elas brigam (z-fighting) e piscam listras
 		parts[t[1]].add_child(mi)
 		list.append(mi)
 	shells[slot] = list

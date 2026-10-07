@@ -83,6 +83,11 @@ var auto_on := false          # Auto Select ligado (o HUD abre o slot extra ao l
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
 var third_person := false     # V alterna
+var flail: Node3D = null         # a bola do flail que está fora (ver flail_state)
+var flail_snap := 0.0         # segundos da animação de arremesso, depois que o flail é solto
+var aim_frame := -1          # quadro em que aim_3p foi calculado (aim_dir é chamada várias vezes por quadro)
+var aim_3p := Vector3.ZERO
+var aim_key := Vector4.ZERO
 var cart: Minecart = null     # andando de carrinho (R ou botão direito num trilho): o carrinho manda no movimento
 var cart_model: Node3D
 var cart_hit := {}            # inimigo -> segundos até o carrinho poder feri-lo de novo
@@ -339,7 +344,36 @@ func find_target(from: Vector3, dir: Vector3) -> Dictionary:
 func aim_dir() -> Vector3:
 	if cursor_hand() and is_inside_tree():   # com o mouse solto e um item no cursor a mira é o ponteiro na tela
 		return cam.project_ray_normal(get_viewport().get_mouse_position())
+	if third_person and is_inside_tree():
+		var key := Vector4(rotation.y, pitch, position.x + position.z * 1000.0, position.y)
+		if (aim_frame != Engine.get_process_frames() or aim_key != key) and free_yaw == 0.0 and free_pitch == 0.0:   # no olhar livre (Alt) a mira fica como estava
+			aim_frame = Engine.get_process_frames()
+			aim_key = key
+			_update_camera()   # o mouse (ou o passo da física) mexeu depois do último _process: a câmera de 3ª pessoa fica atrás e ao lado, então precisa estar na pose de agora
+			aim_3p = _aim_third()
+		if aim_3p != Vector3.ZERO:
+			return aim_3p
 	return Basis(Vector3.UP, rotation.y) * Basis(Vector3.RIGHT, pitch) * Vector3.FORWARD
+
+
+# 3ª pessoa: a câmera fica atrás e ao lado do ombro, então a mira do olho (paralela à câmera) passaria ao lado da cruz. Mira do olho até o ponto
+# que a cruz (raio da câmera) acerta: o primeiro bloco ou inimigo, ou 60 blocos adiante. ZERO = sem ponto útil (usa a mira reta).
+func _aim_third() -> Vector3:
+	var from := cam.global_position
+	var dir := -cam.global_basis.z
+	var reach := 60.0
+	var hit: Dictionary = world.raycast(from, dir, reach)
+	if not hit.is_empty():
+		reach = hit.t
+	for e in entities.enemies:
+		if e.def.ai == "npc":
+			continue
+		var w: float = e.half + PAD
+		var at = AABB(e.position + Vector3(-w, -PAD, -w), Vector3(2.0 * w, e.tall + 2.0 * PAD, 2.0 * w)).intersects_ray(from, dir)
+		if at != null and from.distance_to(at) < reach:
+			reach = from.distance_to(at)
+	var to := (from + dir * reach) - eye()
+	return to.normalized() if to.length() > 0.5 else Vector3.ZERO
 
 
 func eye() -> Vector3:
@@ -417,6 +451,7 @@ func lens_clear(p: Vector3) -> bool:
 
 # Timers de vida: invencibilidade, cooldown de uso e regeneração lenta.
 func tick(delta: float) -> void:
+	flail_snap = maxf(flail_snap - delta, 0.0)
 	iframes -= delta
 	cooldown -= delta
 	place_anim = maxf(place_anim - delta, 0.0)
@@ -468,7 +503,7 @@ func tick(delta: float) -> void:
 
 
 func step(delta: float, wish: Vector3, jump: bool) -> void:
-	var boots := 1.0 + inv.acc_sum("speed") + buff_sum("speed")
+	var boots := 1.0 + inv.acc_sum("speed") + buff_sum("speed") + inv.bonus("speed")
 	var speed := WALK * boots
 	if creative:
 		velocity = Vector3.ZERO
@@ -611,8 +646,10 @@ func use_hook(aim := Vector3.ZERO) -> void:
 	Sfx.play(entities, "swing", position + Vector3.UP, -6.0, 1.6)
 
 
-# Os números ({range, launch, pull}) do primeiro gancho do inventário, ou {}.
+# Os números ({range, launch, pull}) do gancho do slot de equipamento ou, senão, do primeiro do inventário, ou {}.
 func _hook_def() -> Dictionary:
+	if inv.misc[0] != -1:   # o gancho do slot de equipamento vale antes dos do inventário
+		return Items.defs[inv.misc[0]].hook
 	for id in inv.item:
 		if id != -1 and Items.defs[id].has("hook"):
 			return Items.defs[id].hook
@@ -859,6 +896,21 @@ func mana_cap() -> int:
 	return max_mana + int(inv.acc_sum("max_mana"))
 
 
+# Classe de uma arma para os bônus de armadura: mágica (gasta mana), à distância (usa munição) ou corpo a corpo.
+static func weapon_class(d: Dictionary) -> String:
+	return "magic" if d.has("cost") else "ranged" if d.has("ammo") else "melee"
+
+
+# Dano da arma com os bônus de armadura (wiki: somam em %) e chance de crítico (a da arma + os bônus).
+func power(d: Dictionary, base := -1) -> int:
+	var k := weapon_class(d)
+	return roundi((d.damage if base < 0 else base) * (1.0 + inv.bonus("damage") + inv.bonus(k + "_damage")))
+
+
+func crit_chance(d: Dictionary) -> float:
+	return d.get("crit", Combat.CRIT) + inv.bonus("crit") + inv.bonus(weapon_class(d) + "_crit")
+
+
 func defense() -> int:
 	return inv.defense() + int(buff_sum("defense"))
 
@@ -883,6 +935,9 @@ func add_buff(name: String, seconds: float) -> void:
 # Tempo de um uso: o do item; a picareta com o buff de Mineração usa ⌊tool speed × (1 − bônus)⌋ quadros (wiki Tool speed; o bônus vale só para picaretas, até 70%).
 func use_time(id: int) -> float:
 	var t := Items.use_dur(id)
+	var d: Dictionary = Items.defs[id]
+	if (d.get("damage", 0) > 0 and weapon_class(d) == "melee") or Items.pick_power[id] > 0 or Items.axe_power[id] > 0 or Items.hammer_power[id] > 0:
+		t /= 1.0 + inv.bonus("melee_speed")   # Molten Greaves: +7% de velocidade corpo a corpo (também nas ferramentas)
 	if Items.pick_power[id] > 0 and has_buff("mining"):
 		t = floorf(t * 60.0 * (1.0 - minf(buff_sum("mining"), 0.7))) / 60.0
 	return t
@@ -987,9 +1042,9 @@ func cast(d: Dictionary, aim := Vector3.ZERO) -> void:   # aim: a direção (os 
 		at.y += 2.5
 		while Blocks.solid[world.get_block(floori(at.x), floori(at.y), floori(at.z))] and at.y > from.y - 3.0:
 			at.y -= 0.5
-		entities.spawn_cloud(at, d.damage)
+		entities.spawn_cloud(at, power(d))
 	else:
-		entities.spawn_projectile(d.shoot, from + forward * 0.6, forward, d.shoot_speed, d.damage, d.get("knockback", 0.0), d.get("crit", Combat.CRIT))
+		entities.spawn_projectile(d.shoot, from + forward * 0.6, forward, d.shoot_speed, power(d), d.get("knockback", 0.0), crit_chance(d))
 	Sfx.play(entities, "bow", position + Vector3.UP, -8.0, 1.6)
 
 
@@ -1191,12 +1246,12 @@ func melee_targets(eye: Vector3, forward: Vector3, reach: float) -> Array:
 func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 	var hits := melee_targets(eye, forward, d.reach)
 	for e in hits:
-		e.hurt(Combat.vary(d.damage, entities.rng), forward, d.knockback, Combat.is_crit(entities.rng))
+		e.hurt(Combat.vary(power(d), entities.rng), forward, d.knockback, Combat.is_crit(entities.rng, crit_chance(d)))
 	for n in entities.get_children():   # esferas dos conjuradores se destroem com um golpe (wiki)
 		if n.get("def") is Dictionary and n.def.get("destroy", false) and eye.distance_to(n.position) <= d.reach + 0.5 and forward.dot((n.position - eye).normalized()) > 0.5:
 			entities.pop_sphere(n)
 	if d.has("shoot"):
-		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, d.get("shoot_damage", d.damage), d.get("shoot_knockback", d.knockback))   # o feixe tem dano/recuo próprios quando a wiki os separa
+		entities.spawn_projectile(d.shoot, eye + forward * 0.8, forward, d.shoot_speed, power(d, d.get("shoot_damage", d.damage)), d.get("shoot_knockback", d.knockback), crit_chance(d))   # o feixe tem dano/recuo próprios quando a wiki os separa
 	return hits.size()
 
 
@@ -1229,7 +1284,7 @@ func summon(d: Dictionary) -> void:
 func throw_boomerang(d: Dictionary, forward: Vector3) -> void:
 	if entities.get_children().any(func(n): return n.get("def") is Dictionary and n.def.get("name") == d.boomerang and not n.is_queued_for_deletion()):
 		return
-	entities.spawn_projectile(d.boomerang, position + Vector3.UP * EYE + forward * 0.5, forward, d.shoot_speed, d.damage, d.knockback, d.get("crit", Combat.CRIT))
+	entities.spawn_projectile(d.boomerang, position + Vector3.UP * EYE + forward * 0.5, forward, d.shoot_speed, power(d), d.knockback, crit_chance(d))
 	Sfx.play(entities, "swing", position + Vector3.UP, -8.0, 1.3)
 
 
@@ -1237,9 +1292,22 @@ func throw_boomerang(d: Dictionary, forward: Vector3) -> void:
 func throw_flail(id: int, d: Dictionary) -> void:
 	if entities.get_children().any(func(n): return n.get("def") is Dictionary and n.def.has("flail") and not n.is_queued_for_deletion()):
 		return
-	var a: Node3D = entities.spawn_projectile(d.flail, position + Vector3.UP, Vector3.FORWARD, d.shoot_speed, d.damage, d.knockback, d.get("crit", Combat.CRIT))
+	var a: Node3D = entities.spawn_projectile(d.flail, position + Vector3.UP, Vector3.FORWARD, d.shoot_speed, power(d), d.knockback, crit_chance(d))
 	a.item_id = id
+	flail = a
 	Sfx.play(entities, "swing", position + Vector3.UP, -10.0, 0.8)
+
+
+# "spin" | "out" | "back" enquanto a bola do flail está fora; "" com ele guardado.
+func flail_state() -> String:
+	return flail.mode if is_instance_valid(flail) and not flail.is_queued_for_deletion() else ""
+
+
+# Ponta do cabo do flail na mão (de onde sai a corrente): a da mão da câmera em 1ª pessoa, a do boneco em 3ª.
+func flail_tip() -> Vector3:
+	if not is_inside_tree():
+		return position + Vector3.UP
+	return (get_node("Model") if third_person else cam.get_node("Hand")).flail_tip()
 
 
 # Bomba e dinamite: joga um projétil com pavio (projectiles.json) em arco e gasta um.
@@ -1259,13 +1327,13 @@ func shoot(d: Dictionary, eye: Vector3, forward: Vector3) -> void:
 	if ammo == -1:
 		say("sem munição (%s)" % d.ammo)
 		return
-	var dmg: int = d.damage + Items.defs[ammo].get("damage", 0)
+	var dmg: int = power(d, d.damage + Items.defs[ammo].get("damage", 0))
 	var kb: float = d.knockback + Items.defs[ammo].get("knockback", 0.0)   # wiki Knockback: arma + munição
 	var speed: float = d.shoot_speed
 	if d.ammo == "arrow":   # Arquearia: +10% de dano e +20% de velocidade nas flechas
 		dmg = roundi(dmg * (1.0 + buff_sum("arrow_damage")))
 		speed *= 1.0 + buff_sum("arrow_speed")
-	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, speed, dmg, kb, d.get("crit", Combat.CRIT))
+	entities.spawn_projectile(Items.defs[ammo].projectile, eye, forward, speed, dmg, kb, crit_chance(d))
 	Sfx.play(entities, "bow", position + Vector3.UP, -8.0, 1.0 if d.ammo == "arrow" else 2.2)   # a flecha estala, a bala é um estampido agudo
 
 
@@ -1388,7 +1456,7 @@ func mount_cart(at: Vector3i) -> void:
 	var facing := Vector3i(1 if look.x > 0.0 else -1, 0, 0) if absf(look.x) > absf(look.z) else Vector3i(0, 0, 1 if look.z > 0.0 else -1)
 	cart = Minecart.new()
 	cart.world = world
-	cart.fast = inv.total(Items.ids.minecart) > 0   # carregar o item Minecart: o carrinho é mais rápido e bate mais forte
+	cart.fast = inv.total(Items.ids.minecart) > 0 or inv.misc[1] == Items.ids.minecart   # carregar o item Minecart: o carrinho é mais rápido e bate mais forte
 	cart.start(at, facing)
 	cart_model = Minecart.build_model()
 	cart_model.top_level = true

@@ -24,7 +24,7 @@ func _init() -> void:
 	Buffs.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -134,6 +134,80 @@ func run(node: Node, seconds: float) -> void:
 		if not is_instance_valid(node) or node.is_queued_for_deletion():
 			return
 		node._physics_process(1.0 / 60)
+
+
+# Veneno e fogo nos inimigos (wiki Poisoned: 6 de vida/s; On Fire!: 4/s; sem defesa): o Poison Dart envenena, o Sunfury queima em 25%.
+# Slots de equipamento diverso: o gancho equipado vale antes dos do inventário; o Minecart equipado deixa o carrinho rápido; só entra o item do tipo certo.
+func test_misc_slots():
+	var inv := Inventory.new()
+	inv.cursor_id = Items.ids.copper_pickaxe
+	inv.cursor_count = 1
+	inv.click_misc(0)
+	check(inv.misc[0] == -1 and inv.cursor_id == Items.ids.copper_pickaxe, "slot de gancho recusa o que não é gancho")
+	inv.cursor_id = Items.ids.skeletron_hand
+	inv.click_misc(0)
+	check(inv.misc[0] == Items.ids.skeletron_hand and inv.cursor_id == -1, "gancho entra no slot de gancho")
+	inv.cursor_id = Items.ids.grappling_hook
+	inv.cursor_count = 1
+	inv.click_misc(1)
+	check(inv.misc[1] == -1, "gancho não entra no slot de carrinho")
+	inv.cursor_id = Items.ids.minecart
+	inv.click_misc(1)
+	check(inv.misc[1] == Items.ids.minecart, "Minecart entra no slot de carrinho")
+	var w := floor_world()
+	var p := make_player(w)
+	p.inv.add(Items.ids.grappling_hook, 1)
+	check(p._hook_def().range == Items.defs[Items.ids.grappling_hook].hook.range, "sem slot equipado, vale o gancho do inventário")
+	p.inv.misc[0] = Items.ids.skeletron_hand
+	check(p._hook_def().range == Items.defs[Items.ids.skeletron_hand].hook.range, "o gancho do slot vale antes do do inventário")
+	free_player(p)
+	w.free()
+	return true
+
+
+func test_debuffs():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	var z: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(30, 11, 24.5))
+	z._ready()
+	z.display = false
+	var hp0: int = z.hp
+	z.afflict("poisoned", 2.0)
+	run(z, 1.05)
+	check(hp0 - z.hp >= 5 and hp0 - z.hp <= 7, "veneno tira ~6 de vida por segundo, ignorando a defesa (%d)" % (hp0 - z.hp))
+	run(z, 3.0)
+	check(not z.debuffs.has("poisoned") and hp0 - z.hp <= 14, "o veneno acaba no tempo (%d)" % (hp0 - z.hp))
+	z.afflict("on_fire", 1.0)
+	var hp1: int = z.hp
+	run(z, 2.05)
+	check(hp1 - z.hp >= 3 and hp1 - z.hp <= 5, "fogo tira ~4 de vida por segundo (%d)" % (hp1 - z.hp))
+	var vit: Node3D = ent.spawn_enemy(enemy_def("skeleton"), Vector3(30, 11, 28.5))
+	vit._ready()
+	vit.display = true   # a vitrine do mundo de teste também sofre veneno
+	vit.afflict("poisoned", 5.0)
+	var vhp: int = vit.hp
+	run(vit, 1.05)
+	check(vhp - vit.hp >= 5, "inimigo da vitrine (parado) também perde vida com o veneno (%d)" % (vhp - vit.hp))
+	ent.remove_enemy(vit)
+	# dardo: dispara de Blowpipe e envenena (100%)
+	z.position = Vector3(26, 11, 24.5)
+	p.inv.add(Items.ids.poison_dart, 3)
+	p.shoot(Items.defs[Items.ids.blowpipe], p.position + Vector3.UP * p.EYE, Vector3.RIGHT)
+	run(ent.get_children().back(), 1.0)
+	check(z.debuffs.has("poisoned") and z.debuffs.poisoned > 25.0, "Poison Dart envenena por 30 s ou mais")
+	# Sunfury: 25% por acerto
+	var proj: Node = ent.spawn_projectile("sunfury_ball", z.position, Vector3.RIGHT, 0.0, 10, 0.0)
+	var hits := 0
+	for i in 400:
+		z.debuffs.erase("on_fire")
+		proj.afflict(z)
+		hits += 1 if z.debuffs.has("on_fire") else 0
+	check(hits > 60 and hits < 140 and z.debuffs.get("on_fire", 3.0) == 3.0, "Sunfury queima em ~25% dos acertos por 3 s (%d/400)" % hits)
+	check(Crafting.recipes.any(func(r): return r.result == Items.ids.poison_dart and r.count == 100 and r.needs.has(Items.ids.stinger)), "receita: 1 Stinger → 100 Poison Darts")
+	free_player(p)
+	w.free()
+	return true
 
 
 func test_day_night():
@@ -501,6 +575,32 @@ func test_armor():
 		p.inv.add(Items.ids[n], 1)
 		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
 	check(p.inv.defense() == 4 + 5 + 4 + 3 and p.hurt(30, Vector3.RIGHT) == 30 - 8, "conjunto de ouro: defesa 16 reduz o dano em 8")
+	free_player(p)
+	# bônus da wiki: Molten (corpo a corpo), Meteor (mágico), Ninja (crítico e velocidade)
+	p = make_player(w)
+	var sword: Dictionary = Items.defs[Items.ids.copper_shortsword]
+	var staff: Dictionary = Items.defs[Items.ids.space_gun]
+	for n in ["molten_helmet", "molten_breastplate", "molten_greaves"]:
+		p.inv.add(Items.ids[n], 1)
+		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
+	check(is_equal_approx(p.crit_chance(sword), 0.04 + 0.07) and p.power(sword) == roundi(sword.damage * 1.17), "Molten: +17% de dano e +7% de crítico corpo a corpo")
+	check(p.power(staff) == staff.damage and is_equal_approx(p.crit_chance(staff), Combat.CRIT), "Molten não afeta arma mágica")
+	check(is_equal_approx(p.use_time(Items.ids.copper_shortsword), Items.use_dur(Items.ids.copper_shortsword) / 1.07), "Molten Greaves: +7% de velocidade corpo a corpo")
+	free_player(p)
+	p = make_player(w)
+	for n in ["meteor_helmet", "meteor_suit", "meteor_leggings"]:
+		p.inv.add(Items.ids[n], 1)
+		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
+	check(p.power(staff) == roundi(staff.damage * 1.27), "Meteor: +27% de dano mágico")
+	free_player(p)
+	p = make_player(w)
+	for n in ["ninja_hood", "ninja_shirt"]:
+		p.inv.add(Items.ids[n], 1)
+		p.inv.equip_from(p.inv.item.find(Items.ids[n]))
+	check(is_equal_approx(p.crit_chance(staff), Combat.CRIT + 0.06) and is_equal_approx(p.inv.bonus("speed"), 0.0), "Ninja: +3% de crítico por peça, sem a velocidade do conjunto incompleto")
+	p.inv.add(Items.ids.ninja_pants, 1)
+	p.inv.equip_from(p.inv.item.find(Items.ids.ninja_pants))
+	check(is_equal_approx(p.inv.bonus("speed"), 0.2) and is_equal_approx(p.crit_chance(sword), Combat.CRIT + 0.09), "Ninja completo: +9% de crítico e +20% de velocidade de movimento")
 	free_player(p)
 	w.free()
 	return true
@@ -2154,7 +2254,7 @@ func test_minecart():
 	p.position = Vector3(20.5, 11.0, 24.5)
 	p.rotation.y = -PI / 2.0   # olhando para +x
 	p.mount_cart(p.nearest_track())
-	check(p.cart != null and p.cart.dir == Vector3i.RIGHT and p.position.distance_to(Vector3(20.5, 11.35, 24.5)) < 0.1, "R/direito num trilho monta virado para onde se olha")
+	check(p.cart != null and p.cart.dir == Vector3i.RIGHT and p.position.distance_to(Vector3(20.5, 10.75, 24.5)) < 0.1, "R/direito num trilho monta virado para onde se olha")
 	var z: Node3D = p.entities.spawn_enemy(p.entities.def_named("zombie"), Vector3(28.5, 11, 24.5))
 	z._ready()
 	z.hp = 500
@@ -4068,6 +4168,23 @@ func integration():
 			player._process(0)
 			var model: Node3D = player.get_node("Model")
 			check(player.cam.position.distance_to(Vector3(0, player.EYE, 0)) > 3.5 and model.visible and not hand.visible, "V: 3ª pessoa afasta a câmera e mostra o corpo")
+			var ray: Vector3 = -player.cam.global_basis.z   # mira em 3ª pessoa: o tiro sai do olho e acerta o que a cruz (raio da câmera) acerta, apesar do ombro
+			var tz: Node3D = player.entities.spawn_enemy(player.entities.def_named("zombie"), player.cam.global_position + ray * 8.0 - Vector3(0, 0.9, 0))
+			tz.set_physics_process(false)
+			var tbox := AABB(tz.position + Vector3(-tz.half, 0, -tz.half), Vector3(tz.half * 2, tz.tall, tz.half * 2))
+			player.aim_frame = -1
+			check(tbox.intersects_ray(player.eye(), player.aim_dir()) != null, "3ª pessoa: o disparo do olho acerta o inimigo sob a cruz")
+			player.entities.remove_enemy(tz)
+			player.rotation.y = 0.9   # o mouse mexeu sem passar um _process: a câmera de 3ª pessoa (atrás e ao lado) ainda está na pose antiga, e a mira não pode ficar uma volta atrás
+			player.pitch = -0.3
+			var stale: Vector3 = player.aim_dir()
+			player._update_camera()
+			player.aim_key = Vector4.ZERO
+			check(stale.is_equal_approx(player.aim_dir()), "3ª pessoa: a mira acompanha o mouse sem esperar o quadro")
+			player.rotation.y = 0.0
+			player.pitch = 0.0
+			player.aim_key = Vector4.ZERO
+			player._update_camera()
 			player.use_len = 0.4
 			var arm_z: Array = []
 			for cd in [0.36, 0.04]:   # começo e fim do golpe
@@ -4079,6 +4196,18 @@ func integration():
 			player.third_person = false
 			player._process(0)
 			check(player.cam.position == Vector3(0, player.EYE, 0) and not model.visible, "V de novo: volta à 1ª pessoa")
+			var rng := RandomNumberGenerator.new()
+			rng.seed = 5
+			var cross_bad := 0   # a cruz (centro da tela) e a mira: o ponto 10 blocos à frente da mira cai no centro da tela, em qualquer direção
+			var center: Vector2 = player.get_viewport().get_visible_rect().size / 2.0
+			for i in 40:
+				player.rotation.y = rng.randf_range(-PI, PI)
+				player.pitch = rng.randf_range(-1.4, 1.4)
+				player.cam.rotation.x = player.pitch
+				cross_bad += int(player.cam.unproject_position(player.eye() + player.aim_dir() * 10.0).distance_to(center) > 0.5)
+			check(cross_bad == 0, "1ª pessoa: a mira acerta o centro da tela (%d fora)" % cross_bad)
+			player.rotation.y = 0.0
+			player.pitch = 0.0
 			var hud: CanvasLayer = main.get_node("HUD")
 			var cp := Vector3i(player.position.floor()) + Vector3i(3, 0, 0)
 			world.set_block(cp.x, cp.y, cp.z, Blocks.ids.chest)
@@ -4095,7 +4224,7 @@ func integration():
 			# Configurações: o botão do inventário pausa de verdade; os controles aplicam na hora e o Esc fecha
 			player.set_inventory(true)
 			hud._process(0.1)
-			hud.equip_root.get_children().filter(func(n): return n is Button)[0].pressed.emit()
+			hud.equip_root.get_children().filter(func(n): return n is Button and n.text == "Configurações")[0].pressed.emit()
 			hud._process(0.1)
 			check(main.get_tree().paused and player.menu_open and not player.inventory_open and hud.pause.visible, "botão Configurações: pausa de verdade (a árvore para) e fecha o inventário")
 			var sliders: Array = hud.pause.find_children("*", "HSlider", true, false)
@@ -4269,7 +4398,7 @@ func integration():
 			check(player.aim_dir().dot(-player.cam.global_basis.z) < 0.3, "olhar livre: a câmera olha para o lado enquanto a mira segue reta")
 			for i in 60:
 				player._update_camera(0.05)
-			check(absf(player.free_yaw) < 0.01 and player.aim_dir().dot(-player.cam.global_basis.z) > 0.99, "olhar livre: solto o Alt, a câmera volta atrás do personagem")
+			check(absf(player.free_yaw) < 0.01 and player.aim_dir().dot(-player.cam.global_basis.z) > 0.9, "olhar livre: solto o Alt, a câmera volta atrás do personagem")
 			# modelos (mão, corpo, inimigos): o sol e o ambiente escurecem sob a terra e voltam na superfície
 			var dn: Node = main.get_node("DayNight")
 			var sun: DirectionalLight3D = main.get_node("Sun")
@@ -5641,7 +5770,8 @@ func test_wiki_review():
 	var fl: Array = ment.get_children().filter(func(n): return n.get("def") is Dictionary and n.def.has("flail"))
 	check(fl.size() == 1, "só um flail no ar por vez")
 	var fball: Node3D = fl[0]
-	var ftarget: Node3D = ment.spawn_enemy(ment.def_named("zombie"), mp.position + Vector3(2.6, 0, 0))
+	var fl_len: float = fball.def.length   # o giro é um disco horizontal na frente, em volta do ponto da mira (aqui −Z): o ponto da direita fica a 0,3·L do eixo
+	var ftarget: Node3D = ment.spawn_enemy(ment.def_named("zombie"), mp.position + Vector3(fl_len * 0.3, 0, -fl_len * 0.4))
 	ftarget.hp = 9999
 	ftarget.defense = 0
 	var spin_hits := 0
