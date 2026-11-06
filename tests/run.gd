@@ -203,7 +203,7 @@ func test_debuffs():
 		z.debuffs.erase("on_fire")
 		proj.afflict(z)
 		hits += 1 if z.debuffs.has("on_fire") else 0
-	check(hits > 60 and hits < 140 and z.debuffs.get("on_fire", 3.0) == 3.0, "Sunfury queima em ~25% dos acertos por 3 s (%d/400)" % hits)
+	check(hits > 60 and hits < 140 and z.debuffs.get("on_fire", 3.0) == 3.0, "Sunfury queima em ~25%% dos acertos por 3 s (%d/400)" % hits)
 	check(Crafting.recipes.any(func(r): return r.result == Items.ids.poison_dart and r.count == 100 and r.needs.has(Items.ids.stinger)), "receita: 1 Stinger → 100 Poison Darts")
 	free_player(p)
 	w.free()
@@ -624,7 +624,7 @@ func test_bb_models():
 	var ent: Node3D = load("res://scripts/entities.gd").new()
 	ent.load_defs()
 	for def in ent.defs:
-		if not def.get("model", "").begins_with("bb:") or not FileAccess.file_exists(EnemyModel.BB_DIR + def.model.substr(3) + ".glb"):
+		if not def.get("model", "").begins_with("bb:") or EnemyModel.bb_path(def.model.substr(3)) == "":
 			continue
 		var m := EnemyModel.build(def)
 		var ap: AnimationPlayer = m.get_meta("ap")
@@ -645,9 +645,17 @@ func test_bb_models():
 			check(an.loop_mode == Animation.LOOP_LINEAR and jump < 0.01, "%s/%s: loop sem salto (%.3f)" % [def.name, a, jump])
 		var box := AABB()
 		for mi in m.find_children("", "MeshInstance3D", true, false):
-			box = box.merge(mi.get_aabb()) if box.size != Vector3.ZERO else mi.get_aabb()
-		box.size *= EnemyModel.BB_SCALE   # (as cenas dos testes ficam fora da árvore: sem transform global)
+			var xf := Transform3D()   # (as cenas dos testes ficam fora da árvore: soma os transforms dos ossos até o modelo)
+			var n: Node = mi
+			while n != m:
+				xf = n.transform * xf
+				n = n.get_parent()
+			box = box.merge(xf * mi.get_aabb()) if box.size != Vector3.ZERO else xf * mi.get_aabb()
 		check(absf(box.size.x - def.size[0]) < def.size[0] * 0.35 or absf(box.size.y - def.size[1]) < def.size[1] * 0.35, "%s: tamanho do modelo bate com o hitbox (%s)" % [def.name, box.size])
+		for mi in m.find_children("", "MeshInstance3D", true, false):
+			var mat := mi.get_active_material(0) as BaseMaterial3D
+			check(mat == null or mat.albedo_texture != null or mat.vertex_color_use_as_albedo, "%s: modelo de voxels usa a cor por vértice" % def.name)
+			break
 		var foe := FakeFoe.new()
 		foe.def.ai = def.ai
 		var at := Vector3(0, 0, -20)

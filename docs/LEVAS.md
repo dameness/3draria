@@ -15,10 +15,10 @@ Status: **receita** = tem modelo próprio (models.json / campo `model`); **auto*
 - receita: enchanted_sword, terra_blade, musket_ball, space_gun, crimson_rod, bomb, blue_moon, sunfury, grenade, beenade
 - auto: wooden_sword, copper_shortsword, wooden_bow, wooden_arrow, copper_broadsword, copper_bow, tin_broadsword, tin_bow, iron_broadsword, iron_bow, lead_broadsword, lead_bow, silver_broadsword, silver_bow, tungsten_broadsword, tungsten_bow, gold_broadsword, gold_bow, platinum_broadsword, platinum_bow, lights_bane, demon_bow, unholy_arrow, blood_butcherer, tendon_bow, cobalt_sword, palladium_sword, musket, the_undertaker, wand_of_sparking, vilethorn, the_rotted_fork, tin_shortsword, iron_shortsword, lead_shortsword, silver_shortsword, tungsten_shortsword, gold_shortsword, platinum_shortsword, spear, bone_sword, dynamite, flintlock_pistol, book_of_skulls, wooden_boomerang, bee_keeper, the_bees_knees, bee_gun, mace, ball_o'_hurt, the_meatball, shuriken, throwing_knife, flare_gun, flare, umbrella, slime_gun, seed, blowpipe, poison_dart
 
-## Leva 4 — Inimigos (49: 1 bb, 29 procedural, 19 sem modelo)
-- bb: zombie
-- procedural: green_slime, blue_slime, demon_eye, servant_of_cthulhu, angry_bones, cursed_skull, dark_caster, old_man, the_hungry, guide, merchant, nurse, red_slime, yellow_slime, black_slime, lava_slime, skeleton, mother_slime, undead_miner, giant_worm, devourer, tim, demolitionist, arms_dealer, ice_slime, frozen_zombie, undead_viking, spiked_ice_slime, jungle_slime
-- sem modelo: eater_of_souls, crimera, voodoo_demon, hellbat, pixie, unicorn, cave_bat, meteor_head, demon, blood_crawler, face_monster, fire_imp, ice_bat, snow_flinx, vulture, antlion_charger, hornet, jungle_bat, bee
+## Leva 4 — Inimigos (49: 7 bb, 27 procedural, 15 sem modelo)
+- bb: zombie, demon_eye, servant_of_cthulhu, hellbat, cave_bat, ice_bat, jungle_bat
+- procedural: green_slime, blue_slime, angry_bones, cursed_skull, dark_caster, old_man, the_hungry, guide, merchant, nurse, red_slime, yellow_slime, black_slime, lava_slime, skeleton, mother_slime, undead_miner, giant_worm, devourer, tim, demolitionist, arms_dealer, ice_slime, frozen_zombie, undead_viking, spiked_ice_slime, jungle_slime
+- sem modelo: eater_of_souls, crimera, voodoo_demon, pixie, unicorn, meteor_head, demon, blood_crawler, face_monster, fire_imp, snow_flinx, vulture, antlion_charger, hornet, bee
 
 ## Leva 5 — Chefes (9: 1 bb, 7 procedural, 1 sem modelo)
 - bb: eye_of_cthulhu
@@ -30,5 +30,5 @@ Status: **receita** = tem modelo próprio (models.json / campo `model`); **auto*
 - Todo item, bloco e estrutura novo nasce com modelo **automático** (o sprite da wiki inflado): não precisa fazer nada, já tem volume.
 - Só o que merece destaque ganha **receita**: entrada em `data/<pacote>/models.json` (sprite da wiki, cores emissivas) + função em `scripts/voxel/recipes.gd`,
   e o campo `"model": "nome"` no item/bloco/conjunto. Critério de destaque: chefe, arma de raridade alta ou com efeito visual, estrutura grande (tamanho em tiles ≥ 2x2), conjunto de armadura com brilho.
-- Inimigo/chefe com rig e animação: Blockbench, só em sessão local (`"model": "bb:nome"` + `"fallback"` procedural no enemies.json; ver CLAUDE.md).
+- Inimigo/chefe com rig e animação: `"model": "bb:nome"` (+ `"fallback"` procedural no enemies.json). O .glb vem de scripts/bb/models.gd (gerado em assets/models/bbgen/ pelo update.sh) ou, se existir, do Blockbench em assets/models/bb/ (vence); ver docs/BB.md.
 - Retoque à mão: salve o `.vox` em `assets/models/` (prioridade sobre o gerado em `assets/models/gen/`). Ver `docs/VOXEL_STYLE.md`.

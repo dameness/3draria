@@ -124,8 +124,9 @@ func bb_parts(m: Node3D) -> Array:
 	for mi in m.find_children("", "MeshInstance3D", true, false):
 		if not mi.is_visible_in_tree():
 			continue
-		var img: Image = mi.get_active_material(0).albedo_texture.get_image()
-		if img.is_compressed():
+		var tex: Texture2D = mi.get_active_material(0).albedo_texture   # modelo em voxels: cor por vértice, sem textura
+		var img: Image = tex.get_image() if tex else null
+		if img and img.is_compressed():
 			img.decompress()
 		list.append([mi.mesh, m.global_transform.affine_inverse() * mi.global_transform, img])
 	return list
@@ -165,7 +166,7 @@ func _process(_delta: float) -> bool:   # no primeiro quadro, com a árvore roda
 			var def: Dictionary = ent.def_named(n.get_slice(":", 1))
 			var m := EnemyModel.build(def)
 			get_root().add_child(m)
-			assert(m.has_meta("ap"), "%s não tem .glb em assets/models/bb/" % def.name)
+			assert(m.has_meta("ap"), "%s não tem .glb (rode scripts/bb/build.gd)" % def.name)
 			EnemyModel.set_phase(m, 2 if n.begins_with("enemy2") else 1)
 			row.sprite = Atlas.wiki_image(Blocks.textures.get(def.get("phase2", {}).get("sprite", def.sprite) if n.begins_with("enemy2") else def.sprite, {}))
 			row.parts = bb_parts(m)
