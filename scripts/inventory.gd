@@ -35,6 +35,38 @@ func _init() -> void:
 	fav.resize(SIZE)
 
 
+# Esvazia tudo (morte Mediumcore/Hardcore, wiki Death): inventário, equipamento, acessórios, diversos, munição, moedas e o item do cursor.
+# Retorna [[item, quantidade], ...] para virarem itens soltos. A lixeira fica.
+func take_all() -> Array:
+	var out := []
+	for i in SIZE:
+		if item[i] != -1:
+			out.append([item[i], count[i]])
+		item[i] = -1
+		count[i] = 0
+		fav[i] = 0
+	for list in [equip, acc, misc]:
+		for k in list.size():
+			if list[k] != -1:
+				out.append([list[k], 1])
+			list[k] = -1
+	for k in AMMO:
+		if ammo[k] != -1:
+			out.append([ammo[k], ammo_count[k]])
+		ammo[k] = -1
+		ammo_count[k] = 0
+	for k in COINS.size():
+		if coin[k] > 0:
+			out.append([Items.ids[COINS[k]], coin[k]])
+		coin[k] = 0
+	if cursor_id != -1:
+		out.append([cursor_id, cursor_count])
+		cursor_id = -1
+		cursor_count = 0
+	version += 1
+	return out
+
+
 # Empilha onde já existe e depois usa slots vazios (moeda vai para os slots de moeda, munição primeiro para os de munição). Retorna quanto não coube.
 func add(id: int, n: int) -> int:
 	var c := coin_kind(id)

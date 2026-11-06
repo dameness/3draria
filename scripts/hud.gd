@@ -1387,6 +1387,11 @@ func _process(delta: float) -> void:
 	if player.dead > 0.0:   # wiki Death: espera de 10 s
 		flash.color = Color(0.0, 0.0, 0.0, 0.55)
 		note_label.text = "Você foi derrotado... %d" % ceili(player.dead)
+		if player.dead_for >= player.SKIP_AFTER and not player.enemies_near():
+			note_label.text += "\nEspaço: renascer agora"
+	elif player.ghost:   # Hardcore morto: tela fria, só observa
+		tint.color = Color(0.7, 0.85, 1.0, 0.16)
+		note_label.text = "Você é um fantasma. Esc → Configurações → Salvar e sair"
 	var p: Vector3 = player.position
 	var aimed := ""
 	if world.test_world and not player.target.is_empty():

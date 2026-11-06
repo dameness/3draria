@@ -175,6 +175,10 @@ func _draw() -> void:
 	var sp := to_view(Vector2(player.spawn.x, player.spawn.z))   # o spawn: quadradinho dourado
 	draw_rect(Rect2(sp - Vector2(3, 3), Vector2(6, 6)), Ui.GOLD)
 	draw_rect(Rect2(sp - Vector2(3, 3), Vector2(6, 6)), Ui.EDGE, false, 1.0)
+	if player.bed != Vector3i.MAX and player.world.get_block(player.bed.x, player.bed.y, player.bed.z) == Blocks.ids.bed:   # a cama que é o seu ponto de nascimento: quadradinho rosa
+		var b := to_view(Vector2(player.bed.x + 0.5, player.bed.z + 0.5))
+		draw_rect(Rect2(b - Vector2(3, 3), Vector2(6, 6)), Color("#ff7aa8"))
+		draw_rect(Rect2(b - Vector2(3, 3), Vector2(6, 6)), Ui.EDGE, false, 1.0)
 	if player.death != Vector3.INF:   # onde você morreu por último: um X vermelho
 		var d := to_view(Vector2(player.death.x, player.death.z))
 		for k in [1, -1]:

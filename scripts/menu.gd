@@ -31,6 +31,7 @@ var box: VBoxContainer                 # conteúdo da tela atual (botões, lista
 var chosen_player := ""
 var new_look := {}                     # cores do personagem que está sendo criado (pele, cabelo, camisa, calça)
 var new_name := ""
+var new_diff := Difficulty.DEFAULT       # dificuldade do personagem que está sendo criado (chave em difficulties.json)
 var screen := "title"                  # title | players | worlds
 var world: Node3D
 var clock: Node
@@ -403,6 +404,7 @@ func _chips(dir: String, s: Dictionary, chips: Control) -> void:
 		_chip(chips, "%d PV" % d.get("max_hp", 100), "♥", Color("#ff5a5a"))
 		_chip(chips, "%d PM" % d.get("max_mana", 20), "★", Color("#6aa8ff"))
 		_chip(chips, "Defesa %d" % inv.defense())
+		_chip(chips, Difficulty.defs[d.get("difficulty", Difficulty.DEFAULT)].name if Difficulty.defs.has(d.get("difficulty", "")) else Difficulty.defs[Difficulty.DEFAULT].name)
 	else:
 		_chip(chips, "Teste" if d.get("test", false) else "Clássico")
 		_chip(chips, "Mundo Pequeno")
@@ -516,6 +518,30 @@ func _swatches(label: String, key: String, colors: Array) -> void:
 	box.add_child(row)
 
 
+# Escolha da dificuldade do novo personagem (wiki Difficulty): um botão por entrada de difficulties.json; a moldura dourada marca o escolhido e o texto embaixo diz o que muda.
+func _difficulty_row() -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var tip := Label.new()
+	tip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tip.custom_minimum_size = Vector2(0, 44)
+	tip.add_theme_font_size_override("font_size", 14)
+	var buttons := {}
+	var paint := func():
+		for k in buttons:
+			var sb := Ui.box(Color("#4a5cad"), Ui.GOLD if k == new_diff else Ui.EDGE, 3, 4)
+			for st in ["normal", "hover", "pressed"]:
+				buttons[k].add_theme_stylebox_override(st, sb)
+		tip.text = Difficulty.defs[new_diff].tip
+	for k in Difficulty.defs:
+		buttons[k] = _button(Difficulty.defs[k].name, func():
+			new_diff = k
+			paint.call(), false, row)
+	paint.call()
+	box.add_child(row)
+	box.add_child(tip)
+
+
 func show_players() -> void:
 	screen = "players"
 	_clear("", true, 0.74, 0.55)
@@ -541,8 +567,10 @@ func show_new_player() -> void:
 	if new_look.is_empty():
 		new_look = SaveGame.look_for(str(randi()))
 	_show_avatar("?", [], new_look)
-	_create_row("nome do novo personagem", func(n): return SaveGame.create_player(n, new_look), func(_p):
+	_difficulty_row()
+	_create_row("nome do novo personagem", func(n): return SaveGame.create_player(n, new_look, new_diff), func(_p):
 		new_look = {}
+		new_diff = Difficulty.DEFAULT
 		new_name = ""
 		show_players(),
 		func(t: String):

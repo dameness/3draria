@@ -32,9 +32,9 @@ static func list(dir: String) -> Array:
 
 # Cria o arquivo e retorna o caminho, ou "" se o nome for vazio ou já existir.
 # look = cores escolhidas na criação ({skin, hair, shirt, pants} em Color); vazio = a aparência sai do nome (look_for).
-static func create_player(name: String, look := {}) -> String:
+static func create_player(name: String, look := {}, difficulty := Difficulty.DEFAULT) -> String:
 	var path := _path(players_dir, name, ".plr")
-	var data := {"version": VERSION, "name": name.strip_edges(), "new": true}
+	var data := {"version": VERSION, "name": name.strip_edges(), "new": true, "difficulty": difficulty}
 	if not look.is_empty():
 		data["look"] = _look_out(look)
 	if path == "" or _write(path, data) != OK:
@@ -107,7 +107,13 @@ static func save_player(player, path: String) -> Error:
 		inv.append([Items.names[id] if id != -1 else "", player.inv.count[i]])
 	var equip := Array(player.inv.equip).map(func(id): return Items.names[id] if id != -1 else "")
 	var name := func(id): return Items.names[id] if id != -1 else ""
-	return _write(path, {"version": VERSION, "name": _read(path).get("name", player.name), "hp": player.hp, "max_hp": player.max_hp, "max_mana": player.max_mana, "buffs": player.buffs, "inv": inv, "equip": equip,
+	var old := _read(path)
+	var beds: Dictionary = old.get("beds", {})   # a cama que é o ponto de nascimento, por mundo (arquivo do mundo)
+	if player.bed != Vector3i.MAX:
+		beds[world_path.get_file()] = player.bed
+	else:
+		beds.erase(world_path.get_file())
+	return _write(path, {"version": VERSION, "name": old.get("name", player.name), "difficulty": player.difficulty, "beds": beds, "hp": player.hp, "max_hp": player.max_hp, "max_mana": player.max_mana, "buffs": player.buffs, "inv": inv, "equip": equip,
 		"look": _read(path).get("look", {}), "acc": Array(player.inv.acc).map(name), "misc": Array(player.inv.misc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
 		"coin": Array(player.inv.coin), "fav": Array(player.inv.fav)})
 
@@ -115,7 +121,11 @@ static func save_player(player, path: String) -> Error:
 # Retorna false para personagem novo (o jogo dá os itens iniciais).
 static func load_player(player, path: String) -> bool:
 	var data := _read(path)
-	if data.is_empty() or data.get("new", false):
+	if data.is_empty():
+		return false
+	player.char_name = data.name
+	player.difficulty = data.get("difficulty", Difficulty.DEFAULT) if Difficulty.defs.has(data.get("difficulty", "")) else Difficulty.DEFAULT
+	if data.get("new", false):
 		return false
 	player.max_hp = data.get("max_hp", player.MAX_HP)   # saves antigos: 100
 	player.hp = minf(data.hp, player.max_hp)
@@ -150,6 +160,7 @@ static func load_player(player, path: String) -> bool:
 	var fav: Array = data.get("fav", [])
 	for k in mini(fav.size(), Inventory.SIZE):
 		player.inv.fav[k] = fav[k]
+	player.bed = data.get("beds", {}).get(world_path.get_file(), Vector3i.MAX)
 	return true
 
 

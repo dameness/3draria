@@ -32,6 +32,7 @@ var urgent: Array[Vector2i] = []   # chunks editados que precisam de mesh nova
 var npcs := {}      # habitantes que já chegaram (guide, merchant, nurse): nome -> true; salvo no mundo
 var homes := {}     # onde cada habitante mora (housing.gd): nome -> Vector3i (a célula em cima da cadeira); sem casa, fica perto do nascimento; salvo no mundo
 var town_wait := {}    # habitante morto: segundos até poder voltar (só volta de dia e com casa, como na wiki); salvo no mundo
+var tombs := {}      # Vector3i -> texto da lápide ("<nome> morreu"), como o letreiro do Terraria
 var chests := {}    # Vector3i -> {item: PackedInt32Array, count: PackedInt32Array}; só os baús já abertos (os outros ainda não têm conteúdo)
 var eoc_down := false        # Olho de Cthulhu já derrotado: ele deixa de nascer sozinho ao anoitecer
 var evil_boss_down := false   # Eater of Worlds / Brain já derrotado: libera o meteorito e, depois, o Wall of Flesh vale
@@ -56,6 +57,7 @@ func _ready() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	Buffs.load_pack()
+	Difficulty.load_pack()
 	Loot.load_pack()
 	gen = WorldGen.new(world_seed)
 	var atlas_image := Atlas.build(Blocks.textures)

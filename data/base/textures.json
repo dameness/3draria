@@ -391,5 +391,8 @@
 	"cactus_tile": {"pattern": "stripes", "colors": ["#3f8a3a", "#2e6e2a", "#58a24a"]},
 	"cactus_item": {"wiki": "Cactus"},
 	"glowstick": {"wiki": "Glowstick", "pattern": "blob", "colors": ["#7aff6a", "#2faa3a", "#d8ffb0"]},
-	"glowstick_tile": {"pattern": "noise", "colors": ["#8aff7a", "#5ae04a", "#c8ffb0"]}
+	"glowstick_tile": {"pattern": "noise", "colors": ["#8aff7a", "#5ae04a", "#c8ffb0"]},
+	"bed_tile": {"pattern": "planks", "colors": ["#b03a3a", "#8a2c2c", "#c85050"]},
+	"bed_item": {"wiki": "Bed"},
+	"tombstone_item": {"wiki": "Tombstone"}
 }

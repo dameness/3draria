@@ -22,9 +22,10 @@ func _init() -> void:
 	Items.load_pack()
 	Crafting.load_pack()
 	Buffs.load_pack()
+	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -283,7 +284,9 @@ func test_combat():
 	check(e.position.distance_to(p.position) < d0 - 3, "olho demoníaco voa até o jogador")
 	p.iframes = 0
 	p.hurt(1000, Vector3.RIGHT)
-	check(p.hp == p.MAX_HP and p.position == p.spawn, "morrer renasce no spawn com vida cheia")
+	check(p.hp <= 0.0 and p.dead > 0.0, "morrer deixa a espera da wiki (10 s) no lugar da morte")
+	p.respawn()
+	check(p.hp == p.MAX_HP and p.position == p.spawn and p.dead == 0.0, "renascer: no spawn, com metade da vida (mínimo 100)")
 	free_player(p)
 	w.free()
 	return true
@@ -335,6 +338,8 @@ func test_save():
 	p.inv.add(Items.ids.iron_helmet, 1)
 	p.inv.equip_from(p.inv.item.find(Items.ids.iron_helmet))
 	p.spawn = Vector3(21.5, 11, 22.5)
+	p.bed = Vector3i(26, 11, 26)
+	p.difficulty = "mediumcore"
 	p.inv.add(Items.ids.gold_coin, 3)
 	p.inv.ammo[1] = Items.ids.wooden_arrow
 	p.inv.ammo_count[1] = 77
@@ -361,6 +366,7 @@ func test_save():
 	check(p2.max_hp == 140 and is_equal_approx(p2.buffs.get("ironskin", 0.0), 300.0), "vida máxima e buffs voltam")
 	check(p2.inv.equip[0] == Items.ids.iron_helmet, "armadura vestida volta")
 	check(p2.spawn == p.spawn and p2.clock.time == 123.0, "spawn e hora do mundo voltam")
+	check(p2.bed == Vector3i(26, 11, 26) and p2.difficulty == "mediumcore" and p2.char_name == "Ana", "a cama, a dificuldade e o nome voltam do .plr")
 	check(p2.inv.coin[2] == 3 and p2.inv.ammo[1] == Items.ids.wooden_arrow and p2.inv.ammo_count[1] == 77 and p2.inv.acc[2] == Items.ids.hermes_boots \
 		and p2.inv.fav[0] == 1, "moedas, munição, acessórios e favoritos voltam")
 	check(w2.hardmode and w2.gen.hardmode and w2.skeletron_down and w2.evil_boss_down and w2.orbs_broken == 5, "hardmode, Skeletron, chefe do mal e orbes voltam")
@@ -1609,7 +1615,8 @@ func test_life_crystal():
 	p.iframes = 0.0
 	p.hp = 400.0
 	p.hurt(1000, Vector3.RIGHT)
-	check(p.hp == 400.0, "morrer renasce com a vida máxima nova")
+	p.respawn()
+	check(p.hp == 200.0 and p.max_hp == 400, "morrer mantém a vida máxima nova e renasce com metade")
 	# geração: cristais no chão das cavernas, do subsolo às cavernas, nunca no submundo; ~1 a cada 3 chunks
 	var cs: Dictionary = world_census()
 	print("cristais: %d em 256 chunks" % cs.crystals)
@@ -4876,7 +4883,113 @@ func test_fall_drown():
 	p.spawn = Vector3(40.5, 11.0, 40.5)
 	for i in 120:
 		p.tick(dt)
-	check(p.hp == float(p.max_hp) and p.position.distance_to(p.spawn) < 0.01 and p.breath == p.BREATH, "afogar até o fim é morte: volta ao spawn com tudo cheio")
+	check(p.hp <= 0.0 and p.dead > 0.0, "afogar até o fim é morte")
+	p.respawn()
+	check(p.hp == float(p.max_hp) and p.position.distance_to(p.spawn) < 0.01 and p.breath == p.BREATH, "e renascer volta ao spawn com tudo cheio")
+	free_player(p)
+	w.free()
+	return true
+
+
+# Morte e cama (wiki Death, Spawn, Beds, Tombstones, Difficulty): espera no lugar, lápide, metade da vida, ponto de nascimento na cama, Mediumcore e Hardcore.
+func test_death():
+	var w := floor_world()
+	var p := make_player(w)
+	p.char_name = "Aria"
+	var stone: int = Blocks.ids.stone
+	for x in range(20, 26):   # quarto 4 x 3 x 2 de ar (x 21-24, z 21-23, y 11-12), porta no 20,22
+		for z in range(20, 25):
+			for y in range(11, 14):
+				w.set_block(x, y, z, stone if x == 20 or x == 25 or z == 20 or z == 24 or y == 13 else 0)
+	w.set_block(20, 11, 22, 0)
+	var bed := Vector3i(22, 11, 22)
+	w.set_block(bed.x, bed.y, bed.z, Blocks.ids.bed)
+	check(not Blocks.solid[Blocks.ids.bed] and Housing.bedroom(w, bed).contains("parede"), "quarto aberto (a porta sumiu): a cama não vale")
+	p.use_bed(bed)
+	check(p.bed == Vector3i.MAX and p.home() == p.spawn, "cama fora de um quarto fechado não muda o nascimento")
+	w.set_block(20, 11, 22, stone)
+	p.use_bed(bed)
+	check(p.bed == bed and p.home() == Vector3(22.5, 11, 22.5), "cama num quarto fechado vira o ponto de nascimento")
+	p.use_bed(bed)
+	check(p.bed == Vector3i.MAX and p.home() == p.spawn, "de novo na mesma cama devolve o ponto do mundo")
+	p.use_bed(bed)
+	w.set_block(23, 13, 22, 0)   # teto aberto: a cama deixa de valer e o ponto volta sozinho
+	check(p.home() == p.spawn and p.bed == Vector3i.MAX, "quarto quebrado: volta ao ponto do mundo")
+	w.set_block(23, 13, 22, stone)
+	p.use_bed(bed)
+	# morte Classic: metade das moedas, lápide e espera no lugar; renasce na cama com metade da vida (mínimo 100)
+	p.inv.add(Items.ids.gold_coin, 5)
+	p.inv.add(Items.ids.stone, 7)
+	p.position = Vector3(24.5, 11, 23.5)
+	p.max_hp = 400
+	p.mana = 13.0
+	p.hurt(5000, Vector3.RIGHT)
+	check(p.dead == p.RESPAWN and p.position == Vector3(24.5, 11, 23.5), "a espera é de 10 s no lugar da morte")
+	check(p.inv.coin[2] == 2 and p.inv.total(Items.ids.stone) == 7, "Classic solta metade das moedas (arredonda para cima) e só elas")
+	check(w.get_block(24, 11, 23) == Blocks.ids.tombstone and w.tombs[Vector3i(24, 11, 23)] == "Aria morreu", "a lápide fica onde morreu com o texto '<nome> morreu'")
+	p.hurt(1, Vector3.RIGHT)
+	check(p.hp <= 0.0, "morto não leva dano de novo")
+	p.dead_for = 5.0
+	check(not p.enemies_near(), "sem inimigo por perto a espera pode ser pulada")
+	var z: Node3D = p.entities.spawn_enemy(enemy_def("zombie"), Vector3(30.5, 11, 23.5))
+	check(p.enemies_near(), "inimigo no retângulo da wiki segura a espera")
+	p.entities.remove_enemy(z)
+	p.respawn()
+	check(p.hp == 200.0 and p.position == Vector3(22.5, 11, 22.5) and p.mana == 13.0, "renasce na cama com metade da vida e a mana que tinha")
+	p.max_hp = 120
+	p.hp = 1.0
+	p.die()
+	p.respawn()
+	check(p.hp == 100.0, "vida de volta: mínimo 100")
+	p.max_hp = 80
+	p.die()
+	p.respawn()
+	check(p.hp == 80.0, "... mas nunca acima da vida máxima")
+	w.set_block(24, 11, 23, 0)
+	w.tombs.clear()
+	p.entities.get_children().filter(func(n): return n.get("item") != null).map(func(n): n.free())
+	# Mediumcore: tudo cai (moedas, munição, equipamento, cursor), vida e mana máximas ficam
+	p.difficulty = "mediumcore"
+	p.max_hp = 200
+	p.max_mana = 80
+	p.inv.add(Items.ids.iron_pickaxe, 1)
+	p.inv.add(Items.ids.iron_helmet, 1)
+	p.inv.equip_from(p.inv.item.find(Items.ids.iron_helmet))
+	p.inv.ammo[0] = Items.ids.wooden_arrow
+	p.inv.ammo_count[0] = 30
+	p.inv.cursor_id = Items.ids.torch
+	p.inv.cursor_count = 4
+	p.inv.coin = PackedInt32Array([0, 0, 2, 0])
+	p.position = Vector3(23.5, 11, 23.5)
+	p.die()
+	var dropped := {}
+	for n in p.entities.get_children():
+		if n.get("item") != null:
+			dropped[n.item] = dropped.get(n.item, 0) + n.count
+	check(dropped.get(Items.ids.stone) == 7 and dropped.get(Items.ids.iron_pickaxe) == 1 and dropped.get(Items.ids.iron_helmet) == 1 and dropped.get(Items.ids.wooden_arrow) == 30 \
+		and dropped.get(Items.ids.torch) == 4 and dropped.get(Items.ids.gold_coin) == 2, "Mediumcore solta tudo: itens, armadura, munição, cursor e moedas")
+	check(Array(p.inv.item).all(func(i): return i == -1) and p.inv.equip[0] == -1 and p.inv.coin == PackedInt32Array([0, 0, 0, 0]) and p.inv.cursor_id == -1 \
+		and p.max_hp == 200 and p.max_mana == 80 and not p.ghost, "e o personagem fica de mãos vazias, mas com a vida e a mana máximas")
+	var d: Node3D = p.entities.get_children().filter(func(n): return n.get("item") != null)[0]
+	d._ready()
+	d.age = 5.0
+	d.position = p.position
+	d._physics_process(0.016)
+	check(is_instance_valid(d) and not d.is_queued_for_deletion(), "morto não recolhe o que soltou")
+	# Hardcore: solta tudo, vira fantasma e o personagem é apagado
+	p.respawn()
+	p.difficulty = "hardcore"
+	p.inv.add(Items.ids.stone, 3)
+	p.iframes = 0.0
+	var saved_dir: String = SaveGame.players_dir
+	SaveGame.players_dir = "user://test_players/"
+	var plr := SaveGame.create_player("Fantasma", {}, "hardcore")
+	SaveGame.player_path = plr
+	p.hurt(5000, Vector3.RIGHT)
+	check(p.ghost and p.creative and p.dead == 0.0 and SaveGame.player_path == "" and not FileAccess.file_exists(plr), "Hardcore: fantasma e o personagem é apagado")
+	SaveGame.players_dir = saved_dir
+	check(p.inv.total(Items.ids.stone) == 0, "Hardcore também solta tudo")
+	p.interact()   # fantasma não interage (nem quebra: target vazio)
 	free_player(p)
 	w.free()
 	return true

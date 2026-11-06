@@ -53,7 +53,7 @@ func _physics_process(delta: float) -> void:
 	icon.rotation.y += delta * 2.0
 	var p: Node3D = entities.player
 	var to: Vector3 = p.position + Vector3.UP * 0.9 - position
-	if age > delay and to.length() < MAGNET:
+	if age > delay and to.length() < MAGNET and p.dead <= 0.0 and not p.ghost:   # morto não recolhe (o que ele soltou fica no chão)
 		if to.length() < PICKUP:
 			var pk: Dictionary = Items.defs[item].get("pickup", {})
 			if not pk.is_empty():   # coração / estrela: curam na hora

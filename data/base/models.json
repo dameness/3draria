@@ -30,5 +30,7 @@
 	"bomb": {"recipe": "weapon", "wiki": "Bomb", "round": true},
 	"grenade": {"recipe": "weapon", "wiki": "Grenade", "round": true},
 	"beenade": {"recipe": "weapon", "wiki": "Beenade", "round": true},
+	"bed": {"recipe": "prop", "wiki": "Bed_(placed)", "sides": true, "depth": 12, "plain": "#5a3a22"},
+	"tombstone": {"recipe": "prop", "wiki": "Tombstone", "sides": true, "depth": 8, "plain": "#4a4a50"},
 	"musket_ball": {"recipe": "weapon", "wiki": "Musket_Ball", "round": true}
 }
