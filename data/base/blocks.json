@@ -84,5 +84,5 @@
 	{"name": "cactus", "mine": 2, "axe": true, "solid": false, "shape": "cactus", "icon": "cactus_item", "tiles": {"all": "cactus_tile"}},
 	{"name": "glowstick_lit", "mine": 100, "solid": false, "shape": "glowstick", "light": 10, "item": false, "drop": "glowstick", "tiles": {"all": "glowstick_tile"}},
 	{"name": "bed", "shape": "model", "model": "bed", "size": [4, 2], "solid": false, "mine": 3, "tiles": {"all": "bed_tile"}, "icon": "bed_item"},
-	{"name": "tombstone", "shape": "model", "model": "tombstone", "size": [2, 2], "mine": 2, "tiles": {"all": "stone"}, "icon": "tombstone_item"}
+	{"name": "tombstone", "shape": "model", "model": "tombstone", "size": [2, 2], "solid": false, "mine": 2, "tiles": {"all": "stone"}, "icon": "tombstone_item"}
 ]

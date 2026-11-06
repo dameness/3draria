@@ -306,6 +306,7 @@ func _physics_process(delta: float) -> void:
 	if dead > 0.0:   # esperando: sem controle (pular depois de 1,5 s sem inimigo por perto renasce na hora)
 		dead -= delta
 		dead_for += delta
+		step(delta, Vector3.ZERO, false)   # o corpo cai até o chão (o dano de queda não vale: morto não leva dano)
 		if dead <= 0.0 or (dead_for >= SKIP_AFTER and k.call(KEY_SPACE) > 0.0 and not enemies_near()):
 			respawn()
 		return
@@ -452,6 +453,7 @@ func _update_camera(delta := 0.0) -> void:
 		free_pitch = 0.0
 	cam.get_node("Hand").visible = not third_person
 	get_node("Model").visible = third_person
+	get_node("Model").rotation.x = lerpf(get_node("Model").rotation.x, PI / 2 if dead > 0.0 else 0.0, minf(delta * 6.0, 1.0)) if delta > 0.0 else 0.0   # morto: cai de costas
 
 
 # A lente (um cubo de 0,3 em volta de p) não toca em bloco sólido.

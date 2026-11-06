@@ -1228,7 +1228,7 @@ func _process(delta: float) -> void:
 	test_footer.visible = world.test_world and root.visible
 	cross.visible = not (open or player.menu_open or player.map_open) and absf(player.free_yaw) + absf(player.free_pitch) < 0.05   # no olhar livre a mira não está no centro da tela   # com o mouse solto a mira não faz sentido
 	cross.add_theme_color_override("font_color", Ui.GOLD if player.smart_cursor else Color.WHITE)   # dourada: cursor inteligente ligado
-	creative_label.visible = player.creative
+	creative_label.visible = player.creative and not player.ghost
 	var radar: int = player.radar_count()
 	radar_label.visible = radar >= 0 and not open
 	if radar_label.visible:
