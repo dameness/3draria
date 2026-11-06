@@ -9,13 +9,14 @@ class_name EnemyModel
 #   brain    cérebro rosado com dobras, olhos e tentáculos (Brain of Cthulhu).
 #   worm     segmento de verme (esfera com anéis; cabeça com mandíbula, rabo mais fino), centrado na origem; enemy.gd gira inteiro.
 #   humanoid corpo do jogador (player_model.gd) com as cores de "colors" e braços estendidos.
-#   bb:nome  modelo feito no Blockbench (assets/models/bb/nome.glb, só em sessão local, fora do git): ossos nomeados e animações idle, move,
+#   bb:nome  modelo feito no Blockbench (assets/models/bb/nome.glb à mão, ou o gerado por scripts/bb/build.gd em assets/models/bbgen/; o de bb/ vence; fora do git): ossos nomeados e animações idle, move,
 #            attack, hurt, death (+ phase2) tocadas por animate(); sem o .glb vale o "fallback" do def (um dos modelos acima).
 #   (outro)  sprite da wiki extrudado com espessura; sem sprite, caixa colorida.
 # A frente de todos é -Z; enemy.gd gira o nó para o jogador.
 
 const PlayerModel := preload("res://scripts/player_model.gd")
-const BB_DIR := "res://assets/models/bb/"
+const BB_DIR := "res://assets/models/bb/"        # feito à mão no Blockbench (vence)
+const BB_GEN := "res://assets/models/bbgen/"     # gerado por scripts/bb/build.gd
 const BB_SCALE := 0.6   # Blockbench: 1 unidade = 1 texel = 1 voxel (0,0375 bloco), e o glTF sai dividido por 16
 const LOOPED := ["idle", "move", "attack", "phase2"]
 static var _bb := {}    # nome → cena do .glb já lida (null = arquivo não existe)
@@ -79,6 +80,14 @@ static func build(def: Dictionary) -> Node3D:
 	return root
 
 
+# Caminho do .glb do modelo (o feito à mão em bb/ vence o gerado em bbgen/); "" se nenhum existe.
+static func bb_path(name: String) -> String:
+	for dir in [BB_DIR, BB_GEN]:
+		if FileAccess.file_exists(dir + name + ".glb"):
+			return dir + name + ".glb"
+	return ""
+
+
 # Modelo do Blockbench: o .glb é lido uma vez (GLTFDocument, sem import do editor) e cada inimigo leva uma cópia. "look": o modelo todo
 # gira para o jogador (nó Look no centro do corpo, como o olho procedural); senão ele fica com os pés na origem.
 static func _bb_model(name: String, def: Dictionary) -> Node3D:
@@ -86,8 +95,13 @@ static func _bb_model(name: String, def: Dictionary) -> Node3D:
 		var scene: Node = null
 		var st := GLTFState.new()
 		var doc := GLTFDocument.new()
-		if FileAccess.file_exists(BB_DIR + name + ".glb") and doc.append_from_file(BB_DIR + name + ".glb", st) == OK:
+		var path := bb_path(name)
+		if path != "" and doc.append_from_file(path, st) == OK:
 			scene = doc.generate_scene(st)
+			for mi in scene.find_children("", "MeshInstance3D", true, false):   # modelo de voxels: cor por vértice (o importador não liga sozinho)
+				var mat := mi.get_active_material(0) as BaseMaterial3D
+				if mat and mat.albedo_texture == null:
+					mat.vertex_color_use_as_albedo = true
 			var ap := scene.find_child("AnimationPlayer", true, false) as AnimationPlayer
 			if ap == null:   # .glb sem animações (modelo ainda parado)
 				ap = AnimationPlayer.new()

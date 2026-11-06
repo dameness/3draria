@@ -25,10 +25,10 @@ O dono joga num PC Ubuntu modesto. A sessão remota não tem GPU/tela: valide s�
   cache de classes; sem ele script novo dá "Identifier ... not declared"), e se **precisa de mundo novo** (mudou a geração).
 - O dono lê o chat no app: respostas curtas em português, com o guia de teste no fim.
 
-## Modelos bb (Blockbench) — só em sessão LOCAL, com o Blockbench aberto e o MCP ligado (`claude mcp`; skills blockbench-* em .claude/skills/)
-- Cubos alinhados à grade (1 unidade = 1 texel = 1 voxel; rotação só em múltiplos de 22,5°), textura com a paleta do sprite da wiki, ossos nomeados (root, body, head, tentacle_1_1…),
-  animações idle/move/attack/hurt/death (+ phase2, e grupos iris/mouth por fase), loops sem salto. Exporte glTF binário com animações para `assets/models/bb/nome.glb` (+ `.bbmodel` ao lado).
-- Sessão remota não tem o .glb: nunca dependa dele nos testes (use `"fallback"`); conferir o visual = `tests/model_preview.gd -- enemy:nome`.
+## Modelos bb (inimigos/chefes em ossos) — detalhes em docs/BB.md
+- Dois caminhos, mesmo `"model": "bb:nome"`: `assets/models/bb/nome.glb` (Blockbench, só sessão LOCAL com o app aberto e o MCP ligado; **vence e nunca é tocado pelo update.sh**) ou `assets/models/bbgen/nome.glb`
+  (gerado por `scripts/bb/models.gd` → `scripts/bb/build.gd`; funciona na sessão remota; update.sh roda). Receita = ossos de voxels + clipes idle/move/attack/hurt/death (+ phase2; grupos iris/mouth), 1 texel = 1 voxel, paleta do sprite da wiki.
+- Sessão remota: use as receitas (o Blockbench não abre aqui: o proxy bloqueia o site). Nunca dependa do .glb nos testes (use `"fallback"`); conferir o visual = `tests/model_preview.gd -- enemy:nome`.
 
 ## Ponytail (skills em .claude/skills/, licença MIT em PONYTAIL-LICENSE)
 - Antes de codar, pare no primeiro degrau que resolve: precisa existir? já existe no repo? stdlib/engine faz? dá pra ser uma linha? só então o mínimo.
@@ -120,7 +120,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   item_model.gd      ícone 2D → malha 3D extrudada   held_item.gd  braço + item na mão (1ª pessoa): pose, inércia, balanço
   voxel/             modelos voxel (docs/VOXEL_STYLE.md, docs/LEVAS.md): vox_model.gd (.vox + operações), vox_mesh.gd (mesher), recipes.gd (receitas), build.gd (gera assets/models/gen/), levas.gd
                      shaders/voxel.gdshader: cor por vértice, emissivo pulsando, luz do mundo nos blocos com modelo
-  assets/models/bb/  modelos de inimigos/chefes feitos no Blockbench (.bbmodel fonte + .glb exportado; fora do git, como os sprites). enemy_model.gd lê o .glb em runtime
+  scripts/bb/        receitas de inimigos em ossos (models.gd, rig.gd) → build.gd grava assets/models/bbgen/*.glb;  assets/models/bb/ = .glb do Blockbench (fora do git, vence). enemy_model.gd lê o .glb em runtime
                      (GLTFDocument) por `"model": "bb:nome"` + `"fallback"` procedural (sem o .glb os testes passam do mesmo jeito) e toca idle/move/attack/hurt/death/phase2 pelo estado da IA
   player_model.gd    corpo em voxels (3ª pessoa, tecla V): poses, arma na mão, armadura por peça (Molten em cascas voxel; as outras ainda em formas de código)
 scripts/update.sh    após cada git pull: Godot + sprites + cache de classes

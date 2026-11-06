@@ -203,7 +203,7 @@ func test_debuffs():
 		z.debuffs.erase("on_fire")
 		proj.afflict(z)
 		hits += 1 if z.debuffs.has("on_fire") else 0
-	check(hits > 60 and hits < 140 and z.debuffs.get("on_fire", 3.0) == 3.0, "Sunfury queima em ~25% dos acertos por 3 s (%d/400)" % hits)
+	check(hits > 60 and hits < 140 and z.debuffs.get("on_fire", 3.0) == 3.0, "Sunfury queima em ~25%% dos acertos por 3 s (%d/400)" % hits)
 	check(Crafting.recipes.any(func(r): return r.result == Items.ids.poison_dart and r.count == 100 and r.needs.has(Items.ids.stinger)), "receita: 1 Stinger → 100 Poison Darts")
 	free_player(p)
 	w.free()
@@ -624,7 +624,7 @@ func test_bb_models():
 	var ent: Node3D = load("res://scripts/entities.gd").new()
 	ent.load_defs()
 	for def in ent.defs:
-		if not def.get("model", "").begins_with("bb:") or not FileAccess.file_exists(EnemyModel.BB_DIR + def.model.substr(3) + ".glb"):
+		if not def.get("model", "").begins_with("bb:") or EnemyModel.bb_path(def.model.substr(3)) == "":
 			continue
 		var m := EnemyModel.build(def)
 		var ap: AnimationPlayer = m.get_meta("ap")
@@ -645,9 +645,17 @@ func test_bb_models():
 			check(an.loop_mode == Animation.LOOP_LINEAR and jump < 0.01, "%s/%s: loop sem salto (%.3f)" % [def.name, a, jump])
 		var box := AABB()
 		for mi in m.find_children("", "MeshInstance3D", true, false):
-			box = box.merge(mi.get_aabb()) if box.size != Vector3.ZERO else mi.get_aabb()
-		box.size *= EnemyModel.BB_SCALE   # (as cenas dos testes ficam fora da árvore: sem transform global)
+			var xf := Transform3D()   # (as cenas dos testes ficam fora da árvore: soma os transforms dos ossos até o modelo)
+			var n: Node = mi
+			while n != m:
+				xf = n.transform * xf
+				n = n.get_parent()
+			box = box.merge(xf * mi.get_aabb()) if box.size != Vector3.ZERO else xf * mi.get_aabb()
 		check(absf(box.size.x - def.size[0]) < def.size[0] * 0.35 or absf(box.size.y - def.size[1]) < def.size[1] * 0.35, "%s: tamanho do modelo bate com o hitbox (%s)" % [def.name, box.size])
+		for mi in m.find_children("", "MeshInstance3D", true, false):
+			var mat := mi.get_active_material(0) as BaseMaterial3D
+			check(mat == null or mat.albedo_texture != null or mat.vertex_color_use_as_albedo, "%s: modelo de voxels usa a cor por vértice" % def.name)
+			break
 		var foe := FakeFoe.new()
 		foe.def.ai = def.ai
 		var at := Vector3(0, 0, -20)
@@ -687,7 +695,7 @@ func test_enemy_models():
 	EnemyModel.set_phase(eye, 2)
 	check(not eye.get_node("Look/Iris").visible and eye.get_node("Look/Mouth").visible, "fase 2: íris vira boca")
 	eye.free()
-	check(ent.def_named("the_hungry").model == "hungry" and EnemyModel.build(ent.def_named("the_hungry")).find_children("", "MeshInstance3D", true, false).size() > 20, "The Hungry é carne com boca, não um olho")
+	check(procedural(ent.def_named("the_hungry")).model == "hungry" and EnemyModel.build(procedural(ent.def_named("the_hungry"))).find_children("", "MeshInstance3D", true, false).size() > 20, "The Hungry é carne com boca, não um olho")
 	check(Items.title("brain_of_cthulhu") == "Brain of Cthulhu" and Items.title("the_rotted_fork") == "The Rotted Fork" and Items.title("wand_of_sparking") == "Wand of Sparking", "nomes em title case da wiki")
 	check(ent.def_named("zombie").fallback == "humanoid", "zumbi usa o corpo humanoide quando não há o .glb")
 	var icon := Items.icon_texture(Items.ids.copper_pickaxe, ImageTexture.create_from_image(Atlas.build(Blocks.textures)))
@@ -2791,7 +2799,7 @@ func test_brain():
 	check(creepers.size() == 20 and ent.boss == brain and ent.boss_max == 1250 + 20 * 100, "o cérebro nasce com 20 Creepers (barra soma tudo)")
 	brain._ready()   # monta o modelo (fora da árvore ele ainda não existe)
 	var parts: Array = brain.model.find_children("", "MeshInstance3D", true, false)
-	check(parts.size() > 10 and parts.all(func(m): return m.material_override.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA and m.material_override.albedo_color.a < 1.0), "fase 1: cérebro translúcido (alpha no material, o Compatibility ignora transparency)")
+	check(parts.size() > 10 and parts.all(func(m): var mt: Material = m.material_override if m.material_override else m.get_active_material(0); return mt.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA and mt.albedo_color.a < 1.0), "fase 1: cérebro translúcido (alpha no material, o Compatibility ignora transparency)")
 	check(brain.hurt(500, Vector3.RIGHT, 0) == 0 and brain.hp == 1250, "fase 1: imune enquanto houver Creepers")
 	var far := 0.0
 	for i in 60 * 4:
@@ -2806,7 +2814,7 @@ func test_brain():
 		c.hurt(1000, Vector3.RIGHT, 0)
 	brain.think(1.0 / 60)
 	check(brain.phase == 2 and brain.hurt(100, Vector3.RIGHT, 0) == 100 - 7, "sem Creepers: fase 2, vulnerável (defesa 14)")
-	check(parts.all(func(m): return m.material_override.albedo_color.a == 1.0 and m.material_override.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED), "fase 2: cérebro sólido")
+	check(parts.all(func(m): var mt: Material = m.material_override if m.material_override else m.get_active_material(0); return mt.albedo_color.a == 1.0 and mt.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED), "fase 2: cérebro sólido")
 	check(ent.boss_max == 1250, "fase 2: a barra passa a contar só o cérebro (%d)" % ent.boss_max)
 	var moved := 0.0
 	var last: Vector3 = brain.position

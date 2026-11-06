@@ -46,6 +46,19 @@ func cylinder(cx: float, cy: float, rx: float, ry: float, z0: int, z1: int, c: i
 					put(Vector3i(x, y, z), c)
 
 
+# Elipsoide de centro c e raios r (em voxels). `col`: cor (int) ou Callable(Vector3i) -> cor. `shell` > 0: só a casca dessa espessura (oco por dentro).
+func ellipsoid(c: Vector3, r: Vector3, col: Variant, shell := 0) -> void:
+	for z in range(floori(c.z - r.z), ceili(c.z + r.z) + 1):
+		for y in range(floori(c.y - r.y), ceili(c.y + r.y) + 1):
+			for x in range(floori(c.x - r.x), ceili(c.x + r.x) + 1):
+				var d := Vector3((x - c.x) / (r.x + 0.5), (y - c.y) / (r.y + 0.5), (z - c.z) / (r.z + 0.5))
+				if d.length_squared() > 1.0:
+					continue
+				if shell > 0 and d.length_squared() < pow(1.0 - shell / (minf(r.x, minf(r.y, r.z)) + 0.5), 2):
+					continue
+				put(Vector3i(x, y, z), col if col is int else col.call(Vector3i(x, y, z)))
+
+
 func mirror_x(axis2 := 0) -> void:   # espelha em x: x' = axis2 - x (axis2 = 0 espelha em volta da coluna x = 0)
 	for p in v.keys():
 		var q := Vector3i(axis2 - p.x, p.y, p.z)

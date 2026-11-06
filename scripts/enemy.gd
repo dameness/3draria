@@ -359,7 +359,7 @@ func set_ghost(on: bool) -> void:
 	if model == null:
 		return
 	for m in model.find_children("", "MeshInstance3D", true, false):
-		var mat := m.material_override as StandardMaterial3D
+		var mat := (m.material_override if m.material_override else m.get_active_material(0)) as StandardMaterial3D   # (modelo bb: material da malha)
 		if mat:
 			mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA if on else BaseMaterial3D.TRANSPARENCY_DISABLED
 			mat.albedo_color.a = 0.5 if on else 1.0

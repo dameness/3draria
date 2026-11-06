@@ -49,7 +49,7 @@ static func text() -> String:
 	out += "- Todo item, bloco e estrutura novo nasce com modelo **automático** (o sprite da wiki inflado): não precisa fazer nada, já tem volume.\n"
 	out += "- Só o que merece destaque ganha **receita**: entrada em `data/<pacote>/models.json` (sprite da wiki, cores emissivas) + função em `scripts/voxel/recipes.gd`,\n"
 	out += "  e o campo `\"model\": \"nome\"` no item/bloco/conjunto. Critério de destaque: chefe, arma de raridade alta ou com efeito visual, estrutura grande (tamanho em tiles ≥ 2x2), conjunto de armadura com brilho.\n"
-	out += "- Inimigo/chefe com rig e animação: Blockbench, só em sessão local (`\"model\": \"bb:nome\"` + `\"fallback\"` procedural no enemies.json; ver CLAUDE.md).\n"
+	out += "- Inimigo/chefe com rig e animação: `\"model\": \"bb:nome\"` (+ `\"fallback\"` procedural no enemies.json). O .glb vem de scripts/bb/models.gd (gerado em assets/models/bbgen/ pelo update.sh) ou, se existir, do Blockbench em assets/models/bb/ (vence); ver docs/BB.md.\n"
 	out += "- Retoque à mão: salve o `.vox` em `assets/models/` (prioridade sobre o gerado em `assets/models/gen/`). Ver `docs/VOXEL_STYLE.md`.\n"
 	return out
 
