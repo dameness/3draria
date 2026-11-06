@@ -44,6 +44,8 @@ static func all() -> Dictionary:
 		"snow_flinx": snow_flinx,
 		"meteor_head": meteor_head,
 		"pixie": pixie,
+		"face_monster": face_monster,
+		"king_slime": king_slime,
 	}
 
 
@@ -821,4 +823,83 @@ static func pixie() -> BbRig:
 		rig.sway(a, "body", "pos", Vector3(0, 0.4, 0))
 	rig.std_hurt("body", 0.2)
 	rig.std_death("body", 0.5, 400.0)
+	return rig
+
+
+# ---- Face Monster: figura marrom corcunda com a cabeça de carne rosada e uma boca vertical com dentes no peito ----
+static func face_monster() -> BbRig:
+	var rig := BbRig.new()
+	rig.center = Vector3(0.5, 0.5, 0)
+	var brown := [0x9a6a42, 0x7a5030, 0x4a2c1a]
+	var body := rig.bone("body", "", Vector3(0.5, 0.5, 18.5))
+	var tc := Vector3(0, 1, 26)
+	var tr := Vector3(6, 5, 9)
+	body.ellipsoid(tc, tr, func(p: Vector3i): return tone((Vector3(p) - tc) / tr, brown))
+	var hump := Vector3(0, 6, 28)
+	body.ellipsoid(hump, Vector3(5, 4, 6), func(p: Vector3i): return tone((Vector3(p) - hump) / Vector3(5, 4, 6), brown))
+	var hc := Vector3(0, -2, 37)
+	var hr := Vector3(7, 6, 6)
+	body.ellipsoid(hc, hr, func(p: Vector3i): return tone((Vector3(p) - hc) / hr, [0xd88890, 0xb85060, 0x8a3040]))
+	for i in 5:   # lóbulos do "cérebro" na cabeça
+		var at := hc + Vector3(sin(i * 1.7) * 4, cos(i * 2.3) * 3, 2 + cos(i) * 2)
+		body.ellipsoid(at, Vector3(2, 2, 2), 0xc86a78)
+	body.box(Vector3i(-1, -6, 14), Vector3i(0, -5, 30), 0x500808)   # boca vertical
+	for z in range(15, 30, 2):
+		body.put(Vector3i(-2, -5, z), 0xd8c8c8)
+		body.put(Vector3i(1, -5, z + 1), 0xd8c8c8)
+	for side in [1, -1]:
+		var tag := "a" if side == 1 else "b"
+		var hip := Vector3(side * 3, 0, 17)
+		line(rig.bone("leg" + tag, "body", hip + Vector3(0.5, 0.5, 0.5)), hip, Vector3(side * 3, 0, 1), brown[2], 3)
+		var sh := Vector3(side * 7, 0, 33)
+		var arm := rig.bone("arm" + tag, "body", sh + Vector3(0.5, 0.5, 0.5))
+		line(arm, sh, Vector3(side * 8, -1, 19), brown[1], 3)
+		arm.box(Vector3i(side * 8 - 1, -2, 17), Vector3i(side * 8 + 1, 0, 19), 0xb08060)
+	for a in ["idle", "move", "attack"]:
+		var T: float = {"idle": 2.0, "move": 0.8, "attack": 0.5}[a]
+		var amp: float = {"idle": 3.0, "move": 28.0, "attack": 20.0}[a]
+		rig.anim(a, T)
+		rig.sway(a, "body", "pos", Vector3(0, 0.5, 0), 0.25, 2 if a != "idle" else 1)
+		rig.sway(a, "body", "rot", Vector3(8 if a == "attack" else 2, 0, 3 if a != "attack" else 0), 0.0, 1, Vector3(6 if a == "attack" else 0, 0, 0))
+		for s2 in ["a", "b"]:
+			var ph := 0.0 if s2 == "a" else 0.5
+			rig.sway(a, "leg" + s2, "rot", Vector3(amp, 0, 0), ph)
+			rig.sway(a, "arm" + s2, "rot", Vector3(amp * (1.2 if a == "attack" else 0.8), 0, 0), ph + 0.5, 1, Vector3(-40 if a == "attack" else 0, 0, 0))
+	rig.std_hurt("body", 0.25)
+	rig.std_death("body", 0.8, 0.0)
+	return rig
+
+
+# ---- King Slime (k=3): domo de gelatina azul com brilho, olhos e a coroa dourada; esmaga e estica ao pular ----
+static func king_slime() -> BbRig:
+	var rig := BbRig.new()
+	rig.k = 3
+	rig.center = Vector3(0.5, 0.5, 0)
+	var blue := [0x7a9aff, 0x4a6ae0, 0x2c48b0]
+	var c := Vector3(0, 0, 0)
+	var r := Vector3(15, 13, 11)
+	var body := rig.bone("body", "", Vector3(0.5, 0.5, 0))
+	body.ellipsoid(c, r, func(p: Vector3i): return tone((Vector3(p) - c) / r, blue))
+	for p in body.v.keys():
+		if p.z < 0:
+			body.v.erase(p)
+	body.ellipsoid(Vector3(-6, -6, 8), Vector3(3, 2, 2), 0xb8ccff)   # brilho
+	body.ellipsoid(Vector3(0, 0, 4), Vector3(8, 7, 3), 0x3a58c8)       # miolo mais escuro
+	for side in [-1, 1]:
+		body.ellipsoid(Vector3(side * 5, -11, 6), Vector3(2, 1, 2.5), 0xf4f4f4)
+		body.ellipsoid(Vector3(side * 5, -12, 6), Vector3(1, 1, 1.5), 0x101018)
+	body.box(Vector3i(-3, -12, 2), Vector3i(3, -12, 2), 0x1a2a70)   # sorriso
+	var crown := rig.bone("crown", "body", Vector3(0.5, 0.5, 10.5))
+	crown.box(Vector3i(-6, -4, 10), Vector3i(5, 3, 12), 0xf0c030)
+	for i in 5:
+		var x := -6 + i * 3
+		crown.box(Vector3i(x, -4, 13), Vector3i(x + 1, 3, 15 + (i % 2)), 0xf8d850)
+	for a in ["idle", "move", "attack"]:
+		var T: float = {"idle": 1.6, "move": 0.9, "attack": 0.6}[a]
+		var k: float = {"idle": 0.04, "move": 0.18, "attack": 0.24}[a]
+		rig.anim(a, T)
+		rig.sway(a, "body", "scl", Vector3(-k * 0.5, k, -k * 0.5), 0.0, 1, Vector3.ONE)
+		rig.sway(a, "body", "pos", Vector3(0, 0, 0 if a == "idle" else 2.5), 0.25)
+	rig.std_hurt("body", 0.25)
+	rig.std_death("body", 0.9, 0.0)
 	return rig

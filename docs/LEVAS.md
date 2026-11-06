@@ -15,14 +15,14 @@ Status: **receita** = tem modelo próprio (models.json / campo `model`); **auto*
 - receita: enchanted_sword, terra_blade, musket_ball, space_gun, crimson_rod, bomb, blue_moon, sunfury, grenade, beenade
 - auto: wooden_sword, copper_shortsword, wooden_bow, wooden_arrow, copper_broadsword, copper_bow, tin_broadsword, tin_bow, iron_broadsword, iron_bow, lead_broadsword, lead_bow, silver_broadsword, silver_bow, tungsten_broadsword, tungsten_bow, gold_broadsword, gold_bow, platinum_broadsword, platinum_bow, lights_bane, demon_bow, unholy_arrow, blood_butcherer, tendon_bow, cobalt_sword, palladium_sword, musket, the_undertaker, wand_of_sparking, vilethorn, the_rotted_fork, tin_shortsword, iron_shortsword, lead_shortsword, silver_shortsword, tungsten_shortsword, gold_shortsword, platinum_shortsword, spear, bone_sword, dynamite, flintlock_pistol, book_of_skulls, wooden_boomerang, bee_keeper, the_bees_knees, bee_gun, mace, ball_o'_hurt, the_meatball, shuriken, throwing_knife, flare_gun, flare, umbrella, slime_gun, seed, blowpipe, poison_dart
 
-## Leva 4 — Inimigos (49: 23 bb, 25 procedural, 1 sem modelo)
-- bb: zombie, demon_eye, servant_of_cthulhu, eater_of_souls, crimera, cursed_skull, voodoo_demon, hellbat, the_hungry, pixie, unicorn, cave_bat, meteor_head, demon, blood_crawler, fire_imp, ice_bat, snow_flinx, vulture, antlion_charger, hornet, jungle_bat, bee
+## Leva 4 — Inimigos (49: 24 bb, 25 procedural, 0 sem modelo)
+- bb: zombie, demon_eye, servant_of_cthulhu, eater_of_souls, crimera, cursed_skull, voodoo_demon, hellbat, the_hungry, pixie, unicorn, cave_bat, meteor_head, demon, blood_crawler, face_monster, fire_imp, ice_bat, snow_flinx, vulture, antlion_charger, hornet, jungle_bat, bee
 - procedural: green_slime, blue_slime, angry_bones, dark_caster, old_man, guide, merchant, nurse, red_slime, yellow_slime, black_slime, lava_slime, skeleton, mother_slime, undead_miner, giant_worm, devourer, tim, demolitionist, arms_dealer, ice_slime, frozen_zombie, undead_viking, spiked_ice_slime, jungle_slime
-- sem modelo: face_monster
+- sem modelo: 
 
-## Leva 5 — Chefes (9: 7 bb, 2 procedural, 0 sem modelo)
-- bb: eye_of_cthulhu, creeper, brain_of_cthulhu, skeletron, skeletron_hand, wall_of_flesh, queen_bee
-- procedural: eater_of_worlds, king_slime
+## Leva 5 — Chefes (9: 8 bb, 1 procedural, 0 sem modelo)
+- bb: eye_of_cthulhu, creeper, brain_of_cthulhu, king_slime, skeletron, skeletron_hand, wall_of_flesh, queen_bee
+- procedural: eater_of_worlds
 - sem modelo: 
 - ordem sugerida (progressão; as partes ficam com o chefe): king_slime → eye_of_cthulhu → eater_of_worlds → brain_of_cthulhu → queen_bee → skeletron → wall_of_flesh; partes: creeper, skeletron_hand
 
