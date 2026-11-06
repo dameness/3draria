@@ -168,7 +168,7 @@ func _process(_delta: float) -> bool:   # no primeiro quadro, com a árvore roda
 			get_root().add_child(m)
 			assert(m.has_meta("ap"), "%s não tem .glb (rode scripts/bb/build.gd)" % def.name)
 			EnemyModel.set_phase(m, 2 if n.begins_with("enemy2") else 1)
-			row.sprite = Atlas.wiki_image(Blocks.textures.get(def.get("phase2", {}).get("sprite", def.sprite) if n.begins_with("enemy2") else def.sprite, {}))
+			row.sprite = Atlas.wiki_image(Blocks.textures.get(def.get("phase2", {}).get("sprite", def.get("sprite", "")) if n.begins_with("enemy2") else def.get("sprite", ""), {}))
 			row.parts = bb_parts(m)
 			if not anim_rows.has(n):
 				var frames := []

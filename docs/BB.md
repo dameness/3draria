@@ -14,5 +14,8 @@ Sem nenhum dos dois vale o `"fallback"` procedural (os testes passam do mesmo je
 - Conferir sem tela: `.tools/godot --headless -s tests/model_preview.gd -- enemy:nome enemy2:nome` (4 ângulos + `textures/enemy_anims.png` com um quadro por clipe).
 - Modelo novo = uma função + uma linha em `all()` + `"model": "bb:nome"` no inimigo. Retocar à mão: abra no Blockbench, salve em `assets/models/bb/` com o mesmo nome.
 
-## Feitos
-Eye of Cthulhu (2 fases), Demon Eye, Servant of Cthulhu, Cave/Ice/Jungle Bat e Hellbat.
+## Feitos (`bb:` no enemies.json; todos com fallback procedural ou sprite)
+Chefes: Eye of Cthulhu (2 fases), Skeletron (caveira + mão), Wall of Flesh (k=8), Brain of Cthulhu (translúcido na fase 1: `set_ghost` lê o material da malha), Queen Bee.
+Comuns: Demon Eye, Servant, Creeper, The Hungry, Cursed Skull, Cave/Ice/Jungle Bat, Hellbat, Bee, Hornet, Demon, Voodoo Demon, Fire Imp, Eater of Souls, Crimera,
+Blood Crawler, Antlion Charger, Vulture, Unicorn, Snow Flinx, Meteor Head, Pixie.
+Ficam no procedural de propósito: slimes (domo aprovado), vermes (segmentos), humanoides (corpo do jogador, aprovado). Faltam Face Monster e King Slime (coroa).
