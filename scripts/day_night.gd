@@ -19,6 +19,7 @@ const HELL_FOG := Color("#3c0e06")   # névoa no submundo
 @export var world: Node3D
 @export var sun: DirectionalLight3D   # ilumina só os modelos (jogador, itens); os blocos são sem sombreamento
 var time := 60.0   # segundos desde o amanhecer
+var speed := 1.0   # o sono do jogador acelera a hora (player.SLEEP_SPEED)
 var hold := false   # relógio parado (atalho do mundo de teste)
 var sky := ShaderMaterial.new()
 var depth := 0.0        # quanto a câmera está abaixo do chão da coluna (renovado 4 vezes por segundo)
@@ -68,7 +69,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if not hold:
-		time = fmod(time + delta, CYCLE)
+		time = fmod(time + delta * speed, CYCLE)
 	var l := light()
 	var sd := sun_dir()
 	var day := smoothstep(-0.1, 0.3, sd.y)   # claridade do céu; os blocos seguem light()

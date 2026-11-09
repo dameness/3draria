@@ -42,6 +42,7 @@ const MAX_MANA_CAP := 200    # 10 Mana Crystals de 20 além dos 20 iniciais (wik
 const SICKNESS := 60.0       # Doença da poção depois de uma cura (wiki)
 const AIR_JUMP := 0.87       # Cloud in a Bottle: o pulo extra tem ~75% da altura do primeiro (0,87² da velocidade)
 const RESPAWN := 10.0     # espera depois de morrer (wiki Death, Classic: 10 s)
+const SLEEP_SPEED := 5.0  # wiki Beds: dormir faz a hora correr 5× mais rápido (1 h do jogo em 12 s)
 const SKIP_AFTER := 1.5   # depois disto, pular encurta a espera se não há inimigo perto (wiki Death)
 const SKIP_RANGE := Vector2(48.0, 34.5)   # o retângulo de 160x115 tiles da wiki, em blocos (x e z / y)
 const IFRAMES := 0.67    # 40 frames de invencibilidade após levar dano, como no Terraria
@@ -118,7 +119,11 @@ var dead := 0.0               # segundos que faltam da espera depois de morrer (
 var dead_for := 0.0           # segundos desde a morte (pular só encurta a espera depois de SKIP_AFTER)
 var difficulty := Difficulty.DEFAULT   # chave em difficulties.json; vai no .plr
 var char_name := "Jogador"    # nome do personagem (a lápide)
+var bed_at := Vector3i.MAX    # a cama em que está deitado
 var bed := Vector3i.MAX       # cama que é o ponto de nascimento deste personagem neste mundo (MAX = o do mundo); vai no .plr
+var sleeping := false         # deitado na cama: a hora corre SLEEP_SPEED× mais rápido até mexer, levar dano ou quebrarem a cama
+var lie := 0.0                # 0..1: o quanto já deitou (a câmera e o corpo descem suavemente)
+var zzz := 0.0                # tempo até o próximo "Z" subindo
 var ghost := false            # Hardcore morto: voa e observa, sem tocar em nada
 var since_hit := 99.0
 var cooldown := 0.0
@@ -310,6 +315,17 @@ func _physics_process(delta: float) -> void:
 		if dead <= 0.0 or (dead_for >= SKIP_AFTER and k.call(KEY_SPACE) > 0.0 and not enemies_near()):
 			respawn()
 		return
+	if sleeping:   # deitado: qualquer tecla de andar levanta; com chefe vivo a hora não acelera (wiki)
+		if k.call(KEY_W) + k.call(KEY_A) + k.call(KEY_S) + k.call(KEY_D) + k.call(KEY_SPACE) > 0.0 or world.get_block(bed_at.x, bed_at.y, bed_at.z) != Blocks.ids.bed:
+			wake_up()
+		else:
+			clock.speed = SLEEP_SPEED if entities.boss == null else 1.0
+			zzz -= delta
+			if zzz <= 0.0:
+				zzz = 1.3
+				entities.spawn_text(position + Vector3.UP * 0.9, "Z", Color("#cfe6ff"))
+			tick(delta)
+			return
 	var wish := Vector3(k.call(KEY_D) - k.call(KEY_A), 0, k.call(KEY_S) - k.call(KEY_W)).rotated(Vector3.UP, rotation.y)
 	if creative:
 		wish.y = k.call(KEY_SPACE) - k.call(KEY_C)
@@ -404,7 +420,7 @@ func _process(delta: float) -> void:
 	else:
 		crack.visible = false
 	_update_rope()
-	var free := not (inventory_open or menu_open or map_open or dead > 0.0 or ghost)   # mãos livres: sem painel na frente
+	var free := not (inventory_open or menu_open or map_open or dead > 0.0 or ghost or sleeping)   # mãos livres: sem painel na frente
 	sprint = free and Input.is_physical_key_pressed(KEY_SHIFT)
 	auto_pick(sprint and not creative)   # voando, Shift é velocidade (trocar de item no meio do voo atrapalharia)
 	if not (free or (cursor_hand() and not menu_open and not map_open and dead <= 0.0)):
@@ -443,17 +459,21 @@ func _update_camera(delta := 0.0) -> void:
 	if not third_person and delta > 0.0:   # em 1ª pessoa a câmera balança ao andar e treme nos golpes
 		cam.position += Vector3(cos(bob * 0.5) * 0.02, absf(sin(bob)) * 0.035, 0) * walk
 		cam.position += Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * 0.05
-	if not third_person:   # morto: a câmera tomba de lado e afunda até o chão
-		var down := clampf(dead_for * 2.0, 0.0, 1.0) if dead > 0.0 else 0.0
-		cam.position.y = lerpf(cam.position.y, 0.35, down)
-		cam.rotation.z = lerpf(cam.rotation.z, 0.9 * down, minf(delta * 6.0, 1.0)) if delta > 0.0 else 0.0
+	lie = move_toward(lie, 1.0 if sleeping else 0.0, delta * 2.5)
+	if not third_person:   # morto ou dormindo: a câmera afunda (a morte também tomba de lado)
+		var down := clampf(dead_for * 2.0, 0.0, 1.0) if dead > 0.0 else lie
+		cam.position.y = lerpf(cam.position.y, 0.35 if dead > 0.0 else 0.6, down)
+		if delta > 0.0:
+			cam.rotation.z = lerpf(cam.rotation.z, 0.9 * down if dead > 0.0 else 0.0, minf(delta * 6.0, 1.0))   # só a morte tomba a câmera
 	if not third_person and (free_yaw != 0.0 or free_pitch != 0.0):
 		cam.rotation = Vector3(pitch, 0, 0)
 		free_yaw = 0.0
 		free_pitch = 0.0
 	cam.get_node("Hand").visible = not third_person
 	get_node("Model").visible = third_person
-	get_node("Model").rotation.x = lerpf(get_node("Model").rotation.x, PI / 2 if dead > 0.0 else 0.0, minf(delta * 6.0, 1.0)) if delta > 0.0 else 0.0   # morto: cai de costas
+	if delta > 0.0:   # (sem delta é só a câmera reposicionada: a pose não anda)
+		get_node("Model").rotation.x = lerpf(get_node("Model").rotation.x, PI / 2 if dead > 0.0 or sleeping else 0.0, minf(delta * 6.0, 1.0))   # morto ou dormindo: de costas
+		get_node("Model").position.z = -0.9 * lie   # deitado, o corpo fica no meio da cama (os pés na origem)
 
 
 # A lente (um cubo de 0,3 em volta de p) não toca em bloco sólido.
@@ -840,6 +860,7 @@ func hurt(damage: int, dir: Vector3, bounce := true) -> int:   # bounce = false:
 	if iframes > 0 or creative or dead > 0.0:
 		return 0
 	var taken := maxi(1, damage - ceili(defense() / 2.0))
+	wake_up()
 	hp -= taken
 	if entities:
 		entities.spawn_text(position + Vector3.UP * (TALL + 0.4), str(taken), Color("#ff5058"))
@@ -880,6 +901,7 @@ func pickup(pk: Dictionary) -> void:
 # RESPAWN s onde caiu; respawn() devolve ao ponto de nascimento. Hardcore vira fantasma e o personagem é apagado. O mapa marca onde foi.
 func die() -> void:
 	dismount_cart(false)
+	wake_up()
 	var rule: Dictionary = Difficulty.defs[difficulty]
 	if entities:
 		if rule.get("drop_all", false):
@@ -941,17 +963,34 @@ func home() -> Vector3:
 	return spawn
 
 
-# Botão direito na cama (wiki Beds): num quarto fechado ela vira o ponto de nascimento; de novo na mesma cama, volta o do mundo.
-func use_bed(p: Vector3i) -> void:
+# Botão direito na cama (wiki Beds): deita e dorme (a hora corre 5× mais rápido) e, num quarto fechado, a cama vira o ponto de nascimento.
+# Shift + botão direito: só tira o ponto de nascimento (se for esta cama) sem deitar. Sem quarto válido ainda dá para dormir, com o aviso.
+func use_bed(p: Vector3i, only_spawn := false) -> void:
+	if only_spawn and bed == p:
+		bed = Vector3i.MAX
+		say("Ponto de nascimento removido!")
+		return
 	var why := Housing.bedroom(world, p)
 	if why != "":
 		say(why)
-	elif bed == p:
-		bed = Vector3i.MAX
-		say("Ponto de nascimento removido!")
-	else:
+	elif bed != p:
 		bed = p
 		say("Ponto de nascimento definido!")
+	if not only_spawn:
+		bed_at = p
+		sleeping = true
+		zzz = 0.0
+		rotation.y = -PI / 2.0   # a cama do sprite tem a cabeceira à esquerda (-X): deita com a cabeça lá, olhando para os pés
+		velocity = Vector3.ZERO
+		position = Vector3(p.x + 0.5, p.y + 0.35, p.z + 0.5)
+		dismount_cart(false)
+
+
+func wake_up() -> void:
+	if sleeping:
+		sleeping = false
+		clock.speed = 1.0
+		position.y -= 0.35
 
 
 # Lápide (wiki Tombstones): cai no chão mais perto de onde morreu (até 2 blocos de lado, 40 de queda) com o texto "<nome> morreu"; sem lugar, não fica.
@@ -974,14 +1013,14 @@ func leave_tombstone() -> void:
 						return
 
 
-# Regeneração de vida em vida/s (wiki Life regeneration): R = arredonda((vidaMax/400 × 0,85 + 0,15) × eRT × (1,25 parado | 0,5 andando)),
+# Regeneração de vida em vida/s (wiki Life regeneration): R = arredonda((vidaMax/400 × 0,85 + 0,15) × eRT × (1,25 parado | 0,5 andando) × (1,3 dormindo)),
 # onde eRT sobe 1 a cada 5 s sem levar dano (até 6 em 30 s) e depois 1 a cada 10 s (9 em 60 s); acessórios e buffs somam por fora (regen em
 # vida/s = R+2 por 1 vida/s) e valem desde o golpe. Vida/s = R / 2.
 func regen_rate() -> float:
 	var t := since_hit * 60.0   # quadros sem dano
 	var ert := floorf(t / 300.0) if t <= 1800.0 else minf(6.0 + floorf((t - 1800.0) / 600.0), 9.0)
 	var moving := Vector2(velocity.x, velocity.z).length() > 0.1 and hook_state != "pull"
-	var r := roundf((max_hp / 400.0 * 0.85 + 0.15) * ert * (0.5 if moving else 1.25))
+	var r := roundf((max_hp / 400.0 * 0.85 + 0.15) * ert * (0.5 if moving else 1.25) * (1.3 if sleeping else 1.0))
 	return r / 2.0 + inv.acc_sum("regen") + buff_sum("regen")
 
 
@@ -1156,6 +1195,7 @@ func quick_buff() -> void:
 # Teleporte para casa (a cama, senão o spawn): as partículas saem de onde estava e chegam onde volta.
 func _teleport_home() -> void:
 	dismount_cart(false)
+	wake_up()
 	if entities:
 		Fx.puff(entities, position + Vector3(0, 1.0, 0), Color("#a8e8f8"), 16)
 		Sfx.play(entities, "coin", position, -4.0, 0.7)
@@ -1507,6 +1547,9 @@ func break_target() -> void:
 func interact() -> void:
 	if ghost:
 		return
+	if sleeping:   # botão direito de novo levanta
+		wake_up()
+		return
 	var npc: Node3D = entities.npc_aimed(REACH)
 	if npc:
 		entities.talk(npc)
@@ -1526,7 +1569,7 @@ func interact() -> void:
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chair:
 		say(Housing.report(world, target.pos))   # a cadeira diz se a casa vale
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.bed:
-		use_bed(target.pos)
+		use_bed(target.pos, Input.is_key_pressed(KEY_SHIFT))
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.tombstone:
 		say(world.tombs.get(target.pos, "Lápide"))   # lê a lápide como um letreiro
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.minecart_track:

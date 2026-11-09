@@ -1389,6 +1389,10 @@ func _process(delta: float) -> void:
 		note_label.text = "Você foi derrotado... %d" % ceili(player.dead)
 		if player.dead_for >= player.SKIP_AFTER and not player.enemies_near():
 			note_label.text += "\nEspaço: renascer agora"
+	elif player.sleeping:   # dormindo: tela escurecida, a hora passa depressa
+		flash.color = Color(0.0, 0.0, 0.05, 0.3)
+		if note_label.text == "":
+			note_label.text = "Dormindo... (a hora corre 5× mais rápido)  ·  mova-se ou clique direito para levantar"
 	elif player.ghost:   # Hardcore morto: tela fria, só observa
 		tint.color = Color(0.7, 0.85, 1.0, 0.16)
 		note_label.text = "Você é um fantasma. Esc → Configurações → Salvar e sair"

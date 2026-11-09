@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -4910,14 +4910,17 @@ func test_death():
 	w.set_block(20, 11, 22, stone)
 	p.use_bed(bed)
 	check(p.bed == bed and p.home() == Vector3(22.5, 11, 22.5), "cama num quarto fechado vira o ponto de nascimento")
-	p.use_bed(bed)
-	check(p.bed == Vector3i.MAX and p.home() == p.spawn, "de novo na mesma cama devolve o ponto do mundo")
+	p.interact()
+	check(not p.sleeping and p.clock.speed == 1.0, "dormir na cama e clicar de novo levanta")
+	p.use_bed(bed, true)
+	check(p.bed == Vector3i.MAX and p.home() == p.spawn and not p.sleeping, "Shift na mesma cama devolve o ponto do mundo (sem deitar de novo)")
 	p.use_bed(bed)
 	w.set_block(23, 13, 22, 0)   # teto aberto: a cama deixa de valer e o ponto volta sozinho
 	check(p.home() == p.spawn and p.bed == Vector3i.MAX, "quarto quebrado: volta ao ponto do mundo")
 	w.set_block(23, 13, 22, stone)
 	p.use_bed(bed)
 	# morte Classic: metade das moedas, lápide e espera no lugar; renasce na cama com metade da vida (mínimo 100)
+	p.wake_up()
 	p.inv.add(Items.ids.gold_coin, 5)
 	p.inv.add(Items.ids.stone, 7)
 	p.position = Vector3(24.5, 11, 23.5)
@@ -4990,6 +4993,42 @@ func test_death():
 	SaveGame.players_dir = saved_dir
 	check(p.inv.total(Items.ids.stone) == 0, "Hardcore também solta tudo")
 	p.interact()   # fantasma não interage (nem quebra: target vazio)
+	free_player(p)
+	w.free()
+	return true
+
+
+# Dormir (wiki Beds): deita na cama, a hora corre 5× mais rápido, regenera mais, e levanta ao mexer, levar dano ou quebrarem a cama; chefe vivo não deixa acelerar.
+func test_sleep():
+	var w := floor_world()
+	var p := make_player(w)
+	var stone: int = Blocks.ids.stone
+	for x in range(20, 26):
+		for z in range(20, 25):
+			for y in range(11, 14):
+				w.set_block(x, y, z, stone if x == 20 or x == 25 or z == 20 or z == 24 or y == 13 else 0)
+	var bed := Vector3i(22, 11, 22)
+	w.set_block(bed.x, bed.y, bed.z, Blocks.ids.bed)
+	p.since_hit = 100.0
+	var awake: float = p.regen_rate()
+	p.use_bed(bed)
+	check(p.sleeping and p.bed == bed and p.position.is_equal_approx(Vector3(22.5, 11.35, 22.5)), "botão direito na cama deita nela e já define o nascimento")
+	p._physics_process(0.1)
+	check(p.clock.speed == p.SLEEP_SPEED and p.SLEEP_SPEED == 5.0, "dormindo, a hora corre 5× mais rápido")
+	check(p.regen_rate() > awake, "dormir regenera mais (1,3× antes de arredondar: %.2f contra %.2f)" % [p.regen_rate(), awake])
+	var boss := Node3D.new()
+	p.entities.boss = boss
+	p._physics_process(0.1)
+	check(p.sleeping and p.clock.speed == 1.0, "com chefe vivo a hora não acelera (mas continua deitado)")
+	p.entities.boss = null
+	boss.free()
+	p.hurt(5, Vector3.RIGHT)
+	check(not p.sleeping and p.clock.speed == 1.0 and is_equal_approx(p.position.y, 11.0), "levar dano levanta e a hora volta ao normal")
+	p.iframes = 0.0
+	p.use_bed(bed)
+	w.set_block(bed.x, bed.y, bed.z, 0)
+	p._physics_process(0.1)
+	check(not p.sleeping and p.clock.speed == 1.0, "quebrar a cama levanta")
 	free_player(p)
 	w.free()
 	return true
