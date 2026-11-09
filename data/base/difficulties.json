@@ -1,0 +1,5 @@
+{
+	"classic": {"name": "Classic", "coins": 0.5, "tip": "Ao morrer, solta metade das moedas. O resto fica com você."},
+	"mediumcore": {"name": "Mediumcore", "drop_all": true, "tip": "Ao morrer, solta todos os itens (moedas e munição também). Vida e mana máximas ficam."},
+	"hardcore": {"name": "Hardcore", "drop_all": true, "ghost": true, "tip": "Solta tudo e a morte é para sempre: você vira fantasma e o personagem é apagado."}
+}

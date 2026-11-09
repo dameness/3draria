@@ -68,6 +68,9 @@ func _process(_delta: float) -> bool:
 		1:
 			shot("2b_vazio")   # lista de personagens sem nenhum, com Voltar / Novo
 			scene.show_new_player()
+			check(scene.new_diff == "classic", "a criação começa em Classic")
+			scene.box.find_children("", "Button", true, false).filter(func(b): return b.text == "Mediumcore").front().pressed.emit()
+			check(scene.new_diff == "mediumcore", "escolher Mediumcore na criação do personagem")
 		2:
 			shot("2a_novo")   # a tela de criação, com as amostras de cor
 			var swatches: Array = scene.box.find_children("", "Button", true, false).filter(func(b): return b.custom_minimum_size == Vector2(28, 28))
@@ -77,7 +80,7 @@ func _process(_delta: float) -> bool:
 			type_name("Ana")
 		3:
 			shot("2_personagens")
-			check(SaveGame.list(SaveGame.players_dir).size() == 1, "personagem criado pelo menu")
+			check(SaveGame.list(SaveGame.players_dir).size() == 1 and SaveGame.list(SaveGame.players_dir)[0].info.difficulty == "mediumcore", "personagem criado pelo menu, com a dificuldade no .plr")
 			scene.pick_player(SaveGame.list(SaveGame.players_dir)[0].path)
 		4:
 			shot("3b_mundos_vazio")
@@ -93,7 +96,7 @@ func _process(_delta: float) -> bool:
 			if not world.is_idle() or world.center.x < 0:
 				return false
 			var p: Node3D = scene.get_node("Player")
-			check(p.inv.total(Items.ids.copper_pickaxe) == 1, "personagem novo recebe itens iniciais")
+			check(p.inv.total(Items.ids.copper_pickaxe) == 1 and p.difficulty == "mediumcore" and p.char_name == "Ana", "personagem novo recebe itens iniciais e carrega a dificuldade e o nome")
 			broken = Vector3i(p.position.floor()) + Vector3i(2, -1, 0)
 			world.set_block(broken.x, broken.y, broken.z, 0)
 			p.inv.add(Items.ids.gel, 7)

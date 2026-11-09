@@ -33,6 +33,12 @@ const SHOTS := [
 	{"name": "muda_cresce", "sapling": true, "grow": true, "item": "acorn", "look": Vector2(0, 0.35)},
 	{"name": "corda", "look": Vector2(0, -0.35), "row": ["rope", "torch", "rope", "rope", "sapling"]},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
+	{"name": "cama_lapide", "look": Vector2(0, -0.3), "row": ["bed", "tombstone", "chair", "workbench"], "late": 70},
+	{"name": "dormir", "look": Vector2(0, 0.5), "sleep": true, "late": 60},
+	{"name": "dormir_3a", "look": Vector2(0.6, -0.3), "sleep": true, "third": true, "late": 60},
+	{"name": "morte", "look": Vector2(0, -0.3), "dead": "classic", "late": 40},
+	{"name": "morte_3a", "look": Vector2(0.5, -0.3), "dead": "classic", "third": true, "late": 40},
+	{"name": "fantasma", "look": Vector2(0, -0.1), "dead": "hardcore", "late": 40},
 	{"name": "estacoes", "look": Vector2(0, -0.3), "row": ["workbench", "furnace", "anvil", "lead_anvil", "hellforge", "chest", "demon_altar", "life_crystal"]},
 	{"name": "rei_slime", "look": Vector2(0, -0.1), "boss": "king_slime", "item": "terra_blade"},
 	{"name": "meteorito", "look": Vector2(0, -0.3), "crater": true, "third": true},
@@ -584,6 +590,16 @@ func _setup(s: Dictionary) -> void:
 	player.mana = s.get("mana", player.max_mana)
 	player.max_hp = s.get("max_hp", 100)
 	player.hp = s.get("hp", player.max_hp)
+	if s.has("sleep"):   # cama no chão à frente, deitado nela (a hora corre 5×)
+		var bp := Vector3i(int(player.position.x) + 2, world.surface_y(int(player.position.x) + 2, int(player.position.z)), int(player.position.z))
+		world.set_block(bp.x, bp.y, bp.z, Blocks.ids.bed)
+		player.use_bed(bp)
+	if s.has("dead"):   # morreu há 3 s: câmera tombada, lápide no chão, aviso de renascer (Hardcore: fantasma)
+		player.difficulty = s.dead
+		player.inv.add(Items.ids.gold_coin, 4)
+		player.position.y += 2.0   # morre no ar e o corpo cai
+		player.die()
+		player.dead_for = 3.0
 	if s.get("sky_chest", false):
 		main.get_node("HUD").open_chest(world.chest_at(world.gen.sky_chests[0]))
 	if s.get("chest", false):

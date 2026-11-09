@@ -64,6 +64,18 @@ static func check(world: Node3D, at: Vector3i) -> Dictionary:
 	return r
 
 
+# Quarto da cama (wiki Beds): um cômodo fechado do tamanho de uma casa, com espaço livre em cima da cama; não pede tocha, mesa nem cadeira. "" = vale, senão o aviso.
+static func bedroom(world: Node3D, bed: Vector3i) -> String:
+	if Blocks.solid[world.get_block(bed.x, bed.y + 1, bed.z)] == 1:
+		return "Sua cama está obstruída."
+	var r := room(world, bed + Vector3i.UP)
+	if r.open:
+		return "Falta uma parede, teto ou porta no quarto."
+	if r.cells.size() < MIN_CELLS:
+		return "O quarto é pequeno demais!"
+	return ""
+
+
 # A 1ª casa válida com uma cadeira a até SEARCH de `center` que não guarda nenhuma das casas em `taken` (células de moradores): {home: célula em cima da cadeira, cells}, ou {}.
 # Acha as cadeiras pelos chunks já gerados (PackedByteArray.find, nativo).
 static func find(world: Node3D, center: Vector3, taken: Array) -> Dictionary:
