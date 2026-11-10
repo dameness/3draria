@@ -140,7 +140,7 @@ assets/wiki/         sprites baixados da wiki (fora do git)
 ```
 
 ## Documentação do projeto
-**O que falta: `docs/BACKLOG.md` (leia primeiro, é curto).** Referências visuais do dono: `docs/referencias/`. Histórico: `docs/REVISAO.md`, `docs/HANDOFF.md` (prompt pronto p/ sessão nova).
+**O que falta: `docs/BACKLOG.md` (leia primeiro, é curto).** **Prioridade atual: multijogador no browser, `docs/MULTIPLAYER.md`** (etapas M0–M7; mundo assado = mudar a geração não mexe em mundo existente). Referências visuais do dono: `docs/referencias/`. Histórico: `docs/REVISAO.md`, `docs/HANDOFF.md` (prompt pronto p/ sessão nova).
 Este arquivo: até 200 linhas. Cada pasta pode ter o próprio CLAUDE.md (até 50 linhas) com detalhes daquela seção,
 ex.: `data/CLAUDE.md` (formato dos JSON e das texturas).
 
@@ -152,4 +152,4 @@ Não reordene `blocks.json` nem `items.json`: o id é a posição (saves vão de
 O Calamity é outra pasta com os mesmos arquivos + poucos comportamentos novos em script.
 
 ## Roadmap (detalhes em docs/ROADMAP.md)
-F0 Estrutura · F1 Mundo · F2 Jogador · F3 Itens · F4 Sobrevivência · F5 Primeiro chefe · F6 Hardmode · F7 Calamity
+F0 Estrutura · F1 Mundo · F2 Jogador · F3 Itens · F4 Sobrevivência · F5 Primeiro chefe · **M Multijogador no browser (próximo)** · F6 Hardmode · F7 Calamity

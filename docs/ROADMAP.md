@@ -27,7 +27,7 @@ Pronto quando: testes carregam items/recipes/ores de `data/base/`, validam refer
 - Biomas do Terraria (corrupção/carmesim, selva, neve, deserto, oceano, cogumelo, masmorra) com blocos, inimigos e drops próprios.
 
 ## Planos futuros (pedidos do dono; ordem a definir)
-- Seed escolhida na criação do mundo; multijogador; build/compatibilidade com Windows.
+- Seed escolhida na criação do mundo; build/compatibilidade com Windows. (Multijogador: virou a fase M, abaixo.)
 - Mundo maior e mais profundo (ALTURA/SIZE_CHUNKS; conferir memória e tempo de geração).
 - Asas, ganchos, acessórios (slots na GUI) e reforja.
 - NPCs de vila (casas, lojas, diálogos) e todos os biomas do Terraria (selva, neve, deserto, oceano, cogumelo...).
@@ -64,6 +64,12 @@ dropa demonita e Unholy Arrows), sprites dos inimigos da wiki. Números via scri
 Falta para a pré-hardmode completa: Eater of Worlds/Brain (escamas → Nightmare Pickaxe → pedra infernal),
 meteorito, carmesim, obsidiana, armaduras/defesa do jogador.
 Pronto quando: testes verificam a cadeia de tiers de minério pré-hardmode sem buracos e o invocador/drops do chefe por dados; no playtest, do cobre ao último tier pré-hardmode e o chefe derrotado.
+
+## M Multijogador no browser — PRÓXIMO (antes da F6)
+Export Web, mundo assado (gerado inteiro na criação: mudar a geração não mexe em mundo existente), servidor dedicado por WebSocket,
+personagens e mundo guardados no servidor, 10 jogadores. Etapas M0–M7, decisões e prompts em docs/MULTIPLAYER.md.
+Pronto quando: `tests/net.gd` (servidor + 2 clientes no mesmo processo) verifica blocos, inimigos, drops e saves em rede; teste de carga
+com 10 robôs dentro do alvo; no playtest, o dono e os amigos entram pelo browser, jogam, saem e voltam com tudo salvo depois de uma atualização.
 
 ## F6 Hardmode
 Pronto quando: derrotar o chefe final pré-hardmode converte o mundo e libera minérios/inimigos novos, com teste da conversão.
