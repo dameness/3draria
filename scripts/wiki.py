@@ -68,7 +68,7 @@ def recipes():
     for r in local("recipes"):
         if r["version"] and "desktop" not in r["version"]:
             continue
-        ings = {a.split("¦")[0].split("#")[0]: int(a.split("¦")[1]) for a in r["args"].split("^")}
+        ings = {html.unescape(a.split("¦")[0]).split("#")[0]: int(a.split("¦")[1]) for a in r["args"].split("^")}   # unescape antes do corte: "Light&#039;s Bane" tem # no nome
         rows.append({"result": r["result"], "amount": r["amount"], "station": r["station"], "needs": ings})
     return rows
 

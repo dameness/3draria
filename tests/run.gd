@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -746,6 +746,36 @@ func test_lighting():
 	var near := face_light(a, Vector3i(3, Y, 8), Vector3.UP)
 	var far := face_light(a, Vector3i(0, Y, 0), Vector3.UP)
 	check(near.g > 0.6 and near.g > far.g, "tocha ilumina perto (%.2f) mais que longe (%.2f)" % [near.g, far.g])
+	var hue := func(c: Color) -> Vector3:   # desfaz ChunkMesher.pack_hue, como o chunk.gdshader
+		var q := roundi(c.a * 255.0)
+		return Vector3((q >> 5) / 7.0, ((q >> 2) & 7) / 7.0, (q & 3) / 3.0)
+	var warm: Vector3 = hue.call(near)
+	check(warm.x == 1.0 and warm.x > warm.y and warm.y > warm.z, "luz da tocha é quente (%s)" % warm)
+	d[4 + 8 * C + (Y + 1) * C * C] = Blocks.ids.shadow_orb
+	var orb: Vector3 = hue.call(face_light(ChunkMesher.build(d, [d, d, d, d], n), Vector3i(3, Y, 8), Vector3.UP))
+	check(orb.z == 1.0 and orb.z > orb.x and orb.x > orb.y, "luz do Shadow Orb é roxa (%s)" % orb)
+	d[4 + 8 * C + (Y + 1) * C * C] = Blocks.ids.torch
+	var E := PackedByteArray()
+	for wy in range(Y + 1, Y + 12):   # parede de pedra em x = 6, de fora a fora: a luz da tocha (x = 4) não passa para o outro lado
+		for wz in C:
+			d[6 + wz * C + wy * C * C] = Blocks.ids.stone
+	a = ChunkMesher.build(d, [E, E, E, E], n)
+	check(face_light(a, Vector3i(8, Y, 8), Vector3.UP).g == 0.0 and face_light(a, Vector3i(3, Y, 8), Vector3.UP).g > 0.6, "parede barra a luz da tocha")
+	d[6 + 8 * C + (Y + 1) * C * C] = 0
+	var gap: float = face_light(ChunkMesher.build(d, [E, E, E, E], n), Vector3i(8, Y, 8), Vector3.UP).g
+	check(gap > 0.2, "por um buraco na parede a luz passa (%.2f)" % gap)
+	for wy in range(Y + 1, Y + 12):
+		for wz in C:
+			d[6 + wz * C + wy * C * C] = 0
+	d[10 + 8 * C + Y * C * C] = Blocks.ids.lava
+	d[10 + 8 * C + (Y + 1) * C * C] = 0
+	d[4 + 8 * C + (Y + 1) * C * C] = 0
+	d[10 + 9 * C + (Y + 2) * C * C] = Blocks.ids.stone
+	var glow: Vector3 = hue.call(face_light(ChunkMesher.build(d, [E, E, E, E], n), Vector3i(10, Y + 2, 9), Vector3.FORWARD))
+	check(glow.x == 1.0 and glow.z < 0.5, "pedra ao lado do ar sobre a lava fica laranja (%s)" % glow)
+	d[10 + 9 * C + (Y + 2) * C * C] = 0
+	d[10 + 8 * C + Y * C * C] = Blocks.ids.stone
+	d[4 + 8 * C + (Y + 1) * C * C] = Blocks.ids.torch
 	check(Items.places[Items.ids.torch] == Blocks.ids.torch and not Blocks.solid[Blocks.ids.torch], "tocha é item que coloca bloco não sólido")
 	check(Items.drop[Blocks.ids.torch] == Items.ids.torch, "quebrar tocha devolve a tocha")
 	var w := floor_world()
@@ -758,7 +788,6 @@ func test_lighting():
 		flat[i] = Blocks.ids.stone
 	var lamp := chunk(0)
 	lamp[0 + 0 * C + (Y + 1) * C * C] = Blocks.ids.torch   # canto (0,0) do chunk (+X,+Z): em (16,Y+1,16) no quadro do chunk
-	var E := PackedByteArray()
 	var seam_off := face_light(ChunkMesher.build(flat, [E, E, E, E], n), Vector3i(15, Y, 15), Vector3.UP)
 	var seam_on := face_light(ChunkMesher.build(flat, [E, E, E, E], n, [], [lamp, E, E, E]), Vector3i(15, Y, 15), Vector3.UP)
 	check(seam_off.g == 0.0 and seam_on.g > 0.6, "tocha no chunk diagonal ilumina o canto (%.2f, sem ela %.2f)" % [seam_on.g, seam_off.g])
@@ -4114,6 +4143,8 @@ func integration():
 			check(with_mesh == expected, "todo chunk no alcance tem faces visíveis")
 			print("mundo: %d chunks em %d ms com %d threads" % [expected, elapsed, world.max_jobs])
 			check(player.on_floor, "jogador nasce e fica no chão")
+			check(player.third_person and not main.get_node("HUD").debug_label.visible, "nasce em 3ª pessoa e com a tela limpa (sem a linha de FPS)")
+			player.third_person = false   # o resto do teste mira em 1ª pessoa
 			check(hand.mesh.visible and hand.mesh.mesh != null, "picareta aparece em 3D na mão")
 			var k: Vector2i = world.center
 			edit_mesh_id = world.meshes[k].get_instance_id()
@@ -4356,12 +4387,12 @@ func integration():
 			player.inv.acc[0] = -1
 			player.flight_left = 0.0
 			hud._unhandled_input(key(KEY_F10))
-			check(not hud.debug_label.visible, "F10 esconde o FPS")
+			check(hud.debug_label.visible, "F10 mostra o FPS")
 			hud._unhandled_input(key(KEY_F10))
 			hud._unhandled_input(key(KEY_F11))
 			check(not hud.root.visible, "F11 esconde o HUD")
 			hud._unhandled_input(key(KEY_F11))
-			check(hud.root.visible and hud.debug_label.visible, "F10 e F11 de novo mostram tudo")
+			check(hud.root.visible and not hud.debug_label.visible, "F10 e F11 de novo: HUD de volta, FPS escondido")
 			phase = 3
 		3:   # câmera em 3ª pessoa: nunca dentro de bloco, em qualquer ângulo (ver abaixo da terra era a câmera atravessando o chão)
 			player.creative = false
@@ -6034,3 +6065,38 @@ func test_wiki_review():
 	var wood: Dictionary = Items.sets.wood
 	check(wood.pieces.size() == 3 and wood.defense == 1 and Items.defs[wood.pieces[0]].defense + Items.defs[wood.pieces[1]].defense + Items.defs[wood.pieces[2]].defense == 2, "conjunto de madeira: 1+1+0 de defesa e +1 do conjunto")
 	return true
+
+
+# Cadeia da Night's Edge (wiki): Blade of Grass (esporos da selva + ferrões + cipó), Muramasa (baú do dungeon), Volcano (pedra infernal) e a espada do mal, no altar.
+func test_nights_edge():
+	var g := WorldGen.new(4242)
+	var spot := Vector2i(-1, -1)   # um chunk bem dentro da selva
+	for r in range(300, 700, 16):
+		for a in 64:
+			var p := Vector2i(WorldGen.CENTER + Vector2.from_angle(a * TAU / 64.0) * r)
+			if spot.x < 0 and g.jungle_weight(p.x, p.y) >= 0.9 and g.evil_weight(p.x, p.y) == 0.0:
+				spot = p / C
+	check(spot.x >= 0, "há selva no mundo")
+	var orbs := 0
+	for dz in 3:
+		for dx in 3:
+			var d := g.generate(spot.x + dx, spot.y + dz)
+			var i := d.find(Blocks.ids.jungle_spore_orb)
+			while i != -1:
+				orbs += 1
+				check(d[i - C * C] in [Blocks.ids.mud, Blocks.ids.stone] and i / (C * C) < WorldGen.CAVERN_TOP + 12, "orbe de esporos nasce no chão das cavernas da selva")
+				i = d.find(Blocks.ids.jungle_spore_orb, i + 1)
+	check(orbs >= 5, "9 chunks de selva têm orbes de Jungle Spores (%d)" % orbs)
+	var orb: int = Blocks.ids.jungle_spore_orb
+	check(not Blocks.soft[orb] and not Blocks.solid[orb] and Items.drop[orb] == Items.ids.jungle_spores and Blocks.light[orb] > 0, "o orbe é alvo da mira, brilha e solta Jungle Spores")
+	var rng := RandomNumberGenerator.new()
+	var mura := 0
+	for n in 40:
+		rng.seed = n
+		var c: Dictionary = Loot.chest("dungeon", rng)
+		mura += 1 if Items.ids.muramasa in Array(c.item) else 0
+	check(mura > 5 and mura < 35, "baú do dungeon dá Muramasa em parte das vezes (%d de 40)" % mura)
+	for r in ["blade_of_grass", "volcano", "nights_edge"]:
+		check(Crafting.recipes.any(func(x): return x.result == Items.ids[r]), "receita de " + r)
+	return true
+

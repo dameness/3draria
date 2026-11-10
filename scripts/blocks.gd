@@ -30,6 +30,7 @@ static var spreads := PackedByteArray()     # id -> 1 se espalha pela terra e gr
 static var item_extra := {}                # id -> {rarity?, lava_safe?} do item do bloco (blocks.json); o resto do item é deduzido
 static var sapling := -1                   # id da muda de árvore (world.gd cresce)
 static var light := PackedInt32Array()     # id -> raio de luz em blocos (0 = não ilumina)
+static var light_color := PackedColorArray()   # id -> cor da luz ("light_color" no JSON; sem ela, o tom quente da tocha)
 static var station_as := PackedInt32Array() # id -> bloco de estação que ele equivale (bigorna de chumbo = bigorna)
 static var station_also := {}                 # id -> ids de outras estações que ele também é (a forja infernal também é fornalha)
 static var icons: Array[String] = []       # id -> textura do ícone do item-bloco ("" = face lateral)
@@ -71,6 +72,7 @@ static func load_pack(dir := "res://data/base") -> void:
 	no_item.clear()
 	clear.clear()
 	light.clear()
+	light_color.clear()
 	drop_names.clear()
 	icons.clear()
 	station_as.clear()
@@ -98,7 +100,7 @@ static func load_pack(dir := "res://data/base") -> void:
 			var by_level: PackedInt32Array = level_ids.get(liquid_kind[-1], PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0]))
 			by_level[liquid_level[-1]] = ids[b.name]
 			level_ids[liquid_kind[-1]] = by_level
-		soft.append(1 if shape[-1] in ["plant", "liquid"] else 0)
+		soft.append(1 if shape[-1] in ["plant", "liquid"] and not b.get("target", false) else 0)   # "target": planta que a mira pega (orbe de Jungle Spores)
 		glow.append(1 if b.get("glow", false) else 0)
 		grassy.append(1 if b.get("grass", false) else 0)
 		spreads.append(1 if b.get("spread", false) else 0)
@@ -107,6 +109,7 @@ static func load_pack(dir := "res://data/base") -> void:
 		no_item.append(1 if b.get("item", true) == false else 0)
 		clear.append(1 if b.get("clear", false) else 0)
 		light.append(b.get("light", 0))
+		light_color.append(Color(b.get("light_color", "#ffcc8c")))
 		icons.append(b.get("icon", ""))
 		drop_names.append(b.get("drop", b.name if breakable[-1] and (solid[-1] or shape[-1] != "") else ""))
 		var t: Dictionary = b.get("tiles", {})

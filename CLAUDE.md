@@ -74,6 +74,8 @@ scripts/audit.py                              # data/base × snapshot: dano, use
 .tools/godot --headless -s tests/run.gd       # testes; código de saída != 0 em falha
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd   # prints reais (OpenGL por CPU) em textures/shot_*.png
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar → Mundo de teste (prints textures/menu_*.png)
+scripts/preview.sh                            # ver sem instalar: previews/folha.jpg (8 cenas) + previews/passeio.mp4 e noite.mp4 (o CI .github/workflows/preview.yml publica no PR)
+scripts/clip.sh passeio                       # um clipe só (robô com roteiro em tests/clip.gd, gravado com --write-movie) → textures/clip_passeio.mp4
 # prints só de algumas cenas: `-- parte_do_nome` (ex.: `-- teste` = o mundo de teste, `-- ilha_ceu`, `-- gancho`); cena nova = uma linha em SHOTS de tests/screenshot.gd
 ```
 Sessão remota: **sempre confira mudanças visuais com tests/screenshot.gd** e olhe as imagens (FPS ali é de CPU, não vale).
@@ -92,7 +94,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   spelunker.gd       brilhos do Espeleólogo vistos através da terra (varre os chunks com find, sem laço por bloco)
   timber.gd          árvores (wiki Tree): dano por tile, queda da árvore inteira com animação, madeira e acorn; a muda cresce em world.gd
   combat.gd          sorteios do dano da wiki: variância de ±15% (antes da defesa) e crítico de 4% (×2 depois da defesa, +40% de recuo)
-  chunk_mesher.gd    faces visíveis → arrays de mesh com luz (céu pela altura da coluna + tochas dos 8 chunks em volta); thread-safe
+  chunk_mesher.gd    faces visíveis → arrays de mesh com luz (céu pela altura da coluna + fontes coloridas dos 8 chunks em volta, propagadas pelo ar sem atravessar parede: `_light_field`); thread-safe
                      shaders/chunk.gdshader: atlas × luz (+ direção do sol, balanço das plantas, lava, tocha); o dia/noite muda só a luz do céu
                      shaders/water.gdshader: água translúcida com ondas   shaders/sky.gdshader: céu, sol, lua, estrelas, nuvens, montanhas
   world.gd           chunks, get/set_block, raycast, distância de renderização, jobs no WorkerThreadPool
@@ -102,12 +104,12 @@ scripts/             setup-godot.sh e um .gd por sistema:
   inventory.gd       slots, empilhar, remover
   crafting.gd        receitas e estações por perto
   voxel_body.gd      colisão AABB contra voxels (jogador, inimigos, itens)
-  player.gd          1ª pessoa, vida, mana, buffs, usar item (minerar / golpear / atirar / magia), colocar, queda e afogamento, gancho (E), cursor inteligente (Ctrl)
+  player.gd          3ª pessoa por padrão (V = 1ª), vida, mana, buffs, usar item (minerar / golpear / atirar / magia), colocar, queda e afogamento, gancho (E), cursor inteligente (Ctrl)
   fx.gd  block_crack.gd  trail.gd   partículas (poeira, lascas, faíscas, gotas, respingo), rachaduras do bloco minerado, arco do golpe
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly/eye_of_cthulhu)
   enemy_model.gd     modelos 3D dos inimigos (eye/slime/humanoid; senão sprite extrudado)
-  day_night.gd       ciclo 15+9 min
+  day_night.gd       ciclo 15+9 min; clima por bioma (névoa e tom da luz: BIOME_AIR)
   test_world.gd      mundo de teste (menu → "Mundo de teste", flag `test` no .wld): arena plana no nascimento com um baú por categoria (a partir de Items),
                      todos os blocos no chão, tochas, letreiros; o painel F9 (hud.gd) chama chefes, hora, hardmode, viagem; vitrine de inimigos parados (entities.gd)
   difficulty.gd      dificuldades do personagem (data/base/difficulties.json): Classic/Mediumcore/Hardcore; player.die()/respawn()/home() (cama), lápide em player.leave_tombstone()

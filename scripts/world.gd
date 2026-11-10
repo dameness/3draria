@@ -69,10 +69,11 @@ func _ready() -> void:
 		m.set_shader_parameter("atlas", atlas_texture)
 
 
-# Luz que anda com o jogador (poções Brilho e Coruja): power 0 desliga.
-func set_aura(at: Vector3, radius: float, power: float) -> void:
+# Luz que anda com o jogador (poções Brilho e Coruja, tocha na mão): power 0 desliga.
+func set_aura(at: Vector3, radius: float, power: float, color := Color(1.0, 0.92, 0.75)) -> void:
 	material.set_shader_parameter("aura", Vector4(at.x, at.y, at.z, radius))
 	material.set_shader_parameter("aura_power", power)
+	material.set_shader_parameter("aura_color", Vector3(color.r, color.g, color.b))
 
 
 # Luz do dia (day_night.gd): claridade do céu, cor dela e direção de onde vem (sol ou lua).
@@ -229,7 +230,7 @@ func chest_at(p: Vector3i) -> Dictionary:
 	if not chests.has(p):
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash([world_seed, p.x, p.y, p.z])
-		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest("living" if gen and gen.living_chests.has(p) else "water" if gen and gen.in_sea(p.x, p.z) else Loot.layer_of(p.y), rng, gen.sky_chests.find(p) if gen else -1)   # ilhas: cada uma com o próximo item principal
+		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest("living" if gen and gen.living_chests.has(p) else "dungeon" if gen and gen.in_dungeon(p.x, p.y, p.z) else "water" if gen and gen.in_sea(p.x, p.z) else Loot.layer_of(p.y), rng, gen.sky_chests.find(p) if gen else -1)   # ilhas: cada uma com o próximo item principal
 	if k != -1:
 		chests[p].title = TestWorld.chests[k].title   # o painel mostra o nome da categoria (não vai no save: sai da posição)
 	return chests[p]
@@ -497,7 +498,7 @@ func _spawn_models(k: Vector2i, list: Array) -> void:
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
 		var mat: ShaderMaterial = VoxMesh.material().duplicate()
-		mat.set_shader_parameter("world_light", Vector2(e[2].x, e[2].y))
+		mat.set_shader_parameter("world_light", Vector2(e[2].r, e[2].g))
 		mat.set_shader_parameter("daylight", daylight[0])
 		mat.set_shader_parameter("sky_tint", daylight[1])
 		mi.material_override = mat

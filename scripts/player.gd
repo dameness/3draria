@@ -85,7 +85,7 @@ var auto_slot := -1           # Auto Select (Shift): slot do inventário (qualqu
 var auto_on := false          # Auto Select ligado (o HUD abre o slot extra ao lado da hotbar)
 var attack_held := false      # botão esquerdo apertado (eventos; quem repete é o autoswing do item)
 var attack_buffer := 0.0      # clique ainda por atender (segundos que restam)
-var third_person := false     # V alterna
+var third_person := true      # o padrão é ver o personagem (armadura e arma são a cara do Terraria); V alterna para a 1ª pessoa
 var flail: Node3D = null         # a bola do flail que está fora (ver flail_state)
 var flail_snap := 0.0         # segundos da animação de arremesso, depois que o flail é solto
 var aim_frame := -1          # quadro em que aim_3p foi calculado (aim_dir é chamada várias vezes por quadro)
@@ -528,7 +528,11 @@ func tick(delta: float) -> void:
 	if spelunker:
 		spelunker.visible = buff_sum("spelunker") > 0.0
 		spelunker.set_process(spelunker.visible)
-	world.set_aura(position + Vector3.UP, 10.0 if shine else 15.0, 1.0 if shine else 0.55 if owl else 0.0)
+	var lamp: int = Items.places[held()] if held() != -1 else -1   # tocha (ou outro bloco que brilha) na mão ilumina em volta, como no Terraria
+	if lamp > 0 and Blocks.light[lamp] > 0 and not shine:
+		world.set_aura(position + Vector3.UP, Blocks.light[lamp], 1.0, Blocks.light_color[lamp])
+	else:
+		world.set_aura(position + Vector3.UP, 10.0 if shine else 15.0, 1.0 if shine else 0.55 if owl else 0.0)
 	mana_use += delta
 	# regeneração de mana da wiki: (máx/3 + 1) × (2 parado) × (mana/máx × 0,5 + 0,5) × (0,05 usando mana), ÷ 2 por segundo
 	var still := 2.0 if Vector2(velocity.x, velocity.z).length() < 0.1 else 1.0
@@ -1381,6 +1385,8 @@ func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 	var hits := melee_targets(eye, forward, d.reach)
 	for e in hits:
 		e.hurt(Combat.vary(power(d), entities.rng), forward, d.knockback, Combat.is_crit(entities.rng, crit_chance(d)))
+		if d.has("debuff") and entities.rng.randf() < d.get("debuff_chance", 1.0):   # Blade of Grass envenena, Volcano põe fogo
+			e.afflict(d.debuff, d.debuff_time[entities.rng.randi() % d.debuff_time.size()])
 	for n in entities.get_children():   # esferas dos conjuradores se destroem com um golpe (wiki)
 		if n.get("def") is Dictionary and n.def.get("destroy", false) and eye.distance_to(n.position) <= d.reach + 0.5 and forward.dot((n.position - eye).normalized()) > 0.5:
 			entities.pop_sphere(n)

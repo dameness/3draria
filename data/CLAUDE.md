@@ -36,9 +36,9 @@ superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 ní
 `loot.json`: tabelas por camada (`underground`, `cavern`, `lava`, `sky`, `surface`) e `living` (sala do tesouro da Living Tree), `water` (ruínas do mar); `bundle` junta um item ao outro.
 `living_wood`: só de árvores gigantes (`item: false`, solta Wood); as varinhas (`wand: "wood"` em items.json) colocam-no/folhas gastando Wood.
 `shape: "track"` (minecart_track): placa rente ao chão que segue os vizinhos em x/z e vira rampa se o vizinho do lado está um bloco acima (e o do mesmo nível não existe); o carrinho (minecart.gd) usa a mesma regra. `shape: "door"`: painel fino na borda do bloco, sem colisão (porta aberta; `door` é o cubo sólido: as duas contam como parede na moradia). `shape: "rope"`: fio fino não sólido; dentro dele Espaço sobe, C desce, sem tecla pendura (player.gd `on_rope`). Forma nova = um `match` em `chunk_mesher._shape`.
-`light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
+`light`: raio de luz em blocos (tocha = 10; `light_color`: "#rrggbb" da luz, padrão o tom quente da tocha; lava não entra: só brilha nas próprias faces).
 `rarity`/`lava_safe` (no bloco que vira item): raridade do item e se ele resiste à lava (ver items.json). `grass: true`: é grama (a muda de árvore só pega em cima dela). `spread: true`: a grama do mal, colocada ou plantada por semente, se espalha pela terra e grama vizinhas (`world.gd`, com teto por chunk).
-`clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
+`target: true` (numa planta): a mira pega e a picareta quebra (orbe de Jungle Spores). `clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral). Plantas e líquidos são
 `breakable: false`: não viram item.
 
@@ -48,7 +48,7 @@ Lava (wiki Lava): o item solto de raridade 0 (branca, moedas incluídas) ou −1
 `plants`: bloco de grama em que a semente transforma a terra da mira (Grass/Corrupt/Crimson Seeds). `ammo`: classe de munição (ex.: "arrow"); itens com `ammo_class` igual servem. `summon`: chefe invocado.
 `sprite_angle`: para onde o sprite aponta em graus (0 = direita, 90 = cima; padrão 45, como as armas do Terraria;
 flecha = −90). `shoot`/`projectile`: nome em projectiles.json. Espada com feixe: `shoot_damage`/`shoot_knockback` (se a wiki separa; senão vale os da lâmina); `decay` no projétil = fração do dano perdida a cada alvo atravessado. `effects`: {glow, trail, particles} (cores).
-`use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).
+`debuff`/`debuff_time` [s]/`debuff_chance` numa arma corpo a corpo: aflige no golpe (Blade of Grass, Volcano). `use_style`: swing | thrust | shoot | hold (animação na mão; padrão deduzido: munição → shoot, arma/ferramenta → swing).
 Uso pelo botão esquerdo: pick_power > 0 minera; com `ammo` atira; com `damage` golpeia; `places` coloca. Um clique = um uso; segurar repete só com
 `autoswing` (padrão true para quem coloca bloco; picaretas, machados e as espadas da wiki marcam no dado). `use_time` é o use time da wiki
 (dica e ciclo das armas); `tool_speed` é o intervalo entre golpes no bloco (picareta/machado) e vira o ciclo da ferramenta (`Items.use_dur`).

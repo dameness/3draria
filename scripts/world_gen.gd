@@ -28,6 +28,7 @@ const SKY_R := 9               # raio de uma ilha
 const LAND_RADIUS := 790.0     # o mundo é uma ilha: até este raio do centro é terra; daí a costa desce e fora dela é oceano
 const COAST := 70.0            # largura da costa (do fim da terra ao fundo do mar)
 const OCEAN_DEPTH := 30        # o fundo do oceano fica tantos blocos abaixo do nível da água
+const SPORE_CHANCE := 0.05     # chance de um orbe de Jungle Spores em cada chão de caverna da selva
 const SEA_CHESTS := 0.02       # chance por chunk de oceano de ter uma ruína submersa com baú (loot "water")
 const CHASMS := 12             # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
 const CHASM_DEPTH := 38
@@ -98,6 +99,7 @@ var jungle_center := Vector2.ZERO  # selva: anel 0,50-0,78, lado do dungeon; a c
 var hive_center := Vector3i.ZERO   # centro da câmara da colmeia (a larva no chão dela)
 var SNOW: int
 var MUD: int
+var SPORE: int
 var JGRASS: int
 var HIVE: int
 var LIVING_WOOD: int
@@ -180,6 +182,7 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	hallow_center = _at(lateral * PI / 2, 0.65)
 	SNOW = Blocks.ids.snow_block
 	MUD = Blocks.ids.mud
+	SPORE = Blocks.ids.jungle_spore_orb
 	JGRASS = Blocks.ids.jungle_grass
 	HIVE = Blocks.ids.hive
 	LARVA = Blocks.ids.bee_larva
@@ -507,6 +510,8 @@ func _jungle(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int)
 					d[i + y * layer] = JGRASS
 				elif b == DIRT:
 					d[i + y * layer] = MUD
+				elif b == AIR and y < CAVERN_TOP + 12 and (d[i + (y - 1) * layer] == MUD or d[i + (y - 1) * layer] == STONE) and _hash01(ox + x, y, oz + z, seed + 31) < SPORE_CHANCE:
+					d[i + y * layer] = SPORE   # orbe verde de Jungle Spores no chão (lama ou pedra) das cavernas da selva
 	var hc := hive_center
 	for dz in range(-6, 7):
 		for dy in range(-6, 7):
