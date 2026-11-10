@@ -113,7 +113,8 @@ scripts/             setup-godot.sh e um .gd por sistema:
   test_world.gd      mundo de teste (menu → "Mundo de teste", flag `test` no .wld): arena plana no nascimento com um baú por categoria (a partir de Items),
                      todos os blocos no chão, tochas, letreiros; o painel F9 (hud.gd) chama chefes, hora, hardmode, viagem; vitrine de inimigos parados (entities.gd)
   difficulty.gd      dificuldades do personagem (data/base/difficulties.json): Classic/Mediumcore/Hardcore; player.die()/respawn()/home() (cama), lápide em player.leave_tombstone()
-  save_game.gd       user://players/*.plr e user://worlds/*.wld (seed, hora, spawn, chunks editados)
+  save_game.gd       user://players/*.plr e user://worlds/*.wld v3 (seed, hora, spawn, TODOS os chunks zstd: mundo assado; `*_out/*_in` = dicionários, v2 ainda lê)
+  baker.gd           assa o mundo na criação (menu, barra de progresso): gera todos os chunks + tipo dos baús + entrada do dungeon; world.packed guarda os comprimidos
   menu.gd            menu inicial com o mundo real ao fundo (câmera girando, dia passando) e o personagem escolhido de pé
                      no gramado: Um jogador → personagem → mundo; no jogo o botão Configurações do inventário pausa (Continuar / Salvar e sair)
   ui.gd              tema e peças da interface do Terraria (fonte com contorno, painéis azuis, coração, dicas por raridade)

@@ -237,11 +237,16 @@ func start_hardmode() -> void:
 		gen.hardmode_pass(chunks[k], k.x, k.y)
 		edited[k] = true
 		_rebuild(k)
-	for k in packed.keys():   # mundo assado: os que não estão na memória também (os de cima já foram: edited os recomprime no flush)
-		if not chunks.has(k):
-			var d := unpack(k)
-			gen.hardmode_pass(d, k.x, k.y)
-			packed[k] = d.compress(FileAccess.COMPRESSION_ZSTD)
+	var todo: Array = packed.keys().filter(func(k): return not chunks.has(k))   # mundo assado: os que não estão na memória também (os de cima o flush recomprime)
+	var res := []
+	res.resize(todo.size())
+	var job := func(i: int):
+		var d := unpack(todo[i])
+		gen.hardmode_pass(d, todo[i].x, todo[i].y)
+		res[i] = d.compress(FileAccess.COMPRESSION_ZSTD)
+	WorkerThreadPool.wait_for_group_task_completion(WorkerThreadPool.add_group_task(job, todo.size()))   # ponytail: bloqueia o quadro: 2,3 s no mundo todo medido na sessão remota (que quase não paraleliza); se incomodar no PC do dono, vira job em segundo plano com aviso
+	for i in todo.size():
+		packed[todo[i]] = res[i]
 
 
 # Conteúdo do baú em p; na primeira vez sorteia o tesouro pela camada (Loot; determinístico pela seed e posição).

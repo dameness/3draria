@@ -29,10 +29,13 @@ const LIST_ROW := 66                   # altura de uma linha da lista (nome + in
 
 var box: VBoxContainer                 # conteúdo da tela atual (botões, lista, campo de nome)
 var chosen_player := ""
+var baker: Baker                       # assando um mundo (tela "bake"): _process mostra o progresso
+var bake_bar: ProgressBar
+var bake_after: Callable
 var new_look := {}                     # cores do personagem que está sendo criado (pele, cabelo, camisa, calça)
 var new_name := ""
 var new_diff := Difficulty.DEFAULT       # dificuldade do personagem que está sendo criado (chave em difficulties.json)
-var screen := "title"                  # title | players | worlds
+var screen := "title"                  # title | players | worlds | new_world | new_player | bake
 var world: Node3D
 var clock: Node
 var cam: Camera3D
@@ -207,6 +210,12 @@ func _process(delta: float) -> void:
 	angle += view.speed * delta
 	_frame(delta)
 	logo.rotation = sin(elapsed * 0.7) * 0.012   # o logo balança de leve
+	if baker:
+		bake_bar.value = baker.progress() * 100.0
+		if baker.done():
+			baker.finish()
+			baker = null
+			bake_after.call()
 	if not faded and (world.is_idle() or elapsed > 6.0):
 		faded = true
 		create_tween().tween_property(fade, "color:a", 0.0, 1.0)
@@ -607,12 +616,37 @@ func show_new_world() -> void:
 	_clear("", true, 0.74, 0.55)
 	_plate("Criar Mundo")
 	_go(AVATAR_VIEW, 0.62)
-	_create_row("nome do novo mundo", func(n): return SaveGame.create_world(n, randi()), func(_p): show_worlds())
+	_create_row("nome do novo mundo", func(n): return SaveGame.create_world(n, randi()), func(p): bake_then(p, show_worlds))
 	_bottom_row([["Voltar", show_worlds]])
 	_pop_in()
 
 
+# Assa o mundo (Baker) com uma barra de progresso e então chama `after`; mundo que não precisa de assar segue direto.
+func bake_then(world_path: String, after: Callable) -> void:
+	if not Baker.needs(world_path):
+		after.call()
+		return
+	screen = "bake"
+	_clear("", true, 0.74, 0.55)
+	_plate("Criando o mundo")
+	var hint := Label.new()
+	hint.text = "Gerando o terreno inteiro, só desta vez (alguns minutos)."
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(hint)
+	bake_bar = ProgressBar.new()
+	bake_bar.custom_minimum_size = Vector2(0, 28)
+	box.add_child(bake_bar)
+	_pop_in()
+	bake_after = after
+	baker = Baker.new(world_path)
+	baker.start()
+
+
 func play(world_path: String) -> void:
+	bake_then(world_path, func(): _enter(world_path))   # mundo de um save antigo (v2) também é assado na primeira vez
+
+
+func _enter(world_path: String) -> void:
 	SaveGame.player_path = chosen_player
 	SaveGame.world_path = world_path
 	get_tree().change_scene_to_file("res://game.tscn")
