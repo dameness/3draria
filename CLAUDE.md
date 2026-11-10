@@ -74,6 +74,8 @@ scripts/audit.py                              # data/base × snapshot: dano, use
 .tools/godot --headless -s tests/run.gd       # testes; código de saída != 0 em falha
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd   # prints reais (OpenGL por CPU) em textures/shot_*.png
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar → Mundo de teste (prints textures/menu_*.png)
+scripts/preview.sh                            # ver sem instalar: previews/folha.jpg (8 cenas) + previews/passeio.mp4 e noite.mp4 (o CI .github/workflows/preview.yml publica no PR)
+scripts/clip.sh passeio                       # um clipe só (robô com roteiro em tests/clip.gd, gravado com --write-movie) → textures/clip_passeio.mp4
 # prints só de algumas cenas: `-- parte_do_nome` (ex.: `-- teste` = o mundo de teste, `-- ilha_ceu`, `-- gancho`); cena nova = uma linha em SHOTS de tests/screenshot.gd
 ```
 Sessão remota: **sempre confira mudanças visuais com tests/screenshot.gd** e olhe as imagens (FPS ali é de CPU, não vale).

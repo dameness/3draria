@@ -15,11 +15,16 @@ uniform float aura_power = 0.0;    // 0 = sem aura
 varying vec3 wpos;
 varying vec3 wworld;
 varying float facing;
+varying vec3 tone;    // sol quente nas faces viradas para a luz, sombra fria nas outras
+varying vec3 wnormal;
 
 void vertex() {
 	wpos = VERTEX;
 	wworld = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	facing = 0.86 + 0.14 * dot(NORMAL, light_dir);
+	float sun = dot(NORMAL, light_dir);
+	facing = 0.84 + 0.16 * sun;
+	tone = mix(vec3(0.84, 0.90, 1.10), vec3(1.08, 1.02, 0.90), sun * 0.5 + 0.5);
+	wnormal = NORMAL;
 	if (abs(COLOR.b - 0.5) < 0.1) {
 		// Planta: a ponta (parte fracionária de y alta) balança; a base fica parada.
 		float tip = step(0.5, fract(VERTEX.y + 0.001));
@@ -33,10 +38,14 @@ void fragment() {
 	if (t.a < 0.5) {
 		discard;
 	}
+	// Cada bloco um tom um pouco diferente + manchas largas: quebra o "carpete" de textura repetida.
+	vec3 cell = floor(wworld - wnormal * 0.01);
+	float h = fract(sin(dot(cell, vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+	t.rgb *= 0.91 + 0.10 * h + 0.07 * sin(cell.x * 0.21 + cell.z * 0.13 + cell.y * 0.4) * sin(cell.z * 0.17 - cell.x * 0.09);
 	if (COLOR.b > 0.9) {
 		ALBEDO = t.rgb * (1.05 + 0.18 * sin(TIME * 2.0 + wpos.x * 2.3 + wpos.z * 1.7));
 	} else {
-		vec3 sky = COLOR.r * daylight * sky_tint * facing;
+		vec3 sky = COLOR.r * daylight * sky_tint * facing * tone;
 		float flicker = 0.93 + 0.07 * sin(TIME * 9.0 + wpos.x * 0.7 + wpos.z * 0.9);   // a luz das tochas tremula
 		vec3 torch = COLOR.g * flicker * vec3(1.0, 0.8, 0.55);
 		if (aura_power > 0.0) {
