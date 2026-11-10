@@ -104,12 +104,12 @@ scripts/             setup-godot.sh e um .gd por sistema:
   inventory.gd       slots, empilhar, remover
   crafting.gd        receitas e estações por perto
   voxel_body.gd      colisão AABB contra voxels (jogador, inimigos, itens)
-  player.gd          1ª pessoa, vida, mana, buffs, usar item (minerar / golpear / atirar / magia), colocar, queda e afogamento, gancho (E), cursor inteligente (Ctrl)
+  player.gd          3ª pessoa por padrão (V = 1ª), vida, mana, buffs, usar item (minerar / golpear / atirar / magia), colocar, queda e afogamento, gancho (E), cursor inteligente (Ctrl)
   fx.gd  block_crack.gd  trail.gd   partículas (poeira, lascas, faíscas, gotas, respingo), rachaduras do bloco minerado, arco do golpe
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly/eye_of_cthulhu)
   enemy_model.gd     modelos 3D dos inimigos (eye/slime/humanoid; senão sprite extrudado)
-  day_night.gd       ciclo 15+9 min
+  day_night.gd       ciclo 15+9 min; clima por bioma (névoa e tom da luz: BIOME_AIR)
   test_world.gd      mundo de teste (menu → "Mundo de teste", flag `test` no .wld): arena plana no nascimento com um baú por categoria (a partir de Items),
                      todos os blocos no chão, tochas, letreiros; o painel F9 (hud.gd) chama chefes, hora, hardmode, viagem; vitrine de inimigos parados (entities.gd)
   difficulty.gd      dificuldades do personagem (data/base/difficulties.json): Classic/Mediumcore/Hardcore; player.die()/respawn()/home() (cama), lápide em player.leave_tombstone()

@@ -6,7 +6,7 @@ extends CanvasLayer
 # - equipamento (defesa e armadura) e o botão Configurações (pausa, distância, volume, sensibilidade) à direita; vida (corações) no canto superior direito;
 # - clique esquerdo pega/solta/junta/troca (item preso ao cursor), direito pega 1 ou veste armadura; dica ao passar o mouse.
 # - à direita da grade: 4 slots de moedas (giram) e 4 de munição; acessórios embaixo da armadura; minimapa sob a vida; lixeira e Ordenar;
-#   Alt+clique favorita; Ctrl+clique joga no lixo; Shift+clique manda para o baú (ou veste); baú aberto ocupa o lugar da criação; F10 esconde o FPS, F11 o HUD.
+#   Alt+clique favorita; Ctrl+clique joga no lixo; Shift+clique manda para o baú (ou veste); baú aberto ocupa o lugar da criação; F10 mostra o FPS, F11 esconde o HUD.
 # - animação: slots crescem sob o mouse e "pulam" ao receber item (que voa da tela até o slot), painéis deslizam ao abrir/fechar,
 #   corações batem com pouca vida, dicas surgem com fade, item preso ao cursor balança.
 # A lógica de itens fica em inventory.gd (com teste); aqui só desenho e entrada.
@@ -214,6 +214,7 @@ func _ready() -> void:
 	debug_label.offset_left = 12
 	debug_label.offset_bottom = -8
 	debug_label.modulate = Color(1, 1, 1, 0.8)
+	debug_label.visible = false   # tela limpa: a linha de FPS/posição aparece com F10
 	root.add_child(debug_label)
 	buff_row = HBoxContainer.new()   # à direita da hotbar, na mesma altura
 	buff_row.position = Vector2(X0 + 11 * PITCH + 14, Y0)

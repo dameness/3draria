@@ -15,6 +15,15 @@ const DUSK_TINT := Vector3(1.0, 0.74, 0.58)
 const CAVE_FOG := Color("#07080d")   # névoa em caverna
 const CAVE_DIM := 0.35               # sol e ambiente dos modelos (mão, corpo, inimigos) num fundo de caverna
 const HELL_FOG := Color("#3c0e06")   # névoa no submundo
+# Clima de cada bioma na superfície: [cor da névoa/horizonte, tom da luz do céu nos blocos]. O peso vem do WorldGen (0..1) e a troca é suave.
+const BIOME_AIR := {
+	"corruption": [Color("#7d6aa6"), Vector3(0.92, 0.86, 1.08)],
+	"crimson": [Color("#b0706a"), Vector3(1.08, 0.88, 0.86)],
+	"snow": [Color("#e4eef8"), Vector3(0.94, 1.0, 1.1)],
+	"desert": [Color("#f2dca4"), Vector3(1.1, 1.0, 0.84)],
+	"jungle": [Color("#8fcf9c"), Vector3(0.9, 1.06, 0.88)],
+}
+const BIOME_FOG := 0.6   # quanto a névoa do bioma toma o lugar da do horizonte (de dia; à noite metade)
 
 @export var world: Node3D
 @export var sun: DirectionalLight3D   # ilumina só os modelos (jogador, itens); os blocos são sem sombreamento
@@ -24,6 +33,24 @@ var hold := false   # relógio parado (atalho do mundo de teste)
 var sky := ShaderMaterial.new()
 var depth := 0.0        # quanto a câmera está abaixo do chão da coluna (renovado 4 vezes por segundo)
 var depth_timer := 0.0
+var air_fog := Color.WHITE      # clima do bioma onde a câmera está (alvo renovado junto com `depth`)
+var air_tint := Vector3.ONE
+var air_w := 0.0
+var air_goal := [Color.WHITE, Vector3.ONE, 0.0]
+
+
+# Bioma mais forte na coluna (x, z): [cor da névoa, tom da luz, peso 0..1].
+func biome_air(wx: int, wz: int) -> Array:
+	var g: WorldGen = world.gen
+	if g == null:
+		return [air_fog, air_tint, 0.0]
+	var best := ""
+	var w := 0.0
+	for b in [[g.evil, g.evil_weight(wx, wz)], ["snow", g.snow_weight(wx, wz)], ["desert", g.desert_weight(wx, wz)], ["jungle", g.jungle_weight(wx, wz)]]:
+		if b[1] > w:
+			best = b[0]
+			w = b[1]
+	return [BIOME_AIR[best][0], BIOME_AIR[best][1], clampf(w, 0.0, 1.0)] if best != "" else [air_fog, air_tint, 0.0]
 
 
 func is_night() -> bool:
@@ -85,12 +112,19 @@ func _process(delta: float) -> void:
 		if depth_timer <= 0.0:
 			depth_timer = 0.25
 			depth = maxf(0.0, world.surface_y(floori(cam.global_position.x), floori(cam.global_position.z), true) - cam.global_position.y)
+			air_goal = biome_air(floori(cam.global_position.x), floori(cam.global_position.z))
+		var k := minf(delta * 1.5, 1.0) if delta > 0.0 else 1.0
+		air_fog = air_fog.lerp(air_goal[0], k)
+		air_tint = air_tint.lerp(air_goal[1], k)
+		air_w = lerpf(air_w, air_goal[2], k)
+		horizon = horizon.lerp(air_fog * lerpf(0.25, 1.0, day), air_w * BIOME_FOG)
+		fog = horizon
 		cave = smoothstep(4.0, 14.0, depth)   # fundo: a névoa escurece e o céu some
 		hell = smoothstep(30.0, 18.0, cam.global_position.y)
 		fog = horizon.lerp(CAVE_FOG, cave).lerp(HELL_FOG, hell)
 	var dim := lerpf(1.0, CAVE_DIM, cave * (1.0 - hell))   # sob a terra os modelos escurecem (o submundo tem o brilho da lava)
 	var lit := sd if sd.y > 0 else -sd   # a luz vem do sol; sem sol, da lua
-	world.set_light(l, TINT[0].lerp(TINT[1], day).lerp(DUSK_TINT, dusk * 0.6), lit)
+	world.set_light(l, TINT[0].lerp(TINT[1], day).lerp(DUSK_TINT, dusk * 0.6) * Vector3.ONE.lerp(air_tint, air_w), lit)
 	sky.set_shader_parameter("zenith", ZENITH[0].lerp(ZENITH[1], day))
 	sky.set_shader_parameter("horizon", horizon)
 	sky.set_shader_parameter("sun_dir", sd)

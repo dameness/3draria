@@ -4123,6 +4123,8 @@ func integration():
 			check(with_mesh == expected, "todo chunk no alcance tem faces visíveis")
 			print("mundo: %d chunks em %d ms com %d threads" % [expected, elapsed, world.max_jobs])
 			check(player.on_floor, "jogador nasce e fica no chão")
+			check(player.third_person and not main.get_node("HUD").debug_label.visible, "nasce em 3ª pessoa e com a tela limpa (sem a linha de FPS)")
+			player.third_person = false   # o resto do teste mira em 1ª pessoa
 			check(hand.mesh.visible and hand.mesh.mesh != null, "picareta aparece em 3D na mão")
 			var k: Vector2i = world.center
 			edit_mesh_id = world.meshes[k].get_instance_id()
@@ -4365,12 +4367,12 @@ func integration():
 			player.inv.acc[0] = -1
 			player.flight_left = 0.0
 			hud._unhandled_input(key(KEY_F10))
-			check(not hud.debug_label.visible, "F10 esconde o FPS")
+			check(hud.debug_label.visible, "F10 mostra o FPS")
 			hud._unhandled_input(key(KEY_F10))
 			hud._unhandled_input(key(KEY_F11))
 			check(not hud.root.visible, "F11 esconde o HUD")
 			hud._unhandled_input(key(KEY_F11))
-			check(hud.root.visible and hud.debug_label.visible, "F10 e F11 de novo mostram tudo")
+			check(hud.root.visible and not hud.debug_label.visible, "F10 e F11 de novo: HUD de volta, FPS escondido")
 			phase = 3
 		3:   # câmera em 3ª pessoa: nunca dentro de bloco, em qualquer ângulo (ver abaixo da terra era a câmera atravessando o chão)
 			player.creative = false
