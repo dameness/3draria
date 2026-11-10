@@ -755,6 +755,27 @@ func test_lighting():
 	var orb: Vector3 = hue.call(face_light(ChunkMesher.build(d, [d, d, d, d], n), Vector3i(3, Y, 8), Vector3.UP))
 	check(orb.z == 1.0 and orb.z > orb.x and orb.x > orb.y, "luz do Shadow Orb é roxa (%s)" % orb)
 	d[4 + 8 * C + (Y + 1) * C * C] = Blocks.ids.torch
+	var E := PackedByteArray()
+	for wy in range(Y + 1, Y + 12):   # parede de pedra em x = 6, de fora a fora: a luz da tocha (x = 4) não passa para o outro lado
+		for wz in C:
+			d[6 + wz * C + wy * C * C] = Blocks.ids.stone
+	a = ChunkMesher.build(d, [E, E, E, E], n)
+	check(face_light(a, Vector3i(8, Y, 8), Vector3.UP).g == 0.0 and face_light(a, Vector3i(3, Y, 8), Vector3.UP).g > 0.6, "parede barra a luz da tocha")
+	d[6 + 8 * C + (Y + 1) * C * C] = 0
+	var gap: float = face_light(ChunkMesher.build(d, [E, E, E, E], n), Vector3i(8, Y, 8), Vector3.UP).g
+	check(gap > 0.2, "por um buraco na parede a luz passa (%.2f)" % gap)
+	for wy in range(Y + 1, Y + 12):
+		for wz in C:
+			d[6 + wz * C + wy * C * C] = 0
+	d[10 + 8 * C + Y * C * C] = Blocks.ids.lava
+	d[10 + 8 * C + (Y + 1) * C * C] = 0
+	d[4 + 8 * C + (Y + 1) * C * C] = 0
+	d[10 + 9 * C + (Y + 2) * C * C] = Blocks.ids.stone
+	var glow: Vector3 = hue.call(face_light(ChunkMesher.build(d, [E, E, E, E], n), Vector3i(10, Y + 2, 9), Vector3.FORWARD))
+	check(glow.x == 1.0 and glow.z < 0.5, "pedra ao lado do ar sobre a lava fica laranja (%s)" % glow)
+	d[10 + 9 * C + (Y + 2) * C * C] = 0
+	d[10 + 8 * C + Y * C * C] = Blocks.ids.stone
+	d[4 + 8 * C + (Y + 1) * C * C] = Blocks.ids.torch
 	check(Items.places[Items.ids.torch] == Blocks.ids.torch and not Blocks.solid[Blocks.ids.torch], "tocha é item que coloca bloco não sólido")
 	check(Items.drop[Blocks.ids.torch] == Items.ids.torch, "quebrar tocha devolve a tocha")
 	var w := floor_world()
@@ -767,7 +788,6 @@ func test_lighting():
 		flat[i] = Blocks.ids.stone
 	var lamp := chunk(0)
 	lamp[0 + 0 * C + (Y + 1) * C * C] = Blocks.ids.torch   # canto (0,0) do chunk (+X,+Z): em (16,Y+1,16) no quadro do chunk
-	var E := PackedByteArray()
 	var seam_off := face_light(ChunkMesher.build(flat, [E, E, E, E], n), Vector3i(15, Y, 15), Vector3.UP)
 	var seam_on := face_light(ChunkMesher.build(flat, [E, E, E, E], n, [], [lamp, E, E, E]), Vector3i(15, Y, 15), Vector3.UP)
 	check(seam_off.g == 0.0 and seam_on.g > 0.6, "tocha no chunk diagonal ilumina o canto (%.2f, sem ela %.2f)" % [seam_on.g, seam_off.g])

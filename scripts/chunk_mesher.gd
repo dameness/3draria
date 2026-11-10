@@ -30,6 +30,9 @@ const JITTER := 0.07     # cada bloco fica até 7% mais escuro, para o gramado n
 const LIQUID_TOP := Blocks.LIQUID_TOP # a superfície do líquido cheio fica um pouco abaixo do topo do bloco
 const PLANT_H := 0.9     # altura das plantas (<1: o shader identifica a ponta pela parte fracionária de y)
 const HELL_COLOR := Color(1.0, 0.5, 0.25)   # o brilho do submundo é laranja
+const LAVA_COLOR := Color(1.0, 0.45, 0.15)
+const LAVA_GLOW := 0.9     # luz da lava no ar logo acima dela
+const LIGHT_R := 10       # maior raio de luz de um bloco (margem da grade de propagação)
 const HELL_AMBIENT := 0.5  # brilho quente do submundo (canal de tocha) perto do fundo do mundo
 const CANOPY_SHADE := 0.66 # a luz do céu que passa por baixo de uma copa de árvore
 
@@ -112,7 +115,7 @@ static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [
 	var a := _new()   # formas especiais e lava, juntadas à superfície opaca no fim
 	var wd := _new()  # água
 	var tw := 1.0 / tile_count
-	var lights := _lights(d, nb, corners)
+	var lights := _light_field(d, nb, corners)
 	var hts := PackedInt32Array()   # por coluna da cópia com margem: [0, PP) primeiro y livre acima do chão, [PP, 2 PP) acima da copa; -1 = ainda não calculado
 	hts.resize(PP * 2)
 	hts.fill(-1)
@@ -235,18 +238,29 @@ static func _light(p: PackedByteArray, hts: PackedInt32Array, lights: Array, x: 
 	var sky := clampf(1.0 - (ground - y) / SKY_FADE, SKY_MIN, 1.0)
 	if y < hts[PP + col] and hts[PP + col] > ground:
 		sky *= CANOPY_SHADE
-	var cell := Vector3(x + 0.5, y + 0.5, z + 0.5)
 	var hell := clampf((WorldGen.UNDERWORLD_TOP + 2.0 - y) / 8.0, 0.0, 1.0) * HELL_AMBIENT
 	var r := hell * HELL_COLOR.r
 	var g := hell * HELL_COLOR.g
 	var bl := hell * HELL_COLOR.b
-	for l in lights:   # cada canal fica com a fonte mais forte: duas cores perto uma da outra se misturam
-		var k: float = 1.0 - cell.distance_to(l[0]) / l[1]
-		if k > 0.0:
-			var c: Color = l[2]
-			r = maxf(r, c.r * k)
-			g = maxf(g, c.g * k)
-			bl = maxf(bl, c.b * k)
+	if lights[0] != null:   # campo das fontes (tochas, orbes...): _light_field
+		var fi := col + (y + 1) * PP
+		r = maxf(r, lights[0][fi])
+		g = maxf(g, lights[1][fi])
+		bl = maxf(bl, lights[2][fi])
+	if lights[3]:   # lava logo abaixo (até 6 blocos de ar) clareia de laranja
+		var lava: int = Blocks.ids.lava
+		for dy in range(1, 7):
+			if y - dy < 0:
+				break
+			var under := p[col + (y - dy + 1) * PP]
+			if Blocks.liquid[under] and Blocks.liquid_kind[under] == lava:
+				var k := (1.0 - dy / 7.0) * LAVA_GLOW
+				r = maxf(r, k * LAVA_COLOR.r)
+				g = maxf(g, k * LAVA_COLOR.g)
+				bl = maxf(bl, k * LAVA_COLOR.b)
+				break
+			if Blocks.cull[under]:
+				break
 	var m := maxf(r, maxf(g, bl))
 	if m <= 0.0:
 		return Color(sky, 0.0, 0.0, 1.0)
@@ -437,8 +451,6 @@ static func tiles_of(b: int, face: int) -> int:
 
 
 # Fontes de luz (tochas, orbes, cristais...) no chunk e nos vizinhos: [[centro local, raio, cor], ...].
-# ponytail: luz atravessa paredes (sem oclusão) e só vem do chunk e dos 8 em volta; trocar por
-# propagação em BFS se ficar estranho em cavernas. Lava não entra aqui (seriam milhares de fontes): só brilha nas próprias faces.
 static func _lights(d: PackedByteArray, nb: Array, corners: Array) -> Array:
 	var out := []
 	var sources := [[d, Vector3.ZERO], [nb[0], Vector3(C, 0, 0)], [nb[1], Vector3(-C, 0, 0)], [nb[2], Vector3(0, 0, C)], [nb[3], Vector3(0, 0, -C)]]
@@ -455,4 +467,113 @@ static func _lights(d: PackedByteArray, nb: Array, corners: Array) -> Array:
 				if pos.x > -Blocks.light[id] and pos.x < C + Blocks.light[id] and pos.z > -Blocks.light[id] and pos.z < C + Blocks.light[id]:
 					out.append([pos, float(Blocks.light[id]), Blocks.light_color[id]])
 				i = data.find(id, i + 1)
+	return out
+
+
+# Luz das fontes já espalhada: [r, g, b (PackedFloat32Array no índice da cópia com margem; null sem fonte por perto), o chunk tem lava].
+# A luz anda de célula em célula pelo ar (não atravessa parede; dobra esquinas) e cai com a distância em linha reta até a fonte.
+# ponytail: ~5 ms por fonte por chunk (GDScript, em thread); uma base com dezenas de tochas atrasa a remontagem. Subir para um campo
+# de luz por chunk guardado no World (atualizado só onde muda) se pesar.
+static func _light_field(d: PackedByteArray, nb: Array, corners: Array) -> Array:
+	var lights := _lights(d, nb, corners)
+	var has_lava := false
+	for id in Blocks.level_ids[Blocks.ids.lava]:
+		has_lava = has_lava or (id > 0 and d.find(id) != -1)
+	if lights.is_empty():
+		return [null, null, null, has_lava]
+	var R := LIGHT_R
+	var W := C + 2 * R
+	var y0 := H
+	var y1 := 0
+	for l in lights:
+		y0 = mini(y0, floori(l[0].y) - int(l[1]))
+		y1 = maxi(y1, floori(l[0].y) + int(l[1]) + 1)
+	y0 = maxi(y0, 0)
+	y1 = mini(y1, H)
+	# blocos da região (o chunk e R blocos dos 8 vizinhos), linha a linha
+	var E := PackedByteArray()
+	var c := func(k: int) -> PackedByteArray: return corners[k] if k < corners.size() else E
+	var rows := [[c.call(3), nb[3], c.call(1)], [nb[1], d, nb[0]], [c.call(2), nb[2], c.call(0)]]   # [z: -1, 0, +1][x: -1, 0, +1]
+	var spans := [[C - R, C], [0, C], [0, R]]   # trecho local de cada vizinho que cai na região
+	var grid := PackedByteArray()
+	var gap := PackedByteArray()
+	gap.resize(C)
+	for y in range(y0, y1):
+		for zc in 3:
+			for z in range(spans[zc][0], spans[zc][1]):
+				for xc in 3:
+					var data: PackedByteArray = rows[zc][xc]
+					var o := y * CC + z * C
+					grid.append_array(gap.slice(0, spans[xc][1] - spans[xc][0]) if data.is_empty() else data.slice(o + spans[xc][0], o + spans[xc][1]))
+	var WW := W * W
+	var out := [PackedFloat32Array(), PackedFloat32Array(), PackedFloat32Array(), has_lava]
+	for k in 3:
+		out[k].resize(PP * (H + 2))
+	var fr: PackedFloat32Array = out[0]
+	var fg: PackedFloat32Array = out[1]
+	var fb: PackedFloat32Array = out[2]
+	var seen := PackedInt32Array()
+	seen.resize(grid.size())
+	var cull := Blocks.cull
+	var queue := PackedInt32Array()
+	var steps := PackedByteArray()
+	var n := 0
+	for l in lights:
+		n += 1
+		var lx := floori(l[0].x) + R
+		var ly := floori(l[0].y) - y0
+		var lz := floori(l[0].z) + R
+		if lx < 0 or lx >= W or lz < 0 or lz >= W or ly < 0:
+			continue
+		var radius: float = l[1]
+		var col: Color = l[2]
+		var budget := int(radius * 1.5)
+		queue.clear()
+		steps.clear()
+		queue.append(lx + lz * W + ly * WW)
+		steps.append(0)
+		seen[queue[0]] = n
+		var head := 0
+		while head < queue.size():
+			var i := queue[head]
+			var s := steps[head]
+			head += 1
+			var x := i % W
+			var z := (i / W) % W
+			var y := i / WW
+			var k := 1.0 - sqrt((x - lx) * (x - lx) + (y - ly) * (y - ly) + (z - lz) * (z - lz)) / radius
+			if k <= 0.0:
+				continue
+			if x >= R - 1 and x <= R + C and z >= R - 1 and z <= R + C:
+				var fi := (x - R + 1) + (z - R + 1) * P + (y + y0 + 1) * PP
+				fr[fi] = maxf(fr[fi], col.r * k)
+				fg[fi] = maxf(fg[fi], col.g * k)
+				fb[fi] = maxf(fb[fi], col.b * k)
+			if s >= budget:
+				continue
+			for j in 6:
+				var ni := i
+				match j:
+					0:
+						if x == W - 1: continue
+						ni += 1
+					1:
+						if x == 0: continue
+						ni -= 1
+					2:
+						if z == W - 1: continue
+						ni += W
+					3:
+						if z == 0: continue
+						ni -= W
+					4:
+						if y == y1 - y0 - 1: continue
+						ni += WW
+					5:
+						if y == 0: continue
+						ni -= WW
+				if seen[ni] != n and not cull[grid[ni]]:
+					seen[ni] = n
+					queue.append(ni)
+					steps.append(s + 1)
 	return out
