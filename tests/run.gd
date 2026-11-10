@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_packed", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -339,6 +339,46 @@ func test_drops():
 	check(not far.is_queued_for_deletion() and absf(far.position.y - 11) < 0.01, "item longe cai e fica no chão")
 	free_player(p)
 	w.free()
+	return true
+
+
+# M1: chunks comprimidos em `packed`, dicionários do save sem arquivo, v2 ainda carrega.
+func test_packed():
+	var w := floor_world()
+	var p := make_player(w)
+	w.set_block(20, 11, 20, Blocks.ids.dirt)
+	check(w.edited.has(Vector2i(1, 1)), "chunk editado fica sujo")
+	w.flush_edited()
+	check(w.edited.is_empty() and w.packed.has(Vector2i(1, 1)) and w.packed.size() == 1, "flush comprime só o editado")
+	w.chunks.erase(Vector2i(1, 1))   # saiu da memória (world._recenter faz o mesmo)
+	check(w.get_block(20, 11, 20) == Blocks.ids.dirt and w.chunks.has(Vector2i(1, 1)), "o chunk volta do packed, não do gerador")
+	p.inv.add(Items.ids.stone, 7)
+	p.hp = 55
+	p.bed = Vector3i(3, 4, 5)
+	var pd := SaveGame.player_out(p, {"name": "Zé", "look": {"skin": "#ffffff"}}, "m.wld")
+	var p2 := make_player(floor_world())
+	check(SaveGame.player_in(p2, pd, "m.wld") and p2.inv.total(Items.ids.stone) == 7 and p2.hp == 55 and p2.bed == Vector3i(3, 4, 5), "player_out/player_in: ida e volta sem arquivo")
+	check(pd.name == "Zé" and pd.look.skin == "#ffffff" and SaveGame.player_in(p2, pd, "outro.wld") and p2.bed == Vector3i.MAX, "nome e aparência vêm do arquivo; a cama é por mundo")
+	var wd := SaveGame.world_out(w, p, p.clock, "M")
+	var w2: Node3D = load("res://scripts/world.gd").new()
+	w2.gen = WorldGen.new(1)
+	check(SaveGame.world_in(w2, p2, p2.clock, wd) and w2.chunks.is_empty() and w2.get_block(20, 11, 20) == Blocks.ids.dirt, "world_out/world_in: ida e volta; chunk só descomprime quando pedido")
+	# save v2 (chunks editados, sem packed/baked) ainda carrega e é lido como packed
+	var saved_dirs := [SaveGame.players_dir, SaveGame.worlds_dir]
+	SaveGame.worlds_dir = "user://test_worlds/"
+	DirAccess.make_dir_recursive_absolute(SaveGame.worlds_dir)
+	var old := {"version": 2, "name": "Velho", "seed": 9, "size": WorldGen.SIZE_CHUNKS, "time": 5.0, "chunks": w.packed, "chests": {}, "test": false}
+	var path := SaveGame.worlds_dir + "Velho.wld"
+	SaveGame._write(path, old)
+	var w3: Node3D = load("res://scripts/world.gd").new()
+	w3.gen = WorldGen.new(1)
+	check(SaveGame.load_world(w3, p2, p2.clock, path) and w3.get_block(20, 11, 20) == Blocks.ids.dirt and not w3.baked, "save v2 carrega")
+	DirAccess.remove_absolute(path)
+	SaveGame.worlds_dir = saved_dirs[1]
+	free_player(p)
+	free_player(p2)
+	for n in [w, w2, w3]:
+		n.free()
 	return true
 
 
