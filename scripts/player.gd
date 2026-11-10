@@ -618,7 +618,7 @@ func step(delta: float, wish: Vector3, jump: bool) -> void:
 	else:
 		lava_left = minf(lava_left + delta, charm)
 	fall_speed = minf(velocity.y, fall_speed)
-	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta)
+	var r := VoxelBody.move(world, position, HALF, TALL, velocity * delta, crouch)
 	position = r[0]
 	var hit: Vector3i = r[1]
 	on_floor = hit.y < 0

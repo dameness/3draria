@@ -25,6 +25,7 @@ const CORNERS := [
 const SHADE := [0.8, 0.8, 1.0, 0.55, 0.9, 0.7]  # tom fixo por direção da face (o shader soma a direção do sol)
 const SKY_FADE := 12.0   # blocos abaixo da superfície da coluna até a luz do céu sumir
 const SKY_MIN := 0.05
+const PLATFORM_H := 0.2   # espessura da plataforma (placa no topo do bloco)
 const AO_LIGHT := [0.5, 0.68, 0.84, 1.0]   # brilho de um canto conforme a oclusão (0 = dois lados tapados)
 const JITTER := 0.07     # cada bloco fica até 7% mais escuro, para o gramado não ser uma cor só
 const LIQUID_TOP := Blocks.LIQUID_TOP # a superfície do líquido cheio fica um pouco abaixo do topo do bloco
@@ -373,6 +374,11 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Color,
 			for f in 6:
 				var sh: float = SHADE[f]
 				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 1.0, 0.14), u0, tw, Color(sh * light.r, sh * light.g, 0.0, light.a))
+		"platform":   # plataforma: placa fina no topo do bloco (só segura quem vem de cima: VoxelBody.move)
+			var u0 := tiles_of(b, 0) * tw
+			for f in 6:
+				var sh: float = SHADE[f]
+				_face(a, pos + Vector3(0, 1.0 - PLATFORM_H, 0), f, Vector3(1.0, PLATFORM_H, 1.0), u0, tw, Color(sh * light.r, sh * light.g, 0.0, light.a))
 		"glowstick":   # graveto luminoso: uma barrinha no meio do bloco, acesa sozinha (b = 1)
 			var u0 := tiles_of(b, 0) * tw
 			for f in 6:

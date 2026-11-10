@@ -1,6 +1,6 @@
 class_name Housing
 # Moradia de habitante (wiki Housing, adaptada a 3D: o jogo não tem parede de fundo). Um cômodo é o ar conectado a partir de uma célula (busca em 3D),
-# fechado por blocos sólidos e portas (aberta ou fechada, a porta é parede), com volume entre MIN_CELLS e MAX_CELLS, uma luz (tocha), uma mesa
+# fechado por blocos sólidos, plataformas e portas (aberta ou fechada, a porta é parede), com volume entre MIN_CELLS e MAX_CELLS, uma luz (tocha), uma mesa
 # (bancada de trabalho) e uma cadeira encostadas no espaço. Nenhum estado: tudo se lê do mundo.
 
 const MIN_CELLS := 12      # 3 x 2 x 2
@@ -9,8 +9,8 @@ const SEARCH := 40.0       # raio (blocos) em volta do jogador em que se procura
 const DIRS: Array[Vector3i] = [Vector3i(1, 0, 0), Vector3i(-1, 0, 0), Vector3i(0, 1, 0), Vector3i(0, -1, 0), Vector3i(0, 0, 1), Vector3i(0, 0, -1)]
 
 
-static func is_wall(b: int) -> bool:
-	return Blocks.solid[b] == 1 or b == Blocks.door_open
+static func is_wall(b: int) -> bool:   # plataforma vale como chão/teto (wiki Housing)
+	return Blocks.solid[b] == 1 or b == Blocks.door_open or Blocks.shape[b] == "platform"
 
 
 # O cômodo que contém `at`: {cells: {Vector3i: true}, open: escapou, light, table, chair}. `at` dentro de uma parede: sem células.

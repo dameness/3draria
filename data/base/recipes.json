@@ -9,6 +9,7 @@
 	{"result": "iron_pickaxe", "needs": {"iron_bar": 10, "wood": 3}, "station": "anvil"},
 	{"result": "gold_pickaxe", "needs": {"gold_bar": 10, "wood": 4}, "station": "anvil"},
 	{"result": "torch", "count": 3, "needs": {"gel": 1, "wood": 1}},
+	{"result": "wood_platform", "count": 2, "needs": {"wood": 1}},
 	{"result": "wooden_sword", "needs": {"wood": 7}, "station": "workbench"},
 	{"result": "wooden_bow", "needs": {"wood": 10}, "station": "workbench"},
 	{"result": "wooden_arrow", "count": 25, "needs": {"wood": 1, "stone": 1}, "station": "workbench"},
