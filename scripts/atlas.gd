@@ -33,7 +33,7 @@ static func texture(name: String, fallback: int, atlas: Texture2D) -> Texture2D:
 static func wiki_image(spec: Dictionary) -> Image:
 	if not spec.has("wiki"):
 		return null
-	var path := ProjectSettings.globalize_path(wiki_dir + spec.wiki + ".png")
+	var path: String = wiki_dir + spec.wiki + ".png"   # res:// direto (globalize_path não vale em build exportado)
 	if not FileAccess.file_exists(path):
 		return null
 	var bytes := FileAccess.get_file_as_bytes(path)   # arquivo que não é PNG de verdade (a wiki serve GIF com nome .png; download cortado): cai no procedural sem barulho

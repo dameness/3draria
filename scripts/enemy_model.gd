@@ -96,7 +96,7 @@ static func _bb_model(name: String, def: Dictionary) -> Node3D:
 		var st := GLTFState.new()
 		var doc := GLTFDocument.new()
 		var path := bb_path(name)
-		if path != "" and doc.append_from_file(path, st) == OK:
+		if path != "" and doc.append_from_buffer(FileAccess.get_file_as_bytes(path), "", st) == OK:   # por buffer: append_from_file não lê de dentro do .pck do build Web
 			scene = doc.generate_scene(st)
 			for mi in scene.find_children("", "MeshInstance3D", true, false):   # modelo de voxels: cor por vértice (o importador não liga sozinho)
 				var mat := mi.get_active_material(0) as BaseMaterial3D
