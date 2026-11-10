@@ -181,7 +181,7 @@ static func save_world(world, player, clock, path: String) -> Error:
 static func world_out(world, player, clock, name: String) -> Dictionary:
 	world.flush_edited()
 	return {"version": VERSION, "name": name, "seed": world.world_seed, "size": WorldGen.SIZE_CHUNKS,
-		"time": clock.time, "spawn": player.spawn, "chunks": world.packed, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "eoc_down": world.eoc_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
+		"time": clock.time, "spawn": player.spawn, "chunks": world.packed, "baked": world.baked, "chest_kinds": world.chest_kinds, "dungeon_entrance": world.gen.dungeon_entrance, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "eoc_down": world.eoc_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
 		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "spread": world.spread, "npcs": world.npcs, "homes": world.homes, "town_wait": world.town_wait, "test": world.test_world}
 
 
@@ -205,6 +205,10 @@ static func load_world(world, player, clock, path: String) -> bool:
 static func world_in(world, player, clock, data: Dictionary) -> bool:
 	world.set_seed(data.seed, data.get("test", false))
 	world.packed = data.chunks   # ainda comprimidos: o mundo descomprime o chunk quando alguém o pede
+	world.baked = data.get("baked", false)
+	if world.baked:   # assado: o que o gerador de hoje diria já não vale (ele pode ter mudado desde que o mundo nasceu)
+		world.chest_kinds = data.chest_kinds
+		world.gen.dungeon_entrance = data.dungeon_entrance
 	clock.time = data.time
 	world.orbs_broken = data.get("orbs", 0)
 	world.evil_boss_down = data.get("evil_down", false)

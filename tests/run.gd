@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_packed", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_packed", "test_bake", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -379,6 +379,48 @@ func test_packed():
 	free_player(p2)
 	for n in [w, w2, w3]:
 		n.free()
+	return true
+
+
+# M1: assar um pedaço do mundo; trocar o gerador não muda o que foi assado; save v2 vira v3 mantendo a edição.
+func test_bake():
+	var saved := SaveGame.worlds_dir
+	SaveGame.worlds_dir = "user://test_worlds/"
+	DirAccess.make_dir_recursive_absolute(SaveGame.worlds_dir)
+	var orig := WorldGen.new(31)
+	var chest := orig.sky_chests[0]
+	var c0 := Vector2i(floori(chest.x / float(C)), floori(chest.z / float(C)))
+	var path := SaveGame.worlds_dir + "Assar.wld"
+	DirAccess.remove_absolute(path)
+	var edit := orig.generate(c0.x, c0.y)   # v2: o chunk do baú já editado pelo jogador (um bloco de terra no ar, y = 100)
+	edit[5 + 5 * C + 100 * C * C] = Blocks.ids.dirt
+	SaveGame._write(path, {"version": 2, "name": "Assar", "seed": 31, "size": WorldGen.SIZE_CHUNKS, "time": 5.0, "chunks": {c0: edit.compress(FileAccess.COMPRESSION_ZSTD)}, "chests": {}, "test": false})
+	check(Baker.needs(path), "mundo v2 precisa assar")
+	var b := Baker.new(path, Rect2i(c0.x - 1, c0.y - 1, 3, 3))
+	b.start()
+	while not b.done():
+		OS.delay_msec(10)
+	check(b.finish() == OK and b.progress() == 1.0 and not Baker.needs(path), "assar grava o v3 e não assa de novo")
+	var data := SaveGame._read(path)
+	check(data.version == 3 and data.baked and data.chunks.size() == 9 and data.chest_kinds.has(chest) and data.chest_kinds[chest][1] == 0, "v3: 9 chunks assados e o tipo do baú da ilha 0")
+	var w: Node3D = load("res://scripts/world.gd").new()
+	var p := make_player(w)
+	w.gen = WorldGen.new(31)
+	check(SaveGame.load_world(w, p, p.clock, path) and w.baked, "carregar o mundo assado")
+	check(w.get_block(c0.x * C + 5, 100, c0.y * C + 5) == Blocks.ids.dirt, "a edição do save v2 sobrevive ao assar")
+	var inside := c0 + Vector2i(1, 0)
+	w.gen = WorldGen.new(999)   # o gerador mudou depois do mundo nascer
+	check(w.unpack(inside) == orig.generate(inside.x, inside.y) and w.unpack(Vector2i(60, 60)) != orig.generate(60, 60), "o assado não segue o gerador novo; o que não foi assado segue")
+	check(w.chest_kind(chest) == data.chest_kinds[chest] and w.chest_kind(chest + Vector3i(1, 0, 0)) == [Loot.layer_of(chest.y), -1], "o tipo do baú vem do arquivo")
+	data.dungeon_entrance = Vector3i(7, 8, 9)
+	SaveGame.world_in(w, p, p.clock, data)
+	check(w.gen.dungeon_entrance == Vector3i(7, 8, 9), "a entrada do dungeon vem do arquivo")
+	check(not Baker.needs(SaveGame.create_world("T", 1, true)), "mundo de teste não se assa")
+	for f in DirAccess.get_files_at(SaveGame.worlds_dir):
+		DirAccess.remove_absolute(SaveGame.worlds_dir + f)
+	SaveGame.worlds_dir = saved
+	free_player(p)
+	w.free()
 	return true
 
 

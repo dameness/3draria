@@ -262,7 +262,7 @@ func chest_at(p: Vector3i) -> Dictionary:
 func chest_kind(p: Vector3i) -> Array:
 	if baked:
 		return chest_kinds.get(p, [Loot.layer_of(p.y), -1])
-	return ["living" if gen and gen.living_chests.has(p) else "dungeon" if gen and gen.in_dungeon(p.x, p.y, p.z) else "water" if gen and gen.in_sea(p.x, p.z) else Loot.layer_of(p.y), gen.sky_chests.find(p) if gen else -1]
+	return gen.chest_kind(p) if gen else [Loot.layer_of(p.y), -1]
 
 
 # Liga ou desliga o mundo de teste (antes de gerar chunks: a arena entra na geração).
