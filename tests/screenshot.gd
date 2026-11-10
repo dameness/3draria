@@ -35,6 +35,8 @@ const SHOTS := [
 	{"name": "luzes", "time": 1100.0, "look": Vector2(0, -0.35), "row": ["torch", "stone", "shadow_orb", "stone", "crimson_heart", "stone", "life_crystal", "stone", "glowstick_lit", "stone", "hellforge", "demon_altar"]},
 	{"name": "luz_na_mao", "time": 1100.0, "look": Vector2(0.5, -0.3), "give": ["torch"], "item": "torch"},
 	{"name": "esporos", "time": 1100.0, "look": Vector2(0, -0.4), "row": ["jungle_spore_orb", "mud", "jungle_spore_orb", "stone", "jungle_spore_orb"], "item": "nights_edge"},
+	{"name": "ervas", "look": Vector2(0, -0.4), "row": ["daybloom_plant", "blinkroot_plant", "moonglow_plant", "mushroom", "placed_bottle"], "item": "bottled_water"},
+	{"name": "ervas_noite", "time": 1100.0, "look": Vector2(0, -0.4), "row": ["daybloom_plant", "blinkroot_plant", "moonglow_plant", "mushroom", "placed_bottle"], "item": "bottled_water"},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
 	{"name": "cama_lapide", "look": Vector2(0, -0.3), "row": ["bed", "tombstone", "chair", "workbench"], "late": 70},
 	{"name": "dormir", "look": Vector2(0, 0.5), "sleep": true, "late": 60},

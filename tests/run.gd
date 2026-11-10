@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_platform", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -6097,6 +6097,51 @@ func test_wiki_review():
 	check(cavern_heal and not Loot.tables.cavern.common.any(func(e): return e.items == ["lesser_healing_potion"]), "baú de caverna dá Healing Potion (não a Lesser)")
 	var wood: Dictionary = Items.sets.wood
 	check(wood.pieces.size() == 3 and wood.defense == 1 and Items.defs[wood.pieces[0]].defense + Items.defs[wood.pieces[1]].defense + Items.defs[wood.pieces[2]].defense == 2, "conjunto de madeira: 1+1+0 de defesa e +1 do conjunto")
+	return true
+
+
+# Ervas e alquimia (wiki Alchemy): Daybloom na grama, Blinkroot no chão de caverna, Moonglow na selva; garrafa enche na água; 8 poções na garrafa colocada.
+func test_alchemy():
+	var g := WorldGen.new(4242)
+	var L := C * C
+	var counts := {"daybloom_plant": 0, "blinkroot_plant": 0, "moonglow_plant": 0}
+	var under := {"daybloom_plant": [Blocks.ids.grass], "blinkroot_plant": [Blocks.ids.dirt, Blocks.ids.mud], "moonglow_plant": [Blocks.ids.jungle_grass]}
+	var spots: Array = []
+	for k in 12:   # perto do centro (superfície comum) e na selva
+		spots.append(Vector2i(WorldGen.CENTER) / C + Vector2i(k % 4 + 4, k / 4 + 4))
+	for r in range(300, 700, 16):
+		for a in 64:
+			var p := Vector2i(WorldGen.CENTER + Vector2.from_angle(a * TAU / 64.0) * r)
+			if spots.size() < 21 and g.jungle_weight(p.x, p.y) >= 0.9 and g.evil_weight(p.x, p.y) == 0.0:
+				spots.append(p / C)
+	for s in spots:
+		var d := g.generate(s.x, s.y)
+		for n in counts:
+			var i := d.find(Blocks.ids[n])
+			while i != -1:
+				counts[n] += 1
+				check(d[i - L] in under[n], n + " nasce no chão certo (achou id %d)" % d[i - L])
+				if n == "blinkroot_plant":
+					check(i / L < g.surface_height(s.x * C + i % C, s.y * C + (i / C) % C) - 7, "Blinkroot só no subsolo")
+				i = d.find(Blocks.ids[n], i + 1)
+	for n in counts:
+		check(counts[n] > 0, "%s nasce no mundo (%d)" % [n, counts[n]])
+	for n in ["daybloom", "blinkroot", "moonglow", "mushroom"]:
+		var b: int = Blocks.ids[n + "_plant" if n != "mushroom" else n]
+		check(not Blocks.soft[b] and Items.drop[b] == Items.ids[n] and Blocks.mine[b] >= 100, "colher " + n + " dá o item com um golpe")
+	check(Blocks.light[Blocks.ids.moonglow_plant] > 0, "Moonglow brilha")
+	check(Items.places[Items.ids.bottle] == Blocks.ids.placed_bottle and Items.drop[Blocks.ids.placed_bottle] == Items.ids.bottle, "a garrafa se coloca e volta como garrafa")
+	var fill: Dictionary = Crafting.recipes.filter(func(r): return r.result == Items.ids.bottled_water)[0]
+	var inv := Inventory.new()
+	inv.add(Items.ids.bottle, 1)
+	var w := floor_world()
+	check(not Crafting.craft(fill, inv, Crafting.stations_near(w, Vector3(20.5, 11, 20.5))), "longe da água a garrafa não enche")
+	w.set_block(23, 10, 20, Blocks.ids.water_3)
+	check(Crafting.craft(fill, inv, Crafting.stations_near(w, Vector3(20.5, 11, 20.5))) and inv.total(Items.ids.bottled_water) == 1, "perto da água (qualquer nível) vira Bottled Water")
+	w.free()
+	for p in ["lesser_healing_potion", "ironskin_potion", "regeneration_potion", "swiftness_potion", "mining_potion", "archery_potion", "night_owl_potion", "spelunker_potion"]:
+		check(Crafting.recipes.any(func(r): return r.result == Items.ids[p] and r.station == Blocks.ids.placed_bottle), "receita de " + p + " na garrafa colocada")
+	check(enemy_def("antlion_charger").drops.any(func(d): return d.item == "antlion_mandible"), "Antlion Charger solta Antlion Mandible")
 	return true
 
 

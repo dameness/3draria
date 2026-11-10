@@ -913,6 +913,8 @@ func _guide_tips() -> Array:
 		tips.append("Minério só vira barra na Fornalha; as barras viram ferramentas, armas e armaduras na Bigorna.")
 	if count.call("iron_bar") + count.call("lead_bar") >= 5 and count.call("anvil") + count.call("lead_anvil") == 0 and not near.call("anvil"):
 		tips.append("5 barras de ferro fazem uma Bigorna (na bancada). Nela saem picaretas, machados, martelos, espadas, arcos e armaduras.")
+	if count.call("daybloom") + count.call("blinkroot") + count.call("moonglow") > 0 and count.call("bottle") + count.call("bottled_water") == 0 and not near.call("placed_bottle"):
+		tips.append("Ervas viram poções: 2 de areia fazem Vidro na Fornalha, e o vidro, 2 Garrafas. Encha uma garrafa perto da água e misture as ervas sobre uma garrafa colocada na mesa.")
 	if player.max_hp < 140:
 		tips.append("Ache Life Crystals nas cavernas: cada um dá +20 de vida máxima.")
 	if not world.evil_boss_down:

@@ -223,5 +223,12 @@
 	{"name": "blade_of_grass", "tip": "25% de chance de envenenar por 7 s", "icon": "blade_of_grass", "damage": 18, "use_time": 0.333, "autoswing": true, "reach": 3.0, "knockback": 4.5, "stack": 1, "rarity": 3, "debuff": "poisoned", "debuff_time": [7], "debuff_chance": 0.25, "effects": {"trail": "#7ad84a"}},
 	{"name": "muramasa", "icon": "muramasa", "damage": 24, "use_time": 0.3, "autoswing": true, "reach": 2.8, "knockback": 3, "stack": 1, "rarity": 2, "effects": {"glow": "#5a8aff", "trail": "#5a8aff"}},
 	{"name": "volcano", "tip": "50% de chance de causar Em chamas! por 3 s", "icon": "volcano", "damage": 40, "use_time": 0.667, "reach": 3.0, "knockback": 6.5, "stack": 1, "rarity": 3, "debuff": "on_fire", "debuff_time": [3], "debuff_chance": 0.5, "effects": {"glow": "#ff8a20", "trail": "#ff8a20", "particles": "#ffc040"}},
-	{"name": "nights_edge", "wiki": "Night's Edge", "icon": "nights_edge", "damage": 40, "use_time": 0.417, "autoswing": true, "reach": 3.2, "knockback": 4.5, "stack": 1, "rarity": 3, "effects": {"glow": "#a050ff", "trail": "#a050ff", "particles": "#c890ff"}}
+	{"name": "nights_edge", "wiki": "Night's Edge", "icon": "nights_edge", "damage": 40, "use_time": 0.417, "autoswing": true, "reach": 3.2, "knockback": 4.5, "stack": 1, "rarity": 3, "effects": {"glow": "#a050ff", "trail": "#a050ff", "particles": "#c890ff"}},
+	{"name": "daybloom", "icon": "daybloom"},
+	{"name": "blinkroot", "icon": "blinkroot"},
+	{"name": "moonglow", "icon": "moonglow"},
+	{"name": "mushroom", "icon": "mushroom_item", "consumable": true, "heal": 15, "use_time": 0.283},
+	{"name": "bottle", "icon": "bottle", "places": "placed_bottle", "use_time": 0.25},
+	{"name": "bottled_water", "icon": "bottled_water"},
+	{"name": "antlion_mandible", "icon": "antlion_mandible"}
 ]

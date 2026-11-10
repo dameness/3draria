@@ -135,5 +135,18 @@
 	{"result": "blade_of_grass", "needs": {"stinger": 12, "jungle_spores": 15, "vine": 3}, "station": "anvil"},
 	{"result": "volcano", "needs": {"hellstone_bar": 20}, "station": "anvil"},
 	{"result": "nights_edge", "needs": {"lights_bane": 1, "muramasa": 1, "blade_of_grass": 1, "volcano": 1}, "station": "demon_altar"},
-	{"result": "nights_edge", "needs": {"blood_butcherer": 1, "muramasa": 1, "blade_of_grass": 1, "volcano": 1}, "station": "demon_altar"}
+	{"result": "nights_edge", "needs": {"blood_butcherer": 1, "muramasa": 1, "blade_of_grass": 1, "volcano": 1}, "station": "demon_altar"},
+	{"result": "glass", "needs": {"sand": 2}, "station": "furnace"},
+	{"result": "bottle", "count": 2, "needs": {"glass": 1}, "station": "furnace"},
+	{"result": "bottled_water", "needs": {"bottle": 1}, "station": "water"},
+	{"result": "lesser_healing_potion", "count": 2, "needs": {"mushroom": 1, "gel": 2, "bottle": 2}, "station": "placed_bottle"},
+	{"result": "ironskin_potion", "needs": {"bottled_water": 1, "daybloom": 1, "iron_ore": 1}, "station": "placed_bottle"},
+	{"result": "ironskin_potion", "needs": {"bottled_water": 1, "daybloom": 1, "lead_ore": 1}, "station": "placed_bottle"},
+	{"result": "regeneration_potion", "needs": {"bottled_water": 1, "daybloom": 1, "mushroom": 1}, "station": "placed_bottle"},
+	{"result": "swiftness_potion", "needs": {"bottled_water": 1, "blinkroot": 1, "cactus": 1}, "station": "placed_bottle"},
+	{"result": "mining_potion", "needs": {"bottled_water": 1, "antlion_mandible": 1, "blinkroot": 1}, "station": "placed_bottle"},
+	{"result": "archery_potion", "needs": {"bottled_water": 1, "daybloom": 1, "lens": 1}, "station": "placed_bottle"},
+	{"result": "night_owl_potion", "needs": {"bottled_water": 1, "daybloom": 1, "blinkroot": 1}, "station": "placed_bottle"},
+	{"result": "spelunker_potion", "needs": {"bottled_water": 1, "blinkroot": 1, "moonglow": 1, "gold_ore": 1}, "station": "placed_bottle"},
+	{"result": "spelunker_potion", "needs": {"bottled_water": 1, "blinkroot": 1, "moonglow": 1, "platinum_ore": 1}, "station": "placed_bottle"}
 ]

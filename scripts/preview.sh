@@ -3,7 +3,7 @@
 # Uso: scripts/preview.sh            → previews/folha.jpg (8 cenas), previews/cenas/*.jpg, previews/passeio.mp4, previews/noite.mp4
 set -euo pipefail
 cd "$(dirname "$0")/.."
-CENAS="alto arvore_cai deserto_cacto mal neve luzes luz_na_mao gancho plataformas"   # nomes de tests/screenshot.gd (nenhum do mundo de teste)
+CENAS="alto arvore_cai deserto_cacto mal neve luzes luz_na_mao gancho plataformas ervas_noite"   # nomes de tests/screenshot.gd (nenhum do mundo de teste)
 rm -rf previews && mkdir -p previews/cenas
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd -- $CENAS 2>&1 | grep -E "salvo|SCRIPT ERROR" || true
 i=0
