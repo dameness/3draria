@@ -29,6 +29,9 @@ const LAND_RADIUS := 790.0     # o mundo é uma ilha: até este raio do centro �
 const COAST := 70.0            # largura da costa (do fim da terra ao fundo do mar)
 const OCEAN_DEPTH := 30        # o fundo do oceano fica tantos blocos abaixo do nível da água
 const SPORE_CHANCE := 0.05     # chance de um orbe de Jungle Spores em cada chão de caverna da selva
+const DAYBLOOM_CHANCE := 1.0 / 150.0   # das plantas da grama da superfície, quantas são Daybloom (wiki Daybloom)
+const BLINKROOT_CHANCE := 0.01  # chance de Blinkroot em cada chão de terra/lama de caverna (wiki Blinkroot)
+const MOONGLOW_CHANCE := 0.02   # chance de Moonglow em cada grama da selva com ar em cima (wiki Moonglow)
 const SEA_CHESTS := 0.02       # chance por chunk de oceano de ter uma ruína submersa com baú (loot "water")
 const CHASMS := 12             # abismos por bioma, cada um com um orbe (Shadow Orb / Crimson Heart) no fundo
 const CHASM_DEPTH := 38
@@ -100,6 +103,9 @@ var hive_center := Vector3i.ZERO   # centro da câmara da colmeia (a larva no ch
 var SNOW: int
 var MUD: int
 var SPORE: int
+var DAYBLOOM: int
+var BLINKROOT: int
+var MOONGLOW: int
 var JGRASS: int
 var HIVE: int
 var LIVING_WOOD: int
@@ -183,6 +189,9 @@ func _init(world_seed: int, dir := "res://data/base") -> void:
 	SNOW = Blocks.ids.snow_block
 	MUD = Blocks.ids.mud
 	SPORE = Blocks.ids.jungle_spore_orb
+	DAYBLOOM = Blocks.ids.daybloom_plant
+	BLINKROOT = Blocks.ids.blinkroot_plant
+	MOONGLOW = Blocks.ids.moonglow_plant
 	JGRASS = Blocks.ids.jungle_grass
 	HIVE = Blocks.ids.hive
 	LARVA = Blocks.ids.bee_larva
@@ -314,7 +323,8 @@ func generate(cx: int, cz: int) -> PackedByteArray:
 	_mines(d, cx, cz)
 	_ores(d, rng)
 	_trees(d, hs, W, cx, cz)
-	_plants(d, hs, W, rng)
+	_plants(d, hs, W, rng, cx, cz)
+	_blinkroot(d, hs, W, cx, cz)
 	_cactus(d, hs, W, cx, cz)
 	rng.seed = hash([seed, cx, cz, "altar"])
 	_altar(d, rng)
@@ -508,6 +518,8 @@ func _jungle(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int)
 				var b := d[i + y * layer]
 				if b == GRASS:
 					d[i + y * layer] = JGRASS
+					if y + 1 < HEIGHT and d[i + (y + 1) * layer] == AIR and _hash01(ox + x, y, oz + z, seed + 37) < MOONGLOW_CHANCE:
+						d[i + (y + 1) * layer] = MOONGLOW
 				elif b == DIRT:
 					d[i + y * layer] = MUD
 				elif b == AIR and y < CAVERN_TOP + 12 and (d[i + (y - 1) * layer] == MUD or d[i + (y - 1) * layer] == STONE) and _hash01(ox + x, y, oz + z, seed + 31) < SPORE_CHANCE:
@@ -1002,7 +1014,7 @@ func _ores(d: PackedByteArray, rng: RandomNumberGenerator, list := ores) -> void
 
 
 # Capim, flores e cogumelos sobre a grama (só onde o ar está livre).
-func _plants(d: PackedByteArray, hs: PackedInt32Array, W: int, rng: RandomNumberGenerator) -> void:
+func _plants(d: PackedByteArray, hs: PackedInt32Array, W: int, rng: RandomNumberGenerator, cx: int, cz: int) -> void:
 	for z in CHUNK:
 		for x in CHUNK:
 			var y := hs[(x + MARGIN) + (z + MARGIN) * W]
@@ -1011,6 +1023,20 @@ func _plants(d: PackedByteArray, hs: PackedInt32Array, W: int, rng: RandomNumber
 			if d[i] != GRASS or d[i + CHUNK * CHUNK] != AIR or r > 0.34:
 				continue
 			d[i + CHUNK * CHUNK] = TUFT if r < 0.27 else MUSHROOM if r < 0.275 else FLOWERS[rng.randi() % FLOWERS.size()]
+			if _hash01(cx * CHUNK + x, y, cz * CHUNK + z, seed + 41) < DAYBLOOM_CHANCE:
+				d[i + CHUNK * CHUNK] = DAYBLOOM   # erva da superfície, no lugar de uma planta comum (o rng dos outros não muda)
+
+
+# Blinkroot (wiki Blinkroot): no chão de terra ou lama das cavernas (ar em cima, abaixo da camada de terra da superfície).
+func _blinkroot(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -> void:
+	var layer := CHUNK * CHUNK
+	for z in CHUNK:
+		for x in CHUNK:
+			var i := x + z * CHUNK
+			for y in range(UNDERWORLD_TOP + 2, hs[(x + MARGIN) + (z + MARGIN) * W] - 8):
+				var b := d[i + (y - 1) * layer]
+				if (b == DIRT or b == MUD) and d[i + y * layer] == AIR and _hash01(cx * CHUNK + x, y, cz * CHUNK + z, seed + 43) < BLINKROOT_CHANCE:
+					d[i + y * layer] = BLINKROOT
 
 
 # Cactos (wiki Cactus): colunas de 3 a 5 blocos sobre a areia da superfície do deserto, com ar livre no topo; um por ~60 colunas.

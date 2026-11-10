@@ -394,6 +394,12 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Color,
 			for pair in [[Vector3(0.05, 0, 0.05), Vector3(0.95, 0, 0.95)], [Vector3(0.95, 0, 0.05), Vector3(0.05, 0, 0.95)]]:
 				_vquad(a, pos + pair[0], pos + pair[1], 0.95, u0, tw, c)
 				_vquad(a, pos + pair[1], pos + pair[0], 0.95, u0, tw, c)
+		"bottle":   # garrafa colocada (estação de alquimia): cruz pequena, parada, com a luz do lugar
+			var u0 := tiles_of(b, 0) * tw
+			var c := Color(light.r, light.g, 0.0, light.a)
+			for pair in [[Vector3(0.3, 0, 0.3), Vector3(0.7, 0, 0.7)], [Vector3(0.7, 0, 0.3), Vector3(0.3, 0, 0.7)]]:
+				_vquad(a, pos + pair[0], pos + pair[1], 0.5, u0, tw, c)
+				_vquad(a, pos + pair[1], pos + pair[0], 0.5, u0, tw, c)
 		"plant":
 			var u0 := tiles_of(b, 0) * tw
 			var c := Color(light.r * 0.95, light.g * 0.95, 0.5, light.a)

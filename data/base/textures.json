@@ -403,5 +403,18 @@
 	"blade_of_grass": {"wiki": "Blade_of_Grass", "pattern": "sword", "colors": ["#5ac040", "#2f7a28"], "top_colors": ["#6e4b2a"]},
 	"muramasa": {"wiki": "Muramasa", "pattern": "sword", "colors": ["#5a8aff", "#2a4ab0"], "top_colors": ["#3a3a5a"]},
 	"volcano": {"wiki": "Volcano", "pattern": "sword", "colors": ["#ff8a20", "#c04010"], "top_colors": ["#5a2a1a"]},
-	"nights_edge": {"wiki": "Night's_Edge", "pattern": "sword", "colors": ["#8a50d0", "#4a2a80"], "top_colors": ["#2a1a4a"]}
+	"nights_edge": {"wiki": "Night's_Edge", "pattern": "sword", "colors": ["#8a50d0", "#4a2a80"], "top_colors": ["#2a1a4a"]},
+	"daybloom_plant": {"wiki": "Daybloom", "fit": true, "pattern": "flower", "colors": ["#ffd83a", "#ffffff"], "top_colors": ["#2fa040"]},
+	"blinkroot_plant": {"wiki": "Blinkroot", "fit": true, "pattern": "flower", "colors": ["#e8a040", "#fff0a0"], "top_colors": ["#8a6a3a"]},
+	"moonglow_plant": {"wiki": "Moonglow", "fit": true, "pattern": "flower", "colors": ["#6ab0ff", "#e0f0ff"], "top_colors": ["#2f8a50"]},
+	"glass": {"wiki": "Glass_(placed)", "crop": [16, 16], "pattern": "noise", "colors": ["#c8e0f0", "#b0d0e8", "#e0f0ff"]},
+	"glass_item": {"wiki": "Glass"},
+	"placed_bottle": {"wiki": "Bottle", "fit": true, "pattern": "blob", "colors": ["#d8e8f8", "#a0b8d0", "#ffffff"]},
+	"daybloom": {"wiki": "Daybloom"},
+	"blinkroot": {"wiki": "Blinkroot"},
+	"moonglow": {"wiki": "Moonglow"},
+	"mushroom_item": {"wiki": "Mushroom"},
+	"bottle": {"wiki": "Bottle"},
+	"bottled_water": {"wiki": "Bottled_Water"},
+	"antlion_mandible": {"wiki": "Antlion_Mandible"}
 }
