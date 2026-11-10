@@ -130,5 +130,9 @@
 	{"result": "platinum_crown", "needs": {"platinum_bar": 5, "ruby": 1}, "station": "anvil"},
 	{"result": "minecart_track", "count": 50, "needs": {"iron_bar": 1, "wood": 1}, "station": "anvil"},
 	{"result": "minecart", "needs": {"iron_bar": 15, "wood": 10}, "station": "anvil"},
-	{"result": "bed", "needs": {"wood": 15, "gel": 5}, "station": "workbench", "wiki": "Bed", "wiki_ok": ["recipe"]}
+	{"result": "bed", "needs": {"wood": 15, "gel": 5}, "station": "workbench", "wiki": "Bed", "wiki_ok": ["recipe"]},
+	{"result": "blade_of_grass", "needs": {"stinger": 12, "jungle_spores": 15, "vine": 3}, "station": "anvil"},
+	{"result": "volcano", "needs": {"hellstone_bar": 20}, "station": "anvil"},
+	{"result": "nights_edge", "needs": {"lights_bane": 1, "muramasa": 1, "blade_of_grass": 1, "volcano": 1}, "station": "demon_altar"},
+	{"result": "nights_edge", "needs": {"blood_butcherer": 1, "muramasa": 1, "blade_of_grass": 1, "volcano": 1}, "station": "demon_altar"}
 ]

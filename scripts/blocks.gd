@@ -100,7 +100,7 @@ static func load_pack(dir := "res://data/base") -> void:
 			var by_level: PackedInt32Array = level_ids.get(liquid_kind[-1], PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0]))
 			by_level[liquid_level[-1]] = ids[b.name]
 			level_ids[liquid_kind[-1]] = by_level
-		soft.append(1 if shape[-1] in ["plant", "liquid"] else 0)
+		soft.append(1 if shape[-1] in ["plant", "liquid"] and not b.get("target", false) else 0)   # "target": planta que a mira pega (orbe de Jungle Spores)
 		glow.append(1 if b.get("glow", false) else 0)
 		grassy.append(1 if b.get("grass", false) else 0)
 		spreads.append(1 if b.get("spread", false) else 0)

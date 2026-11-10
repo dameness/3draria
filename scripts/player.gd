@@ -1385,6 +1385,8 @@ func swing(d: Dictionary, eye: Vector3, forward: Vector3) -> int:
 	var hits := melee_targets(eye, forward, d.reach)
 	for e in hits:
 		e.hurt(Combat.vary(power(d), entities.rng), forward, d.knockback, Combat.is_crit(entities.rng, crit_chance(d)))
+		if d.has("debuff") and entities.rng.randf() < d.get("debuff_chance", 1.0):   # Blade of Grass envenena, Volcano põe fogo
+			e.afflict(d.debuff, d.debuff_time[entities.rng.randi() % d.debuff_time.size()])
 	for n in entities.get_children():   # esferas dos conjuradores se destroem com um golpe (wiki)
 		if n.get("def") is Dictionary and n.def.get("destroy", false) and eye.distance_to(n.position) <= d.reach + 0.5 and forward.dot((n.position - eye).normalized()) > 0.5:
 			entities.pop_sphere(n)

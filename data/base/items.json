@@ -217,5 +217,11 @@
 	{"name": "leaf_wand", "tip": "Coloca Leaf Blocks, gastando Wood", "icon": "leaf_wand", "places": "leaves", "wand": "wood", "stack": 1, "rarity": 1, "use_time": 0.25},
 	{"name": "glowstick", "tip": "Funciona molhado", "icon": "glowstick", "use_time": 0.25, "throw": "glowstick", "shoot_speed": 9, "consumable": true, "rarity": 0, "sprite_angle": 45},
 	{"name": "stinger", "icon": "stinger", "rarity": 0},
-	{"name": "poison_dart", "tip": "Envenena o inimigo", "icon": "poison_dart", "damage": 10, "knockback": 2, "ammo_class": "dart", "projectile": "poison_dart", "sprite_angle": 0, "use_time": 0.25, "rarity": 2}
+	{"name": "poison_dart", "tip": "Envenena o inimigo", "icon": "poison_dart", "damage": 10, "knockback": 2, "ammo_class": "dart", "projectile": "poison_dart", "sprite_angle": 0, "use_time": 0.25, "rarity": 2},
+	{"name": "jungle_spores", "icon": "jungle_spores", "rarity": 0},
+	{"name": "vine", "icon": "vine", "rarity": 0},
+	{"name": "blade_of_grass", "tip": "25% de chance de envenenar por 7 s", "icon": "blade_of_grass", "damage": 18, "use_time": 0.333, "autoswing": true, "reach": 3.0, "knockback": 4.5, "stack": 1, "rarity": 3, "debuff": "poisoned", "debuff_time": [7], "debuff_chance": 0.25, "effects": {"trail": "#7ad84a"}},
+	{"name": "muramasa", "icon": "muramasa", "damage": 24, "use_time": 0.3, "autoswing": true, "reach": 2.8, "knockback": 3, "stack": 1, "rarity": 2, "effects": {"glow": "#5a8aff", "trail": "#5a8aff"}},
+	{"name": "volcano", "tip": "50% de chance de causar Em chamas! por 3 s", "icon": "volcano", "damage": 40, "use_time": 0.667, "reach": 3.0, "knockback": 6.5, "stack": 1, "rarity": 3, "debuff": "on_fire", "debuff_time": [3], "debuff_chance": 0.5, "effects": {"glow": "#ff8a20", "trail": "#ff8a20", "particles": "#ffc040"}},
+	{"name": "nights_edge", "wiki": "Night's Edge", "icon": "nights_edge", "damage": 40, "use_time": 0.417, "autoswing": true, "reach": 3.2, "knockback": 4.5, "stack": 1, "rarity": 3, "effects": {"glow": "#a050ff", "trail": "#a050ff", "particles": "#c890ff"}}
 ]

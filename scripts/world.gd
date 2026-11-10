@@ -230,7 +230,7 @@ func chest_at(p: Vector3i) -> Dictionary:
 	if not chests.has(p):
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash([world_seed, p.x, p.y, p.z])
-		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest("living" if gen and gen.living_chests.has(p) else "water" if gen and gen.in_sea(p.x, p.z) else Loot.layer_of(p.y), rng, gen.sky_chests.find(p) if gen else -1)   # ilhas: cada uma com o próximo item principal
+		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest("living" if gen and gen.living_chests.has(p) else "dungeon" if gen and gen.in_dungeon(p.x, p.y, p.z) else "water" if gen and gen.in_sea(p.x, p.z) else Loot.layer_of(p.y), rng, gen.sky_chests.find(p) if gen else -1)   # ilhas: cada uma com o próximo item principal
 	if k != -1:
 		chests[p].title = TestWorld.chests[k].title   # o painel mostra o nome da categoria (não vai no save: sai da posição)
 	return chests[p]

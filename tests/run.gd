@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -6065,3 +6065,38 @@ func test_wiki_review():
 	var wood: Dictionary = Items.sets.wood
 	check(wood.pieces.size() == 3 and wood.defense == 1 and Items.defs[wood.pieces[0]].defense + Items.defs[wood.pieces[1]].defense + Items.defs[wood.pieces[2]].defense == 2, "conjunto de madeira: 1+1+0 de defesa e +1 do conjunto")
 	return true
+
+
+# Cadeia da Night's Edge (wiki): Blade of Grass (esporos da selva + ferrões + cipó), Muramasa (baú do dungeon), Volcano (pedra infernal) e a espada do mal, no altar.
+func test_nights_edge():
+	var g := WorldGen.new(4242)
+	var spot := Vector2i(-1, -1)   # um chunk bem dentro da selva
+	for r in range(300, 700, 16):
+		for a in 64:
+			var p := Vector2i(WorldGen.CENTER + Vector2.from_angle(a * TAU / 64.0) * r)
+			if spot.x < 0 and g.jungle_weight(p.x, p.y) >= 0.9 and g.evil_weight(p.x, p.y) == 0.0:
+				spot = p / C
+	check(spot.x >= 0, "há selva no mundo")
+	var orbs := 0
+	for dz in 3:
+		for dx in 3:
+			var d := g.generate(spot.x + dx, spot.y + dz)
+			var i := d.find(Blocks.ids.jungle_spore_orb)
+			while i != -1:
+				orbs += 1
+				check(d[i - C * C] in [Blocks.ids.mud, Blocks.ids.stone] and i / (C * C) < WorldGen.CAVERN_TOP + 12, "orbe de esporos nasce no chão das cavernas da selva")
+				i = d.find(Blocks.ids.jungle_spore_orb, i + 1)
+	check(orbs >= 5, "9 chunks de selva têm orbes de Jungle Spores (%d)" % orbs)
+	var orb: int = Blocks.ids.jungle_spore_orb
+	check(not Blocks.soft[orb] and not Blocks.solid[orb] and Items.drop[orb] == Items.ids.jungle_spores and Blocks.light[orb] > 0, "o orbe é alvo da mira, brilha e solta Jungle Spores")
+	var rng := RandomNumberGenerator.new()
+	var mura := 0
+	for n in 40:
+		rng.seed = n
+		var c: Dictionary = Loot.chest("dungeon", rng)
+		mura += 1 if Items.ids.muramasa in Array(c.item) else 0
+	check(mura > 5 and mura < 35, "baú do dungeon dá Muramasa em parte das vezes (%d de 40)" % mura)
+	for r in ["blade_of_grass", "volcano", "nights_edge"]:
+		check(Crafting.recipes.any(func(x): return x.result == Items.ids[r]), "receita de " + r)
+	return true
+
