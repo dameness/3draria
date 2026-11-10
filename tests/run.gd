@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_platform", "test_wiki_audit"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -59,6 +59,39 @@ func test_raycast():
 	check(w.get_block(24, 12, 20) == Blocks.ids.dirt, "set_block grava no chunk")
 	w.set_block(16, 12, 20, Blocks.ids.dirt)
 	check(w.versions.get(Vector2i(1, 1)) == 2 and w.versions.get(Vector2i(0, 1)) == 1, "editar a borda remonta o vizinho")
+	w.free()
+	return true
+
+
+func test_platform():
+	var w := floor_world()
+	var plat: int = Blocks.ids.wood_platform
+	for x in range(18, 23):
+		w.set_block(x, 14, 20, plat)   # topo da plataforma em y = 15; o chão fica em y = 11
+	var r: Array = VoxelBody.move(w, Vector3(20.5, 15.3, 20.5), 0.3, 1.8, Vector3(0, -0.5, 0))
+	check(is_equal_approx(r[0].y, 15.0 + VoxelBody.EPS) and r[1].y == -1, "cair em cima da plataforma para nela")
+	r = VoxelBody.move(w, r[0], 0.3, 1.8, Vector3(0, -0.2, 0))
+	check(r[1].y == -1 and r[0].y > 15.0, "parado em cima, a gravidade não a atravessa")
+	r = VoxelBody.move(w, r[0], 0.3, 1.8, Vector3(0, -0.2, 0), true)
+	check(r[0].y < 15.0 and r[1].y == 0, "segurando C desce pela plataforma")
+	var p := Vector3(20.5, 13.0, 20.5)
+	for i in 6:
+		p = VoxelBody.move(w, p, 0.3, 1.8, Vector3(0, 0.5, 0))[0]
+	check(p.y > 15.5, "pular por baixo atravessa (y = %.2f)" % p.y)
+	r = VoxelBody.move(w, Vector3(17.5, 14.0, 20.5), 0.3, 1.8, Vector3(0.6, 0, 0))
+	check(r[1].x == 0, "de lado atravessa")
+	r = VoxelBody.move(w, Vector3(22.8, 15.4, 20.5), 0.15, 0.3, Vector3(0, -0.6, 0))
+	check(r[1].y == -1, "item solto com um canto em cima também para")
+	var hit: Dictionary = w.raycast(Vector3(20.5, 17.5, 20.5), Vector3.DOWN, 10)
+	check(hit.get("pos") == Vector3i(20, 14, 20), "a mira pega a plataforma")
+	check(Blocks.mine[plat] >= 100 and Items.ids.has("wood_platform"), "vira item e quebra num golpe")
+	check(Crafting.recipes.any(func(c): return c.result == Items.ids.wood_platform and c.count == 2 and c.needs.get(Items.ids.wood) == 1 and c.station == -1), "receita: 1 Wood → 2 Wood Platform (à mão)")
+	# moradia: plataforma no lugar do teto ainda fecha o cômodo
+	for x in range(20, 26):
+		for z in range(20, 25):
+			for y in range(11, 14):
+				w.set_block(x, y, z, Blocks.ids.stone if x == 20 or x == 25 or z == 20 or z == 24 else (plat if y == 13 else 0))
+	check(not Housing.room(w, Vector3i(22, 11, 22)).open, "plataforma vale como teto do cômodo")
 	w.free()
 	return true
 

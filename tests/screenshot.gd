@@ -60,6 +60,7 @@ const SHOTS := [
 	{"name": "trilho", "third": true, "track": true, "look": Vector2(-1.1, -0.2), "creative": false},
 	{"name": "carrinho_lado", "third": true, "track": true, "look": Vector2(-PI / 2, -0.1), "creative": false, "free": 1.3},
 	{"name": "mina", "tunel": true, "look": Vector2(-PI / 2, -0.05), "creative": false},
+	{"name": "plataformas", "third": true, "platforms": true, "look": Vector2(-1.0, -0.3), "creative": false},
 	{"name": "gancho", "look": Vector2(0.9, 0.25), "hook": true, "third": true, "creative": false},
 	{"name": "muro", "look": Vector2(0, 0.0), "boss": "wall_of_flesh", "hell": true, "creative": true, "time": 300.0},
 	{"name": "neve", "snow": true, "up": 30.0, "look": Vector2(0.4, -1.1), "creative": true},
@@ -506,6 +507,15 @@ func _setup(s: Dictionary) -> void:
 		for i in 34:
 			player._ride(0.05, 1.0, false)
 		player.set_physics_process(false)
+	if s.get("platforms", false):   # escada de plataformas de madeira subindo em +x (1 acima a cada bloco), 2 de largura, e o jogador de pé no 4º degrau
+		var bx := int(player.position.x) + 1
+		var by := int(player.position.y)
+		var bz := int(player.position.z)
+		for k in 10:
+			for dz in [0, 1]:
+				world.set_block(bx + k, by + k, bz + dz, Blocks.ids.wood_platform)
+		player.position = Vector3(bx + 3.5, by + 4 + VoxelBody.EPS, bz + 0.6)
+		player.rotation.y = -PI / 2.0
 	if s.get("tunel", false):   # dentro da primeira mina, olhando ao longo do corredor
 		var m: Dictionary = world.gen.mines[0]
 		var along: bool = m.axis == 0

@@ -85,5 +85,6 @@
 	{"name": "glowstick_lit", "mine": 100, "solid": false, "shape": "glowstick", "light": 10, "light_color": "#9cffb0", "item": false, "drop": "glowstick", "tiles": {"all": "glowstick_tile"}},
 	{"name": "bed", "shape": "model", "model": "bed", "size": [4, 2], "solid": false, "mine": 3, "tiles": {"all": "bed_tile"}, "icon": "bed_item"},
 	{"name": "tombstone", "shape": "model", "model": "tombstone", "size": [2, 2], "solid": false, "mine": 2, "tiles": {"all": "stone"}, "icon": "tombstone_item"},
-	{"name": "jungle_spore_orb", "solid": false, "shape": "plant", "target": true, "mine": 100, "light": 5, "light_color": "#9cff5a", "glow": true, "item": false, "drop": "jungle_spores", "tiles": {"all": "jungle_spore_orb"}}
+	{"name": "jungle_spore_orb", "solid": false, "shape": "plant", "target": true, "mine": 100, "light": 5, "light_color": "#9cff5a", "glow": true, "item": false, "drop": "jungle_spores", "tiles": {"all": "jungle_spore_orb"}},
+	{"name": "wood_platform", "mine": 100, "solid": false, "shape": "platform", "icon": "wood_platform", "tiles": {"all": "wood_platform_tile"}}
 ]
