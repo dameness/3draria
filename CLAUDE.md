@@ -63,6 +63,8 @@ scripts/wiki.py dump                          # refaz o snapshot (Items/Recipes/
 .tools/godot --headless -s scripts/voxel/levas.gd   # refaz docs/LEVAS.md (inventário por leva, dos JSON; o teste confere)
 .tools/godot --headless -s tests/model_preview.gd -- enemy:zombie enemy2:eye_of_cthulhu   # modelo bb em 4 ângulos (textures/model_sheet.png) + um quadro por animação (textures/enemy_anims.png)
 .tools/godot --headless -s tests/model_preview.gd -- block:living_loom body armor:molten@1.2 copper_pickaxe   # folha textures/model_sheet.png (sprite + 4 ângulos)
+scripts/export-web.sh                         # export Web em build/web/ (baixa os templates 4.7.2 por Range; roda update.sh); depois scripts/serve-web.py (COOP/COEP) → http://localhost:8060
+node tests/web.js                             # teste do build Web: Chromium+Playwright cria personagem/mundo, recarrega, entra, F5, ponteiro solto = inventário (~3 min)
 scripts/audit.py                              # data/base × snapshot: dano, use time, poder, raridade, receitas, vida/dano/defesa (roda também em tests/run.gd)
 # Referência em vídeo (rede liberada pelo dono): `yt-dlp <url do post do r/Terraria>` baixa v.redd.it (ok); busca de posts por `reddit.com/r/Terraria/search.rss?q=...`
 # (JSON dá 403, RSS passa); vídeo do YouTube dá 403 nos dados (só busca/metadados). Quadros: `ffmpeg -i v.mp4 -vf fps=2,scale=640:-1 f_%03d.png`.

@@ -211,11 +211,28 @@ func _ready() -> void:
 	spelunker.visible = false
 	add_child(spelunker)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if OS.has_feature("web"):   # Ctrl+W fecha a aba (Ctrl = cursor inteligente, W = andar): confirmação ao sair e, em tela cheia, o teclado fica com o jogo
+		JavaScriptBridge.eval("window.onbeforeunload = e => { e.preventDefault(); return ''; }; document.onfullscreenchange = () => { if (navigator.keyboard) { document.fullscreenElement ? navigator.keyboard.lock() : navigator.keyboard.unlock(); } };")
+		JavaScriptBridge.get_interface("document").addEventListener("pointerlockchange", _lock_cb)
+
+
+func _exit_tree() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.get_interface("document").removeEventListener("pointerlockchange", _lock_cb)
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		SaveGame.save_all(world, self, clock)
+
+
+var _lock_cb := JavaScriptBridge.create_callback(_pointer_lock_changed) if OS.has_feature("web") else null   # (precisa ficar guardado: o JS não segura a referência)
+
+
+# No browser o Esc solta o ponteiro e o jogo nunca vê a tecla: ponteiro solto sem inventário/pausa/mapa = o Esc, abre o inventário.
+func _pointer_lock_changed(_args) -> void:
+	if JavaScriptBridge.get_interface("document").pointerLockElement == null and not (inventory_open or menu_open or map_open):
+		set_inventory(true)
 
 
 func set_menu(open: bool) -> void:

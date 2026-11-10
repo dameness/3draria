@@ -70,20 +70,9 @@ O que **não** quebra mundo nem personagem: itens, receitas, inimigos, drops, n�
 ## Etapas
 
 ### M0 — Export Web de um jogador + medir (portão)
-Barato, e decide se o cliente será browser ou nativo. Nada de rede.
-- Tirar `export_presets.cfg` do `.gitignore` e commitar o preset Web: threads ligadas, filtro de inclusão
-  `*.json, *.png, *.glb, *.vox` (dados e sprites são lidos em runtime, não importados).
-- `scripts/export-web.sh`: baixa só os templates Web do 4.7.2 (do `.tpz`, sem extrair o resto), roda `update.sh`, exporta
-  para `build/web/` (fora do git). `scripts/serve-web.py`: servidor local de ~15 linhas com COOP/COEP.
-- Corrigir a leitura de sprites em `atlas.gd` (`globalize_path` → `FileAccess` + `Image.load_png_from_buffer`) e conferir
-  o mesmo em `item_model.gd`, `enemy_model.gd` (GLTFDocument por buffer), `voxel/`.
-- Teclas no browser: **Ctrl+W fecha a aba** (Ctrl = cursor inteligente, W = andar): `beforeunload` com confirmação e, em tela
-  cheia no Chrome, `navigator.keyboard.lock()`. Esc solta o ponteiro antes de chegar ao jogo: abrir o inventário quando o
-  ponteiro for solto. F5 (salvar) recarrega a página: trocar a tecla no Web ou bloquear. Conferir Tab, F9–F11.
-- `user://` no Web é IndexedDB: conferir que salvar/recarregar funciona.
-- Teste: Playwright (Chromium já instalado, WebGL por CPU) abre o build, espera o menu e o mundo, falha em erro no console.
-- **Portão:** o dono abre no Chrome do PC dele e devolve o FPS (F10). Abaixo de ~40 fps com distância 6: parar e decidir
-  (reduzir distância padrão no Web, ou cliente nativo com o mesmo servidor; as etapas M1–M6 não mudam).
+Feito (ver "Estado"). Falta só o **portão**: o dono abre `build/web/` no Chrome do PC dele e devolve o FPS (F10) com distância 6,
+parado e andando. Abaixo de ~40 fps: parar e decidir (reduzir distância padrão no Web, ou cliente nativo com o mesmo servidor;
+as etapas M1–M6 não mudam).
 
 ### M1 — Mundo assado + save em dicionários
 - `SaveGame`: separar `player_out(player) -> Dictionary` / `player_in(player, data)` e `world_out` / `world_in` do acesso a
@@ -212,5 +201,21 @@ Extra por etapa, colado depois do prompt:
 - **M6:** `Não tenho como te dar acesso à VPS: entregue scripts que eu rodo e um DEPLOY.md de copiar e colar.`
 
 ## Estado
-- [ ] M0 · [ ] M1 · [ ] M2 · [ ] M3 · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
-- Decisões e armadilhas descobertas nas sessões: (vazio)
+- [x] M0 (falta o FPS do dono) · [ ] M1 · [ ] M2 · [ ] M3 · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
+- **M0 — decisões e armadilhas:**
+  - `export_presets.cfg` agora é versionado (preset Web, threads ligadas). Export: `scripts/export-web.sh` (templates por Range
+    do .tpz: ~20 MB em vez de 1,2 GB) → `build/web/` (63 MB: wasm 38 + pck 26; `build/` tem `.gdignore` e está no `.gitignore`).
+  - **`assets/.gdignore` esconde sprites e modelos também do export.** O script tira o `.gdignore`, grava `.import` com
+    `importer="keep"` (png/glb vão crus; `.vox/.json` entram pelo filtro) e restaura tudo no fim (trap). Não mexa nisso à mão.
+  - `release` não aceita cena por argumento (`--scene`): o teste navega pelo menu real, por cliques (coordenadas em `tests/web.js`;
+    mudou o layout do menu → ajustar lá).
+  - Código: `atlas.gd` lê `res://` direto; `enemy_model.gd` usa `append_from_buffer` (o `append_from_file` não lê do .pck).
+    `item_model.gd`/`voxel/` já usavam FileAccess/texturas em memória: nada a mudar.
+  - Teclas (`player.gd`/`hud.gd`, só `OS.has_feature("web")`): `beforeunload` com confirmação durante o jogo (sai ao voltar ao menu);
+    **Alt+Enter** = tela cheia, e em tela cheia o `navigator.keyboard.lock()` segura Ctrl+W; o **Esc do browser solta o ponteiro e o
+    jogo nunca vê a tecla**: o evento `pointerlockchange` abre o inventário. F5 não recarrega (testado). `user://` sobrevive a
+    recarregar (testado: personagem e mundo voltam na lista).
+  - Testado em Chromium headless com WebGL por software (sem erros no console); **FPS dali não vale**.
+  - Sobrou/não verificado: Tab, F9–F11 e Ctrl+W real (Playwright não os alcança); FPS no hardware do dono; Safari não tentado.
+    Ícones das casas de Moedas/Munição variaram entre execuções nos prints do Web (vi cobre/flecha/ouro): olhar se persistir no PC do dono.
+  - `ponytail:` o teste leva ~3 min (mundo novo gera em wasm sobre CPU de software); não entra no `tests/run.gd`.

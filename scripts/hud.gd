@@ -1068,9 +1068,14 @@ func _unhandled_input(e: InputEvent) -> void:
 			debug_label.visible = not debug_label.visible
 		elif e.physical_keycode == KEY_F11:
 			root.visible = not root.visible
+		elif e.physical_keycode == KEY_ENTER and e.alt_pressed:   # tela cheia (no browser é o que libera o Ctrl+W: ver player.gd)
+			var full := DisplayServer.window_get_mode() == DisplayServer.WINDOW_MODE_FULLSCREEN
+			DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED if full else DisplayServer.WINDOW_MODE_FULLSCREEN)
 
 
 func _save_and_quit() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("window.onbeforeunload = null; document.onfullscreenchange = null; navigator.keyboard && navigator.keyboard.unlock();")
 	get_tree().paused = false
 	Settings.save()
 	SaveGame.save_all(world, player, clock)
