@@ -746,6 +746,15 @@ func test_lighting():
 	var near := face_light(a, Vector3i(3, Y, 8), Vector3.UP)
 	var far := face_light(a, Vector3i(0, Y, 0), Vector3.UP)
 	check(near.g > 0.6 and near.g > far.g, "tocha ilumina perto (%.2f) mais que longe (%.2f)" % [near.g, far.g])
+	var hue := func(c: Color) -> Vector3:   # desfaz ChunkMesher.pack_hue, como o chunk.gdshader
+		var q := roundi(c.a * 255.0)
+		return Vector3((q >> 5) / 7.0, ((q >> 2) & 7) / 7.0, (q & 3) / 3.0)
+	var warm: Vector3 = hue.call(near)
+	check(warm.x == 1.0 and warm.x > warm.y and warm.y > warm.z, "luz da tocha é quente (%s)" % warm)
+	d[4 + 8 * C + (Y + 1) * C * C] = Blocks.ids.shadow_orb
+	var orb: Vector3 = hue.call(face_light(ChunkMesher.build(d, [d, d, d, d], n), Vector3i(3, Y, 8), Vector3.UP))
+	check(orb.z == 1.0 and orb.z > orb.x and orb.x > orb.y, "luz do Shadow Orb é roxa (%s)" % orb)
+	d[4 + 8 * C + (Y + 1) * C * C] = Blocks.ids.torch
 	check(Items.places[Items.ids.torch] == Blocks.ids.torch and not Blocks.solid[Blocks.ids.torch], "tocha é item que coloca bloco não sólido")
 	check(Items.drop[Blocks.ids.torch] == Items.ids.torch, "quebrar tocha devolve a tocha")
 	var w := floor_world()

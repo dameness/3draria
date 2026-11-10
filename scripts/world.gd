@@ -69,10 +69,11 @@ func _ready() -> void:
 		m.set_shader_parameter("atlas", atlas_texture)
 
 
-# Luz que anda com o jogador (poções Brilho e Coruja): power 0 desliga.
-func set_aura(at: Vector3, radius: float, power: float) -> void:
+# Luz que anda com o jogador (poções Brilho e Coruja, tocha na mão): power 0 desliga.
+func set_aura(at: Vector3, radius: float, power: float, color := Color(1.0, 0.92, 0.75)) -> void:
 	material.set_shader_parameter("aura", Vector4(at.x, at.y, at.z, radius))
 	material.set_shader_parameter("aura_power", power)
+	material.set_shader_parameter("aura_color", Vector3(color.r, color.g, color.b))
 
 
 # Luz do dia (day_night.gd): claridade do céu, cor dela e direção de onde vem (sol ou lua).
@@ -497,7 +498,7 @@ func _spawn_models(k: Vector2i, list: Array) -> void:
 		var mi := MeshInstance3D.new()
 		mi.mesh = mesh
 		var mat: ShaderMaterial = VoxMesh.material().duplicate()
-		mat.set_shader_parameter("world_light", Vector2(e[2].x, e[2].y))
+		mat.set_shader_parameter("world_light", Vector2(e[2].r, e[2].g))
 		mat.set_shader_parameter("daylight", daylight[0])
 		mat.set_shader_parameter("sky_tint", daylight[1])
 		mi.material_override = mat

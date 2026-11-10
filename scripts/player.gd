@@ -528,7 +528,11 @@ func tick(delta: float) -> void:
 	if spelunker:
 		spelunker.visible = buff_sum("spelunker") > 0.0
 		spelunker.set_process(spelunker.visible)
-	world.set_aura(position + Vector3.UP, 10.0 if shine else 15.0, 1.0 if shine else 0.55 if owl else 0.0)
+	var lamp: int = Items.places[held()] if held() != -1 else -1   # tocha (ou outro bloco que brilha) na mão ilumina em volta, como no Terraria
+	if lamp > 0 and Blocks.light[lamp] > 0 and not shine:
+		world.set_aura(position + Vector3.UP, Blocks.light[lamp], 1.0, Blocks.light_color[lamp])
+	else:
+		world.set_aura(position + Vector3.UP, 10.0 if shine else 15.0, 1.0 if shine else 0.55 if owl else 0.0)
 	mana_use += delta
 	# regeneração de mana da wiki: (máx/3 + 1) × (2 parado) × (mana/máx × 0,5 + 0,5) × (0,05 usando mana), ÷ 2 por segundo
 	var still := 2.0 if Vector2(velocity.x, velocity.z).length() < 0.1 else 1.0

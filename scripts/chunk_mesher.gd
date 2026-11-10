@@ -29,6 +29,7 @@ const AO_LIGHT := [0.5, 0.68, 0.84, 1.0]   # brilho de um canto conforme a oclus
 const JITTER := 0.07     # cada bloco fica até 7% mais escuro, para o gramado não ser uma cor só
 const LIQUID_TOP := Blocks.LIQUID_TOP # a superfície do líquido cheio fica um pouco abaixo do topo do bloco
 const PLANT_H := 0.9     # altura das plantas (<1: o shader identifica a ponta pela parte fracionária de y)
+const HELL_COLOR := Color(1.0, 0.5, 0.25)   # o brilho do submundo é laranja
 const HELL_AMBIENT := 0.5  # brilho quente do submundo (canal de tocha) perto do fundo do mundo
 const CANOPY_SHADE := 0.66 # a luz do céu que passa por baixo de uma copa de árvore
 
@@ -95,7 +96,7 @@ static func _padded(d: PackedByteArray, nb: Array) -> PackedByteArray:
 # d: blocos do chunk. nb: vizinhos [+X, -X, +Z, -Z]; PackedByteArray vazio = fora do mundo (ar).
 # corners: vizinhos de canto [+X+Z, +X-Z, -X+Z, -X-Z], só como fontes de luz (vazio ou ausente = sem tocha de lá).
 # Retorna os arrays da superfície opaca para ArrayMesh.add_surface_from_arrays, ou [] se não houver faces.
-# water_out (opcional) recebe os arrays da superfície da água, se houver. models_out (opcional) recebe [id, posição local, luz (céu, tocha)]
+# water_out (opcional) recebe os arrays da superfície da água, se houver. models_out (opcional) recebe [id, posição local, luz (Color de _light)]
 # de cada bloco com modelo voxel (shape "model"): o world.gd os instancia à parte, fora da malha.
 static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [], corners := [], models_out := []) -> Array:
 	var solid := Blocks.cull
@@ -151,7 +152,7 @@ static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [
 						continue
 					var light := _light(p, hts, lights, x + dir.x, ny, z + dir.z)
 					if liquid[n]:
-						light.x *= _underwater(p, x + dir.x, ny, z + dir.z)
+						light.r *= _underwater(p, x + dir.x, ny, z + dir.z)
 					var sh: float = SHADE[f] * jit
 					var u0 := tiles[b * Blocks.FACES + f] * tw
 					# Oclusão ambiente por canto: 3 = aberto ... 0 = os dois lados tapados.
@@ -166,7 +167,7 @@ static func build(d: PackedByteArray, nb: Array, tile_count: int, water_out := [
 						var l: float = AO_LIGHT[ao[k]] * sh
 						verts.append(v0 + CORNERS[f][k])
 						norms.append(Vector3(dir))
-						cols.append(Color(l * light.x, l * light.y, 0))
+						cols.append(Color(l * light.r, l * light.g, 0, light.a))
 					uvs.append_array([Vector2(u0, 1), Vector2(u0, 0), Vector2(u0 + tw, 0), Vector2(u0 + tw, 1)])
 					# A diagonal liga os dois cantos mais escuros: o vinco fica no lugar certo.
 					if ao[0] + ao[2] <= ao[1] + ao[3]:
@@ -210,10 +211,10 @@ static func _arrays(a: Dictionary) -> Array:
 	return arrays
 
 
-# Luz (x = céu, y = tocha) na célula (x, y, z) do chunk (ou 1 além da borda em X e Z): o céu cai com a
+# Luz (r = céu, g = força da luz das fontes, a = cor dela empacotada: pack_hue) na célula (x, y, z) do chunk (ou 1 além da borda em X e Z): o céu cai com a
 # profundidade abaixo do chão da coluna (tronco e folhas não contam), menos uma sombra fixa sob a copa; a tocha cai
 # com a distância. No submundo há um brilho quente de fundo.
-static func _light(p: PackedByteArray, hts: PackedInt32Array, lights: Array, x: int, y: int, z: int) -> Vector2:
+static func _light(p: PackedByteArray, hts: PackedInt32Array, lights: Array, x: int, y: int, z: int) -> Color:
 	var col := (x + 1) + (z + 1) * P
 	var ground := hts[col]
 	if ground < 0:
@@ -235,10 +236,27 @@ static func _light(p: PackedByteArray, hts: PackedInt32Array, lights: Array, x: 
 	if y < hts[PP + col] and hts[PP + col] > ground:
 		sky *= CANOPY_SHADE
 	var cell := Vector3(x + 0.5, y + 0.5, z + 0.5)
-	var torch := clampf((WorldGen.UNDERWORLD_TOP + 2.0 - y) / 8.0, 0.0, 1.0) * HELL_AMBIENT
-	for l in lights:
-		torch = maxf(torch, 1.0 - cell.distance_to(l[0]) / l[1])
-	return Vector2(sky, torch)
+	var hell := clampf((WorldGen.UNDERWORLD_TOP + 2.0 - y) / 8.0, 0.0, 1.0) * HELL_AMBIENT
+	var r := hell * HELL_COLOR.r
+	var g := hell * HELL_COLOR.g
+	var bl := hell * HELL_COLOR.b
+	for l in lights:   # cada canal fica com a fonte mais forte: duas cores perto uma da outra se misturam
+		var k: float = 1.0 - cell.distance_to(l[0]) / l[1]
+		if k > 0.0:
+			var c: Color = l[2]
+			r = maxf(r, c.r * k)
+			g = maxf(g, c.g * k)
+			bl = maxf(bl, c.b * k)
+	var m := maxf(r, maxf(g, bl))
+	if m <= 0.0:
+		return Color(sky, 0.0, 0.0, 1.0)
+	return Color(sky, m, 0.0, pack_hue(r / m, g / m, bl / m))
+
+
+# Cor da luz num canal de 8 bits (o alfa do vértice): 3 bits de vermelho, 3 de verde, 2 de azul. A cor é a mesma nos 4 vértices da
+# face (a luz é por face), então não há interpolação que estrague o pacote; o chunk.gdshader desfaz.
+static func pack_hue(r: float, g: float, b: float) -> float:
+	return ((roundi(r * 7.0) << 5) | (roundi(g * 7.0) << 2) | roundi(b * 3.0)) / 255.0
 
 
 # A luz do céu escurece a cada bloco de água por cima (até um mínimo).
@@ -296,11 +314,11 @@ static func _track_quad(a: Dictionary, pos: Vector3, along_x: bool, h: Vector2, 
 
 # Formas não cúbicas. Tocha: cabo fino (textura lateral) + chama (textura do topo), sempre acesas.
 # Planta: dois quadros em cruz, frente e verso; balança no shader (b = 0.5).
-static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector2, p: PackedByteArray, pi: int) -> void:
+static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Color, p: PackedByteArray, pi: int) -> void:
 	match Blocks.shape[b]:
 		"track":   # trilho: placa rente ao chão; segue os vizinhos (em x, em z ou nos dois) e sobe em rampa quando o vizinho do lado está um bloco acima
 			var u0 := tiles_of(b, 0) * tw
-			var c := Color(light.x * SHADE[2], light.y * SHADE[2], 0.0)
+			var c := Color(light.r * SHADE[2], light.g * SHADE[2], 0.0, light.a)
 			var has_x := false
 			var has_z := false
 			for o in [1, -1]:
@@ -335,30 +353,30 @@ static func _shape(a: Dictionary, b: int, pos: Vector3, tw: float, light: Vector
 			var u0 := tiles_of(b, 0) * tw
 			for f in 6:
 				var sh: float = SHADE[f]
-				_face(a, pos, f, Vector3(0.14, 1.0, 1.0), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
+				_face(a, pos, f, Vector3(0.14, 1.0, 1.0), u0, tw, Color(sh * light.r, sh * light.g, 0.0, light.a))
 		"rope":   # corda: um fio fino no meio do bloco, com a luz do lugar
 			var u0 := tiles_of(b, 0) * tw
 			for f in 6:
 				var sh: float = SHADE[f]
-				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 1.0, 0.14), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
+				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 1.0, 0.14), u0, tw, Color(sh * light.r, sh * light.g, 0.0, light.a))
 		"glowstick":   # graveto luminoso: uma barrinha no meio do bloco, acesa sozinha (b = 1)
 			var u0 := tiles_of(b, 0) * tw
 			for f in 6:
-				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 0.45, 0.14), u0, tw, Color(light.x, light.y, 1.0))
+				_face(a, pos + Vector3(0.43, 0, 0.43), f, Vector3(0.14, 0.45, 0.14), u0, tw, Color(light.r, light.g, 1.0, light.a))
 		"cactus":   # cacto: coluna de 0,6 de largura, com a luz do lugar (atravessável, como no Terraria)
 			var u0 := tiles_of(b, 0) * tw
 			for f in 6:
 				var sh: float = SHADE[f]
-				_face(a, pos + Vector3(0.2, 0, 0.2), f, Vector3(0.6, 1.0, 0.6), u0, tw, Color(sh * light.x, sh * light.y, 0.0))
+				_face(a, pos + Vector3(0.2, 0, 0.2), f, Vector3(0.6, 1.0, 0.6), u0, tw, Color(sh * light.r, sh * light.g, 0.0, light.a))
 		"crystal":   # Life Crystal: dois quadros em cruz do tamanho do bloco, sem balançar e brilhando sozinho (b = 1)
 			var u0 := tiles_of(b, 0) * tw
-			var c := Color(light.x, light.y, 1.0)
+			var c := Color(light.r, light.g, 1.0, light.a)
 			for pair in [[Vector3(0.05, 0, 0.05), Vector3(0.95, 0, 0.95)], [Vector3(0.95, 0, 0.05), Vector3(0.05, 0, 0.95)]]:
 				_vquad(a, pos + pair[0], pos + pair[1], 0.95, u0, tw, c)
 				_vquad(a, pos + pair[1], pos + pair[0], 0.95, u0, tw, c)
 		"plant":
 			var u0 := tiles_of(b, 0) * tw
-			var c := Color(light.x * 0.95, light.y * 0.95, 0.5)
+			var c := Color(light.r * 0.95, light.g * 0.95, 0.5, light.a)
 			for pair in [[Vector3(0.1, 0, 0.1), Vector3(0.9, 0, 0.9)], [Vector3(0.9, 0, 0.1), Vector3(0.1, 0, 0.9)]]:
 				_vquad(a, pos + pair[0], pos + pair[1], PLANT_H, u0, tw, c)
 				_vquad(a, pos + pair[1], pos + pair[0], PLANT_H, u0, tw, c)
@@ -399,8 +417,8 @@ static func _liquid(a: Dictionary, p: PackedByteArray, hts: PackedInt32Array, li
 			lo = hn
 		var light := _light(p, hts, lights, x + dir.x, y + dir.y, z + dir.z)
 		var sh: float = SHADE[f]
-		var c_low := Color(sh * light.x, sh * light.y, glow)
-		var c_high := Color(sh * light.x, sh * light.y, 1.0)
+		var c_low := Color(sh * light.r, sh * light.g, glow, light.a)
+		var c_high := Color(sh * light.r, sh * light.g, 1.0, light.a)
 		var u0 := tiles_of(b, f) * tw
 		var base: int = a.v.size()
 		for k in 4:
@@ -418,7 +436,7 @@ static func tiles_of(b: int, face: int) -> int:
 	return Blocks.tiles[b * Blocks.FACES + face]
 
 
-# Fontes de luz (tochas) no chunk e nos vizinhos: [[centro local, raio], ...].
+# Fontes de luz (tochas, orbes, cristais...) no chunk e nos vizinhos: [[centro local, raio, cor], ...].
 # ponytail: luz atravessa paredes (sem oclusão) e só vem do chunk e dos 8 em volta; trocar por
 # propagação em BFS se ficar estranho em cavernas. Lava não entra aqui (seriam milhares de fontes): só brilha nas próprias faces.
 static func _lights(d: PackedByteArray, nb: Array, corners: Array) -> Array:
@@ -435,6 +453,6 @@ static func _lights(d: PackedByteArray, nb: Array, corners: Array) -> Array:
 			while i != -1:
 				var pos: Vector3 = Vector3(i % C, i / CC, (i / C) % C) + s[1] + Vector3.ONE * 0.5
 				if pos.x > -Blocks.light[id] and pos.x < C + Blocks.light[id] and pos.z > -Blocks.light[id] and pos.z < C + Blocks.light[id]:
-					out.append([pos, float(Blocks.light[id])])
+					out.append([pos, float(Blocks.light[id]), Blocks.light_color[id]])
 				i = data.find(id, i + 1)
 	return out

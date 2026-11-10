@@ -36,7 +36,7 @@ superfície é proporcional ao nível. Líquido novo = uma entrada cheia + 7 ní
 `loot.json`: tabelas por camada (`underground`, `cavern`, `lava`, `sky`, `surface`) e `living` (sala do tesouro da Living Tree), `water` (ruínas do mar); `bundle` junta um item ao outro.
 `living_wood`: só de árvores gigantes (`item: false`, solta Wood); as varinhas (`wand: "wood"` em items.json) colocam-no/folhas gastando Wood.
 `shape: "track"` (minecart_track): placa rente ao chão que segue os vizinhos em x/z e vira rampa se o vizinho do lado está um bloco acima (e o do mesmo nível não existe); o carrinho (minecart.gd) usa a mesma regra. `shape: "door"`: painel fino na borda do bloco, sem colisão (porta aberta; `door` é o cubo sólido: as duas contam como parede na moradia). `shape: "rope"`: fio fino não sólido; dentro dele Espaço sobe, C desce, sem tecla pendura (player.gd `on_rope`). Forma nova = um `match` em `chunk_mesher._shape`.
-`light`: raio de luz em blocos (tocha = 10; lava não entra: só brilha nas próprias faces).
+`light`: raio de luz em blocos (tocha = 10; `light_color`: "#rrggbb" da luz, padrão o tom quente da tocha; lava não entra: só brilha nas próprias faces).
 `rarity`/`lava_safe` (no bloco que vira item): raridade do item e se ele resiste à lava (ver items.json). `grass: true`: é grama (a muda de árvore só pega em cima dela). `spread: true`: a grama do mal, colocada ou plantada por semente, se espalha pela terra e grama vizinhas (`world.gd`, com teto por chunk).
 `clear: true`: a luz do céu passa (tronco e folhas: a copa só sombreia de leve).
 Todo bloco sólido e quebrável vira item automaticamente (ícone = textura lateral). Plantas e líquidos são

@@ -32,6 +32,8 @@ const SHOTS := [
 	{"name": "muda", "sapling": true, "item": "acorn", "look": Vector2(0, -0.6)},
 	{"name": "muda_cresce", "sapling": true, "grow": true, "item": "acorn", "look": Vector2(0, 0.35)},
 	{"name": "corda", "look": Vector2(0, -0.35), "row": ["rope", "torch", "rope", "rope", "sapling"]},
+	{"name": "luzes", "time": 1100.0, "look": Vector2(0, -0.35), "row": ["torch", "stone", "shadow_orb", "stone", "crimson_heart", "stone", "life_crystal", "stone", "glowstick_lit", "stone", "hellforge", "demon_altar"]},
+	{"name": "luz_na_mao", "time": 1100.0, "look": Vector2(0.5, -0.3), "give": ["torch"], "item": "torch"},
 	{"name": "blocos", "look": Vector2(0, -0.35), "row": ["obsidian", "hellforge", "hellstone", "ebonstone", "crimstone", "shadow_orb", "crimson_heart", "chest", "corrupt_grass", "crimson_grass", "demonite_ore", "crimtane_ore"]},
 	{"name": "cama_lapide", "look": Vector2(0, -0.3), "row": ["bed", "tombstone", "chair", "workbench"], "late": 70},
 	{"name": "dormir", "look": Vector2(0, 0.5), "sleep": true, "late": 60},
