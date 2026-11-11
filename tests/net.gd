@@ -93,6 +93,14 @@ func _run() -> void:
 	pa.inv.equip[0] = Items.ids.get("copper_helmet", 0)
 	check(await until(func(): return bn.puppets[a_id].inv.equip[0] == pa.inv.equip[0]), "armadura de A aparece no boneco em B")
 
+	# M4a: inimigo do servidor fere o jogador (RPC hurt ao dono; a vida é do cliente)
+	var se: Node3D = srv.get_node("Entities")
+	check(se.remotes.size() == 2 and se.player == null, "o servidor tem um alvo por jogador")
+	var hp0: float = pa.hp
+	var z0: Node3D = se.spawn_enemy(se.def_named("zombie"), sn.peers[a_id].body.position)
+	check(await until(func(): return pa.hp < hp0), "zumbi do servidor encosta em A → a vida de A cai")
+	se.remove_enemy(z0)
+
 	# Relógio: o do servidor manda
 	srv.get_node("DayNight").time = 500.0
 	check(await until(func(): return absf(b.get_node("DayNight").time - 500.0) < 5.0), "B segue a hora do servidor")

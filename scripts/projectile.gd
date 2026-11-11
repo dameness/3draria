@@ -25,6 +25,8 @@ var stuck := false       # sinalizador: grudou num bloco e fica aceso até o fim
 
 
 func _ready() -> void:
+	if Fx.muted(self):   # servidor: sem visual
+		return
 	var atlas: Texture2D = entities.world.atlas_texture
 	if def.has("flail"):
 		_flail_build()

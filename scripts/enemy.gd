@@ -77,9 +77,11 @@ func stats() -> void:
 
 func _ready() -> void:
 	stats()
+	angle = rng.randf() * TAU
+	if Fx.muted(self):   # servidor: só colisão e IA, sem modelo
+		return
 	model = EnemyModel.build(def)
 	model.rotation.y = PI  # modelos olham para -Z; o nó gira para o jogador por +Z
-	angle = rng.randf() * TAU
 	if def.ai == "brain":   # fase 1: translúcido e imune
 		set_ghost(true)
 	if def.ai == "worm":
@@ -239,7 +241,7 @@ func town_ai(delta: float, to: Vector3, flat: Vector3) -> Vector3:
 		return look
 	if door_at.y >= 0 and Vector2(door_at.x + 0.5 - position.x, door_at.z + 0.5 - position.z).length() > 1.2:
 		if entities.world.get_block(door_at.x, door_at.y, door_at.z) == Blocks.door_open:
-			entities.player.toggle_door(door_at)
+			entities.toggle_door(door_at)
 		door_at = Vector3i(-1, -1, -1)
 	var h := Vector3(home.x - position.x, 0.0, home.z - position.z)
 	if entities.clock.is_night():
@@ -282,7 +284,7 @@ func _walk(dir: Vector3, speed := NPC_SPEED) -> Vector3:
 		for dy in 2:
 			var c := Vector3i(floori(ahead.x), floori(position.y) + dy, floori(ahead.z))
 			if entities.world.get_block(c.x, c.y, c.z) == Blocks.door_closed:
-				entities.player.toggle_door(c)
+				entities.toggle_door(c)
 				door_at = c
 				return dir
 		velocity.y = JUMP
@@ -382,7 +384,7 @@ func brain(delta: float, to: Vector3) -> void:
 		entities.boss_max = entities.boss_life()   # a barra passa a contar só o cérebro
 		set_ghost(false)
 		Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 30)
-		p.say("o Brain of Cthulhu está furioso!")
+		entities.say("o Brain of Cthulhu está furioso!")
 	if phase == 1:
 		velocity = velocity.lerp(to.normalized() * 2.5, delta * 1.5)
 		if timer <= 0:
@@ -457,7 +459,7 @@ func skeletron(delta: float, to: Vector3) -> void:
 		damage = roundi(def.damage * 1.3) if phase == 2 else def.damage
 		defense = maxi(def.defense - 10, 0) if phase == 2 else def.defense
 		if phase == 2:
-			entities.player.say("o Skeletron gira, furioso!")
+			entities.say("o Skeletron gira, furioso!")
 	if phase == 2:
 		velocity = velocity.lerp(to.normalized() * def.speed * 1.4, delta * 3.0)
 		return

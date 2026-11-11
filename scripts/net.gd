@@ -58,6 +58,7 @@ func _attach(peer: WebSocketMultiplayerPeer) -> void:
 	api.multiplayer_peer = peer
 	get_tree().set_multiplayer(api, get_parent().get_path())
 	world.net = self
+	entities.net = self
 
 
 func _exit_tree() -> void:
@@ -152,7 +153,14 @@ func hello(ver: String, who: String, look: Dictionary) -> void:
 	if peers.values().any(func(p): return p.name == who):
 		refuse.rpc_id(id, "já há alguém com o nome " + who)
 		return
-	peers[id] = {"name": who, "look": look, "equip": [], "state": [], "view": 6, "center": Vector2i(-999, -999), "sent": {}, "queue": []}
+	var body: Node3D = RemotePlayer.new()   # o alvo dos inimigos no servidor (sem modelo)
+	body.entities = entities
+	body.peer = id
+	body.name = "Body%d" % id
+	body.position = spawn
+	get_parent().add_child(body)
+	entities.remotes.append(body)
+	peers[id] = {"name": who, "look": look, "equip": [], "state": [], "view": 6, "center": Vector2i(-999, -999), "sent": {}, "queue": [], "body": body}
 	_requeue(id, spawn)
 	var data := SaveGame.world_out(world, self, clock, "servidor")
 	data.chunks = {}   # os chunks vão aos poucos (_send_chunks); o mapa explorado é por jogador (M5)
@@ -201,13 +209,21 @@ func blocks(a: PackedInt32Array) -> void:
 		applying = false
 
 
-# s = [posição, yaw, pitch, velocidade, flags (1 chão, 2 nadando, 4 morto), item na mão, cooldown]
+# s = [posição, yaw, pitch, velocidade, flags (1 chão, 2 nadando, 4 morto, 8 fantasma), item na mão, cooldown, vida, vida máx., mana, mana máx.]
 @rpc("any_peer", "unreliable_ordered")
 func state(s: Array, view: int) -> void:
 	var id := multiplayer.get_remote_sender_id()
 	if mode != SERVER or not peers.has(id):
 		return
 	peers[id].state = s
+	var b: Node3D = peers[id].body
+	_pose(b, s)
+	b.position = s[0]
+	b.rotation.y = s[1]
+	b.hp = s[7]
+	b.max_hp = s[8]
+	b.mana = s[9]
+	b.mana_max = s[10]
 	peers[id].view = clampi(view, 2, 16)
 	_requeue(id, s[0])
 
@@ -224,13 +240,18 @@ func states(list: Array) -> void:
 		r.set_meta("goal", s[1])
 		r.set_meta("yaw", s[2])
 		r.set_meta("seen", Time.get_ticks_msec())
-		r.pitch = s[3]
-		r.velocity = s[4]
-		r.on_floor = s[5] & 1 != 0
-		r.swimming = s[5] & 2 != 0
-		r.dead = 1.0 if s[5] & 4 else 0.0
-		r.hand = s[6]
-		r.cooldown = s[7]
+		_pose(r, s.slice(1))
+
+
+func _pose(r: Node3D, s: Array) -> void:
+	r.pitch = s[2]
+	r.velocity = s[3]
+	r.on_floor = s[4] & 1 != 0
+	r.swimming = s[4] & 2 != 0
+	r.dead = 1.0 if s[4] & 4 else 0.0
+	r.ghost = s[4] & 8 != 0
+	r.hand = s[5]
+	r.cooldown = s[6]
 
 
 @rpc("authority", "reliable")
@@ -269,11 +290,18 @@ func equip(id: int, worn_names: Array) -> void:
 		if not peers.has(id):
 			return
 		peers[id].equip = worn_names
+		_wear(peers[id].body, worn_names)   # a defesa do alvo no servidor
 		for o in peers:
 			if o != id:
 				equip.rpc_id(o, id, worn_names)
 	elif puppets.has(id):
 		_wear(puppets[id], worn_names)
+
+
+# Um inimigo do servidor feriu o jogador deste cliente (RemotePlayer.hurt lá): a defesa, a invencibilidade e a vida são daqui.
+@rpc("authority", "reliable")
+func hurt(damage: int, dir: Vector3, bounce: bool) -> void:
+	player.hurt(damage, dir, bounce)
 
 
 @rpc("authority", "unreliable_ordered")
@@ -290,6 +318,9 @@ func _wear(r: Node3D, worn_names: Array) -> void:
 # ---------- servidor ----------
 
 func _gone(id: int) -> void:
+	if peers.has(id):
+		entities.remotes.erase(peers[id].body)
+		peers[id].body.queue_free()
 	peers.erase(id)
 	for o in peers:
 		left.rpc_id(o, id)
@@ -353,8 +384,8 @@ func _send_states() -> void:
 
 func _send_state() -> void:
 	var p := player
-	var flags := (1 if p.on_floor else 0) | (2 if p.swimming else 0) | (4 if p.dead > 0 else 0)
-	state.rpc_id(1, [p.position, p.rotation.y, p.pitch, p.velocity, flags, p.held(), p.cooldown], world.render_distance)
+	var flags := (1 if p.on_floor else 0) | (2 if p.swimming else 0) | (4 if p.dead > 0 else 0) | (8 if p.ghost else 0)
+	state.rpc_id(1, [p.position, p.rotation.y, p.pitch, p.velocity, flags, p.held(), p.cooldown, p.hp, p.max_hp, p.mana, p.mana_cap()], world.render_distance)
 	if p.inv.equip != worn:
 		worn = p.inv.equip.duplicate()
 		equip.rpc_id(1, 0, Array(worn).map(func(i): return Items.names[i] if i != -1 else ""))

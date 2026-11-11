@@ -20,6 +20,8 @@ var icon: Sprite3D
 
 func _ready() -> void:
 	doll = Items.defs[item].get("underworld", false)
+	if Fx.muted(self):   # servidor: sem ícone
+		return
 	icon = Sprite3D.new()
 	icon.texture = entities.icon(item)
 	icon.pixel_size = 0.45 / maxf(icon.texture.get_width(), icon.texture.get_height())
@@ -50,7 +52,8 @@ func _physics_process(delta: float) -> void:
 	if age > LIFETIME:
 		queue_free()
 		return
-	icon.rotation.y += delta * 2.0
+	if icon:
+		icon.rotation.y += delta * 2.0
 	var p: Node3D = _taker()
 	var to: Vector3 = p.position + Vector3.UP * 0.9 - position if p else Vector3.INF
 	if age > delay and to.length() < MAGNET:   # vai para o jogador vivo mais perto (morto não recolhe: o que ele soltou fica no chão)
@@ -106,8 +109,8 @@ func _in_lava() -> bool:
 func _burn() -> void:
 	var d: Dictionary = Items.defs[item]
 	if doll and entities.kill_guide() and position.y < WorldGen.UNDERWORLD_TOP and entities.boss == null:
-		var boss: Node3D = entities.spawn_boss(d.summon)
-		entities.player.say("%s despertou!" % Items.title(boss.def.name))
+		var boss: Node3D = entities.spawn_boss(d.summon, entities.nearest_player(position))
+		entities.say("%s despertou!" % Items.title(boss.def.name))
 	Fx.puff(entities, position + Vector3.UP * 0.3, Color("#5a5048"), 8)
 	Fx.sparks(entities, position + Vector3.UP * 0.3, Color("#ff9a3a"), 8, Vector3.UP)
 	Sfx.play(entities, "hit", position, -12.0, 1.6)

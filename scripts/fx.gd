@@ -47,8 +47,14 @@ static func fade() -> Gradient:
 
 # Disparo de `n` partículas em `pos`. Opções: size, life, speed (máxima; a mínima é metade), spread (graus em torno de dir),
 # dir, gravity (positivo = cai), additive, shrink (encolhe ao longo da vida; padrão sim).
+# Servidor de rede (net.gd em SERVER): sem partículas, sons, modelos nem ícones; cada cliente faz os seus pelos eventos. Por cena (testes têm
+# servidor e clientes no mesmo processo): o SceneMultiplayer da cena é servidor com um peer de verdade.
+static func muted(n: Node) -> bool:
+	return n.is_inside_tree() and n.multiplayer.is_server() and not n.multiplayer.multiplayer_peer is OfflineMultiplayerPeer
+
+
 static func burst(parent: Node3D, pos: Vector3, color: Color, n: int, o := {}) -> CPUParticles3D:
-	if parent == null or not parent.is_inside_tree():
+	if parent == null or not parent.is_inside_tree() or muted(parent):
 		return null
 	var p := CPUParticles3D.new()
 	p.one_shot = true
