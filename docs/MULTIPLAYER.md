@@ -84,12 +84,7 @@ Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M4b — Chefes, eventos e estado do mundo
-- Chefes (barra de vida para todos, alvo mais perto, invocação por RPC), Olho natural, meteorito, orbes, larva, hardmode.
-- Flags do mundo (`eoc_down`, `hardmode`, `npcs`, `homes`...) num dicionário replicado na entrada e a cada mudança.
-- Baús com trava; habitantes (conversa e loja locais; morte/volta no servidor); lápides; porta; carrinho (local, só a posição
-  vai aos outros); cama: ponto de nascimento por personagem e **a hora só acelera com todos dormindo**.
-- Árvore: quem corta roda `Timber.fell` (os outros veem os blocos sumirem; `ponytail:` sem a animação da queda para eles).
-- Mundo de teste e painel F9 só em `OFF`.
+Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M5 — Contas e persistência
 - Login: senha do servidor + nome + senha do personagem; criar personagem pelo menu contra o servidor.
@@ -157,7 +152,7 @@ Extra por etapa, colado depois do prompt:
 - **M6:** `Não tenho como te dar acesso à VPS: entregue scripts que eu rodo e um DEPLOY.md de copiar e colar.`
 
 ## Estado
-- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [x] M4a (falta o playtest) · [ ] M4b · [ ] M5 · [ ] M6
+- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [x] M4a (falta o playtest) · [x] M4b (falta o playtest) · [ ] M5 · [ ] M6
 - **M0 — decisões e armadilhas:**
   - `export_presets.cfg` agora é versionado (preset Web, threads ligadas). Export: `scripts/export-web.sh` (templates por Range
     do .tpz: ~20 MB em vez de 1,2 GB) → `build/web/` (63 MB: wasm 38 + pck 26; `build/` tem `.gdignore` e está no `.gitignore`).
@@ -272,9 +267,32 @@ Extra por etapa, colado depois do prompt:
   - Teste: `tests/net.gd` ganhou zumbi do servidor ferindo A, bonecos em A e B, golpe de A → vida cai nos três, troca de alvo, morte some
     nos três, drops iguais, dois `grab` juntos → um leva, B joga madeira → A vê → B recolhe, flecha de A em B, ferrão do servidor fere A.
   - Armadilha: lambda no `until` que captura um inimigo que morre dá "Lambda capture was freed": testar pelo id (`sn.foes`).
-  - **Sobrou (`ponytail:`, para a M4b ou depois):** mensagens do mundo não chegam aos clientes (say no servidor some); invocação por item,
-    orbe, larva e Velho ainda criam um chefe **local** no cliente (fora da rede); barra de vida de chefe não aparece para bonecos (`entities.boss`
-    é nulo no cliente); habitantes nascem no servidor mas Merchant/Nurse/... não chegam (o servidor não vê o inventário dos jogadores) e
-    `npcs`/`homes` não são replicados; esfera de conjurador destruída pelo golpe some só para quem bateu; flail, bumerangue, bomba e
-    sinalizador não aparecem voando para os outros (o efeito sim: blocos, golpes); itens no chão vão a todos (sem raio de interesse).
+  - **Sobrou (`ponytail:`):** esfera de conjurador destruída pelo golpe some só para quem bateu; flail, bumerangue, bomba e sinalizador
+    não aparecem voando para os outros (o efeito sim: blocos, golpes); itens no chão vão a todos (sem raio de interesse).
+    (Mensagens, chefes, barra e habitantes: resolvidos na M4b.)
+- **M4b (feita):**
+  - **Pedidos ao servidor** (`entities._relay` → RPC `ask(o quê, args)`): `summon` (item invocador; o jogador confere noite/chefe e gasta o
+    item antes, o servidor recusa com "já há um chefe"), `orb`, `larva`, `old_man` (o Velho à noite). Funis em `entities.summon/orb_broken/
+    larva_broken/curse_old_man`; o chefe nasce em volta de quem pediu (o `body` dele) e mira o mais perto (já era assim).
+  - **Barra do chefe para todos:** bit 16 no `foe_states` = é o `entities.boss`; `boss_max` vai nas flags. `boss_life()` soma os bonecos do grupo.
+  - **Flags do mundo** (`net._flags()`: orbes, chefes caídos, `meteor_due`, `hardmode`, `npcs`, `homes`, `boss_max`) vão a todos quando mudam
+    (comparadas em `str` a 15 Hz) e de novo quando alguém entra. **Hardmode no cliente:** `world.start_hardmode()` refeito sobre os chunks que já
+    chegaram (o passe é determinístico; os RPCs confiáveis são ordenados, então chunk velho enviado antes da flag também é convertido).
+  - **Avisos:** `entities.say` no servidor → `notice` a todos (chefe despertou, habitante chegou/morreu, meteorito, Olho...).
+  - **Baú com trava** (decisão 7): `chest_ask` → o servidor tranca e manda `chest_ok` (o cliente abre o painel por `player.open_chest`); fechar o
+    inventário (`hud._set_open(false)`) manda `chest_put` e destranca; os outros recebem `chest_set` (o "não quebra baú cheio" deles fica certo).
+    Ocupado: `notice` "<nome> está com o baú aberto". Quem cai com o baú aberto: destranca, o conteúdo fica o de antes.
+  - **`world.set_block` apaga o conteúdo do baú/texto da lápide** quando o bloco sai (antes era o `player.break_target`): vale em todos os lados.
+  - **Lápide:** `tomb(pos, texto)` cliente → servidor → os outros; quem entra recebe `tombs` no welcome.
+  - **Habitantes:** nascem, mudam de casa, morrem e voltam no servidor; conversa e loja locais (o boneco tem o `def`). Para chegarem, o cliente
+    manda `bag(item, munição, moedas)` (no máximo 1/s, quando o inventário muda) e o servidor põe no `inv` do `body`.
+  - **Sono:** bit 16 no `state`; o servidor acelera a hora só com **todos** dormindo e sem chefe, e manda a hora na hora. O cliente não mexe
+    em `clock.speed` (`world.authority`).
+  - **Árvore, porta, carrinho:** já funcionavam pelos funis (blocos e drops); nada novo (a queda animada é só de quem cortou).
+  - **Mundo de teste/F9 só em OFF:** o servidor recusa abrir mundo de teste; o welcome não leva a flag `test`.
+  - **Pausa:** o botão Configurações não pausa a árvore em rede (`get_tree().paused` só sem `world.net`).
+  - Teste: `tests/net.gd` ganhou chefe invocado por A (servidor, barra e mensagem em B, segundo recusado), flags e hardmode nos dois, orbe,
+    lápide, Arms Dealer pela bala de A, baú com trava (B recusado, A guarda gel, B vê), sono (só A não acelera; os dois aceleram).
+  - **Sobrou (`ponytail:`):** a bola de fogo do meteorito não aparece para os clientes (só a cratera e o aviso); o Velho e o "Volte à noite"
+    não foram testados em rede (o caminho é o mesmo `ask`); cama/`beds` em rede continuam na chave de mundo `""` (M5).
 
