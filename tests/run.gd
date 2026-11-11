@@ -226,6 +226,7 @@ func test_debuffs():
 	ent.remove_enemy(vit)
 	# dardo: dispara de Blowpipe e envenena (100%)
 	z.position = Vector3(26, 11, 24.5)
+	z.hp = z.def.life   # sobram 32 de vida: um crítico (4%) do dardo mataria o zumbi e o afflict ignora mortos
 	p.inv.add(Items.ids.poison_dart, 3)
 	p.shoot(Items.defs[Items.ids.blowpipe], p.position + Vector3.UP * p.EYE, Vector3.RIGHT)
 	run(ent.get_children().back(), 1.0)
