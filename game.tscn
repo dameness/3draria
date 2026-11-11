@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=3]
+[gd_scene load_steps=10 format=3]
 
 [ext_resource type="Script" path="res://scripts/world.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/player.gd" id="2"]
@@ -7,6 +7,7 @@
 [ext_resource type="Script" path="res://scripts/entities.gd" id="5"]
 [ext_resource type="Script" path="res://scripts/held_item.gd" id="6"]
 [ext_resource type="Script" path="res://scripts/player_model.gd" id="7"]
+[ext_resource type="Script" path="res://scripts/net.gd" id="8"]
 
 [sub_resource type="Environment" id="env"]
 background_mode = 1
@@ -22,6 +23,13 @@ ambient_light_color = Color(0.75, 0.78, 0.85, 1)
 ambient_light_energy = 0.6
 
 [node name="Main" type="Node3D"]
+
+[node name="Net" type="Node" parent="." node_paths=PackedStringArray("world", "player", "entities", "clock")]
+script = ExtResource("8")
+world = NodePath("../World")
+player = NodePath("../Player")
+entities = NodePath("../Entities")
+clock = NodePath("../DayNight")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("env")

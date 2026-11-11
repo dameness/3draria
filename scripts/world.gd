@@ -59,12 +59,13 @@ var centers: Array = []   # Vector3 dos outros jogadores (entities.gd põe): os 
 
 
 func _ready() -> void:
-	Blocks.load_pack()
-	Items.load_pack()
-	Crafting.load_pack()
-	Buffs.load_pack()
-	Difficulty.load_pack()
-	Loot.load_pack()
+	if Blocks.ids.is_empty():   # uma vez por processo: recarregar zera os dicionários enquanto o mesher de outro mundo os lê (servidor + clientes no tests/net.gd)
+		Blocks.load_pack()
+		Items.load_pack()
+		Crafting.load_pack()
+		Buffs.load_pack()
+		Difficulty.load_pack()
+		Loot.load_pack()
 	gen = WorldGen.new(world_seed)
 	var atlas_image := Atlas.build(Blocks.textures)
 	Blocks.tile_colors = Atlas.tile_colors(atlas_image)

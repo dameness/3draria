@@ -74,6 +74,8 @@ scripts/audit.py                              # data/base × snapshot: dano, use
 .tools/godot                                  # roda o jogo (local)
 .tools/godot --headless --quit                # smoke test: projeto abre sem erros
 .tools/godot --headless -s tests/run.gd       # testes; código de saída != 0 em falha
+.tools/godot --headless -s tests/net.gd       # teste de rede: servidor + 2 clientes no mesmo processo (~10 s)
+.tools/godot --headless -- --server [porta] [arq.wld]   # servidor dedicado (porta 8070; mundo user://worlds/servidor.wld, assado na 1ª vez)
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd   # prints reais (OpenGL por CPU) em textures/shot_*.png
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar → Mundo de teste (prints textures/menu_*.png)
 scripts/preview.sh                            # ver sem instalar: previews/folha.jpg (8 cenas) + previews/passeio.mp4 e noite.mp4 (o CI .github/workflows/preview.yml publica no PR)
@@ -110,6 +112,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   fx.gd  block_crack.gd  trail.gd   partículas (poeira, lascas, faíscas, gotas, respingo), rachaduras do bloco minerado, arco do golpe
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly/eye_of_cthulhu)
+  net.gd             rede (todos os RPCs; nó Net em game.tscn e server.tscn), modos OFF/SERVER/CLIENT; server.gd + server.tscn = servidor dedicado
   remote_player.gd   outro jogador visto daqui (M2): o contrato que inimigos/itens/boneco leem; entities.remotes (entities.players = local + remotos)
   enemy_model.gd     modelos 3D dos inimigos (eye/slime/humanoid; senão sprite extrudado)
   day_night.gd       ciclo 15+9 min; clima por bioma (névoa e tom da luz: BIOME_AIR)

@@ -24,6 +24,8 @@ const SPAWN := Vector2(128.5, 128.5)   # meio da planície de nascimento (world_
 # olhado fica à direita do personagem (ele aparece à esquerda), speed = giro em rad/s (0 = balança de leve).
 const TITLE_VIEW := {"r": 13.0, "h": 3.2, "ty": 5.6, "side": 0.0, "speed": 0.03}
 const AVATAR_VIEW := {"r": 3.7, "h": 1.45, "ty": 1.0, "side": 1.2, "speed": 0.0}
+const Net := preload("res://scripts/net.gd")
+static var last_address := "ws://localhost:8070"
 const DAY_SPEED := 9.0                 # o dia passa 9x mais depressa ao fundo
 const LIST_ROW := 66                   # altura de uma linha da lista (nome + informação)
 
@@ -52,6 +54,9 @@ var fade: ColorRect
 
 
 func _ready() -> void:
+	if "--server" in OS.get_cmdline_user_args():   # servidor dedicado (scripts/server.gd)
+		get_tree().change_scene_to_file.call_deferred("res://server.tscn")
+		return
 	theme = Ui.theme()
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	Settings.path = "user://settings.cfg"   # as opções do Configurações valem em todos os mundos
@@ -606,7 +611,7 @@ func show_worlds() -> void:
 	_go(AVATAR_VIEW, 0.62)
 	_save_list(SaveGame.worlds_dir, play)
 	var test_hint := "Arena plana com baús de todos os itens, todos os blocos, NPCs, inimigos e atalhos de chefes/hora (F9)."   # abre (ou cria) o mundo com todos os itens à mão
-	_bottom_row([["Voltar", show_players], ["Novo", show_new_world], ["Mundo de teste", func(): play(SaveGame.test_world())]])
+	_bottom_row([["Voltar", show_players], ["Novo", show_new_world], ["Mundo de teste", func(): play(SaveGame.test_world())], ["Multijogador", show_join]])
 	box.get_child(box.get_child_count() - 1).get_child(2).tooltip_text = test_hint
 	_pop_in()
 
@@ -618,6 +623,27 @@ func show_new_world() -> void:
 	_go(AVATAR_VIEW, 0.62)
 	_create_row("nome do novo mundo", func(n): return SaveGame.create_world(n, randi()), func(p): bake_then(p, show_worlds))
 	_bottom_row([["Voltar", show_worlds]])
+	_pop_in()
+
+
+# Multijogador (M3): endereço do servidor; o personagem é o escolhido (o nome dele é o que os outros veem).
+func show_join() -> void:
+	screen = "join"
+	_clear("", true, 0.74, 0.55)
+	_plate("Multijogador")
+	_go(AVATAR_VIEW, 0.62)
+	var addr := LineEdit.new()
+	addr.text = last_address
+	addr.custom_minimum_size = Vector2(0, 40)
+	box.add_child(addr)
+	var go := func(_t = ""):
+		last_address = addr.text.strip_edges()
+		if not last_address.contains("://"):
+			last_address = "ws://" + last_address
+		Net.join = last_address
+		_enter("")
+	addr.text_submitted.connect(go)
+	_bottom_row([["Voltar", show_worlds], ["Entrar", go]])
 	_pop_in()
 
 
@@ -656,7 +682,7 @@ func _enter(world_path: String) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("ui_cancel"):
 		match screen:
-			"new_world":
+			"new_world", "join":
 				show_worlds()
 			"new_player":
 				show_players()

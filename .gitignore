@@ -9,3 +9,4 @@ assets/models/
 __pycache__/
 previews/
 build/
+version.json

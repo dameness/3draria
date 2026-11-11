@@ -6,6 +6,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 scripts/setup-godot.sh || exit 1
+echo "{\"git\": \"$(git rev-parse --short HEAD 2>/dev/null || echo dev)\"}" > version.json   # versão do build: o servidor recusa cliente de outra (net.gd)
 scripts/fetch-sprites.sh || echo "aviso: faltam sprites (a wiki limita o ritmo): rode scripts/update.sh de novo daqui a uns minutos. O jogo funciona sem eles."
 out=$(.tools/godot --headless --import 2>&1)
 if echo "$out" | grep -E "SCRIPT ERROR|Parse Error" >/dev/null; then
