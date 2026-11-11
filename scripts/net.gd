@@ -2,8 +2,9 @@ extends Node
 # Rede (docs/MULTIPLAYER.md): todos os RPCs moram aqui, no nó "Net" filho da raiz da cena (game.tscn no cliente, server.tscn no servidor).
 # Cada cena prende o próprio SceneMultiplayer na sua raiz, então o caminho do RPC ("Net") é o mesmo dos dois lados e servidor e clientes
 # cabem no mesmo processo (tests/net.gd). Quem manda: o servidor nos blocos, líquidos, mudas, espalhamento e hora; o cliente no próprio
-# personagem. Blocos passam pelo funil world.set_block → block_changed (um lote por quadro).
-# M3: sem inimigos/itens em rede (cada cliente ainda tem os seus, M4a) e o servidor ainda não salva (M5).
+# personagem e no dano que causa. Blocos passam pelo funil world.set_block → block_changed (um lote por quadro).
+# M4a: inimigos só no servidor (o cliente vê bonecos: enemy.puppet; o golpe vira `hit`, o dano no jogador vem por `hurt`).
+# O servidor ainda não salva (M5).
 
 enum { OFF, SERVER, CLIENT }
 const PORT := 8070
@@ -11,6 +12,9 @@ const RATE := 1.0 / 15         # estado dos jogadores (15 Hz)
 const CHUNKS_PER_FRAME := 6    # vazão da entrada (~1 KB cada): ~360 chunks/s a 60 fps
 const BUFFER := 1 << 22        # 4 MB por conexão (o padrão de 64 KB não comporta a entrada)
 const NEAR := 192.0            # raio de interesse do estado dos outros (blocos)
+const FOE_RATE := 0.1          # estado dos inimigos (10 Hz)
+const FOE_NEAR := 96.0         # raio de interesse dos inimigos (inimigo some a 64 do jogador mais perto)
+const FOE_LOST := 1500         # ms sem estado: o boneco do inimigo sai (saiu do raio)
 const RemotePlayer := preload("res://scripts/remote_player.gd")
 
 static var join := ""          # menu → jogo: endereço do servidor (a cena lê e limpa)
@@ -35,6 +39,10 @@ var welcomed := false
 var tick := 0.0
 var clock_tick := 0.0
 var worn := PackedInt32Array()
+var foes := {}                 # id -> inimigo (servidor: todos; cliente: os bonecos)
+var gone := {}                 # cliente: ids de inimigos que já saíram (um estado atrasado não os traz de volta)
+var next_id := 0
+var foe_tick := 0.0
 
 
 func _ready() -> void:
@@ -138,6 +146,34 @@ func _flush_blocks() -> void:
 
 static func _chunk_of(x: float, z: float) -> Vector2i:
 	return Vector2i(floori(x / WorldGen.CHUNK), floori(z / WorldGen.CHUNK))
+
+
+# ---------- funil dos inimigos (entities.spawn_enemy / remove_enemy, enemy.hurt) ----------
+
+func enemy_born(e: Node3D) -> void:
+	if mode == SERVER:
+		next_id += 1
+		e.net_id = next_id
+		foes[next_id] = e
+
+
+func enemy_gone(e: Node3D) -> void:
+	if not foes.has(e.net_id):
+		return
+	foes.erase(e.net_id)
+	if mode == SERVER:
+		for id in peers:
+			foe_gone.rpc_id(id, e.net_id, e.hp <= 0)
+
+
+func enemy_hurt(e: Node3D, taken: int, crit: bool, dot: bool, dir: Vector3) -> void:
+	if mode == SERVER and e.net_id:
+		for id in _near(e.position, FOE_NEAR):
+			foe_hurt.rpc_id(id, e.net_id, taken, e.hp, crit, dot, dir)
+
+
+func _near(pos: Vector3, r: float) -> Array:   # servidor: os jogadores a até r de pos
+	return peers.keys().filter(func(id): return not peers[id].state.is_empty() and peers[id].state[0].distance_to(pos) < r)
 
 
 # ---------- RPCs ----------
@@ -315,6 +351,74 @@ func _wear(r: Node3D, worn_names: Array) -> void:
 		r.inv.equip[i] = Items.ids.get(worn_names[i], -1)
 
 
+# Inimigos perto do jogador, 10 Hz: [id, nome do def, posição, yaw, vida, bits (1 investida, 2 fase 2, 4 envenenado, 8 em chamas)].
+@rpc("authority", "unreliable_ordered")
+func foe_states(list: Array) -> void:
+	var now := Time.get_ticks_msec()
+	for f in list:
+		if gone.has(f[0]):
+			continue
+		var e: Node3D = foes.get(f[0])
+		if e == null:
+			e = entities.spawn_enemy(entities.def_named(f[1]), f[2])
+			e.puppet = true
+			e.net_id = f[0]
+			e.rotation.y = f[3]
+			foes[f[0]] = e
+		elif e.def.name != f[1]:
+			e.become(entities.def_named(f[1]))   # verme: o segmento virou cabeça/rabo
+		e.net_pos = f[2]
+		e.net_yaw = f[3]
+		e.hp = f[4]
+		e.seen = now
+		e.mode = "dash" if f[5] & 1 else "hover"
+		var ph := 2 if f[5] & 2 else 1
+		if ph != e.phase:
+			e.phase = ph
+			if e.model:
+				EnemyModel.set_phase(e.model, ph)
+			if e.def.ai == "brain":
+				e.set_ghost(ph == 1)
+		e.debuffs.clear()
+		if f[5] & 4:
+			e.debuffs.poisoned = 1.0
+		if f[5] & 8:
+			e.debuffs.on_fire = 1.0
+
+
+@rpc("authority", "reliable")
+func foe_hurt(id: int, taken: int, hp: int, crit: bool, dot: bool, dir: Vector3) -> void:
+	var e: Node3D = foes.get(id)
+	if e:
+		e.hp = hp
+		e.show_hit(taken, crit, dot, dir)
+
+
+@rpc("authority", "reliable")
+func foe_gone(id: int, died: bool) -> void:
+	gone[id] = true
+	var e: Node3D = foes.get(id)
+	if e:
+		if died:
+			e.show_death()
+		entities.remove_enemy(e)
+
+
+# O cliente acertou um inimigo (calculou como em um jogador: variância, crítico, recuo); o servidor aplica a defesa e o resto.
+@rpc("any_peer", "reliable")
+func hit(id: int, dmg: int, dir: Vector3, knockback: float, crit: bool) -> void:
+	var e: Node3D = foes.get(id)
+	if mode == SERVER and peers.has(multiplayer.get_remote_sender_id()) and is_instance_valid(e):
+		e.hurt(dmg, dir, knockback, crit)
+
+
+@rpc("any_peer", "reliable")
+func curse(id: int, buff: String, seconds: float) -> void:
+	var e: Node3D = foes.get(id)
+	if mode == SERVER and peers.has(multiplayer.get_remote_sender_id()) and is_instance_valid(e) and Buffs.defs.has(buff):
+		e.afflict(buff, seconds)
+
+
 # ---------- servidor ----------
 
 func _gone(id: int) -> void:
@@ -380,6 +484,22 @@ func _send_states() -> void:
 			time_of_day.rpc_id(id, clock.time, clock.speed)
 
 
+func _send_foes() -> void:
+	if foe_tick <= 0.0:
+		foe_tick = FOE_RATE
+		for id in peers:
+			if peers[id].state.is_empty():
+				continue
+			var at: Vector3 = peers[id].state[0]
+			var list := []
+			for e in entities.enemies:
+				if not e.display and e.position.distance_to(at) < FOE_NEAR:
+					var bits := (1 if e.mode == "dash" else 0) | (2 if e.phase == 2 else 0) | (4 if e.debuffs.has("poisoned") else 0) | (8 if e.debuffs.has("on_fire") else 0)
+					list.append([e.net_id, e.def.name, e.position, e.rotation.y, e.hp, bits])
+			if not list.is_empty():
+				foe_states.rpc_id(id, list)
+
+
 # ---------- cliente ----------
 
 func _send_state() -> void:
@@ -407,8 +527,10 @@ func _process(delta: float) -> void:
 	_flush_blocks()
 	tick -= delta
 	clock_tick -= delta
+	foe_tick -= delta
 	if mode == SERVER:
 		_send_chunks()
+		_send_foes()
 		if tick <= 0.0:
 			tick = RATE
 			_send_states()
@@ -435,3 +557,6 @@ func _process(delta: float) -> void:
 		r.position = r.position.lerp(r.get_meta("goal"), k)
 		r.rotation.y = lerp_angle(r.rotation.y, r.get_meta("yaw"), k)
 		r.cooldown = maxf(0.0, r.cooldown - delta)
+	for id in foes.keys():
+		if now - foes[id].seen > FOE_LOST:   # saiu do raio de interesse
+			entities.remove_enemy(foes[id])

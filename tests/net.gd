@@ -99,7 +99,19 @@ func _run() -> void:
 	var hp0: float = pa.hp
 	var z0: Node3D = se.spawn_enemy(se.def_named("zombie"), sn.peers[a_id].body.position)
 	check(await until(func(): return pa.hp < hp0), "zumbi do servidor encosta em A → a vida de A cai")
-	se.remove_enemy(z0)
+	var zid: int = z0.net_id
+	check(await until(func(): return an.foes.has(zid) and bn.foes.has(zid)), "A e B veem o boneco do zumbi")
+	check(a.get_node("Entities").enemies.all(func(e): return e.puppet) and b.get_node("Entities").enemies.all(func(e): return e.puppet), "cliente não faz nascer inimigo")
+	var life: int = z0.hp
+	an.foes[zid].hurt(20, Vector3.FORWARD, 0.0)
+	check(await until(func(): return z0.hp < life and an.foes[zid].hp == z0.hp and bn.foes[zid].hp == z0.hp), "A bate → a vida cai no servidor e nos dois")
+	var pb: Node3D = b.get_node("Player")
+	var b_id: int = bn.multiplayer.get_unique_id()
+	pa.position.x += 40.0
+	pb.position = z0.position
+	check(await until(func(): return z0.chase == sn.peers[b_id].body), "B chega perto e A se afasta → o zumbi troca de alvo")
+	bn.foes[zid].hurt(999, Vector3.FORWARD, 0.0)
+	check(await until(func(): return not sn.foes.has(zid) and not an.foes.has(zid) and not bn.foes.has(zid)), "B mata → some no servidor e nos dois")
 
 	# Relógio: o do servidor manda
 	srv.get_node("DayNight").time = 500.0

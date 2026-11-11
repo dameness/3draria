@@ -61,6 +61,12 @@ func icon(item: int) -> Texture2D:
 
 
 func _physics_process(delta: float) -> void:
+	if world.authority:   # cliente de rede: inimigos, meteorito, estrelas e habitantes são do servidor (aqui só os bonecos e o que é do jogador)
+		_world_tick(delta)
+	_cloud_tick(delta)
+
+
+func _world_tick(delta: float) -> void:
 	if world.meteor_due and meteor == null and clock.is_night() and clock.time >= clock.DAY_SECONDS + clock.NIGHT_SECONDS / 2.0:
 		start_meteor()   # depois do 1º chefe do mal, um meteorito cai na 1ª meia-noite (ou já, se ele caiu depois dela)
 	_old_man()
@@ -72,6 +78,21 @@ func _physics_process(delta: float) -> void:
 			meteor.queue_free()
 			meteor = null
 			crater(int(at.x), int(at.z))
+	spawn_timer -= delta
+	if spawn_timer <= 0:
+		spawn_timer = 1.0
+		try_spawn()
+		_stars()
+		_town()
+		_eye_watch()
+	world.centers = remotes.map(func(p): return p.position)   # os chunks em volta dos outros jogadores ficam na memória
+	for e in enemies.duplicate():
+		var p := nearest_player(e.position)
+		if not e.def.get("boss") and not e.display and (p == null or e.position.distance_to(p.position) > DESPAWN):
+			remove_enemy(e)   # some quem está longe de todos
+
+
+func _cloud_tick(delta: float) -> void:
 	if cloud:
 		cloud_left -= delta
 		cloud_next -= delta
@@ -89,18 +110,6 @@ func _physics_process(delta: float) -> void:
 				x = e.position.x - cloud.position.x + rng.randf_range(-0.1, 0.1)
 				z = e.position.z - cloud.position.z + rng.randf_range(-0.1, 0.1)
 			spawn_projectile("blood_drop", cloud.position + Vector3(x, -0.5, z), Vector3.DOWN, 6.0, cloud_damage, 0.0)
-	spawn_timer -= delta
-	if spawn_timer <= 0:
-		spawn_timer = 1.0
-		try_spawn()
-		_stars()
-		_town()
-		_eye_watch()
-	world.centers = remotes.map(func(p): return p.position)   # os chunks em volta dos outros jogadores ficam na memória
-	for e in enemies.duplicate():
-		var p := nearest_player(e.position)
-		if not e.def.get("boss") and not e.display and (p == null or e.position.distance_to(p.position) > DESPAWN):
-			remove_enemy(e)   # some quem está longe de todos
 
 
 # Mensagem na tela do jogador local. ponytail: no servidor some (M4b: avisos do mundo a todos por RPC).
@@ -592,6 +601,8 @@ func spawn_enemy(d: Dictionary, pos: Vector3) -> Node3D:
 	e.home = pos
 	add_child(e)
 	enemies.append(e)
+	if net:
+		net.enemy_born(e)
 	return e
 
 
@@ -738,6 +749,8 @@ func spawn_text(pos: Vector3, text: String, color: Color, crit := false) -> void
 
 func remove_enemy(e: Node3D) -> void:
 	enemies.erase(e)
+	if net:
+		net.enemy_gone(e)
 	if e == boss:   # verme: outro segmento vira o "chefe" da barra de vida
 		boss = null
 		for o in enemies:
