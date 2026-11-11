@@ -53,6 +53,8 @@ var jobs := {}     # id da task -> resultado preenchido pela thread
 var generating := {}   # Vector2i -> true: chunk que um job está gerando agora
 var max_jobs := clampi(OS.get_processor_count() - 1, 1, 4)
 var center := Vector2i(-999, -999)
+var authority := true   # false = cliente de rede (net.gd): chunks só vêm do servidor (nunca gera) e líquidos, mudas e espalhamento são do servidor
+var net: Node = null    # net.gd em SERVER/CLIENT: set_block avisa (net.block_changed); null em um jogador
 var centers: Array = []   # Vector3 dos outros jogadores (entities.gd põe): os chunks em volta deles não saem da memória; a malha segue só a câmera
 
 
@@ -100,6 +102,8 @@ func get_block(x: int, y: int, z: int) -> int:
 	if y >= H or not in_world(c):
 		return 0
 	if not chunks.has(c):
+		if not authority and not packed.has(c):
+			return gen.BEDROCK   # cliente: chunk que ainda não chegou é parede (não gera nem guarda)
 		chunks[c] = unpack(c)
 		_chunk_ready(c)   # carregado aqui, na thread principal (não pelo job): quem esperava por ele precisa saber
 	return chunks[c][posmod(x, C) + posmod(z, C) * C + y * C * C]
@@ -121,10 +125,12 @@ func flush_edited() -> void:
 func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 	if y < 0 or y >= H:
 		return
-	get_block(x, y, z)  # garante que o chunk existe
 	var c := Vector2i(floori(x / float(C)), floori(z / float(C)))
 	if not in_world(c):
 		return
+	get_block(x, y, z)  # garante que o chunk existe
+	if not chunks.has(c):
+		return   # cliente: chunk que ainda não chegou
 	var lx := posmod(x, C)
 	var lz := posmod(z, C)
 	var reach := maxi(Blocks.light[id], Blocks.light[chunks[c][lx + lz * C + y * C * C]])   # tocha (nova ou tirada): a luz alcança os chunks em volta
@@ -158,6 +164,8 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 				var k := c + Vector2i(dx, dz)
 				if (dx != 0 or dz != 0) and in_world(k) and _lit_side(lx, dx, reach) and _lit_side(lz, dz, reach):
 					_rebuild(k)
+	if net:
+		net.block_changed(x, y, z, id)
 
 
 # A grama do mal em p contamina um dos 26 vizinhos, sorteado: se é terra ou grama comum, está à mostra (ar ou planta ao lado) e o chunk dele ainda tem teto.
@@ -369,16 +377,8 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
-	liquid.step(self, delta)
-	for p in saplings.keys():
-		saplings[p] -= delta
-		if saplings[p] <= 0.0:
-			grow_sapling(p)
-	for p in spread.keys():
-		spread[p] -= delta
-		if spread[p] <= 0.0:
-			spread[p] = randf_range(SPREAD_MIN, SPREAD_MAX)
-			_spread_from(p)
+	if authority:
+		_tick(delta)
 	var cam := get_viewport().get_camera_3d()
 	if cam == null:
 		return
@@ -395,6 +395,28 @@ func _process(delta: float) -> void:
 		if r.is_empty():
 			break
 		jobs[WorkerThreadPool.add_task(_job.bind(r))] = r
+
+
+# Líquidos, mudas e grama do mal: só quem manda no mundo (um jogador ou o servidor).
+func _tick(delta: float) -> void:
+	liquid.step(self, delta)
+	for p in saplings.keys():
+		saplings[p] -= delta
+		if saplings[p] <= 0.0:
+			grow_sapling(p)
+	for p in spread.keys():
+		spread[p] -= delta
+		if spread[p] <= 0.0:
+			spread[p] = randf_range(SPREAD_MIN, SPREAD_MAX)
+			_spread_from(p)
+
+
+# Cliente: chunk que veio do servidor. As filas de malha/carga se refazem no próximo quadro (ele pode completar a malha de quem esperava).
+func receive(c: Vector2i, bytes: PackedByteArray) -> void:
+	packed[c] = bytes
+	chunks.erase(c)
+	edited.erase(c)
+	center = Vector2i(-999, -999)
 
 
 # Próximo trabalho: refazer a mesh de um chunk editado, montar a de um chunk pronto (dados dele e dos vizinhos),
@@ -471,7 +493,7 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 			meshable.append(pending[n])
 		for o in [Vector2i.ZERO] + NB:
 			var g: Vector2i = pending[n] + o
-			if in_world(g) and not chunks.has(g) and not seen.has(g):
+			if in_world(g) and not chunks.has(g) and not seen.has(g) and (authority or packed.has(g)):
 				seen[g] = true
 				need_gen.append(g)
 	need_gen.reverse()

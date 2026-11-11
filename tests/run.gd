@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_packed", "test_bake", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit", "test_players"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_packed", "test_bake", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit", "test_players", "test_client_world"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -6338,4 +6338,29 @@ func test_players():
 	free_player(gp)
 	gr.free()
 	gw.free()
+	return true
+
+
+class NetSpy extends Node:   # o que o funil world.set_block avisa à rede
+	var seen: Array = []
+	func block_changed(x: int, y: int, z: int, id: int) -> void:
+		seen.append([x, y, z, id])
+
+
+func test_client_world():
+	var w := floor_world()
+	w.authority = false
+	check(w.get_block(5 * C, 3, 5 * C) == w.gen.BEDROCK and not w.chunks.has(Vector2i(5, 5)), "cliente: chunk que não chegou é parede e não é gerado")
+	w.set_block(5 * C, 3, 5 * C, 0)
+	check(not w.chunks.has(Vector2i(5, 5)), "cliente: editar chunk que não chegou não faz nada")
+	var d := chunk(0)
+	d[0] = Blocks.ids.dirt
+	w.receive(Vector2i(5, 5), d.compress(FileAccess.COMPRESSION_ZSTD))
+	check(w.get_block(5 * C, 0, 5 * C) == Blocks.ids.dirt, "cliente: o chunk recebido vale")
+	var spy := NetSpy.new()
+	w.net = spy
+	w.set_block(20, 12, 20, Blocks.ids.dirt)
+	check(spy.seen == [[20, 12, 20, Blocks.ids.dirt]], "set_block avisa a rede (o funil)")
+	spy.free()
+	w.free()
 	return true
