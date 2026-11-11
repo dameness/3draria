@@ -31,7 +31,7 @@ const DAY_SPEED := 9.0                 # o dia passa 9x mais depressa ao fundo
 const LIST_ROW := 66                   # altura de uma linha da lista (nome + informação)
 
 var box: VBoxContainer                 # conteúdo da tela atual (botões, lista, campo de nome)
-var chosen_player := ""
+static var chosen_player := ""         # (static: voltar de uma conexão caída cai na tela Multijogador com o mesmo personagem)
 var baker: Baker                       # assando um mundo (tela "bake"): _process mostra o progresso
 var bake_bar: ProgressBar
 var bake_after: Callable
@@ -67,7 +67,10 @@ func _ready() -> void:
 	_build_backdrop()
 	_build_ui()
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	show_title()
+	if Net.error != "":   # a conexão caiu ou foi recusada (net._lost): de volta à tela de entrar, com o motivo
+		show_join()
+	else:
+		show_title()
 
 
 # O mundo de verdade, o céu e o dia, igual ao jogo (game.tscn), só que com distância de renderização 4.
@@ -631,7 +634,8 @@ func show_new_world() -> void:
 func show_join() -> void:
 	screen = "join"
 	_clear("", true, 0.74, 0.55)
-	_plate("Multijogador")
+	_plate("Multijogador" if Net.error == "" else Net.error)
+	Net.error = ""
 	_go(AVATAR_VIEW, 0.62)
 	var fields := []
 	for f in [["endereço do servidor", last_address, false], ["senha do servidor", "", true], ["nome do personagem", last_name if last_name != "" else chosen_player.get_file().get_basename(), false], ["senha do personagem", "", true]]:

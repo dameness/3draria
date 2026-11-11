@@ -94,6 +94,12 @@ Feita (ver "Estado"). Falta o playtest do dono (duas abas, derrubar e subir o se
   projeto, reinício do serviço. `deploy/Caddyfile`, `deploy/3draria.service` (systemd, reinício automático, usuário sem root).
 - `docs/DEPLOY.md`: criar a VPS, domínio, primeira instalação, atualizar, restaurar backup, criar mundo novo mantendo personagens.
 - Segredos (senha do servidor, `basicauth`) só na VPS, nunca no git.
+- **Endereço padrão no browser:** o menu hoje sugere `ws://localhost:8070`; no build Web deve sair da página
+  (`wss://<host>/ws`, por `JavaScriptBridge`), senão cada amigo digita o endereço a cada visita (página https não aceita `ws://`).
+- **VPS ARM (Oracle grátis):** `setup-godot.sh` fixa o binário x86_64; aceitar `linux.arm64` pelo `uname -m`.
+- **Parar o serviço:** `ExecStop` cria `user://server/stop` e espera o processo sair (~6 s medido: 2 s para os clientes mandarem o personagem + gravar).
+- **Conferir no browser de verdade:** aba escondida não roda o jogo (o servidor corta a conexão depois de 60 s sem estado, `Net.STALE`); ver se o
+  jogador volta ao menu com o motivo e entra de novo sem perder nada.
 - Teste de carga: 10 clientes-robô headless andando e minerando por 5 min; medir tempo por quadro do servidor e banda.
   Alvo: servidor a 60 Hz (cair para 30 Hz se a CPU não der) e < 50 KB/s por jogador.
 
@@ -221,7 +227,7 @@ Extra por etapa, colado depois do prompt:
     `user://worlds/servidor.wld` na primeira vez (Baker num laço). `Engine.max_fps = 60`. O nascimento é `net.spawn` (o `world_out/world_in`
     leem `player.spawn`; o Net faz o papel). DayNight roda lá (sem sol nem câmera) e manda a hora.
   - **Versão:** `scripts/update.sh` grava `version.json` (hash do git, fora do git; o export Web leva pelo filtro `*.json`); sem ele = "dev".
-    Versão diferente → `refuse` com "atualize a página". Nome repetido também é recusado.
+    Versão diferente → `refuse` com "atualize a página".
   - **Menu:** Selecionar Mundo → **Multijogador** → endereço (`ws://localhost:8070` padrão; sem `ws://` ele põe) → Entrar. O personagem é o
     escolhido e fica no PC/browser (o `.plr` só vai ao servidor na M5); o nome dele é o que os outros veem.
   - **Bonecos:** `remote_player.gd` filhos da raiz da cena, `Label3D` com o nome, interpolação exponencial (posição e yaw) em `net._process`;
@@ -292,7 +298,8 @@ Extra por etapa, colado depois do prompt:
 - **M5 (feita):**
   - **Conta** = nome + senha do personagem (+ senha do servidor, uma). `hello(ver, nome, look, auth{pass, secret, difficulty})`. Nome que não existe **cria a conta**
     (a aparência e a dificuldade vêm do personagem escolhido no menu, que só empresta isso; senha obrigatória); existe → confere o hash. Recusas (texto na tela do cliente):
-    versão, "senha do servidor errada", nome inválido (vazio, >20, sem caractere de arquivo), nome já dentro (sem maiúsculas), "senha do personagem errada".
+    versão, "senha do servidor errada", nome inválido (vazio, >20 ou que não é nome de arquivo: `is_valid_filename`), "senha do personagem errada". Nome já dentro (sem maiúsculas) com a senha certa
+    **toma o lugar** da sessão antiga (ela recebe "entrou de outro lugar"): é o jogador voltando depois de a conexão ficar presa.
     `.plr` do servidor em `Net.root` (`user://server/`)`players/<nome em minúsculas>.plr`: o dicionário de `SaveGame.player_out` + `salt`, `hash` (sha256 de sal+senha) e `maps`
     (mundo → mapa zstd). **Pasta separada de `user://players/`** (decisão 8 dizia `players/`): senão as contas apareceriam na lista de personagens do menu de quem roda servidor e jogo na mesma máquina.
   - **Senha do servidor:** variável de ambiente `DRARIA_PASSWORD` (vazia = aberto; o servidor avisa ao subir). Nunca em argumento (aparece no `ps`).
@@ -305,5 +312,17 @@ Extra por etapa, colado depois do prompt:
   - **Lápides entram no `.wld`** (faltavam: o texto sumia ao recarregar, até em um jogador). `world.map_dirty` marcado pelo minimapa.
   - Teste (`tests/net.gd`): recusas, conta nova, inventário que vai sozinho em 5 s, bloco/mapa/cama, servidor derrubado (`srv.free()` depois de `save()`) e subido de novo, A volta e acha tudo.
   - **Sobrou (`ponytail:`):** sha256 simples e sem limite de tentativas; mapa comprimido >1,5 MB não é enviado (buffer de 4 MB); gravar o mundo (~14 MB) trava o servidor por um instante;
-    hardcore em rede: o fantasma não apaga a conta; a cama some no `home()` se o quarto deixou de valer (igual a um jogador só); sem "esqueci a senha" (o dono apaga o `.plr` no servidor);
-    reconectar rápido depois de queda pode dar "já há alguém com o nome" até o servidor notar o fim da conexão.
+    hardcore em rede: o fantasma não apaga a conta; a cama some no `home()` se o quarto deixou de valer (igual a um jogador só); sem "esqueci a senha" (o dono apaga o `.plr` no servidor).
+- **Revisão M0–M5 (corrigido; `tests/net.gd` cobre):**
+  - **Conexão presa:** nome já dentro + senha certa toma o lugar; jogador sem mandar estado por 60 s (`Net.STALE`: aba escondida, wifi morto) é cortado.
+    Antes o boneco ficava no mundo (alvo dos inimigos, travando o sono de todos) e o dono levava "já há alguém com o nome".
+  - **Queda ou recusa no cliente:** `net._lost` congela o jogador e volta ao menu, na tela Multijogador, com o motivo (`Net.error`; `menu.chosen_player` virou
+    `static`). Antes o jogador seguia andando num mundo morto em que nada era gravado.
+  - **Parar o servidor:** o arquivo `stop` agora avisa os clientes (`bye`: mandam personagem e mapa, veem "o servidor está reiniciando"), espera 2 s, grava e sai.
+    Porta ocupada: sai com código 1 (antes ficava de pé sem escutar).
+  - **Baú × personagem:** `send_char` manda junto o baú aberto (`chest_put(..., keep)`); antes, cair com o baú aberto duplicava (ou perdia) o que tinha sido movido.
+  - **Memória do servidor:** `world.trim(keep, r)` (o descarte que era só da câmera) roda a cada gravação: ficam 14 chunks em volta de cada jogador. Antes todo
+    chunk visitado ficava para sempre (teto 472 MB). Medido: servidor parado com o mundo assado = 200 MB de RSS.
+  - `remote_player.hits` crescia sem fim no servidor (60 entradas/s encostado num inimigo): só anota sem dono de rede. `hello` duas vezes na mesma conexão é ignorado.
+  - Conferido e certo: o passe do hardmode refeito no cliente é idempotente (chunk que chega já convertido antes da flag não estraga).
+  - Não mexido (aceito): `world_out` no `hello` recomprime os chunks sujos e o mapa do servidor a cada entrada (dezenas de ms).

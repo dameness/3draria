@@ -28,7 +28,7 @@ var safe_until := 0        # servidor: ms até quando um golpe novo não é repa
 var hand := -1             # item na mão
 var inv := Inventory.new()   # equip (armadura que o boneco veste e que dá a defesa) e o que ele recolhe do chão
 var flail_snap := 0.0
-var hits: Array = []       # [dano, direção] que levou aqui (no servidor também vai ao dono pelo RPC `hurt`: a vida é dele)
+var hits: Array = []       # [dano, direção] que levou sem dono de rede (peer == 0: é o que os testes olham); com dono o golpe vai a ele e nada se acumula aqui
 var model: Node3D
 
 
@@ -60,11 +60,12 @@ func mana_cap() -> int:
 	return mana_max
 
 
-# O dono aplica a defesa, os quadros de invencibilidade e o empurrão; aqui fica anotado e, no servidor, vai a ele
+# O dono aplica a defesa, os quadros de invencibilidade e o empurrão; no servidor o golpe vai a ele
 # (no máximo um a cada IFRAMES: encostado num inimigo seriam 60 por segundo).
 func hurt(damage: int, dir: Vector3, bounce := true) -> int:
-	hits.append([damage, dir])
-	if peer and dead <= 0.0 and Time.get_ticks_msec() >= safe_until:
+	if peer == 0:
+		hits.append([damage, dir])
+	elif dead <= 0.0 and Time.get_ticks_msec() >= safe_until:
 		safe_until = Time.get_ticks_msec() + int(IFRAMES * 1000)
 		entities.net.hurt.rpc_id(peer, damage, dir, bounce)
 	return damage

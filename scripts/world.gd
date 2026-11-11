@@ -123,6 +123,17 @@ func flush_edited() -> void:
 	edited.clear()
 
 
+# O mundo é grande: chunks a mais de r de todos os `keep` saem da memória (o editado volta comprimido para packed; get_block os traz de volta iguais).
+# A câmera chama em _recenter; o servidor, que não tem câmera, a cada gravação (server.gd).
+func trim(keep: Array, r: int) -> void:
+	for k in chunks.keys():
+		if keep.all(func(o): return (k - o).length_squared() > r * r):
+			if edited.has(k):
+				packed[k] = chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
+				edited.erase(k)
+			chunks.erase(k)
+
+
 # wake = false: o fluxo dos líquidos grava sem acordar de novo os vizinhos (ele mesmo acorda os que importam).
 func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 	if y < 0 or y >= H:
@@ -477,13 +488,7 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 				meshes[k].queue_free()
 			meshes.erase(k)
 			_free_models(k)
-	var keep: Array = [c] + centers.map(func(p): return Vector2i(floori(p.x / C), floori(p.z / C)))
-	for k in chunks.keys():   # o mundo é grande: chunks longe de todos saem da memória (o editado volta comprimido para packed; get_block os traz de volta iguais)
-		if keep.all(func(o): return (k - o).length_squared() > (r + 4) * (r + 4)):
-			if edited.has(k):
-				packed[k] = chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
-				edited.erase(k)
-			chunks.erase(k)
+	trim([c] + centers.map(func(p): return Vector2i(floori(p.x / C), floori(p.z / C))), r + 4)
 	pending.clear()
 	for z in range(c.y - r, c.y + r + 1):
 		for x in range(c.x - r, c.x + r + 1):

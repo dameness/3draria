@@ -8,6 +8,7 @@ extends Node
 # baú um por vez (`chest_*`); mensagens do mundo (`notice`).
 # M5: conta = nome + senha do personagem (.plr em `root`/players/ no servidor, hash com sal); o cliente manda o personagem (`save_char`) e o
 # mapa (`save_map`), o servidor guarda; quem entra recebe o .plr no `welcome`. A senha do servidor vem de DRARIA_PASSWORD (server.gd).
+# Conexão que acaba: cliente → `_lost` (volta ao menu com o motivo); servidor → `_gone`, e corta quem fica STALE s sem mandar estado (`_kick`).
 const SLEEP_SPEED := 5.0       # = player.gd: a hora com todos dormindo
 
 enum { OFF, SERVER, CLIENT }
@@ -23,9 +24,11 @@ const RemotePlayer := preload("res://scripts/remote_player.gd")
 
 static var join := ""          # menu → jogo: endereço do servidor (a cena lê e limpa)
 static var login := {}         # menu → jogo: {nick, pass (do servidor), secret (do personagem)}
+static var error := ""         # jogo → menu: por que a conexão caiu ou foi recusada (o menu mostra na tela Multijogador)
 static var root := "user://server/"   # servidor: contas (players/) e cópias (backups/); separado de user://players/ para não aparecer no menu
 const CHAR_EVERY := 60.0       # cliente: personagem ao servidor (e 5 s depois de mudar o inventário)
 const MAP_EVERY := 300.0       # cliente: mapa explorado ao servidor (se mudou)
+const STALE := 60.0           # servidor: s sem estado de um jogador até a conexão dele ser cortada (aba escondida não roda; conexão morta não avisa)
 const MAP_MAX := 1500000       # ponytail: mapa comprimido maior que isso não é enviado (cabe no buffer de 4 MB); upgrade: mandar em pedaços
 
 @export var world: Node3D
@@ -67,6 +70,9 @@ var sent_flags := ""           # servidor: as flags do mundo da última vez que 
 var locks := {}                # servidor: baú (Vector3i) -> id de quem está com ele aberto
 var bag_tick := 0.0
 var bag_version := -1
+var stale := STALE             # (o teste encurta)
+var lost := false              # cliente: a conexão acabou (recusado ou caiu)
+var farewell := false          # cliente: o servidor avisou que vai parar (`bye`)
 
 
 func _ready() -> void:
@@ -149,10 +155,22 @@ func _freeze(on: bool) -> void:   # cliente esperando o mundo: jogador e inimigo
 		entities.process_mode = m
 
 
+# Recusado ou caiu: o mundo daqui não vale mais nada (nada é gravado). Volta ao menu, que mostra o motivo.
 func _lost(why: String) -> void:
+	if lost:
+		return   # (o fim da conexão depois de um `refuse` não troca o motivo)
+	lost = true
+	if farewell:
+		why = "o servidor reiniciou: entre de novo em um minuto"
 	player.say(why)
 	player.message_until = Time.get_ticks_msec() + 3600 * 1000   # fica na tela
 	waiting = false
+	welcomed = false   # nada mais vai ao servidor
+	pending = 0
+	_freeze(true)
+	if get_tree().current_scene == get_parent():   # (nos testes a cena é montada à mão e fica)
+		error = why
+		get_parent().get_node("HUD")._save_and_quit.call_deferred()
 
 
 # ---------- funil dos blocos ----------
@@ -264,23 +282,25 @@ func shot_fired(a: Node3D) -> void:
 @rpc("any_peer", "reliable")
 func hello(ver: String, who: String, look: Dictionary, auth: Dictionary) -> void:
 	var id := multiplayer.get_remote_sender_id()
-	if mode != SERVER:
+	if mode != SERVER or peers.has(id):
 		return
 	who = who.strip_edges()
 	var acct := {}
 	if ver != version:
-		acct.error = "versão diferente do servidor: atualize a página"
-	elif password != "" and auth.get("pass", "") != password:
+		acct.error = "versão diferente do servidor: atualize a página (Ctrl+Shift+R)"
+	elif password != "" and str(auth.get("pass", "")) != password:
 		acct.error = "senha do servidor errada"
-	elif who == "" or who.length() > 20 or who.validate_filename() == "":
+	elif who.length() > 20 or not who.is_valid_filename():
 		acct.error = "nome inválido"
-	elif peers.values().any(func(p): return p.name.to_lower() == who.to_lower()):
-		acct.error = "já há alguém com o nome " + who
 	else:
 		acct = _login(who, auth, look)
 	if acct.has("error"):
 		refuse.rpc_id(id, acct.error)
 		return
+	for o in peers.keys():   # o nome já está dentro e a senha conferiu: é o mesmo jogador voltando (a conexão antiga ficou presa); a nova vale
+		if peers[o].name.to_lower() == who.to_lower():
+			acct = peers[o].acct   # (igual ao arquivo: save_char grava os dois)
+			_kick(o, "entrou de outro lugar")
 	look = SaveGame.look_of(acct, who)
 	var body: Node3D = RemotePlayer.new()   # o alvo dos inimigos no servidor (sem modelo)
 	body.entities = entities
@@ -289,7 +309,7 @@ func hello(ver: String, who: String, look: Dictionary, auth: Dictionary) -> void
 	body.position = spawn
 	get_parent().add_child(body)
 	entities.remotes.append(body)
-	peers[id] = {"name": who, "look": look, "equip": [], "state": [], "view": 6, "center": Vector2i(-999, -999), "sent": {}, "queue": [], "body": body, "acct": acct}
+	peers[id] = {"name": who, "look": look, "equip": [], "state": [], "view": 6, "center": Vector2i(-999, -999), "sent": {}, "queue": [], "body": body, "acct": acct, "seen": Time.get_ticks_msec()}
 	_requeue(id, spawn)
 	var data := SaveGame.world_out(world, self, clock, "servidor")
 	data.chunks = {}   # os chunks vão aos poucos (_send_chunks)
@@ -387,6 +407,7 @@ func state(s: Array, view: int) -> void:
 	if mode != SERVER or not peers.has(id):
 		return
 	peers[id].state = s
+	peers[id].seen = Time.get_ticks_msec()
 	var b: Node3D = peers[id].body
 	_pose(b, s)
 	b.position = s[0]
@@ -719,12 +740,14 @@ func chest_ok(p: Vector3i, item: PackedInt32Array, count: PackedInt32Array) -> v
 	player.open_chest(world.chests[p], p)
 
 
+# keep = o baú continua aberto (send_char manda junto com o personagem: os dois ficam coerentes no servidor se o jogador cair).
 @rpc("any_peer", "reliable")
-func chest_put(p: Vector3i, item: PackedInt32Array, count: PackedInt32Array) -> void:
+func chest_put(p: Vector3i, item: PackedInt32Array, count: PackedInt32Array, keep := false) -> void:
 	var id := multiplayer.get_remote_sender_id()
 	if mode != SERVER or locks.get(p) != id:
 		return
-	locks.erase(p)
+	if not keep:
+		locks.erase(p)
 	if world.get_block(p.x, p.y, p.z) != Blocks.ids.chest or item.size() != count.size():
 		return
 	world.chests[p] = {"item": item, "count": count}
@@ -770,6 +793,9 @@ func send_char() -> void:   # cliente: o personagem vai ao servidor (a cada 60 s
 	char_due = 0
 	char_tick = CHAR_EVERY
 	pending += 1
+	var hud := get_parent().get_node_or_null("HUD")
+	if hud and hud.chest.has("pos"):   # baú aberto: o que saiu dele já está no inventário que vai agora
+		chest_put.rpc_id(1, hud.chest.pos, hud.chest.item, hud.chest.count, true)
 	save_char.rpc_id(1, SaveGame.player_out(player, char, key))
 
 
@@ -824,6 +850,26 @@ func saved() -> void:
 
 
 # ---------- servidor ----------
+
+func _kick(id: int, why: String) -> void:
+	refuse.rpc_id(id, why)
+	multiplayer.multiplayer_peer.disconnect_peer.call_deferred(id)   # (depois do quadro: o aviso sai antes)
+	_gone(id)
+
+
+# O servidor vai parar (server.gd): cada cliente manda o personagem e o mapa agora.
+func closing() -> void:
+	for id in peers:
+		bye.rpc_id(id)
+
+
+@rpc("authority", "reliable")
+func bye() -> void:
+	farewell = true
+	send_char()
+	send_map()
+	player.say("o servidor está reiniciando: volte em um minuto")
+
 
 func _gone(id: int) -> void:
 	for k in locks.keys():   # o baú que ele tinha aberto fica como estava
@@ -887,8 +933,12 @@ func _send_states() -> void:
 			states.rpc_id(id, list)
 	if clock_tick <= 0.0:
 		clock_tick = 1.0
-		for id in peers:
-			time_of_day.rpc_id(id, clock.time, clock.speed)
+		for id in peers.keys():
+			if Time.get_ticks_msec() - peers[id].seen > stale * 1000:
+				print(peers[id].name, " sem sinal: conexão cortada")
+				_kick(id, "sem sinal por muito tempo (a aba ficou escondida?): entre de novo")
+			else:
+				time_of_day.rpc_id(id, clock.time, clock.speed)
 
 
 func _send_foes() -> void:

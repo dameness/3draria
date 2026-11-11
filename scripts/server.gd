@@ -2,13 +2,15 @@ extends Node3D
 # Servidor dedicado (M3): .tools/godot --headless -- --server [porta] [arquivo.wld]
 # World sem malha (não há câmera), DayNight, Entities (inimigos, itens no chão; M4a) e Net; sem jogador nem HUD (Fx.muted: sem efeitos nem modelos). Mundo padrão: user://worlds/servidor.wld (criado e assado na primeira vez).
 # M5: salva o mundo a cada 5 min e ao encerrar, com uma cópia por dia (7 dias) do mundo e das contas em Net.root/backups/. Senha do servidor: variável DRARIA_PASSWORD.
-# ponytail: não tira chunk da memória (só os que alguém editou/visitou ficam; teto = o mundo, 472 MB); a gravação (~14 MB) bloqueia o quadro por um instante, upgrade: thread.
+# ponytail: a gravação (~14 MB) bloqueia o quadro por um instante, upgrade: thread.
 const SAVE_EVERY := 300.0
 const BACKUPS := 7
+const KEEP := 14          # chunks em volta de cada jogador que ficam na memória a cada gravação (inimigos somem a 64 blocos; visão máx. 16 → esses voltam por get_block)
 
 var path := ""
 var timer := SAVE_EVERY
 var stop_tick := 1.0
+var quit_at := 0          # ms: encerrando (os clientes foram avisados e têm 2 s para mandar o personagem)
 # Encerrar com calma: criar o arquivo Net.root/stop (o ExecStop do systemd faz isso e espera o processo sair). O Godot headless não entrega o SIGTERM ao script
 # (o processo morre direto, testado), então o SIGTERM seco perde até 5 min do mundo (as contas já estão em disco).
 
@@ -56,6 +58,10 @@ func start(world_path: String, port: int) -> void:
 	var net: Node = $Net
 	net.password = OS.get_environment("DRARIA_PASSWORD")
 	var err: Error = net.host(port)
+	if err != OK:   # porta ocupada: sair com erro (o systemd reinicia) em vez de ficar de pé sem escutar
+		push_error("não abriu a porta %d: %s" % [port, error_string(err)])
+		get_tree().quit(1)
+		return
 	print("servidor na porta %d (%s), mundo %s, versão %s, %s" % [port, error_string(err), world_path, net.version, "com senha" if net.password != "" else "SEM senha (defina DRARIA_PASSWORD)"])
 
 
@@ -64,10 +70,14 @@ func _process(delta: float) -> void:
 	stop_tick -= delta
 	if stop_tick <= 0.0:
 		stop_tick = 1.0
-		if FileAccess.file_exists($Net.root + "stop") and path != "":
+		if FileAccess.file_exists($Net.root + "stop") and path != "" and quit_at == 0:
 			DirAccess.remove_absolute($Net.root + "stop")
-			save()
-			get_tree().quit()
+			$Net.closing()
+			quit_at = Time.get_ticks_msec() + 2000
+	if quit_at != 0 and Time.get_ticks_msec() >= quit_at:
+		quit_at = 0
+		save()
+		get_tree().quit()
 	if timer <= 0.0:
 		save()
 
@@ -84,6 +94,7 @@ func save() -> void:
 		return
 	_backup()
 	var err := SaveGame._write(path, SaveGame.world_out($World, $Net, $DayNight, path.get_file().get_basename()))
+	$World.trim($Entities.remotes.map(func(p): return $Net._chunk_of(p.position.x, p.position.z)), KEEP)   # (não há câmera para tirar da memória os chunks longe de todos)
 	print("mundo salvo (%s)" % error_string(err))
 
 
