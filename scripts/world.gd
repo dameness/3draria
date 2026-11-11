@@ -134,7 +134,11 @@ func set_block(x: int, y: int, z: int, id: int, wake := true) -> void:
 		return   # cliente: chunk que ainda não chegou
 	var lx := posmod(x, C)
 	var lz := posmod(z, C)
-	var reach := maxi(Blocks.light[id], Blocks.light[chunks[c][lx + lz * C + y * C * C]])   # tocha (nova ou tirada): a luz alcança os chunks em volta
+	var old: int = chunks[c][lx + lz * C + y * C * C]
+	if old != id and (old == Blocks.ids.chest or old == Blocks.ids.tombstone):   # o baú/lápide saiu: conteúdo e texto vão junto (em todos os lados da rede)
+		chests.erase(Vector3i(x, y, z))
+		tombs.erase(Vector3i(x, y, z))
+	var reach := maxi(Blocks.light[id], Blocks.light[old])   # tocha (nova ou tirada): a luz alcança os chunks em volta
 	chunks[c][lx + lz * C + y * C * C] = id
 	if y + 1 < H and Blocks.shape[chunks[c][lx + lz * C + (y + 1) * C * C]] == "plant" and not Blocks.solid[id]:
 		chunks[c][lx + lz * C + (y + 1) * C * C] = 0  # planta sem chão some

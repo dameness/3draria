@@ -4,7 +4,9 @@ extends Node
 # cabem no mesmo processo (tests/net.gd). Quem manda: o servidor nos blocos, líquidos, mudas, espalhamento e hora; o cliente no próprio
 # personagem e no dano que causa. Blocos passam pelo funil world.set_block → block_changed (um lote por quadro).
 # M4a: inimigos só no servidor (o cliente vê bonecos: enemy.puppet; o golpe vira `hit`, o dano no jogador vem por `hurt`).
-# O servidor ainda não salva (M5).
+# M4b: o que mexe no mundo (chefe, orbe, larva, Velho) o cliente pede (`ask`); as flags do mundo vão a todos quando mudam (`flags`);
+# baú um por vez (`chest_*`); mensagens do mundo (`notice`). O servidor ainda não salva (M5).
+const SLEEP_SPEED := 5.0       # = player.gd: a hora com todos dormindo
 
 enum { OFF, SERVER, CLIENT }
 const PORT := 8070
@@ -45,6 +47,10 @@ var next_id := 0
 var drops := {}                # id -> item_drop (servidor: os de verdade; cliente: as cópias)
 var drops_out: Array = []      # nascidos neste quadro (cliente: a pedir ao servidor; servidor: a anunciar)
 var foe_tick := 0.0
+var sent_flags := ""           # servidor: as flags do mundo da última vez que foram (str), para mandar só quando mudam
+var locks := {}                # servidor: baú (Vector3i) -> id de quem está com ele aberto
+var bag_tick := 0.0
+var bag_version := -1
 
 
 func _ready() -> void:
@@ -249,6 +255,9 @@ func hello(ver: String, who: String, look: Dictionary) -> void:
 	var data := SaveGame.world_out(world, self, clock, "servidor")
 	data.chunks = {}   # os chunks vão aos poucos (_send_chunks); o mapa explorado é por jogador (M5)
 	data.erase("map")
+	data.erase("test")   # (o servidor não abre mundo de teste; o painel F9 é só de um jogador)
+	data.tombs = world.tombs
+	sent_flags = ""      # as flags vão de novo (o boss_max entra só por elas)
 	welcome.rpc_id(id, data)
 	for k in drops:
 		_announce(id, drops[k])
@@ -267,6 +276,7 @@ func refuse(why: String) -> void:
 @rpc("authority", "reliable")
 func welcome(data: Dictionary) -> void:
 	SaveGame.world_in(world, player, clock, data)
+	world.tombs = data.tombs
 	welcomed = true
 	player.position = Vector3(player.bed) + Vector3(0.5, 0, 0.5) if player.bed != Vector3i.MAX else player.spawn   # home() só depois dos chunks (sem eles a cama "sumiria")
 	_send_state()
@@ -285,7 +295,7 @@ func blocks(a: PackedInt32Array) -> void:
 		if not peers.has(id):
 			return
 		from = id
-		for i in range(0, a.size(), 4):
+		for i in range(0, a.size(), 4):   # (world.set_block tira o conteúdo do baú/lápide que sai, aqui e em cada cliente)
 			world.set_block(a[i], a[i + 1], a[i + 2], a[i + 3])
 		from = 0
 	elif id == 1:
@@ -336,6 +346,7 @@ func _pose(r: Node3D, s: Array) -> void:
 	r.swimming = s[4] & 2 != 0
 	r.dead = 1.0 if s[4] & 4 else 0.0
 	r.ghost = s[4] & 8 != 0
+	r.sleeping = s[4] & 16 != 0
 	r.hand = s[5]
 	r.cooldown = s[6]
 
@@ -429,6 +440,8 @@ func foe_states(list: Array) -> void:
 				EnemyModel.set_phase(e.model, ph)
 			if e.def.ai == "brain":
 				e.set_ghost(ph == 1)
+		if f[5] & 16:
+			entities.boss = e   # a barra de vida do chefe (hud) lê entities.boss / boss_life() / boss_max
 		e.debuffs.clear()
 		if f[5] & 4:
 			e.debuffs.poisoned = 1.0
@@ -540,9 +553,145 @@ func shot(what: String, pos: Vector3, vel: Vector3) -> void:
 	entities.add_child(a)
 
 
+# ---------- mundo (M4b) ----------
+
+func announce(text: String) -> void:   # servidor: entities.say
+	for id in peers:
+		notice.rpc_id(id, text)
+
+
+@rpc("authority", "reliable")
+func notice(text: String) -> void:
+	player.say(text)
+
+
+func _flags() -> Dictionary:
+	return {"orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "eoc_down": world.eoc_down, "meteor_due": world.meteor_due,
+		"skeletron_down": world.skeletron_down, "hardmode": world.hardmode, "npcs": world.npcs, "homes": world.homes, "boss_max": entities.boss_max}
+
+
+# As flags do mundo vão a todos quando mudam (comparadas a 15 Hz); a hora acelera só com todos dormindo e sem chefe.
+func _send_flags() -> void:
+	var f := _flags()
+	if str(f) != sent_flags:
+		sent_flags = str(f)
+		for id in peers:
+			flags.rpc_id(id, f)
+	var all_asleep := not peers.is_empty() and peers.values().all(func(p): return p.body.sleeping)
+	var speed := SLEEP_SPEED if all_asleep and entities.boss == null else 1.0
+	if speed != clock.speed:
+		clock.speed = speed
+		clock_tick = 0.0   # a hora nova vai já
+
+
+@rpc("authority", "reliable")
+func flags(f: Dictionary) -> void:
+	world.orbs_broken = f.orbs
+	world.evil_boss_down = f.evil_down
+	world.eoc_down = f.eoc_down
+	world.meteor_due = f.meteor_due
+	world.skeletron_down = f.skeletron_down
+	world.npcs = f.npcs
+	world.homes = f.homes
+	entities.boss_max = f.boss_max
+	if f.hardmode and not world.hardmode:   # o passe do hardmode é determinístico: refeito aqui nos chunks que já chegaram (os próximos vêm prontos)
+		world.start_hardmode()
+
+
+# Pedidos do cliente que mexem no mundo (entities._relay). `who` = o alvo do servidor que representa quem pediu.
+@rpc("any_peer", "reliable")
+func ask(what: String, a: Array) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if mode != SERVER or not peers.has(id):
+		return
+	var who: Node3D = peers[id].body
+	match what:
+		"summon":
+			if not entities.boss_names().has(a[0]):
+				return
+			if entities.boss:
+				notice.rpc_id(id, "já há um chefe")
+			else:
+				entities.summon(a[0], who)
+		"orb":
+			if a[0] in [Blocks.ids.shadow_orb, Blocks.ids.crimson_heart]:
+				entities.orb_broken(a[0], a[1])
+		"larva":
+			entities.larva_broken(who)
+		"old_man":
+			var e: Node3D = foes.get(a[0])
+			if is_instance_valid(e) and e.def.talk == "skeletron" and clock.is_night() and entities.boss == null:
+				entities.curse_old_man(e)
+
+
+# Baú (decisão 7): um jogador por vez. Abrir = pedir; o servidor tranca e manda o conteúdo; fechar devolve e destranca.
+@rpc("any_peer", "reliable")
+func chest_ask(p: Vector3i) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if mode != SERVER or not peers.has(id) or world.get_block(p.x, p.y, p.z) != Blocks.ids.chest:
+		return
+	if locks.get(p, id) != id:
+		notice.rpc_id(id, "%s está com o baú aberto" % peers[locks[p]].name)
+		return
+	locks[p] = id
+	var box: Dictionary = world.chest_at(p)
+	chest_ok.rpc_id(id, p, box.item, box.count)
+
+
+@rpc("authority", "reliable")
+func chest_ok(p: Vector3i, item: PackedInt32Array, count: PackedInt32Array) -> void:
+	world.chests[p] = {"item": item, "count": count, "pos": p}
+	player.open_chest(world.chests[p], p)
+
+
+@rpc("any_peer", "reliable")
+func chest_put(p: Vector3i, item: PackedInt32Array, count: PackedInt32Array) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if mode != SERVER or locks.get(p) != id:
+		return
+	locks.erase(p)
+	if world.get_block(p.x, p.y, p.z) != Blocks.ids.chest or item.size() != count.size():
+		return
+	world.chests[p] = {"item": item, "count": count}
+	for o in peers:
+		if o != id:
+			chest_set.rpc_id(o, p, item, count)
+
+
+@rpc("authority", "reliable")
+func chest_set(p: Vector3i, item: PackedInt32Array, count: PackedInt32Array) -> void:   # para os outros: o baú não pode ser quebrado com coisa dentro
+	world.chests[p] = {"item": item, "count": count}
+
+
+@rpc("any_peer", "reliable")
+func tomb(p: Vector3i, text: String) -> void:
+	if mode == SERVER:
+		var id := multiplayer.get_remote_sender_id()
+		if not peers.has(id):
+			return
+		for o in peers:
+			if o != id:
+				tomb.rpc_id(o, p, text)
+	world.tombs[p] = text
+
+
+# O inventário do jogador, para os habitantes que chegam por ele (Merchant, Demolitionist, Arms Dealer).
+@rpc("any_peer", "reliable")
+func bag(item: PackedInt32Array, ammo: PackedInt32Array, coin: PackedInt32Array) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if mode == SERVER and peers.has(id) and coin.size() == 4 and item.size() <= Inventory.SIZE and ammo.size() <= Inventory.AMMO:
+		var inv: Inventory = peers[id].body.inv
+		inv.item = item
+		inv.ammo = ammo
+		inv.coin = coin
+
+
 # ---------- servidor ----------
 
 func _gone(id: int) -> void:
+	for k in locks.keys():   # o baú que ele tinha aberto fica como estava
+		if locks[k] == id:
+			locks.erase(k)
 	if peers.has(id):
 		entities.remotes.erase(peers[id].body)
 		peers[id].body.queue_free()
@@ -616,7 +765,7 @@ func _send_foes() -> void:
 			for e in entities.enemies:
 				if not e.display and e.position.distance_to(at) < FOE_NEAR:
 					var bits := (1 if e.mode == "dash" else 0) | (2 if e.phase == 2 else 0) | (4 if e.debuffs.has("poisoned") else 0) | (8 if e.debuffs.has("on_fire") else 0)
-					list.append([e.net_id, e.def.name, e.position, e.rotation.y, e.hp, bits])
+					list.append([e.net_id, e.def.name, e.position, e.rotation.y, e.hp, bits | (16 if e == entities.boss else 0)])
 			if not list.is_empty():
 				foe_states.rpc_id(id, list)
 
@@ -625,8 +774,13 @@ func _send_foes() -> void:
 
 func _send_state() -> void:
 	var p := player
-	var flags := (1 if p.on_floor else 0) | (2 if p.swimming else 0) | (4 if p.dead > 0 else 0) | (8 if p.ghost else 0)
+	var flags := (1 if p.on_floor else 0) | (2 if p.swimming else 0) | (4 if p.dead > 0 else 0) | (8 if p.ghost else 0) | (16 if p.sleeping else 0)
 	state.rpc_id(1, [p.position, p.rotation.y, p.pitch, p.velocity, flags, p.held(), p.cooldown, p.hp, p.max_hp, p.mana, p.mana_cap()], world.render_distance)
+	bag_tick -= RATE
+	if p.inv.version != bag_version and bag_tick <= 0.0:   # o que os habitantes olham para chegar (moedas, explosivo, bala); no máximo 1 por segundo
+		bag_tick = 1.0
+		bag_version = p.inv.version
+		bag.rpc_id(1, p.inv.item, p.inv.ammo, p.inv.coin)
 	if p.inv.equip != worn:
 		worn = p.inv.equip.duplicate()
 		equip.rpc_id(1, 0, Array(worn).map(func(i): return Items.names[i] if i != -1 else ""))
@@ -656,6 +810,7 @@ func _process(delta: float) -> void:
 		if tick <= 0.0:
 			tick = RATE
 			_send_states()
+			_send_flags()
 		return
 	if multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
 		return

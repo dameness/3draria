@@ -18,6 +18,7 @@ var on_floor := true
 var swimming := false
 var dead := 0.0            # > 0: morto esperando (não é alvo de item; ainda conta para inimigos, como o player.gd)
 var ghost := false
+var sleeping := false      # deitado na cama (servidor: a hora só acelera com todos dormindo)
 var hp := 100.0
 var max_hp := 100
 var mana := 20.0

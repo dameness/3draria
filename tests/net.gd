@@ -144,6 +144,60 @@ func _run() -> void:
 	check(await until(func(): return a.get_node("Entities").get_children().any(is_copy.bind("stinger"))), "ferrão do servidor aparece em A")
 	check(await until(func(): return pa.hp < hp1), "o ferrão (simulado no servidor) fere A")
 
+	# M4b: chefe invocado por A nasce no servidor; os dois veem o boneco, a barra e a mensagem
+	a.get_node("Entities").summon("king_slime", pa)
+	check(await until(func(): return se.boss != null and se.boss.def.name == "king_slime"), "A invoca → o chefe nasce no servidor")
+	var ae: Node3D = a.get_node("Entities")
+	var be: Node3D = b.get_node("Entities")
+	check(await until(func(): return ae.boss != null and be.boss != null and be.boss_max == se.boss_max and be.boss_life() > 0), "A e B veem o chefe com a barra de vida")
+	check(pb.message.contains("despertou"), "B recebe a mensagem do chefe")
+	ae.summon("king_slime", pa)
+	check(await until(func(): return pa.message == "já há um chefe"), "segundo chefe: recusado")
+	se.clear_enemies()
+	# Flags do mundo e hardmode
+	sw.eoc_down = true
+	sw.npcs["merchant"] = true
+	check(await until(func(): return aw.eoc_down and bw.npcs.has("merchant")), "flags do mundo chegam aos dois")
+	sw.start_hardmode()
+	check(await until(func(): return aw.hardmode and bw.hardmode), "hardmode chega aos dois")
+	# Orbe quebrado por A: o servidor conta (e solta o prêmio); lápide de A aparece em B; bala no inventário de A traz o Arms Dealer
+	ae.orb_broken(Blocks.ids.shadow_orb, pa.position)
+	check(await until(func(): return sw.orbs_broken == 1 and bw.orbs_broken == 1 and aw.orbs_broken == 1), "orbe: o servidor conta e a flag volta aos dois")
+	pa.char_name = "A"
+	pa.leave_tombstone()
+	check(await until(func(): return bw.tombs.values().has("A morreu") and sw.tombs.values().has("A morreu")), "lápide de A: o texto chega ao servidor e a B")
+	pa.inv.add(Items.ids.musket_ball, 10)
+	check(await until(func(): return sw.npcs.has("arms_dealer") and bw.npcs.has("arms_dealer")), "bala com A → o Arms Dealer pode chegar (o servidor vê o inventário)")
+	# Baú: um por vez; o que A guarda B vê
+	var cp := Vector3i(x + 2, y + 1, z + 2)
+	sw.set_block(cp.x, cp.y, cp.z, Blocks.ids.chest)
+	check(await until(func(): return aw.get_block(cp.x, cp.y, cp.z) == Blocks.ids.chest), "baú chega a A")
+	var ahud: Node = a.get_node("HUD")
+	an.chest_ask.rpc_id(1, cp)
+	check(await until(func(): return ahud.chest.get("pos") == cp and pa.inventory_open), "A abre o baú")
+	bn.chest_ask.rpc_id(1, cp)
+	check(await until(func(): return pb.message.contains("baú aberto")), "B não abre enquanto A está nele")
+	ahud.chest.item[0] = Items.ids.gel
+	ahud.chest.count[0] = 7
+	pa.set_inventory(false)
+	check(await until(func(): return bw.chests.has(cp) and bw.chests[cp].item[0] == Items.ids.gel and not sn.locks.has(cp)), "A fecha → destranca e B vê o gel")
+	bn.chest_ask.rpc_id(1, cp)
+	check(await until(func(): return b.get_node("HUD").chest.get("pos") == cp and b.get_node("HUD").chest.count[0] == 7), "B abre depois e acha o gel")
+	pb.set_inventory(false)
+	# Sono: a hora só acelera com todos dormindo
+	var bed_a := Vector3i(x - 2, y + 1, z + 4)
+	var bed_b := Vector3i(x + 2, y + 1, z + 4)
+	sw.set_block(bed_a.x, bed_a.y, bed_a.z, Blocks.ids.bed)
+	sw.set_block(bed_b.x, bed_b.y, bed_b.z, Blocks.ids.bed)
+	check(await until(func(): return aw.get_block(bed_a.x, bed_a.y, bed_a.z) == Blocks.ids.bed and bw.get_block(bed_b.x, bed_b.y, bed_b.z) == Blocks.ids.bed), "camas chegam")
+	pa.use_bed(bed_a)
+	await create_timer(0.3).timeout
+	check(pa.sleeping and srv.get_node("DayNight").speed == 1.0, "só A dormindo: a hora não acelera")
+	pb.use_bed(bed_b)
+	check(await until(func(): return srv.get_node("DayNight").speed > 1.0 and b.get_node("DayNight").speed > 1.0), "os dois dormindo: acelera (e chega aos clientes)")
+	pa.wake_up()
+	pb.wake_up()
+
 	# Relógio: o do servidor manda
 	srv.get_node("DayNight").time = 500.0
 	check(await until(func(): return absf(b.get_node("DayNight").time - 500.0) < 5.0), "B segue a hora do servidor")

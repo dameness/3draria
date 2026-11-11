@@ -112,10 +112,28 @@ func _cloud_tick(delta: float) -> void:
 			spawn_projectile("blood_drop", cloud.position + Vector3(x, -0.5, z), Vector3.DOWN, 6.0, cloud_damage, 0.0)
 
 
-# Mensagem na tela do jogador local. ponytail: no servidor some (M4b: avisos do mundo a todos por RPC).
+# Mensagem na tela do jogador local; no servidor vai a todos (net.notice).
 func say(text: String) -> void:
 	if player:
 		player.say(text)
+	elif net:
+		net.announce(text)
+
+
+# Cliente de rede: o que mexe no mundo (chefe, orbe, larva, Velho) o servidor faz (net.ask). true = foi pedido.
+func _relay(what: String, args: Array) -> bool:
+	if net and net.mode == net.CLIENT:
+		net.ask.rpc_id(1, what, args)
+		return true
+	return false
+
+
+# Item invocador (o jogador já conferiu noite/chefe e gastou o item).
+func summon(n: String, who: Node3D) -> void:
+	if _relay("summon", [n]):
+		return
+	var b := spawn_boss(n, who)
+	say("%s despertou!" % Items.title(b.def.name))
 
 
 # Abre/fecha a porta em p (e as metades de cima/baixo): o jogador e os habitantes.
@@ -472,16 +490,21 @@ func talk(e: Node3D) -> void:
 	elif e.def.talk == "skeletron":
 		if not clock.is_night():
 			say("O Velho: \"Volte à noite... se tiver coragem.\"")
-		elif boss == null:
-			var at: Vector3 = e.position
-			remove_enemy(e)
-			old_man = null
-			var b := spawn_boss("skeletron")
-			b.position = at + Vector3.UP * 3.0
-			for o in enemies:
-				if o.follow == b:
-					o.position = at + Vector3.UP * 3.0
-			say("O Velho: \"Você foi amaldiçoado!\"")
+		elif boss == null and not _relay("old_man", [e.net_id]):
+			curse_old_man(e)
+
+
+# O Velho amaldiçoado vira o Skeletron.
+func curse_old_man(e: Node3D) -> void:
+	var at: Vector3 = e.position
+	remove_enemy(e)
+	old_man = null
+	var b := spawn_boss("skeletron", nearest_player(at))
+	b.position = at + Vector3.UP * 3.0
+	for o in enemies:
+		if o.follow == b:
+			o.position = at + Vector3.UP * 3.0
+	say("O Velho: \"Você foi amaldiçoado!\"")
 
 
 # Corações e estrelas de quem morre (wiki Heart e Star): só inimigos que soltam moedas, e só se o jogador precisa. Estrela: 13/24 com a mana
@@ -689,14 +712,18 @@ func boss_life() -> int:
 
 
 # A larva da colmeia quebrada chama a Queen Bee (wiki: qualquer larva, a qualquer hora, um chefe por vez).
-func larva_broken() -> void:
+func larva_broken(near: Node3D = null) -> void:
+	if _relay("larva", []):
+		return
 	if boss == null:
-		spawn_boss("queen_bee")
+		spawn_boss("queen_bee", near)
 		say("Queen Bee despertou!")
 
 
 # Um orbe quebrado (Shadow Orb / Crimson Heart): a cada 3º acorda o chefe do bioma.
 func orb_broken(id: int, at := Vector3.ZERO) -> void:
+	if _relay("orb", [id, at]):
+		return
 	world.orbs_broken += 1
 	var gun: String = "musket" if id == Blocks.ids.shadow_orb else "the_undertaker"   # wiki: a 1ª orbe sempre dá a arma + 100 balas; nas outras 20%
 	if world.orbs_broken == 1 or rng.randf() < 0.2:
@@ -715,7 +742,7 @@ func orb_broken(id: int, at := Vector3.ZERO) -> void:
 	elif boss == null:
 		var n := "eater_of_worlds" if id == Blocks.ids.shadow_orb else "brain_of_cthulhu"
 		if defs.any(func(d): return d.name == n):
-			spawn_boss(n)
+			spawn_boss(n, nearest_player(at))
 			say("%s despertou!" % Items.title(n))
 
 

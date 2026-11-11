@@ -28,6 +28,10 @@ func start(path: String, port: int) -> void:
 		b.finish()
 	var net: Node = $Net
 	SaveGame.load_world($World, net, $DayNight, path)
+	if $World.test_world:   # o mundo de teste e o painel F9 são de um jogador só
+		push_error("mundo de teste não abre no servidor: " + path)
+		get_tree().quit(1)
+		return
 	if net.spawn == Vector3.ZERO:
 		var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2
 		net.spawn = Vector3(mid + 0.5, $World.surface_y(mid, mid), mid + 0.5)

@@ -239,7 +239,7 @@ func set_menu(open: bool) -> void:
 	menu_open = open
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if open else Input.MOUSE_MODE_CAPTURED
 	if is_inside_tree():
-		get_tree().paused = open   # pausa de verdade: mundo, inimigos e relógio param (o HUD continua vivo)
+		get_tree().paused = open and world.net == null   # pausa de verdade: mundo, inimigos e relógio param (o HUD continua vivo); em rede o mundo não para
 
 
 func set_inventory(open: bool) -> void:
@@ -336,7 +336,8 @@ func _physics_process(delta: float) -> void:
 		if k.call(KEY_W) + k.call(KEY_A) + k.call(KEY_S) + k.call(KEY_D) + k.call(KEY_SPACE) > 0.0 or world.get_block(bed_at.x, bed_at.y, bed_at.z) != Blocks.ids.bed:
 			wake_up()
 		else:
-			clock.speed = SLEEP_SPEED if entities.boss == null else 1.0
+			if world.authority:   # em rede quem decide é o servidor (só com todos dormindo)
+				clock.speed = SLEEP_SPEED if entities.boss == null else 1.0
 			zzz -= delta
 			if zzz <= 0.0:
 				zzz = 1.3
@@ -1010,7 +1011,8 @@ func use_bed(p: Vector3i, only_spawn := false) -> void:
 func wake_up() -> void:
 	if sleeping:
 		sleeping = false
-		clock.speed = 1.0
+		if world.authority:
+			clock.speed = 1.0
 		position.y -= 0.35
 
 
@@ -1029,6 +1031,8 @@ func leave_tombstone() -> void:
 						var at := Vector3i(c.x + dx, y, c.z + dz)
 						world.set_block(at.x, at.y, at.z, Blocks.ids.tombstone)
 						world.tombs[at] = "%s morreu" % char_name
+						if world.net:
+							world.net.tomb.rpc_id(1, at, world.tombs[at])
 						Fx.puff(entities, Vector3(at) + Vector3(0.5, 0.5, 0.5), Color("#9a9aa0"), 14)
 						Sfx.play(entities, "break", Vector3(at) + Vector3(0.5, 0.5, 0.5), -2.0, 0.7)
 						return
@@ -1432,9 +1436,8 @@ func summon(d: Dictionary) -> void:
 	elif entities.boss:
 		say("já há um chefe")
 	else:
-		var b: Node3D = entities.spawn_boss(d.summon, self)
 		inv.take_one(hand())
-		say("%s despertou!" % Items.title(b.def.name))
+		entities.summon(d.summon, self)
 
 
 # Bumerangue (wiki): vai, volta e ferve cada inimigo na ida e na volta; só um no ar por vez, e o item não se gasta.
@@ -1548,12 +1551,10 @@ func break_target() -> void:
 		shake = maxf(shake, 0.3)
 		return
 	world.set_block(p.x, p.y, p.z, 0)
-	world.chests.erase(p)
-	world.tombs.erase(p)
 	if b == Blocks.ids.shadow_orb or b == Blocks.ids.crimson_heart:
 		entities.orb_broken(b, Vector3(p) + Vector3(0.5, 0.2, 0.5))
 	elif b == Blocks.ids.bee_larva:
-		entities.larva_broken()
+		entities.larva_broken(self)
 	mine_damage = 0.0
 	mine_pos = Vector3i(-1, -1, -1)
 	if Items.drop[b] != -1:
@@ -1584,9 +1585,10 @@ func interact() -> void:
 	elif target.is_empty():
 		return
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chest:
-		set_inventory(true)   # o baú abre o inventário com o painel do baú
-		Sfx.play(entities, "place", Vector3(target.pos) + Vector3.ONE * 0.5, -6.0, 1.6)
-		get_parent().get_node("HUD").open_chest(world.chest_at(target.pos))
+		if world.net:   # rede: o servidor tranca o baú e manda o conteúdo (net.chest_ok abre o painel)
+			world.net.chest_ask.rpc_id(1, target.pos)
+		else:
+			open_chest(world.chest_at(target.pos), target.pos)
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) in [Blocks.door_closed, Blocks.door_open]:
 		toggle_door(target.pos)
 	elif world.get_block(target.pos.x, target.pos.y, target.pos.z) == Blocks.ids.chair:
@@ -1692,6 +1694,12 @@ func _ride(delta: float, axis: float, jump: bool) -> void:
 
 
 # Abre ou fecha a porta em p (e a que está em cima ou embaixo, para o vão de 2 blocos). A aberta não tem colisão; as duas são parede na moradia.
+func open_chest(box: Dictionary, p: Vector3i) -> void:
+	set_inventory(true)   # o baú abre o inventário com o painel do baú
+	Sfx.play(entities, "place", Vector3(p) + Vector3.ONE * 0.5, -6.0, 1.6)
+	get_parent().get_node("HUD").open_chest(box)
+
+
 func toggle_door(p: Vector3i) -> void:
 	entities.toggle_door(p)
 
