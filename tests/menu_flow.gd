@@ -88,7 +88,10 @@ func _process(_delta: float) -> bool:
 		5:
 			type_name("Mundo 1")
 		6:
+			if scene.baker != null:   # o mundo novo está sendo assado (barra de progresso na tela)
+				return false
 			shot("3_mundos")
+			check(not Baker.needs(SaveGame.list(SaveGame.worlds_dir)[0].path), "o mundo criado pelo menu já sai assado")
 			check(SaveGame.list(SaveGame.worlds_dir).size() == 1, "mundo criado pelo menu")
 			scene.play(SaveGame.list(SaveGame.worlds_dir)[0].path)
 		7:

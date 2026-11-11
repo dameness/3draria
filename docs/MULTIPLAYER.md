@@ -74,21 +74,6 @@ Feito (ver "Estado"). Falta só o **portão**: o dono abre `build/web/` no Chrom
 parado e andando. Abaixo de ~40 fps: parar e decidir (reduzir distância padrão no Web, ou cliente nativo com o mesmo servidor;
 as etapas M1–M6 não mudam).
 
-### M1 — Mundo assado + save em dicionários
-- `SaveGame`: separar `player_out(player) -> Dictionary` / `player_in(player, data)` e `world_out` / `world_in` do acesso a
-  arquivo (a rede reusa os dicionários). Save **v3**; ler v2 e converter.
-- `world.packed`: `Vector2i -> bytes zstd` de **todos** os chunks. `get_block`: sem o chunk na memória, descomprime de
-  `packed`; só gera se não houver (mundo de teste e testes continuam sem assar). Chunk editado que sai da memória volta
-  comprimido para `packed`. O save grava `packed` + os carregados.
-- Assar na criação do mundo (menu com barra de progresso, `WorkerThreadPool`); mundo v2 é assado com o gerador atual na
-  primeira carga (é o que ele já mostraria hoje).
-- Tirar do gerador o que é consultado em jogo e gravar no `.wld`: posições e tipo dos baús especiais, entrada do dungeon.
-  Listar os outros usos (`grep "gen\." scripts/`) e decidir um a um: assar ou aceitar (biomas por raio/ângulo: aceitar e
-  anotar "mudou o desenho dos biomas → mundo novo").
-- `start_hardmode`: passar por todos os chunks de `packed` (medir o tempo; em thread se passar de 2 s).
-- Teste: assar um mundo pequeno, trocar o gerador (outra seed) e conferir que os blocos carregados não mudam; ida e volta
-  de `world_out`/`world_in` e `player_out`/`player_in`.
-
 ### M2 — Vários jogadores, ainda sem rede (refatoração pura)
 A etapa mais delicada: mexe em IA e spawn sem mudar o comportamento de um jogador. **Os 81 testes atuais passam sem editar.**
 - `entities.players: Array` (um jogador: `[player]`) + `entities.nearest_player(pos)`; cada inimigo guarda o seu alvo.
@@ -201,7 +186,7 @@ Extra por etapa, colado depois do prompt:
 - **M6:** `Não tenho como te dar acesso à VPS: entregue scripts que eu rodo e um DEPLOY.md de copiar e colar.`
 
 ## Estado
-- [x] M0 (falta o FPS do dono) · [ ] M1 · [ ] M2 · [ ] M3 · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
+- [x] M0 (falta o FPS do dono) · [x] M1 · [ ] M2 · [ ] M3 · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
 - **M0 — decisões e armadilhas:**
   - `export_presets.cfg` agora é versionado (preset Web, threads ligadas). Export: `scripts/export-web.sh` (templates por Range
     do .tpz: ~20 MB em vez de 1,2 GB) → `build/web/` (63 MB: wasm 38 + pck 26; `build/` tem `.gdignore` e está no `.gitignore`).
@@ -219,3 +204,22 @@ Extra por etapa, colado depois do prompt:
   - Sobrou/não verificado: Tab, F9–F11 e Ctrl+W real (Playwright não os alcança); FPS no hardware do dono; Safari não tentado.
     Ícones das casas de Moedas/Munição variaram entre execuções nos prints do Web (vi cobre/flecha/ouro): olhar se persistir no PC do dono.
   - `ponytail:` o teste leva ~3 min (mundo novo gera em wasm sobre CPU de software); não entra no `tests/run.gd`.
+- **M1 (feita):**
+  - **Formato v3.** `.wld` = todos os chunks zstd em `chunks` (+ `baked`, `chest_kinds`, `dungeon_entrance`); `.plr` não mudou de formato.
+    `SaveGame._read` aceita v2 e v3 (`OLDEST`); sempre grava v3. Dicionários sem arquivo: `player_out(player, old, world_key)` /
+    `player_in(player, data, world_key)` / `world_out(world, player, clock, name)` / `world_in(...)`. A rede (M3) usa estes.
+  - **`world.packed`** (`Vector2i -> zstd`). `world.unpack(c)` = packed ou, sem ele, o gerador (thread-safe: o job da fila leva os bytes).
+    `world.edited` agora significa "sujo": `flush_edited()` recomprime em `packed` (no save e quando o chunk sai da memória em `_recenter`).
+    Mundo sem assar (mundo de teste, testes) continua gerando sob demanda: não há flag a checar nos chamadores.
+  - **`scripts/baker.gd`** (`Baker.new(path, area)` → `start()` → `done()`/`progress()` → `finish()`): gera os chunks que faltam em
+    `WorkerThreadPool`, mantém os editados de um save v2, anota o tipo dos baús (`world.chest_kinds`, via `WorldGen.chest_kind`) e a
+    `dungeon_entrance`, grava v3. O menu assa ao criar o mundo e ao jogar um mundo v2 (`menu.gd: bake_then`, barra de progresso).
+    `Baker.needs(path)` é falso para o mundo de teste. **O servidor (M3) deve chamar o mesmo Baker** ao criar mundo, num laço com `OS.delay_msec`.
+  - **Medido (nesta máquina, 4 núcleos que paralelizam mal):** assar o mundo todo = 119 s, arquivo 13,6 MB. `start_hardmode` sobre o packed = 2,3 s
+    (bloqueia o quadro uma vez; `ponytail:` no código, virar job se incomodar no PC do dono).
+  - **O que o gerador ainda decide em jogo (aceito, anotar "mudou o desenho → mundo novo")**: biomas do clima e dos spawns (`*_weight`, `evil`,
+    `entities.gd`/`day_night.gd`), `gen.tree` (muda), `hardmode_pass`, `sky_islands`/`evil_center` do painel F9 (só mundo de teste). O `WorldGen.new(seed)`
+    ainda roda ao carregar (só o plano da seed, sem gerar chunks).
+  - **Baú colocado pelo jogador** em mundo assado sorteia pela altura (`Loot.layer_of`); antes, dentro do dungeon/mar, saía loot dessas tabelas.
+  - Armadilha: `Baker` lê `Blocks`/`Loot` (precisam estar carregados) e classe nova pede `.tools/godot --headless --import`.
+  - Sobrou: nada da M1. Mundo v2 existente **precisa assar uma vez** (o menu faz sozinho, ~2 min); sem isso ele joga como antes.

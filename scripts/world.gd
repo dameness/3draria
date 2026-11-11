@@ -44,7 +44,10 @@ var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do 
 var spread := {}     # Vector3i -> segundos até a grama do mal tentar contaminar um vizinho (a colocada e a que se espalhou; vai no save)
 var saplings := {}   # Vector3i -> segundos até crescer; só as plantadas (vai no save)
 var map_img := Image.create(WorldGen.SIZE, WorldGen.SIZE, false, Image.FORMAT_RGBA8)   # mapa explorado (minimap.gd; alfa 0 = não visto); vai no save
-var edited := {}    # Vector2i -> true; chunks alterados pelo jogador (o save guarda só estes)
+var packed := {}    # Vector2i -> chunk comprimido (zstd): o mundo assado (Baker) e os chunks editados que saíram da memória; é o que o .wld guarda. Sem a entrada, o chunk nasce do gerador
+var edited := {}    # Vector2i -> true; chunk em `chunks` mais novo que o de `packed` (flush_edited recomprime)
+var baked := false  # mundo assado: o .wld é a verdade e o gerador não decide mais nada em jogo (tipo dos baús, entrada do dungeon)
+var chest_kinds := {}   # Vector3i -> [tabela de loot, índice da ilha (-1 = nenhum)]: o tipo de cada baú de nascença, gravado ao assar (só se baked)
 var versions := {}  # Vector2i -> nº de edições; descarta mesh de job que ficou velho
 var jobs := {}     # id da task -> resultado preenchido pela thread
 var generating := {}   # Vector2i -> true: chunk que um job está gerando agora
@@ -96,9 +99,21 @@ func get_block(x: int, y: int, z: int) -> int:
 	if y >= H or not in_world(c):
 		return 0
 	if not chunks.has(c):
-		chunks[c] = gen.generate(c.x, c.y)
-		_chunk_ready(c)   # gerado aqui, na thread principal (não pelo job): quem esperava por ele precisa saber
+		chunks[c] = unpack(c)
+		_chunk_ready(c)   # carregado aqui, na thread principal (não pelo job): quem esperava por ele precisa saber
 	return chunks[c][posmod(x, C) + posmod(z, C) * C + y * C * C]
+
+
+# Os blocos do chunk c: do mundo assado se estiver lá, senão do gerador. Seguro em thread (só lê).
+func unpack(c: Vector2i) -> PackedByteArray:
+	return packed[c].decompress(C * C * H, FileAccess.COMPRESSION_ZSTD) if packed.has(c) else gen.generate(c.x, c.y)
+
+
+# Chunk editado na memória → comprimido em `packed` (para salvar ou para sair da memória).
+func flush_edited() -> void:
+	for k in edited:
+		packed[k] = chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
+	edited.clear()
 
 
 # wake = false: o fluxo dos líquidos grava sem acordar de novo os vizinhos (ele mesmo acorda os que importam).
@@ -222,6 +237,16 @@ func start_hardmode() -> void:
 		gen.hardmode_pass(chunks[k], k.x, k.y)
 		edited[k] = true
 		_rebuild(k)
+	var todo: Array = packed.keys().filter(func(k): return not chunks.has(k))   # mundo assado: os que não estão na memória também (os de cima o flush recomprime)
+	var res := []
+	res.resize(todo.size())
+	var job := func(i: int):
+		var d := unpack(todo[i])
+		gen.hardmode_pass(d, todo[i].x, todo[i].y)
+		res[i] = d.compress(FileAccess.COMPRESSION_ZSTD)
+	WorkerThreadPool.wait_for_group_task_completion(WorkerThreadPool.add_group_task(job, todo.size()))   # ponytail: bloqueia o quadro: 2,3 s no mundo todo medido na sessão remota (que quase não paraleliza); se incomodar no PC do dono, vira job em segundo plano com aviso
+	for i in todo.size():
+		packed[todo[i]] = res[i]
 
 
 # Conteúdo do baú em p; na primeira vez sorteia o tesouro pela camada (Loot; determinístico pela seed e posição).
@@ -230,10 +255,19 @@ func chest_at(p: Vector3i) -> Dictionary:
 	if not chests.has(p):
 		var rng := RandomNumberGenerator.new()
 		rng.seed = hash([world_seed, p.x, p.y, p.z])
-		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest("living" if gen and gen.living_chests.has(p) else "dungeon" if gen and gen.in_dungeon(p.x, p.y, p.z) else "water" if gen and gen.in_sea(p.x, p.z) else Loot.layer_of(p.y), rng, gen.sky_chests.find(p) if gen else -1)   # ilhas: cada uma com o próximo item principal
+		var kind := chest_kind(p)
+		chests[p] = TestWorld.stock(k) if k != -1 else Loot.chest(kind[0], rng, kind[1])
 	if k != -1:
 		chests[p].title = TestWorld.chests[k].title   # o painel mostra o nome da categoria (não vai no save: sai da posição)
 	return chests[p]
+
+
+# Tabela de loot do baú de nascença em p e o índice da ilha (ilhas: cada uma com o próximo item principal). Mundo assado: o gravado ao assar
+# (o gerador pode ter mudado); senão, o gerador. Baú que o jogador colocou sorteia pela altura.
+func chest_kind(p: Vector3i) -> Array:
+	if baked:
+		return chest_kinds.get(p, [Loot.layer_of(p.y), -1])
+	return gen.chest_kind(p) if gen else [Loot.layer_of(p.y), -1]
 
 
 # Liga ou desliga o mundo de teste (antes de gerar chunks: a arena entra na geração).
@@ -250,7 +284,10 @@ func set_seed(s: int, test := false) -> void:
 	gen = WorldGen.new(s)
 	set_test(test)
 	chunks.clear()
+	packed.clear()
 	edited.clear()
+	baked = false
+	chest_kinds.clear()
 	chests.clear()
 	npcs.clear()
 	homes.clear()
@@ -374,7 +411,7 @@ func _next_job() -> Dictionary:
 		var c: Vector2i = need_gen.pop_back()
 		if not chunks.has(c) and not generating.has(c):
 			generating[c] = true
-			return {"gen": c}
+			return {"gen": c, "bytes": packed.get(c, PackedByteArray())}
 	return {}
 
 
@@ -411,8 +448,11 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 				meshes[k].queue_free()
 			meshes.erase(k)
 			_free_models(k)
-	for k in chunks.keys():   # o mundo é grande: chunks longe e sem edição saem da memória (get_block/a geração os refazem iguais)
-		if not edited.has(k) and (k - c).length_squared() > (r + 4) * (r + 4):
+	for k in chunks.keys():   # o mundo é grande: chunks longe saem da memória (o editado volta comprimido para packed; get_block os traz de volta iguais)
+		if (k - c).length_squared() > (r + 4) * (r + 4):
+			if edited.has(k):
+				packed[k] = chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
+				edited.erase(k)
 			chunks.erase(k)
 	pending.clear()
 	for z in range(c.y - r, c.y + r + 1):
@@ -443,7 +483,7 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 # Roda em thread: gera um chunk ("gen") ou monta os arrays da mesh de um chunk (opaca + água).
 func _job(r: Dictionary) -> void:
 	if r.has("gen"):
-		r.data = gen.generate(r.gen.x, r.gen.y)
+		r.data = r.bytes.decompress(C * C * H, FileAccess.COMPRESSION_ZSTD) if r.bytes.size() > 0 else gen.generate(r.gen.x, r.gen.y)   # a thread não toca em `packed`: o job leva os bytes
 		return
 	var k: Vector2i = r.k
 	r.water = []

@@ -4,7 +4,8 @@ class_name SaveGame
 # guarda os caminhos em player_path/world_path; o jogo carrega ao entrar e salva no F5, no "Salvar e
 # sair" e ao fechar a janela. Sem caminhos (testes, rodar game.tscn direto) nada é lido nem gravado.
 
-const VERSION := 2
+const VERSION := 3   # v3: o .wld guarda todos os chunks (mundo assado, Baker); o .plr não mudou. Lê-se também a v2 (OLDEST)
+const OLDEST := 2
 const SKINS := ["#f0b890", "#e0a070", "#c98a5c", "#a86a44", "#f6cfae"]
 const HAIRS := ["#5a3220", "#2a1c14", "#d6a94a", "#a83a1e", "#8a8a90", "#3a2a5a"]
 const SHIRTS := ["#c0503c", "#3f8f4f", "#3e6fbf", "#c9a13a", "#8a4fb0", "#4fa8a8", "#b0b0b8"]
@@ -101,26 +102,34 @@ static func save_all(world, player, clock) -> Error:
 
 
 static func save_player(player, path: String) -> Error:
+	return _write(path, player_out(player, _read(path), world_path.get_file()))
+
+
+# O personagem como dicionário (o que vai no .plr; a rede manda o mesmo). `old` = o que o arquivo já tinha (nome, aparência, camas
+# de outros mundos); `world_key` = o mundo atual, dono da cama de `player.bed`.
+static func player_out(player, old := {}, world_key := "") -> Dictionary:
 	var inv := []
 	for i in Inventory.SIZE:
 		var id: int = player.inv.item[i]
 		inv.append([Items.names[id] if id != -1 else "", player.inv.count[i]])
 	var equip := Array(player.inv.equip).map(func(id): return Items.names[id] if id != -1 else "")
 	var name := func(id): return Items.names[id] if id != -1 else ""
-	var old := _read(path)
 	var beds: Dictionary = old.get("beds", {})   # a cama que é o ponto de nascimento, por mundo (arquivo do mundo)
 	if player.bed != Vector3i.MAX:
-		beds[world_path.get_file()] = player.bed
+		beds[world_key] = player.bed
 	else:
-		beds.erase(world_path.get_file())
-	return _write(path, {"version": VERSION, "name": old.get("name", player.name), "difficulty": player.difficulty, "beds": beds, "hp": player.hp, "max_hp": player.max_hp, "max_mana": player.max_mana, "buffs": player.buffs, "inv": inv, "equip": equip,
-		"look": _read(path).get("look", {}), "acc": Array(player.inv.acc).map(name), "misc": Array(player.inv.misc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
-		"coin": Array(player.inv.coin), "fav": Array(player.inv.fav)})
+		beds.erase(world_key)
+	return {"version": VERSION, "name": old.get("name", player.name), "difficulty": player.difficulty, "beds": beds, "hp": player.hp, "max_hp": player.max_hp, "max_mana": player.max_mana, "buffs": player.buffs, "inv": inv, "equip": equip,
+		"look": old.get("look", {}), "acc": Array(player.inv.acc).map(name), "misc": Array(player.inv.misc).map(name), "ammo": Array(player.inv.ammo).map(name), "ammo_count": Array(player.inv.ammo_count),
+		"coin": Array(player.inv.coin), "fav": Array(player.inv.fav)}
 
 
 # Retorna false para personagem novo (o jogo dá os itens iniciais).
 static func load_player(player, path: String) -> bool:
-	var data := _read(path)
+	return player_in(player, _read(path), world_path.get_file())
+
+
+static func player_in(player, data: Dictionary, world_key := "") -> bool:
 	if data.is_empty():
 		return false
 	player.char_name = data.name
@@ -160,17 +169,20 @@ static func load_player(player, path: String) -> bool:
 	var fav: Array = data.get("fav", [])
 	for k in mini(fav.size(), Inventory.SIZE):
 		player.inv.fav[k] = fav[k]
-	player.bed = data.get("beds", {}).get(world_path.get_file(), Vector3i.MAX)
+	player.bed = data.get("beds", {}).get(world_key, Vector3i.MAX)
 	return true
 
 
 static func save_world(world, player, clock, path: String) -> Error:
-	var chunks := {}
-	for k in world.edited:
-		chunks[k] = world.chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
-	return _write(path, {"version": VERSION, "name": _read(path).get("name", "mundo"), "seed": world.world_seed, "size": WorldGen.SIZE_CHUNKS,
-		"time": clock.time, "spawn": player.spawn, "chunks": chunks, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "eoc_down": world.eoc_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
-		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "spread": world.spread, "npcs": world.npcs, "homes": world.homes, "town_wait": world.town_wait, "test": world.test_world})
+	return _write(path, world_out(world, player, clock, _read(path).get("name", "mundo")))
+
+
+# O mundo como dicionário (o que vai no .wld; a rede reusa). Chunks: todos os conhecidos, comprimidos (world.packed).
+static func world_out(world, player, clock, name: String) -> Dictionary:
+	world.flush_edited()
+	return {"version": VERSION, "name": name, "seed": world.world_seed, "size": WorldGen.SIZE_CHUNKS,
+		"time": clock.time, "spawn": player.spawn, "chunks": world.packed, "baked": world.baked, "chest_kinds": world.chest_kinds, "dungeon_entrance": world.gen.dungeon_entrance, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "eoc_down": world.eoc_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
+		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "spread": world.spread, "npcs": world.npcs, "homes": world.homes, "town_wait": world.town_wait, "test": world.test_world}
 
 
 static func _chests_out(chests: Dictionary) -> Dictionary:
@@ -187,11 +199,16 @@ static func load_world(world, player, clock, path: String) -> bool:
 	if data.get("size", 16) != WorldGen.SIZE_CHUNKS:   # mundo de outro tamanho (o pequeno de antes): o terreno mudou, então o arquivo fica intacto e se joga sem salvar
 		world_path = ""
 		return false
+	return world_in(world, player, clock, data)
+
+
+static func world_in(world, player, clock, data: Dictionary) -> bool:
 	world.set_seed(data.seed, data.get("test", false))
-	var size := WorldGen.CHUNK * WorldGen.CHUNK * WorldGen.HEIGHT
-	for k in data.chunks:
-		world.chunks[k] = data.chunks[k].decompress(size, FileAccess.COMPRESSION_ZSTD)
-		world.edited[k] = true
+	world.packed = data.chunks   # ainda comprimidos: o mundo descomprime o chunk quando alguém o pede
+	world.baked = data.get("baked", false)
+	if world.baked:   # assado: o que o gerador de hoje diria já não vale (ele pode ter mudado desde que o mundo nasceu)
+		world.chest_kinds = data.chest_kinds
+		world.gen.dungeon_entrance = data.dungeon_entrance
 	clock.time = data.time
 	world.orbs_broken = data.get("orbs", 0)
 	world.evil_boss_down = data.get("evil_down", false)
@@ -232,7 +249,7 @@ static func _read(path: String) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
 	var data = FileAccess.open(path, FileAccess.READ).get_var()
-	if typeof(data) != TYPE_DICTIONARY or data.get("version") != VERSION:
+	if typeof(data) != TYPE_DICTIONARY or data.get("version", 0) < OLDEST or data.version > VERSION:
 		push_warning("save ignorado (inválido ou de outra versão): " + path)
 		return {}
 	return data

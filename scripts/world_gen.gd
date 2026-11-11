@@ -586,6 +586,11 @@ func _snow(d: PackedByteArray, hs: PackedInt32Array, W: int, cx: int, cz: int) -
 					d[i + y * layer] = ICE
 
 
+# Tabela de loot do baú de nascença em p e o índice da ilha (cada uma com o próximo item principal); o Baker grava isto ao assar.
+func chest_kind(p: Vector3i) -> Array:
+	return ["living" if living_chests.has(p) else "dungeon" if in_dungeon(p.x, p.y, p.z) else "water" if in_sea(p.x, p.z) else Loot.layer_of(p.y), sky_chests.find(p)]
+
+
 func in_dungeon(x: int, y: int, z: int) -> bool:
 	return x >= dungeon_x and x <= dungeon_x + DUNGEON_W * DUNGEON_CELL and z >= dungeon_z and z <= dungeon_z + DUNGEON_D * DUNGEON_CELL \
 		and y >= DUNGEON_Y and y <= DUNGEON_Y + DUNGEON_FLOORS * DUNGEON_CELL
