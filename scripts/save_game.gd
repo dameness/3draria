@@ -182,7 +182,7 @@ static func world_out(world, player, clock, name: String) -> Dictionary:
 	world.flush_edited()
 	return {"version": VERSION, "name": name, "seed": world.world_seed, "size": WorldGen.SIZE_CHUNKS,
 		"time": clock.time, "spawn": player.spawn, "chunks": world.packed, "baked": world.baked, "chest_kinds": world.chest_kinds, "dungeon_entrance": world.gen.dungeon_entrance, "chests": _chests_out(world.chests), "orbs": world.orbs_broken, "evil_down": world.evil_boss_down, "eoc_down": world.eoc_down, "meteor_due": world.meteor_due, "skeletron_down": world.skeletron_down, "hardmode": world.hardmode,
-		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "spread": world.spread, "npcs": world.npcs, "homes": world.homes, "town_wait": world.town_wait, "test": world.test_world}
+		"map": world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD), "saplings": world.saplings, "spread": world.spread, "npcs": world.npcs, "homes": world.homes, "town_wait": world.town_wait, "tombs": world.tombs, "test": world.test_world}
 
 
 static func _chests_out(chests: Dictionary) -> Dictionary:
@@ -222,6 +222,7 @@ static func world_in(world, player, clock, data: Dictionary) -> bool:
 	world.npcs = data.get("npcs", {})
 	world.homes = data.get("homes", {})
 	world.town_wait = data.get("town_wait", {})
+	world.tombs = data.get("tombs", {})
 	if data.has("map"):   # mapa explorado (saves antigos começam sem mapa)
 		var bytes := WorldGen.SIZE * WorldGen.SIZE * 4
 		world.map_img.set_data(WorldGen.SIZE, WorldGen.SIZE, false, Image.FORMAT_RGBA8, data.map.decompress(bytes, FileAccess.COMPRESSION_ZSTD))

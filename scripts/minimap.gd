@@ -117,6 +117,7 @@ func _reveal() -> void:
 			if c.a > 0.0:
 				world.map_img.set_pixel(x, row, c)
 				dirty = true
+				world.map_dirty = true
 		row += 1
 	if dirty and Engine.get_process_frames() % 10 == 0:   # a imagem do mundo todo (14 MB no mundo grande) só sobe para a GPU quando mudou, 6 vezes por segundo
 		tex.update(world.map_img)

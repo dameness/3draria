@@ -472,6 +472,7 @@ func test_save():
 	w.homes["guide"] = Vector3i(22, 12, 22)
 	w.town_wait["nurse"] = 77.0
 	w.spread[Vector3i(1, 2, 3)] = 5.0
+	w.tombs[Vector3i(3, 4, 5)] = "Ana morreu"
 	check(SaveGame.save_world(w, p, p.clock, wp) == OK and SaveGame.save_player(p, pp) == OK, "salvar mundo e personagem")
 	var w2: Node3D = load("res://scripts/world.gd").new()
 	w2.gen = WorldGen.new(1)
@@ -492,6 +493,7 @@ func test_save():
 	check(w2.homes.get("guide") == Vector3i(22, 12, 22), "a casa dos habitantes volta")
 	check(w2.town_wait.get("nurse") == 77.0, "a espera do habitante morto volta")
 	check(w2.spread.get(Vector3i(1, 2, 3)) == 5.0, "a grama do mal que espalha volta")
+	check(w2.tombs.get(Vector3i(3, 4, 5)) == "Ana morreu", "o texto da lápide volta")
 	check(SaveGame.list(SaveGame.players_dir)[0].name == "Ana", "salvar mantém o nome")
 	SaveGame.delete(pp)
 	check(SaveGame.list(SaveGame.players_dir).is_empty(), "apagar personagem")

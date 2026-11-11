@@ -44,6 +44,7 @@ var orbs_broken := 0   # orbes/corações quebrados (a cada 3 acorda o chefe do 
 var spread := {}     # Vector3i -> segundos até a grama do mal tentar contaminar um vizinho (a colocada e a que se espalhou; vai no save)
 var saplings := {}   # Vector3i -> segundos até crescer; só as plantadas (vai no save)
 var map_img := Image.create(WorldGen.SIZE, WorldGen.SIZE, false, Image.FORMAT_RGBA8)   # mapa explorado (minimap.gd; alfa 0 = não visto); vai no save
+var map_dirty := false   # o mapa mudou desde o último envio ao servidor (M5)
 var packed := {}    # Vector2i -> chunk comprimido (zstd): o mundo assado (Baker) e os chunks editados que saíram da memória; é o que o .wld guarda. Sem a entrada, o chunk nasce do gerador
 var edited := {}    # Vector2i -> true; chunk em `chunks` mais novo que o de `packed` (flush_edited recomprime)
 var baked := false  # mundo assado: o .wld é a verdade e o gerador não decide mais nada em jogo (tipo dos baús, entrada do dungeon)
