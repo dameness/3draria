@@ -28,8 +28,8 @@ fs.writeFileSync(WEB + 'test.html', html);
 		await page.waitForTimeout(3000);                         // deixa o IndexedDB gravar
 		await page.reload(); await page.waitForTimeout(25000);   // user:// sobrevive ao recarregar? (personagem e mundo têm de estar na lista)
 		await click(640, 435); await click(708, 347, 3000);      // Um Jogador → Jogar com o personagem salvo
-		await click(708, 347, 1000);                             // Jogar no mundo salvo
-		for (let i = 0; i < Number(process.env.WAIT || 8); i++) { await page.waitForTimeout(10000); shot = await page.screenshot({ path: path.join(__dirname, `../textures/web_${i}.png`) }); }
+		await click(708, 347, 1000);                             // Jogar no mundo salvo (assa na 1ª vez: ~160 s em wasm por CPU)
+		for (let i = 0; i < Number(process.env.WAIT || 22); i++) { await page.waitForTimeout(10000); shot = await page.screenshot({ path: path.join(__dirname, `../textures/web_${i}.png`) }); }
 		await page.evaluate(() => { window.__vivo = 1; });
 		await page.keyboard.press('F5'); await page.waitForTimeout(1500);   // F5 salva no jogo: a página não pode recarregar
 		if (!(await page.evaluate(() => window.__vivo === 1))) errors.push('F5 recarregou a página');

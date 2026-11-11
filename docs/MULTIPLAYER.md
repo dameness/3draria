@@ -203,7 +203,7 @@ Extra por etapa, colado depois do prompt:
   - Testado em Chromium headless com WebGL por software (sem erros no console); **FPS dali não vale**.
   - Sobrou/não verificado: Tab, F9–F11 e Ctrl+W real (Playwright não os alcança); FPS no hardware do dono; Safari não tentado.
     Ícones das casas de Moedas/Munição variaram entre execuções nos prints do Web (vi cobre/flecha/ouro): olhar se persistir no PC do dono.
-  - `ponytail:` o teste leva ~3 min (mundo novo gera em wasm sobre CPU de software); não entra no `tests/run.gd`.
+  - `ponytail:` o teste leva ~6 min (assar o mundo em wasm sobre CPU de software leva ~160 s); não entra no `tests/run.gd`.
 - **M1 (feita):**
   - **Formato v3.** `.wld` = todos os chunks zstd em `chunks` (+ `baked`, `chest_kinds`, `dungeon_entrance`); `.plr` não mudou de formato.
     `SaveGame._read` aceita v2 e v3 (`OLDEST`); sempre grava v3. Dicionários sem arquivo: `player_out(player, old, world_key)` /
