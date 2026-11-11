@@ -113,6 +113,27 @@ func _run() -> void:
 	bn.foes[zid].hurt(999, Vector3.FORWARD, 0.0)
 	check(await until(func(): return not sn.foes.has(zid) and not an.foes.has(zid) and not bn.foes.has(zid)), "B mata → some no servidor e nos dois")
 
+	check(await until(func(): return an.drops.size() == sn.drops.size() and bn.drops.size() == sn.drops.size(), 5.0), "os drops do zumbi (se houver) são os do servidor, iguais nos dois")
+
+	# Itens no chão: nascem no servidor; o primeiro pedido leva
+	var gel: int = Items.ids.gel
+	var gd: Node3D = sn.get_parent().get_node("Entities").spawn_drop(gel, 5, sn.peers[b_id].body.position + Vector3(20, 3, 0))
+	var gid: int = gd.net_id
+	check(await until(func(): return an.drops.has(gid) and bn.drops.has(gid)), "item do servidor aparece nos dois")
+	var had: int = pa.inv.total(gel) + pb.inv.total(gel)
+	an.grab.rpc_id(1, gid)
+	bn.grab.rpc_id(1, gid)
+	check(await until(func(): return pa.inv.total(gel) + pb.inv.total(gel) == had + 5 and not an.drops.has(gid) and not bn.drops.has(gid)), "dois pedidos juntos: um só leva, some nos dois")
+	await process_frame
+	check(pa.inv.total(gel) + pb.inv.total(gel) == had + 5 and not sn.drops.has(gid), "nada duplicado")
+	pb.inv.add(Items.ids.wood, 3)
+	var wood0: int = pb.inv.total(Items.ids.wood)
+	pb.throw_drop(Items.ids.wood, 3)
+	check(await until(func(): return sn.drops.values().any(func(d): return d.item == Items.ids.wood) and an.drops.values().any(func(d): return d.item == Items.ids.wood)), "B joga madeira → nasce no servidor e A vê")
+	var ndrops: int = sn.drops.size()
+	pb.position = sn.drops.values().filter(func(d): return d.item == Items.ids.wood)[0].position
+	check(await until(func(): return sn.drops.size() < ndrops and pb.inv.total(Items.ids.wood) == wood0 + 3), "B encosta → pede e recolhe")
+
 	# Relógio: o do servidor manda
 	srv.get_node("DayNight").time = 500.0
 	check(await until(func(): return absf(b.get_node("DayNight").time - 500.0) < 5.0), "B segue a hora do servidor")

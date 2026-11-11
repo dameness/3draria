@@ -1,6 +1,7 @@
 extends Node3D
 # Item solto: ícone em miniatura girando com um feixe de luz na cor da raridade.
 # Cai com gravidade; perto do jogador é puxado e entra no inventário.
+# Rede (M4a): nasce no servidor (net_id); no cliente é cópia e, encostando, pede ao servidor (net.grab: o primeiro leva). Lava e sumiço são do servidor.
 
 const GRAVITY := 20.0
 const MAGNET := 3.0
@@ -16,6 +17,8 @@ var age := 0.0
 var delay := DELAY
 var doll := false        # Guide Voodoo Doll: ao queimar na lava do submundo chama o Wall of Flesh (wiki)
 var icon: Sprite3D
+var net_id := 0
+var asked := false       # cliente: já pediu ao servidor
 
 
 func _ready() -> void:
@@ -54,9 +57,15 @@ func _physics_process(delta: float) -> void:
 		return
 	if icon:
 		icon.rotation.y += delta * 2.0
-	var p: Node3D = _taker()
+	var p: Node3D = null if entities.net and entities.net.mode == entities.net.SERVER else _taker()   # servidor: ninguém puxa, o cliente pede
 	var to: Vector3 = p.position + Vector3.UP * 0.9 - position if p else Vector3.INF
 	if age > delay and to.length() < MAGNET:   # vai para o jogador vivo mais perto (morto não recolhe: o que ele soltou fica no chão)
+		if to.length() < PICKUP and net_id:
+			if not asked and p.inv.fits(item):
+				asked = true
+				entities.net.grab.rpc_id(1, net_id)
+			position = p.position + Vector3.UP * 0.9
+			return
 		if to.length() < PICKUP:
 			var pk: Dictionary = Items.defs[item].get("pickup", {})
 			if not pk.is_empty():   # coração / estrela: curam na hora
@@ -79,11 +88,16 @@ func _physics_process(delta: float) -> void:
 	position = r[0]
 	if r[1].y != 0:
 		velocity = Vector3.ZERO
-	if _burns() and _in_lava():
+	if entities.world.authority and _burns() and _in_lava():
 		_burn()
 
 
-# O jogador vivo mais perto (null sem nenhum). ponytail: o remoto recolhe no próprio inv (remote_player.gd); na M4a o servidor decide e avisa o dono.
+func _exit_tree() -> void:
+	if net_id and is_queued_for_deletion():
+		entities.net.drop_freed(self)
+
+
+# O jogador vivo mais perto (null sem nenhum). Sem rede, o remoto (testes da M2) recolhe no próprio inv.
 func _taker() -> Node3D:
 	var best: Node3D = null
 	for p in entities.players:

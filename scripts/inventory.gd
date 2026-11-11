@@ -101,6 +101,19 @@ func add(id: int, n: int) -> int:
 	return n
 
 
+# Cabe ao menos um de id (sem mexer em nada): o cliente de rede só pede o item do chão se couber (net.grab).
+func fits(id: int) -> bool:
+	if coin_kind(id) != -1 or not Items.defs[id].get("pickup", {}).is_empty():
+		return true
+	for k in (AMMO if Items.defs[id].has("ammo_class") else 0):
+		if ammo[k] == -1 or (ammo[k] == id and ammo_count[k] < Items.stack[id]):
+			return true
+	for i in SIZE:
+		if item[i] == -1 or (item[i] == id and count[i] < Items.stack[id]):
+			return true
+	return false
+
+
 func total(id: int) -> int:
 	var t := 0
 	for i in SIZE:

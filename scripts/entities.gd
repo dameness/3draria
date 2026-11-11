@@ -766,7 +766,12 @@ func spawn_drop(item: int, count: int, pos: Vector3) -> Node3D:
 	d.count = count
 	d.entities = self
 	d.position = pos
+	if net and net.mode == net.CLIENT:   # rede: o servidor faz nascer (net.drop); o nó só leva os dados (e a velocidade de quem chamou) até o fim do quadro
+		net.drops_out.append(d)
+		return d
 	add_child(d)
+	if net:
+		net.drop_born(d)
 	return d
 
 

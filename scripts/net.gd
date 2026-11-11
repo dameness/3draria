@@ -42,6 +42,8 @@ var worn := PackedInt32Array()
 var foes := {}                 # id -> inimigo (servidor: todos; cliente: os bonecos)
 var gone := {}                 # cliente: ids de inimigos que já saíram (um estado atrasado não os traz de volta)
 var next_id := 0
+var drops := {}                # id -> item_drop (servidor: os de verdade; cliente: as cópias)
+var drops_out: Array = []      # nascidos neste quadro (cliente: a pedir ao servidor; servidor: a anunciar)
 var foe_tick := 0.0
 
 
@@ -176,6 +178,38 @@ func _near(pos: Vector3, r: float) -> Array:   # servidor: os jogadores a até r
 	return peers.keys().filter(func(id): return not peers[id].state.is_empty() and peers[id].state[0].distance_to(pos) < r)
 
 
+# ---------- funil dos itens no chão (entities.spawn_drop, item_drop._exit_tree) ----------
+
+func drop_born(d: Node3D) -> void:
+	if mode == SERVER:
+		next_id += 1
+		d.net_id = next_id
+		drops[next_id] = d
+		drops_out.append(d)
+
+
+func drop_freed(d: Node3D) -> void:
+	drops.erase(d.net_id)
+	if mode == SERVER:
+		for id in peers:
+			drop_gone.rpc_id(id, d.net_id)
+
+
+func _flush_drops() -> void:   # (no fim do quadro: quem chamou spawn_drop já pôs a velocidade e a espera)
+	for d in drops_out:
+		if mode == CLIENT:
+			drop.rpc_id(1, d.item, d.count, d.position, d.velocity, d.delay)
+			d.free()
+		elif is_instance_valid(d) and not d.is_queued_for_deletion():
+			for id in peers:
+				_announce(id, d)
+	drops_out.clear()
+
+
+func _announce(id: int, d: Node3D) -> void:
+	drop_new.rpc_id(id, d.net_id, d.item, d.count, d.position, d.velocity, d.delay)
+
+
 # ---------- RPCs ----------
 
 @rpc("any_peer", "reliable")
@@ -202,6 +236,8 @@ func hello(ver: String, who: String, look: Dictionary) -> void:
 	data.chunks = {}   # os chunks vão aos poucos (_send_chunks); o mapa explorado é por jogador (M5)
 	data.erase("map")
 	welcome.rpc_id(id, data)
+	for k in drops:
+		_announce(id, drops[k])
 	for o in peers:
 		if o != id:
 			joined.rpc_id(id, o, peers[o].name, peers[o].look, peers[o].equip)
@@ -419,6 +455,57 @@ func curse(id: int, buff: String, seconds: float) -> void:
 		e.afflict(buff, seconds)
 
 
+# Cliente soltou um item (quebrou bloco, jogou, morreu...): nasce aqui e vai a todos.
+@rpc("any_peer", "reliable")
+func drop(item: int, count: int, pos: Vector3, vel: Vector3, delay: float) -> void:
+	if mode == SERVER and peers.has(multiplayer.get_remote_sender_id()) and item >= 0 and item < Items.defs.size() and count > 0:
+		var d: Node3D = entities.spawn_drop(item, count, pos)
+		d.velocity = vel
+		d.delay = delay
+
+
+@rpc("authority", "reliable")
+func drop_new(id: int, item: int, count: int, pos: Vector3, vel: Vector3, delay: float) -> void:
+	var d: Node3D = entities.ItemDrop.new()
+	d.item = item
+	d.count = count
+	d.entities = entities
+	d.position = pos
+	d.velocity = vel
+	d.delay = delay
+	d.net_id = id
+	drops[id] = d
+	entities.add_child(d)
+
+
+@rpc("authority", "reliable")
+func drop_gone(id: int) -> void:
+	if drops.has(id):
+		drops[id].queue_free()
+
+
+# Pedido de pegar um item: o primeiro leva (o item sai na hora; um segundo pedido no mesmo quadro já o acha saindo).
+@rpc("any_peer", "reliable")
+func grab(id: int) -> void:
+	var d: Node3D = drops.get(id)
+	if mode == SERVER and peers.has(multiplayer.get_remote_sender_id()) and is_instance_valid(d) and not d.is_queued_for_deletion():
+		give.rpc_id(multiplayer.get_remote_sender_id(), d.item, d.count)
+		d.queue_free()
+
+
+@rpc("authority", "reliable")
+func give(item: int, count: int) -> void:
+	var pk: Dictionary = Items.defs[item].get("pickup", {})
+	if not pk.is_empty():   # coração / estrela: curam na hora
+		player.pickup(pk)
+		Sfx.play(entities, "pickup", player.position + Vector3.UP, -8.0)
+		return
+	var left: int = player.inv.add(item, count)
+	Sfx.play(entities, "coin" if Inventory.coin_kind(item) != -1 else "pickup", player.position + Vector3.UP, -8.0)
+	if left > 0:   # não coube (o inventário mudou enquanto o pedido ia): volta ao chão
+		entities.spawn_drop(item, left, player.position + Vector3.UP)
+
+
 # ---------- servidor ----------
 
 func _gone(id: int) -> void:
@@ -525,6 +612,7 @@ func _process(delta: float) -> void:
 	if mode == OFF:
 		return
 	_flush_blocks()
+	_flush_drops()
 	tick -= delta
 	clock_tick -= delta
 	foe_tick -= delta
