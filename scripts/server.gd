@@ -1,6 +1,6 @@
 extends Node3D
 # Servidor dedicado (M3): .tools/godot --headless -- --server [porta] [arquivo.wld]
-# World sem malha (não há câmera), DayNight e Net; sem jogador nem HUD. Mundo padrão: user://worlds/servidor.wld (criado e assado na primeira vez).
+# World sem malha (não há câmera), DayNight, Entities (inimigos, itens no chão; M4a) e Net; sem jogador nem HUD (Fx.muted: sem efeitos nem modelos). Mundo padrão: user://worlds/servidor.wld (criado e assado na primeira vez).
 # ponytail: M3 não salva o mundo (M5: a cada 5 min e ao encerrar) nem tira chunk da memória (só os que alguém editou/visitou ficam; teto = o mundo, 472 MB).
 
 

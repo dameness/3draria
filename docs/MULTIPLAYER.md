@@ -81,15 +81,7 @@ Feita (ver "Estado").
 Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M4a — Inimigos, dano, itens no chão e projéteis
-- Servidor roda `Entities` com os jogadores remotos da M2. Cliente não chama `try_spawn`.
-- Inimigo: id de rede; nascer/sumir/morrer por evento; estado (posição, direção, modo de animação, vida) a 10 Hz para quem
-  está perto; no cliente `enemy.gd` em `puppet`. Servidor **não** monta modelo 3D (só colisão e IA).
-- Golpe do jogador: o cliente calcula como hoje contra os bonecos e manda `hit(id, dano, direção, recuo, crítico)`.
-  Dano no jogador: o servidor manda `hurt` ao dono; a vida é do cliente (ele avisa quando morre).
-- Projétil de jogador: o dono simula e acerta; os outros recebem só o evento de nascer (visual). Projétil de inimigo: servidor.
-- Itens no chão: nascem no servidor; `pickup(id)` → o primeiro leva; drops de inimigo e de bloco pelo mesmo caminho.
-- Textos de dano, partículas e som: locais, disparados pelos eventos.
-- Teste: 2 clientes, um inimigo; A bate → vida cai nos dois; morre → drop único; inimigo troca de alvo.
+Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M4b — Chefes, eventos e estado do mundo
 - Chefes (barra de vida para todos, alvo mais perto, invocação por RPC), Olho natural, meteorito, orbes, larva, hardmode.
@@ -165,7 +157,7 @@ Extra por etapa, colado depois do prompt:
 - **M6:** `Não tenho como te dar acesso à VPS: entregue scripts que eu rodo e um DEPLOY.md de copiar e colar.`
 
 ## Estado
-- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
+- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [x] M4a (falta o playtest) · [ ] M4b · [ ] M5 · [ ] M6
 - **M0 — decisões e armadilhas:**
   - `export_presets.cfg` agora é versionado (preset Web, threads ligadas). Export: `scripts/export-web.sh` (templates por Range
     do .tpz: ~20 MB em vez de 1,2 GB) → `build/web/` (63 MB: wasm 38 + pck 26; `build/` tem `.gdignore` e está no `.gitignore`).
@@ -254,3 +246,35 @@ Extra por etapa, colado depois do prompt:
     memória (`ponytail:` em `server.gd`); cada cliente ainda roda os próprios inimigos, meteorito, habitantes e o Olho (M4a/M4b); sono não
     acelera a hora em rede (M4b); cama/`beds` do personagem em rede usam a chave de mundo `""` (M5). Não verificado: duas abas no browser de
     verdade (é o playtest).
+- **M4a (feita):**
+  - **Servidor roda `Entities`** (em `server.tscn`; `entities.player == null`, `entities.net` = o Net). Cada jogador vira um `remote_player.gd`
+    sem modelo (`peers[id].body`, em `entities.remotes`), atualizado pelo `state` (que agora leva também vida, vida máx., mana, mana máx. e
+    o bit 8 = fantasma) e pelo `equip` (defesa). **Cliente não roda `_world_tick`** (`world.authority` falso: nascimento, despawn, meteorito,
+    Velho, estrelas, habitantes, Olho natural); só a nuvem da Crimson Rod.
+  - **`Fx.muted(nó)`** = a cena é servidor de rede com peer de verdade (por cena, não `static`): partículas, sons, modelo do inimigo, ícone do
+    item, visual do projétil e boneco do jogador não são montados lá. `spawn_text` sai cedo sem `player`.
+  - **Funis e RPCs** (todos em `net.gd`):
+    - inimigo: `entities.spawn_enemy/remove_enemy` → `net.enemy_born/enemy_gone` (id de rede no servidor). `foe_states` 10 Hz não confiável
+      (`[id, nome do def, posição, yaw, vida, bits 1 investida/2 fase 2/4 veneno/8 fogo]`, raio 96) cria/atualiza o boneco (`enemy.puppet`:
+      não pensa, `_glide` interpola e tira a velocidade do deslocamento para animar; 1,5 s sem estado = sai). `foe_hurt` (raio 96) chama
+      `enemy.show_hit` (número, som, sangue, vermelho) e `foe_gone(id, morreu)` chama `show_death`. Boneco: `hurt()` → `hit(id, dano, dir,
+      recuo, crítico)`, `afflict()` → `curse(id, debuff, s)`. Segmento de verme que troca de papel: o nome do def muda → `enemy.become`.
+    - dano no jogador: `RemotePlayer.hurt` no servidor → `hurt` ao dono (no máximo 1 a cada 0,67 s, os quadros de invencibilidade).
+    - item no chão: `entities.spawn_drop` no cliente não cria nada no mundo: guarda o nó em `drops_out` e no fim do quadro manda `drop`
+      (já com a velocidade/espera que quem chamou pôs). Servidor cria, dá id e anuncia `drop_new` **a todos** (quem entra recebe os que
+      existem). Cópia no cliente cai igual; encostando, se `inv.fits(item)`, pede `grab(id)` uma vez; o servidor manda `give(item, n)` ao
+      primeiro e apaga o item (`item_drop._exit_tree` com `queue_free` → `drop_gone` a todos). Não coube (`give` chegou com o inventário
+      cheio): volta ao chão por `spawn_drop`. Lava e fim da vida: no servidor.
+    - projétil: `entities.spawn_projectile` → `net.shot_fired`. Quem atira simula e acerta (cliente: os dele, nos bonecos via `hit`;
+      servidor: inimigos e habitantes, nos alvos via `hurt`); os outros recebem `shot(nome, pos, vel)` e veem a cópia (`projectile.puppet`: só voa).
+  - Corações/estrelas (`drop_pickups`) olham o jogador mais perto de quem morreu (por isso a vida/mana no estado). `entities.say()` é o
+    funil das mensagens (`player.say` sem jogador = nada). Porta: `entities.toggle_door` (habitante no servidor; `player.toggle_door` chama).
+  - Teste: `tests/net.gd` ganhou zumbi do servidor ferindo A, bonecos em A e B, golpe de A → vida cai nos três, troca de alvo, morte some
+    nos três, drops iguais, dois `grab` juntos → um leva, B joga madeira → A vê → B recolhe, flecha de A em B, ferrão do servidor fere A.
+  - Armadilha: lambda no `until` que captura um inimigo que morre dá "Lambda capture was freed": testar pelo id (`sn.foes`).
+  - **Sobrou (`ponytail:`, para a M4b ou depois):** mensagens do mundo não chegam aos clientes (say no servidor some); invocação por item,
+    orbe, larva e Velho ainda criam um chefe **local** no cliente (fora da rede); barra de vida de chefe não aparece para bonecos (`entities.boss`
+    é nulo no cliente); habitantes nascem no servidor mas Merchant/Nurse/... não chegam (o servidor não vê o inventário dos jogadores) e
+    `npcs`/`homes` não são replicados; esfera de conjurador destruída pelo golpe some só para quem bateu; flail, bumerangue, bomba e
+    sinalizador não aparecem voando para os outros (o efeito sim: blocos, golpes); itens no chão vão a todos (sem raio de interesse).
+
