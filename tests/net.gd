@@ -25,22 +25,42 @@ func until(cond: Callable, sec := 30.0) -> bool:
 	return true
 
 
-func client(nick: String) -> Node3D:
+func client(nick: String, secret := "", pass_ := "amigos") -> Node3D:
 	var m: Node3D = load("res://game.tscn").instantiate()
 	m.name = nick
-	m.get_node("Net").address = "ws://127.0.0.1:%d" % PORT
-	m.get_node("Net").nick = nick
+	var n: Node = m.get_node("Net")
+	n.address = "ws://127.0.0.1:%d" % PORT
+	n.nick = nick
+	n.secret = secret if secret != "" else "pw_" + nick
+	n.password = pass_
 	root.add_child(m)
 	return m
 
 
+func wipe(dir: String) -> void:   # apaga a pasta do teste (arquivos e subpastas)
+	if not DirAccess.dir_exists_absolute(dir):
+		return
+	for d in DirAccess.get_directories_at(dir):
+		wipe(dir + d + "/")
+		DirAccess.remove_absolute(dir + d)
+	for f in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir + f)
+
+
 func _run() -> void:
 	await process_frame   # a árvore só aceita cenas depois do primeiro quadro
+	var Net_: GDScript = load("res://scripts/net.gd")
+	Net_.root = "user://test_srv/"   # contas e cópias do servidor de teste (apagadas aqui e no fim)
+	wipe(Net_.root)
+	var world_file := "user://test_srv/mundo.wld"
 	var srv: Node3D = load("res://server.tscn").instantiate()
 	root.add_child(srv)
 	var sw: Node3D = srv.get_node("World")
 	var sn: Node = srv.get_node("Net")
 	sw.set_seed(7)
+	sn.password = "amigos"
+	sn.key = world_file.get_file()
+	srv.path = world_file
 	var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2
 	sn.spawn = Vector3(mid + 0.5, sw.surface_y(mid, mid), mid + 0.5)
 	check(sn.host(PORT) == OK, "servidor abre a porta")
@@ -202,16 +222,68 @@ func _run() -> void:
 	srv.get_node("DayNight").time = 500.0
 	check(await until(func(): return absf(b.get_node("DayNight").time - 500.0) < 5.0), "B segue a hora do servidor")
 
-	# Versão diferente é recusada
+	# Contas: recusas (a versão, a senha do servidor, o nome repetido, a senha do personagem)
 	sn.version = "outra"
 	var c := client("C")
-	check(await until(func(): return not c.get_node("Net").waiting and c.get_node("Net").multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED), "versão diferente: recusado")
+	var cq: Node3D = c.get_node("Player")
+	check(await until(func(): return cq.message.contains("versão diferente")), "versão diferente: recusado")
 	c.queue_free()
+	sn.version = an.version
+	c = client("C", "", "errada")
+	cq = c.get_node("Player")
+	check(await until(func(): return cq.message == "senha do servidor errada"), "senha do servidor errada: recusado")
+	c.queue_free()
+	c = client("a")   # (a conta A já está dentro; o nome conta sem maiúsculas)
+	cq = c.get_node("Player")
+	check(await until(func(): return cq.message.begins_with("já há alguém")), "mesmo nome duas vezes: recusado")
+	c.queue_free()
+	check(FileAccess.file_exists("user://test_srv/players/a.plr") and not FileAccess.file_exists("user://test_srv/players/c.plr"), "a conta nasce no servidor (e só das entradas aceitas)")
 
+	# Persistência: A muda inventário, mundo, cama e mapa; o servidor cai e sobe; A volta e acha tudo
+	var rare: int = Items.ids.gold_bar
+	pa.inv.add(rare, 7)
+	pa.bed = Vector3i(x + 9, y + 1, z + 9)
+	check(await until(func(): return sn.peers[a_id].acct.inv.any(func(e): return e[0] == "gold_bar" and e[1] >= 7), 12.0), "o inventário mudado vai sozinho ao servidor (5 s depois)")
+	var mark := Vector3i(x + 2, y + 6, z)
+	aw.set_block(mark.x, mark.y, mark.z, Blocks.ids.stone)
+	aw.map_img.set_pixel(10, 10, Color("#ff8800"))
+	aw.map_dirty = true
+	await an.leave()
+	check(an.pending == 0, "salvar e sair: o servidor confirmou")
+	check(await until(func(): return sw.get_block(mark.x, mark.y, mark.z) == Blocks.ids.stone), "o bloco de A chegou ao servidor")
 	a.queue_free()
 	check(await until(func(): return bn.puppets.is_empty()), "A sai → o boneco some em B")
 	b.queue_free()
-	srv.queue_free()
+	await process_frame
+	srv.save()
+	check(FileAccess.file_exists(world_file) and not DirAccess.get_directories_at("user://test_srv/backups/").is_empty(), "o servidor grava o mundo e a cópia do dia")
+	srv.free()   # (cai sem avisar: tudo o que importa já está em disco)
+	await process_frame
+	await process_frame
+	var srv2: Node3D = load("res://server.tscn").instantiate()
+	root.add_child(srv2)
+	var sn2: Node = srv2.get_node("Net")
+	srv2.open(world_file)
+	sn2.password = "amigos"
+	check(sn2.host(PORT) == OK, "servidor sobe de novo")
+	var a2 := client("A")
+	var pa2: Node3D = a2.get_node("Player")
+	check(await until(func(): return not a2.get_node("Net").waiting), "A volta e entra")
+	check(pa2.inv.total(rare) >= 7 and a2.get_node("Net").char.beds.get(a2.get_node("Net").key) == Vector3i(x + 9, y + 1, z + 9), "o inventário e a cama de A voltam (a cama some no home() porque o quarto de teste não vale: igual a um jogador só)")
+	check(srv2.get_node("World").get_block(mark.x, mark.y, mark.z) == Blocks.ids.stone and a2.get_node("World").get_block(mark.x, mark.y, mark.z) == Blocks.ids.stone, "o bloco de A voltou (servidor e cliente)")
+	check(a2.get_node("World").map_img.get_pixel(10, 10).is_equal_approx(Color("#ff8800")) and a2.get_node("World").map_img.get_pixel(11, 10).a == 0.0, "o mapa de A volta")
+	a2.queue_free()
+	check(await until(func(): return sn2.peers.is_empty()), "A sai de novo")
+	c = client("A", "outra senha")
+	cq = c.get_node("Player")
+	check(await until(func(): return cq.message == "senha do personagem errada"), "senha do personagem errada: recusado")
+	c.queue_free()
+	c = client("Novo", "x")   # conta nova: itens iniciais, e o nome com acento/espaço vira arquivo válido
+	check(await until(func(): return not c.get_node("Net").waiting) and c.get_node("Player").inv.total(Items.ids.copper_pickaxe) == 1, "conta nova entra com os itens iniciais")
+	c.queue_free()
+	srv2.queue_free()
+	wipe(Net_.root)
+	DirAccess.remove_absolute(Net_.root.trim_suffix("/"))
 	await process_frame
 	await process_frame
 	print("net: ", "OK" if failures == 0 else "%d falhas" % failures)

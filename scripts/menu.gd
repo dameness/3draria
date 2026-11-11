@@ -26,6 +26,7 @@ const TITLE_VIEW := {"r": 13.0, "h": 3.2, "ty": 5.6, "side": 0.0, "speed": 0.03}
 const AVATAR_VIEW := {"r": 3.7, "h": 1.45, "ty": 1.0, "side": 1.2, "speed": 0.0}
 const Net := preload("res://scripts/net.gd")
 static var last_address := "ws://localhost:8070"
+static var last_name := ""
 const DAY_SPEED := 9.0                 # o dia passa 9x mais depressa ao fundo
 const LIST_ROW := 66                   # altura de uma linha da lista (nome + informação)
 
@@ -626,23 +627,31 @@ func show_new_world() -> void:
 	_pop_in()
 
 
-# Multijogador (M3): endereço do servidor; o personagem é o escolhido (o nome dele é o que os outros veem).
+# Multijogador: endereço, senha do servidor e a conta (nome + senha do personagem; nome novo cria a conta no servidor).
 func show_join() -> void:
 	screen = "join"
 	_clear("", true, 0.74, 0.55)
 	_plate("Multijogador")
 	_go(AVATAR_VIEW, 0.62)
-	var addr := LineEdit.new()
-	addr.text = last_address
-	addr.custom_minimum_size = Vector2(0, 40)
-	box.add_child(addr)
+	var fields := []
+	for f in [["endereço do servidor", last_address, false], ["senha do servidor", "", true], ["nome do personagem", last_name if last_name != "" else chosen_player.get_file().get_basename(), false], ["senha do personagem", "", true]]:
+		var e := LineEdit.new()
+		e.placeholder_text = f[0]
+		e.text = f[1]
+		e.secret = f[2]
+		e.max_length = 20 if f[0].begins_with("nome") else 0
+		e.custom_minimum_size = Vector2(0, 40)
+		box.add_child(e)
+		fields.append(e)
 	var go := func(_t = ""):
-		last_address = addr.text.strip_edges()
+		last_address = fields[0].text.strip_edges()
 		if not last_address.contains("://"):
 			last_address = "ws://" + last_address
+		last_name = fields[2].text.strip_edges()
 		Net.join = last_address
+		Net.login = {"pass": fields[1].text, "nick": last_name, "secret": fields[3].text}
 		_enter("")
-	addr.text_submitted.connect(go)
+	fields[3].text_submitted.connect(go)
 	_bottom_row([["Voltar", show_worlds], ["Entrar", go]])
 	_pop_in()
 

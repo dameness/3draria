@@ -75,7 +75,7 @@ scripts/audit.py                              # data/base × snapshot: dano, use
 .tools/godot --headless --quit                # smoke test: projeto abre sem erros
 .tools/godot --headless -s tests/run.gd       # testes; código de saída != 0 em falha
 .tools/godot --headless -s tests/net.gd       # teste de rede: servidor + 2 clientes no mesmo processo (~10 s)
-.tools/godot --headless -- --server [porta] [arq.wld]   # servidor dedicado (porta 8070; mundo user://worlds/servidor.wld, assado na 1ª vez)
+DRARIA_PASSWORD=segredo .tools/godot --headless -- --server [porta] [arq.wld]   # servidor dedicado (porta 8070; mundo user://worlds/servidor.wld, assado na 1ª vez; contas e cópias em user://server/; salva a cada 5 min e no SIGTERM)
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/screenshot.gd   # prints reais (OpenGL por CPU) em textures/shot_*.png
 xvfb-run -a -s "-screen 0 1280x720x24" .tools/godot -s tests/menu_flow.gd    # menu → personagem → mundo → salvar → recarregar → Mundo de teste (prints textures/menu_*.png)
 scripts/preview.sh                            # ver sem instalar: previews/folha.jpg (8 cenas) + previews/passeio.mp4 e noite.mp4 (o CI .github/workflows/preview.yml publica no PR)

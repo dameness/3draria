@@ -5,7 +5,9 @@ extends Node
 # personagem e no dano que causa. Blocos passam pelo funil world.set_block → block_changed (um lote por quadro).
 # M4a: inimigos só no servidor (o cliente vê bonecos: enemy.puppet; o golpe vira `hit`, o dano no jogador vem por `hurt`).
 # M4b: o que mexe no mundo (chefe, orbe, larva, Velho) o cliente pede (`ask`); as flags do mundo vão a todos quando mudam (`flags`);
-# baú um por vez (`chest_*`); mensagens do mundo (`notice`). O servidor ainda não salva (M5).
+# baú um por vez (`chest_*`); mensagens do mundo (`notice`).
+# M5: conta = nome + senha do personagem (.plr em `root`/players/ no servidor, hash com sal); o cliente manda o personagem (`save_char`) e o
+# mapa (`save_map`), o servidor guarda; quem entra recebe o .plr no `welcome`. A senha do servidor vem de DRARIA_PASSWORD (server.gd).
 const SLEEP_SPEED := 5.0       # = player.gd: a hora com todos dormindo
 
 enum { OFF, SERVER, CLIENT }
@@ -20,6 +22,11 @@ const FOE_LOST := 1500         # ms sem estado: o boneco do inimigo sai (saiu do
 const RemotePlayer := preload("res://scripts/remote_player.gd")
 
 static var join := ""          # menu → jogo: endereço do servidor (a cena lê e limpa)
+static var login := {}         # menu → jogo: {nick, pass (do servidor), secret (do personagem)}
+static var root := "user://server/"   # servidor: contas (players/) e cópias (backups/); separado de user://players/ para não aparecer no menu
+const CHAR_EVERY := 60.0       # cliente: personagem ao servidor (e 5 s depois de mudar o inventário)
+const MAP_EVERY := 300.0       # cliente: mapa explorado ao servidor (se mudou)
+const MAP_MAX := 1500000       # ponytail: mapa comprimido maior que isso não é enviado (cabe no buffer de 4 MB); upgrade: mandar em pedaços
 
 @export var world: Node3D
 @export var player: Node3D     # cliente: o jogador local (servidor: nenhum)
@@ -28,7 +35,16 @@ static var join := ""          # menu → jogo: endereço do servidor (a cena l�
 
 var mode := OFF
 var address := ""              # cliente: ws://host:porta
-var nick := ""                 # cliente: nome mostrado aos outros (padrão: o do personagem)
+var nick := ""                 # cliente: nome do personagem (a conta no servidor; os outros veem este nome)
+var password := ""             # cliente: senha do servidor; servidor: a esperada ("" = aberto)
+var secret := ""               # cliente: senha do personagem
+var char := {}                 # cliente: o .plr que o servidor mandou (sem senha nem mapas); `old` do player_out
+var key := "servidor"          # chave do mundo nas camas/mapas do .plr (servidor.gd: o nome do arquivo)
+var char_version := 0
+var char_due := 0              # cliente: ms em que o inventário mudado vai ao servidor (0 = nada a mandar)
+var char_tick := CHAR_EVERY
+var map_tick := MAP_EVERY
+var pending := 0               # cliente: salvamentos enviados sem resposta (`saved`)
 var version := ""
 var spawn := Vector3.ZERO      # servidor: nascimento do mundo (SaveGame.world_out/world_in leem `player.spawn`)
 var peers := {}                # servidor: id -> {name, look, equip, state, view, center, sent: {chunk: true}, queue: [chunk] (o mais perto no fim)}
@@ -58,6 +74,11 @@ func _ready() -> void:
 	if address == "" and join != "":
 		address = join
 		join = ""
+	if not login.is_empty():
+		nick = login.nick
+		password = login.pass
+		secret = login.secret
+		login = {}
 	if address != "":
 		connect_to(address)
 
@@ -105,9 +126,17 @@ func connect_to(addr: String) -> void:
 		_lost("endereço inválido: " + addr)
 		return
 	_attach(peer)
+	var look := {}      # o personagem escolhido no menu só empresta aparência e dificuldade a uma conta nova; o de verdade é o do servidor
+	var diff := Difficulty.DEFAULT
+	if SaveGame.player_path != "":
+		look = SaveGame.look(SaveGame.player_path)
+		diff = SaveGame._read(SaveGame.player_path).get("difficulty", diff)
+		if nick == "":
+			nick = SaveGame.player_path.get_file().get_basename()
+		SaveGame.player_path = ""   # (Net._ready vem antes do Player._ready: nada do .plr local é lido nem regravado em rede)
 	if nick == "":
-		nick = SaveGame.player_path.get_file().get_basename() if SaveGame.player_path != "" else "jogador"
-	multiplayer.connected_to_server.connect(func(): hello.rpc_id(1, version, nick, SaveGame.look(SaveGame.player_path) if SaveGame.player_path != "" else {}))
+		nick = "jogador"
+	multiplayer.connected_to_server.connect(func(): hello.rpc_id(1, version, nick, look, {"pass": password, "secret": secret, "difficulty": diff}))
 	multiplayer.connection_failed.connect(_lost.bind("não conectou a " + addr))
 	multiplayer.server_disconnected.connect(_lost.bind("conexão perdida"))
 	player.say("conectando a " + addr)
@@ -233,16 +262,26 @@ func shot_fired(a: Node3D) -> void:
 # ---------- RPCs ----------
 
 @rpc("any_peer", "reliable")
-func hello(ver: String, who: String, look: Dictionary) -> void:
+func hello(ver: String, who: String, look: Dictionary, auth: Dictionary) -> void:
 	var id := multiplayer.get_remote_sender_id()
 	if mode != SERVER:
 		return
+	who = who.strip_edges()
+	var acct := {}
 	if ver != version:
-		refuse.rpc_id(id, "versão diferente do servidor: atualize a página")
+		acct.error = "versão diferente do servidor: atualize a página"
+	elif password != "" and auth.get("pass", "") != password:
+		acct.error = "senha do servidor errada"
+	elif who == "" or who.length() > 20 or who.validate_filename() == "":
+		acct.error = "nome inválido"
+	elif peers.values().any(func(p): return p.name.to_lower() == who.to_lower()):
+		acct.error = "já há alguém com o nome " + who
+	else:
+		acct = _login(who, auth, look)
+	if acct.has("error"):
+		refuse.rpc_id(id, acct.error)
 		return
-	if peers.values().any(func(p): return p.name == who):
-		refuse.rpc_id(id, "já há alguém com o nome " + who)
-		return
+	look = SaveGame.look_of(acct, who)
 	var body: Node3D = RemotePlayer.new()   # o alvo dos inimigos no servidor (sem modelo)
 	body.entities = entities
 	body.peer = id
@@ -250,13 +289,18 @@ func hello(ver: String, who: String, look: Dictionary) -> void:
 	body.position = spawn
 	get_parent().add_child(body)
 	entities.remotes.append(body)
-	peers[id] = {"name": who, "look": look, "equip": [], "state": [], "view": 6, "center": Vector2i(-999, -999), "sent": {}, "queue": [], "body": body}
+	peers[id] = {"name": who, "look": look, "equip": [], "state": [], "view": 6, "center": Vector2i(-999, -999), "sent": {}, "queue": [], "body": body, "acct": acct}
 	_requeue(id, spawn)
 	var data := SaveGame.world_out(world, self, clock, "servidor")
-	data.chunks = {}   # os chunks vão aos poucos (_send_chunks); o mapa explorado é por jogador (M5)
-	data.erase("map")
+	data.chunks = {}   # os chunks vão aos poucos (_send_chunks)
+	data.erase("map")   # o mapa explorado é por jogador (conta), não do mundo
 	data.erase("test")   # (o servidor não abre mundo de teste; o painel F9 é só de um jogador)
-	data.tombs = world.tombs
+	if acct.maps.has(key):
+		data.map = acct.maps[key]
+	data.char = acct.duplicate()
+	for k in ["salt", "hash", "maps"]:
+		data.char.erase(k)
+	data.key = key
 	sent_flags = ""      # as flags vão de novo (o boss_max entra só por elas)
 	welcome.rpc_id(id, data)
 	for k in drops:
@@ -265,6 +309,33 @@ func hello(ver: String, who: String, look: Dictionary) -> void:
 		if o != id:
 			joined.rpc_id(id, o, peers[o].name, peers[o].look, peers[o].equip)
 			joined.rpc_id(o, id, who, look, [])
+
+
+func _file(who: String) -> String:
+	return root + "players/" + who.to_lower().validate_filename() + ".plr"
+
+
+# A conta de `who`: lê o .plr (senha conferida) ou cria uma nova. Devolve {error} se não der.
+# ponytail: sha256 com sal, sem limite de tentativas (amigos); upgrade: pbkdf2/argon2 e espera depois de erros.
+func _login(who: String, auth: Dictionary, look: Dictionary) -> Dictionary:
+	var file := _file(who)
+	var secret_in := str(auth.get("secret", ""))
+	if not FileAccess.file_exists(file):
+		if secret_in == "":
+			return {"error": "personagem novo: escolha uma senha para ele"}
+		var salt := Crypto.new().generate_random_bytes(8).hex_encode()
+		var diff: String = auth.get("difficulty", "")
+		var acct := {"version": SaveGame.VERSION, "name": who, "new": true, "difficulty": diff if Difficulty.defs.has(diff) else Difficulty.DEFAULT,
+			"look": SaveGame._look_out(look) if look.values().all(func(c): return c is Color) else {}, "salt": salt, "hash": (salt + secret_in).sha256_text(), "maps": {}}
+		DirAccess.make_dir_recursive_absolute(file.get_base_dir())
+		SaveGame._write(file, acct)
+		return acct
+	var acct := SaveGame._read(file)
+	if acct.is_empty():
+		return {"error": "o arquivo do personagem não pôde ser lido (avise o dono do servidor)"}
+	if (acct.salt + secret_in).sha256_text() != acct.hash:
+		return {"error": "senha do personagem errada"}
+	return acct
 
 
 @rpc("authority", "reliable")
@@ -276,7 +347,11 @@ func refuse(why: String) -> void:
 @rpc("authority", "reliable")
 func welcome(data: Dictionary) -> void:
 	SaveGame.world_in(world, player, clock, data)
-	world.tombs = data.tombs
+	char = data.char
+	key = data.key
+	SaveGame.player_in(player, char, key)   # falso = conta nova: ficam os itens iniciais do jogador novo
+	player.get_node("Model").restyle(SaveGame.look_of(char, char.name))
+	char_version = player.inv.version
 	welcomed = true
 	player.position = Vector3(player.bed) + Vector3(0.5, 0, 0.5) if player.bed != Vector3i.MAX else player.spawn   # home() só depois dos chunks (sem eles a cama "sumiria")
 	_send_state()
@@ -686,6 +761,68 @@ func bag(item: PackedInt32Array, ammo: PackedInt32Array, coin: PackedInt32Array)
 		inv.coin = coin
 
 
+# ---------- contas (M5) ----------
+
+func send_char() -> void:   # cliente: o personagem vai ao servidor (a cada 60 s, 5 s depois de mudar o inventário, ao salvar e ao sair)
+	if mode != CLIENT or not welcomed or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return
+	char_version = player.inv.version
+	char_due = 0
+	char_tick = CHAR_EVERY
+	pending += 1
+	save_char.rpc_id(1, SaveGame.player_out(player, char, key))
+
+
+func send_map() -> void:   # cliente: o mapa explorado (só se mudou)
+	map_tick = MAP_EVERY
+	if mode != CLIENT or not welcomed or not world.map_dirty or multiplayer.multiplayer_peer.get_connection_status() != MultiplayerPeer.CONNECTION_CONNECTED:
+		return
+	var bytes: PackedByteArray = world.map_img.get_data().compress(FileAccess.COMPRESSION_ZSTD)
+	if bytes.size() > MAP_MAX:
+		return
+	world.map_dirty = false
+	pending += 1
+	save_map.rpc_id(1, bytes)
+
+
+func leave() -> void:   # cliente: salva tudo e espera o servidor confirmar (no máximo 3 s)
+	send_char()
+	send_map()
+	var t := Time.get_ticks_msec()
+	while pending > 0 and Time.get_ticks_msec() - t < 3000 and is_inside_tree():
+		await get_tree().process_frame
+
+
+@rpc("any_peer", "reliable")
+func save_char(data: Dictionary) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if mode != SERVER or not peers.has(id):
+		return
+	if data.has("inv") and data.has("hp") and data.has("equip"):   # (o resto o player_in tolera)
+		var old: Dictionary = peers[id].acct
+		for k in ["name", "look", "salt", "hash", "maps"]:   # nome, aparência e senha são da conta, não do cliente
+			data[k] = old[k]
+		peers[id].acct = data
+		SaveGame._write(_file(peers[id].name), data)
+	saved.rpc_id(id)
+
+
+@rpc("any_peer", "reliable")
+func save_map(bytes: PackedByteArray) -> void:
+	var id := multiplayer.get_remote_sender_id()
+	if mode != SERVER or not peers.has(id):
+		return
+	if bytes.size() <= MAP_MAX:
+		peers[id].acct.maps[key] = bytes
+		SaveGame._write(_file(peers[id].name), peers[id].acct)
+	saved.rpc_id(id)
+
+
+@rpc("authority", "reliable")
+func saved() -> void:
+	pending = maxi(0, pending - 1)
+
+
 # ---------- servidor ----------
 
 func _gone(id: int) -> void:
@@ -822,6 +959,15 @@ func _process(delta: float) -> void:
 	if tick <= 0.0 and welcomed:
 		tick = RATE
 		_send_state()
+	if welcomed and not waiting:
+		char_tick -= delta
+		map_tick -= delta
+		if player.inv.version != char_version and char_due == 0:
+			char_due = Time.get_ticks_msec() + 5000
+		if (char_due != 0 and Time.get_ticks_msec() >= char_due) or char_tick <= 0.0:
+			send_char()
+		if map_tick <= 0.0:
+			send_map()
 	var now := Time.get_ticks_msec()
 	var k := 1.0 - exp(-12.0 * delta)
 	for id in puppets:

@@ -223,7 +223,11 @@ func _exit_tree() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
-		SaveGame.save_all(world, self, clock)
+		if world.net:   # ponytail: sem esperar a confirmação (a janela fecha já); o que não saiu se perde, no máximo 60 s
+			world.net.send_char()
+			world.net.send_map()
+		else:
+			SaveGame.save_all(world, self, clock)
 
 
 var _lock_cb := JavaScriptBridge.create_callback(_pointer_lock_changed) if OS.has_feature("web") else null   # (precisa ficar guardado: o JS não segura a referência)
@@ -313,7 +317,12 @@ func _unhandled_input(e: InputEvent) -> void:
 				inv.add(Items.ids[n], TEST_KIT[n])
 			say("kit de teste")
 		elif e.physical_keycode == KEY_F5:
-			say("jogo salvo" if SaveGame.save_all(world, self, clock) == OK else "erro ao salvar")
+			if world.net:   # em rede: o personagem e o mapa vão ao servidor
+				world.net.send_char()
+				world.net.send_map()
+				say("jogo salvo")
+			else:
+				say("jogo salvo" if SaveGame.save_all(world, self, clock) == OK else "erro ao salvar")
 
 
 func look(rel: Vector2) -> void:

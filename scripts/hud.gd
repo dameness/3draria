@@ -1080,7 +1080,10 @@ func _save_and_quit() -> void:
 		JavaScriptBridge.eval("window.onbeforeunload = null; document.onfullscreenchange = null; navigator.keyboard && navigator.keyboard.unlock();")
 	get_tree().paused = false
 	Settings.save()
-	SaveGame.save_all(world, player, clock)
+	if world.net:   # em rede o personagem e o mapa vão ao servidor (espera a confirmação)
+		await world.net.leave()
+	else:
+		SaveGame.save_all(world, player, clock)
 	get_tree().change_scene_to_file("res://menu.tscn")
 
 

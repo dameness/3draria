@@ -87,13 +87,7 @@ Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M5 — Contas e persistência
-- Login: senha do servidor + nome + senha do personagem; criar personagem pelo menu contra o servidor.
-- `.plr` no servidor (item 8 das decisões); cama por mundo já existe (`beds`); mapa explorado por jogador e por mundo
-  (`map_img` hoje é do mundo): guardar comprimido no `.plr`, enviado a cada 5 min e ao sair.
-- Servidor: salvar o mundo a cada 5 min e ao encerrar (SIGTERM), gravação atômica (já existe: `.tmp` + rename), 7 cópias
-  diárias em `backups/`. Recusar versão diferente. Reconectar sem perder o personagem; mesmo nome duas vezes: recusa.
-- Teste: entrar, mudar inventário e mundo, derrubar o servidor, subir de novo, entrar: tudo lá. Save v3 de antes de um
-  item/bloco novo no fim dos JSON carrega igual.
+Feita (ver "Estado"). Falta o playtest do dono (duas abas, derrubar e subir o servidor).
 
 ### M6 — Publicar
 - `scripts/deploy.sh usuario@host` (roda no PC do dono: a sessão remota não alcança a VPS): export Web, `rsync` do build e do
@@ -152,7 +146,7 @@ Extra por etapa, colado depois do prompt:
 - **M6:** `Não tenho como te dar acesso à VPS: entregue scripts que eu rodo e um DEPLOY.md de copiar e colar.`
 
 ## Estado
-- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [x] M4a (falta o playtest) · [x] M4b (falta o playtest) · [ ] M5 · [ ] M6
+- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [x] M4a (falta o playtest) · [x] M4b (falta o playtest) · [x] M5 (falta o playtest) · [ ] M6
 - **M0 — decisões e armadilhas:**
   - `export_presets.cfg` agora é versionado (preset Web, threads ligadas). Export: `scripts/export-web.sh` (templates por Range
     do .tpz: ~20 MB em vez de 1,2 GB) → `build/web/` (63 MB: wasm 38 + pck 26; `build/` tem `.gdignore` e está no `.gitignore`).
@@ -295,4 +289,21 @@ Extra por etapa, colado depois do prompt:
     lápide, Arms Dealer pela bala de A, baú com trava (B recusado, A guarda gel, B vê), sono (só A não acelera; os dois aceleram).
   - **Sobrou (`ponytail:`):** a bola de fogo do meteorito não aparece para os clientes (só a cratera e o aviso); o Velho e o "Volte à noite"
     não foram testados em rede (o caminho é o mesmo `ask`); cama/`beds` em rede continuam na chave de mundo `""` (M5).
-
+- **M5 (feita):**
+  - **Conta** = nome + senha do personagem (+ senha do servidor, uma). `hello(ver, nome, look, auth{pass, secret, difficulty})`. Nome que não existe **cria a conta**
+    (a aparência e a dificuldade vêm do personagem escolhido no menu, que só empresta isso; senha obrigatória); existe → confere o hash. Recusas (texto na tela do cliente):
+    versão, "senha do servidor errada", nome inválido (vazio, >20, sem caractere de arquivo), nome já dentro (sem maiúsculas), "senha do personagem errada".
+    `.plr` do servidor em `Net.root` (`user://server/`)`players/<nome em minúsculas>.plr`: o dicionário de `SaveGame.player_out` + `salt`, `hash` (sha256 de sal+senha) e `maps`
+    (mundo → mapa zstd). **Pasta separada de `user://players/`** (decisão 8 dizia `players/`): senão as contas apareceriam na lista de personagens do menu de quem roda servidor e jogo na mesma máquina.
+  - **Senha do servidor:** variável de ambiente `DRARIA_PASSWORD` (vazia = aberto; o servidor avisa ao subir). Nunca em argumento (aparece no `ps`).
+  - **Cliente (`net.gd`):** `Net._ready` limpa `SaveGame.player_path` ao conectar (roda antes do `Player._ready`): nada do `.plr` local é lido nem regravado em rede; o personagem vem no `welcome`
+    (`char` = .plr sem senha/mapas, `key` = nome do arquivo do mundo, que é a chave das camas e do mapa). `player_in` carrega; conta nova mantém os itens iniciais. `send_char()` (a cada 60 s, 5 s
+    depois de `inv.version` mudar, F5, ao sair), `send_map()` (a cada 5 min, só se `world.map_dirty`, F5, ao sair), `leave()` espera o `saved` do servidor (até 3 s; usado por "Salvar e sair").
+    Fechar a janela só dispara o envio, sem esperar: pode perder até 60 s.
+  - **Servidor (`server.gd`):** `save()` a cada 5 min e ao encerrar, gravação atômica. **O Godot headless não entrega SIGTERM ao script** (testado: o processo morre sem passar por `_notification`; HUP idem): encerrar com calma = criar o arquivo `Net.root/stop` (o servidor vigia 1x/s, salva e sai; testado com processo real). **M6: o `ExecStop` do systemd cria esse arquivo e espera o processo sair.** SIGTERM seco perde até 5 min do mundo (contas não); antes da 1ª gravação do dia copia o mundo e as contas para
+    `Net.root/backups/AAAA-MM-DD/` e guarda só 7 dias. As contas são gravadas quando o cliente manda (não esperam os 5 min). `open(arquivo)` = carregar + nascimento (o teste usa).
+  - **Lápides entram no `.wld`** (faltavam: o texto sumia ao recarregar, até em um jogador). `world.map_dirty` marcado pelo minimapa.
+  - Teste (`tests/net.gd`): recusas, conta nova, inventário que vai sozinho em 5 s, bloco/mapa/cama, servidor derrubado (`srv.free()` depois de `save()`) e subido de novo, A volta e acha tudo.
+  - **Sobrou (`ponytail:`):** sha256 simples e sem limite de tentativas; mapa comprimido >1,5 MB não é enviado (buffer de 4 MB); gravar o mundo (~14 MB) trava o servidor por um instante;
+    hardcore em rede: o fantasma não apaga a conta; a cama some no `home()` se o quarto deixou de valer (igual a um jogador só); sem "esqueci a senha" (o dono apaga o `.plr` no servidor);
+    reconectar rápido depois de queda pode dar "já há alguém com o nome" até o servidor notar o fim da conexão.
