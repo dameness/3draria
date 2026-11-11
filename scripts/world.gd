@@ -53,6 +53,7 @@ var jobs := {}     # id da task -> resultado preenchido pela thread
 var generating := {}   # Vector2i -> true: chunk que um job está gerando agora
 var max_jobs := clampi(OS.get_processor_count() - 1, 1, 4)
 var center := Vector2i(-999, -999)
+var centers: Array = []   # Vector3 dos outros jogadores (entities.gd põe): os chunks em volta deles não saem da memória; a malha segue só a câmera
 
 
 func _ready() -> void:
@@ -448,8 +449,9 @@ func _recenter(c: Vector2i, cam: Camera3D) -> void:
 				meshes[k].queue_free()
 			meshes.erase(k)
 			_free_models(k)
-	for k in chunks.keys():   # o mundo é grande: chunks longe saem da memória (o editado volta comprimido para packed; get_block os traz de volta iguais)
-		if (k - c).length_squared() > (r + 4) * (r + 4):
+	var keep: Array = [c] + centers.map(func(p): return Vector2i(floori(p.x / C), floori(p.z / C)))
+	for k in chunks.keys():   # o mundo é grande: chunks longe de todos saem da memória (o editado volta comprimido para packed; get_block os traz de volta iguais)
+		if keep.all(func(o): return (k - o).length_squared() > (r + 4) * (r + 4)):
 			if edited.has(k):
 				packed[k] = chunks[k].compress(FileAccess.COMPRESSION_ZSTD)
 				edited.erase(k)

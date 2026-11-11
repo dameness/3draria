@@ -1432,7 +1432,7 @@ func summon(d: Dictionary) -> void:
 	elif entities.boss:
 		say("já há um chefe")
 	else:
-		var b: Node3D = entities.spawn_boss(d.summon)
+		var b: Node3D = entities.spawn_boss(d.summon, self)
 		inv.take_one(hand())
 		say("%s despertou!" % Items.title(b.def.name))
 

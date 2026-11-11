@@ -14,7 +14,11 @@ const ItemDrop := preload("res://scripts/item_drop.gd")
 const Projectile := preload("res://scripts/projectile.gd")
 
 @export var world: Node3D
-@export var player: Node3D
+@export var player: Node3D   # o jogador local: mensagens (say), tremor da tela, HUD, mundo de teste
+var remotes: Array = []      # os outros jogadores (remote_player.gd; a rede da M3 põe e tira)
+var players: Array:          # todos os alvos: o local (se há) + os remotos. Um jogador só = [player]
+	get:
+		return ([player] if player else []) + remotes
 @export var clock: Node
 var defs: Array = []
 var projectiles := {}   # nome -> entrada de projectiles.json
@@ -91,9 +95,20 @@ func _physics_process(delta: float) -> void:
 		_stars()
 		_town()
 		_eye_watch()
+	world.centers = remotes.map(func(p): return p.position)   # os chunks em volta dos outros jogadores ficam na memória
 	for e in enemies.duplicate():
-		if not e.def.get("boss") and not e.display and e.position.distance_to(player.position) > DESPAWN:
-			remove_enemy(e)
+		var p := nearest_player(e.position)
+		if not e.def.get("boss") and not e.display and (p == null or e.position.distance_to(p.position) > DESPAWN):
+			remove_enemy(e)   # some quem está longe de todos
+
+
+# O jogador mais perto de pos (null sem nenhum).
+func nearest_player(pos: Vector3) -> Node3D:
+	var best: Node3D = null
+	for p in players:
+		if best == null or pos.distance_squared_to(p.position) < pos.distance_squared_to(best.position):
+			best = p
+	return best
 
 
 # Olho de Cthulhu natural (wiki Eye of Cthulhu, Random): ao anoitecer, até ele cair uma vez, com 200 de vida máxima, 11 de defesa e habitantes na vila,
@@ -102,13 +117,14 @@ func _eye_watch() -> void:
 	var t: float = clock.time
 	var dusk: bool = last_time >= 0.0 and last_time < clock.DAY_SECONDS and t >= clock.DAY_SECONDS
 	last_time = t
-	if dusk and not world.eoc_down and not world.test_world and boss == null and player.max_hp >= 200 and player.defense() >= 11 and world.npcs.size() >= 4 and rng.randf() < 1.0 / 3.0:
+	if dusk and not world.eoc_down and not world.test_world and boss == null and players.any(func(p): return p.max_hp >= 200 and p.defense() >= 11) and world.npcs.size() >= 4 and rng.randf() < 1.0 / 3.0:
 		eye_watch = 81.0
 		player.say("você sente uma presença maligna te observando...")
 	elif eye_watch >= 0.0:
 		eye_watch -= 1.0
-		if eye_watch < 0.0 and boss == null and clock.is_night() and player.position.y >= world.surface_y(floori(player.position.x), floori(player.position.z), true) - 3.0:
-			spawn_boss("eye_of_cthulhu")
+		var up: Array = players.filter(func(p): return p.position.y >= world.surface_y(floori(p.position.x), floori(p.position.z), true) - 3.0)
+		if eye_watch < 0.0 and boss == null and clock.is_night() and not up.is_empty():
+			spawn_boss("eye_of_cthulhu", up[0])
 			player.say("Eye of Cthulhu despertou!")
 
 
@@ -116,7 +132,7 @@ func _eye_watch() -> void:
 # no inventário e o Arms Dealer com uma bala ou arma de bala.
 # Chegam perto do spawn e, se sumirem por estar longe, voltam quando o jogador está perto de novo.
 func _town() -> void:
-	var want := {"guide": true, "merchant": player.inv.coin_value() > 5000, "nurse": player.max_hp > 100,
+	var want := {"guide": true, "merchant": players.any(func(p): return p.inv.coin_value() > 5000), "nurse": players.any(func(p): return p.max_hp > 100),
 			"demolitionist": _carries(func(d): return d.has("throw")),
 			"arms_dealer": _carries(func(d): return d.get("ammo") == "bullet" or d.get("ammo_class") == "bullet")}
 	for n in want:
@@ -133,7 +149,7 @@ func _town() -> void:
 			if world.town_wait[n] > 0.0 or clock.is_night() or not world.homes.has(n):
 				continue
 		var where := _npc_spot(n, i)
-		if world.npcs.has(n) and player.position.distance_to(where) <= 60.0 and not enemies.any(func(e): return e.def.name == n):
+		if world.npcs.has(n) and nearest_player(where) and nearest_player(where).position.distance_to(where) <= 60.0 and not enemies.any(func(e): return e.def.name == n):
 			spawn_enemy(def_named(n), where)
 			world.town_wait.erase(n)
 			if dead:
@@ -161,10 +177,10 @@ func npc_died(n: String) -> void:
 	player.say("%s foi morto!" % Items.title(n))
 
 
-# O habitante mais perto de `e` (até 12 blocos) e mais perto dele que o jogador: os inimigos vão atrás dele. null = o alvo é o jogador.
+# O habitante mais perto de `e` (até 12 blocos) e mais perto dele que o jogador mais perto: os inimigos vão atrás dele. null = o alvo é o jogador.
 func victim(e: Node3D) -> Node3D:
 	var best: Node3D = null
-	var d := minf(e.position.distance_to(player.position), 12.0)
+	var d := minf(e.position.distance_to(nearest_player(e.position).position), 12.0)
 	for n in enemies:
 		if n.def.ai == "npc" and not n.def.get("invulnerable", false) and e.position.distance_to(n.position) < d:
 			best = n
@@ -172,9 +188,9 @@ func victim(e: Node3D) -> Node3D:
 	return best
 
 
-# O inventário (com os slots de munição) tem um item cujo dado satisfaz `pred`?
+# O inventário (com os slots de munição) de algum jogador tem um item cujo dado satisfaz `pred`?
 func _carries(pred: Callable) -> bool:
-	return (Array(player.inv.item) + Array(player.inv.ammo)).any(func(id): return id != -1 and pred.call(Items.defs[id]))
+	return players.any(func(p): return (Array(p.inv.item) + Array(p.inv.ammo)).any(func(id): return id != -1 and pred.call(Items.defs[id])))
 
 
 # Onde o habitante n (o i-ésimo da lista) fica: na casa, se tem, senão perto do nascimento.
@@ -188,18 +204,21 @@ func _npc_spot(n: String, i: int) -> Vector3:
 
 
 # Moradia (housing.gd): quem já tem casa confere se ela ainda vale (só perto do jogador: longe os chunks nem estão gerados); quem não tem procura uma casa
-# válida e livre em volta do jogador e se muda para ela.
+# válida e livre em volta de algum jogador e se muda para ela.
 func _homes() -> void:
 	for n in TOWN:
 		if not world.npcs.has(n):
 			continue
 		if world.homes.has(n):
 			var h: Vector3i = world.homes[n]
-			if Vector2(h.x + 0.5 - player.position.x, h.z + 0.5 - player.position.z).length() < Housing.SEARCH and not Housing.check(world, h).valid:
+			var p: Node3D = nearest_player(Vector3(h))
+			if Vector2(h.x + 0.5 - p.position.x, h.z + 0.5 - p.position.z).length() < Housing.SEARCH and not Housing.check(world, h).valid:
 				world.homes.erase(n)   # a casa foi desfeita: volta a ficar perto do nascimento
 				player.say("%s ficou sem casa" % Items.title(n))
-		if not world.homes.has(n):
-			var f := Housing.find(world, player.position, world.homes.values())
+		for p in players:
+			if world.homes.has(n):
+				break
+			var f := Housing.find(world, p.position, world.homes.values())
 			if not f.is_empty():
 				world.homes[n] = f.home
 				player.say("%s se mudou para a casa!" % Items.title(n))
@@ -213,9 +232,10 @@ func _homes() -> void:
 # Estrela cadente (wiki Fallen Star): à noite cai perto do jogador, de vez em quando; ao amanhecer as que sobraram somem.
 func _stars() -> void:
 	if clock.is_night():
-		if rng.randf() < 0.03:
-			var at: Vector3 = player.position + Vector3(rng.randf_range(-20, 20), 45.0, rng.randf_range(-20, 20))
-			spawn_drop(Items.ids.fallen_star, 1, at)
+		for p in players:
+			if rng.randf() < 0.03:
+				var at: Vector3 = p.position + Vector3(rng.randf_range(-20, 20), 45.0, rng.randf_range(-20, 20))
+				spawn_drop(Items.ids.fallen_star, 1, at)
 	else:
 		for n in get_children():
 			if n.get("item") == Items.ids.fallen_star:
@@ -261,12 +281,18 @@ static func _in_biome(want, biome: String) -> bool:
 	return biome in want if want is Array else want == biome
 
 
+# Um sorteio de nascimento em volta de cada jogador; o teto vale por jogador (conta os inimigos de quem ele é o mais perto).
 func try_spawn() -> void:
+	for p in players:
+		_spawn_near(p)
+
+
+func _spawn_near(who: Node3D) -> void:
 	var night: bool = clock.is_night()
-	if enemies.filter(func(e): return not e.display and e.follow == null).size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
+	if enemies.filter(func(e): return not e.display and e.follow == null and nearest_player(e.position) == who).size() >= (MAX_NIGHT if night else MAX_DAY) or rng.randf() > 0.5:
 		return
 	var when := "night" if night else "day"
-	var biome := biome_at(player.position)
+	var biome := biome_at(who.position)
 	var options := defs.filter(func(d): return (d.spawn == when or d.spawn == "any") and (_in_biome(d.biome, biome) if d.has("biome") else not biome in ["dungeon", "underworld", "underground", "cavern", "meteorite", "snow", "ice", "desert_cave", "jungle_cave"]) \
 			and (world.hardmode or not d.get("hardmode", false)))
 	if options.is_empty():
@@ -276,16 +302,16 @@ func try_spawn() -> void:
 		return
 	if biome in ["dungeon", "underworld", "underground", "cavern", "ice", "desert_cave", "jungle_cave"]:   # sem superfície: numa sala/caverna perto do jogador (voadores em qualquer ar, os outros com chão)
 		for attempt in 12:
-			var p := Vector3i(floori(player.position.x) + rng.randi_range(-14, 14), floori(player.position.y) + rng.randi_range(-2, 4), floori(player.position.z) + rng.randi_range(-14, 14))
+			var p := Vector3i(floori(who.position.x) + rng.randi_range(-14, 14), floori(who.position.y) + rng.randi_range(-2, 4), floori(who.position.z) + rng.randi_range(-14, 14))
 			if world.get_block(p.x, p.y, p.z) == 0 and world.get_block(p.x, p.y + 1, p.z) == 0 and (d.ai == "fly" or Blocks.solid[world.get_block(p.x, p.y - 1, p.z)]) \
-					and Vector3(p).distance_to(player.position) > 6.0:
+					and Vector3(p).distance_to(who.position) > 6.0:
 				spawn_at(d, Vector3(p.x + 0.5, p.y, p.z + 0.5))
 				return
 		return
 	var ang := rng.randf() * TAU
 	var dist := rng.randf_range(SPAWN_MIN, SPAWN_MAX)
-	var x := floori(player.position.x + cos(ang) * dist)
-	var z := floori(player.position.z + sin(ang) * dist)
+	var x := floori(who.position.x + cos(ang) * dist)
+	var z := floori(who.position.z + sin(ang) * dist)
 	if not world.in_world(Vector2i(floori(x / 16.0), floori(z / 16.0))):
 		return
 	var sy: int = world.surface_y(x, z)
@@ -303,7 +329,7 @@ func _old_man() -> void:
 			old_man = spawn_enemy(def_named("old_man"), Vector3(player.spawn.x + 9.0, player.spawn.y + 0.1, player.spawn.z + 3.0))
 		return
 	var e: Vector3i = world.gen.dungeon_entrance
-	var near := Vector2(player.position.x, player.position.z).distance_to(Vector2(e.x, e.z)) < 90.0
+	var near := players.any(func(p): return Vector2(p.position.x, p.position.z).distance_to(Vector2(e.x, e.z)) < 90.0)
 	if old_man and (not clock.is_night() or world.skeletron_down):
 		remove_enemy(old_man)
 		old_man = null
@@ -549,35 +575,37 @@ func def_named(n: String) -> Dictionary:
 	return defs.filter(func(d): return d.name == n)[0]
 
 
-func spawn_boss(n: String) -> Node3D:
+# Nasce em volta de `near` (quem invocou; sem ele, o jogador local) e daí em diante mira o jogador mais perto.
+func spawn_boss(n: String, near: Node3D = null) -> Node3D:
+	var who: Node3D = near if near else player
 	var ang := rng.randf() * TAU
 	var d := def_named(n)
 	if d.has("hands"):
-		boss = spawn_enemy(d, player.position + Vector3(cos(ang) * 14, 8, sin(ang) * 14))
+		boss = spawn_enemy(d, who.position + Vector3(cos(ang) * 14, 8, sin(ang) * 14))
 		for i in int(d.hands):   # as mãos giram em volta da cabeça
 			var h := spawn_enemy(def_named("skeletron_hand"), boss.position + Vector3(i * 4 - 2, -1, 0))
 			h.follow = boss
 			h.angle = PI * i
 	elif d.ai == "wall":   # nasce longe, no chão do submundo, do lado de onde a boneca foi jogada
-		var at := player.position + Vector3(cos(ang), 0, sin(ang)) * 45.0
+		var at := who.position + Vector3(cos(ang), 0, sin(ang)) * 45.0
 		boss = spawn_enemy(d, Vector3(clampf(at.x, 8.0, 248.0), 0.0, clampf(at.z, 8.0, 248.0)))
 	elif d.has("worm"):
-		var at := player.position + Vector3(cos(ang) * 22, 0, sin(ang) * 22)   # nasce debaixo da terra e sobe atrás do jogador
+		var at := who.position + Vector3(cos(ang) * 22, 0, sin(ang) * 22)   # nasce debaixo da terra e sobe atrás do jogador
 		at.y = maxf(world.surface_y(floori(at.x), floori(at.z), true) - 6.0, 3.0)
 		boss = spawn_worm(d, at)
 	else:
-		boss = spawn_enemy(d, player.position + Vector3(cos(ang) * 20, 15, sin(ang) * 20))
+		boss = spawn_enemy(d, who.position + Vector3(cos(ang) * 20, 15, sin(ang) * 20))
 		for i in int(d.get("creepers", 0)):   # servos que orbitam o chefe e o protegem
 			var c := spawn_enemy(def_named(d.minion), boss.position + Vector3(rng.randf_range(-3, 3), rng.randf_range(-1, 3), rng.randf_range(-3, 3)))
 			c.follow = boss
 	boss_max = boss_life()
-	Sfx.play(self, "boss", player.position, 0.0)
+	Sfx.play(self, "boss", who.position, 0.0)
 	return boss
 
 
 # Verme: cabeça e uma fila de segmentos (d.worm: quantos, e qual def é o corpo e o rabo), cada um seguindo o da frente.
 func spawn_worm(d: Dictionary, pos: Vector3) -> Node3D:
-	var dir := (player.position - pos).normalized()
+	var dir := (nearest_player(pos).position - pos).normalized()
 	var prev := spawn_enemy(d, pos)
 	prev.heading = dir
 	var head := prev
@@ -760,8 +788,9 @@ func explode(at: Vector3, r: float, dmg: int, keep_blocks := false, hurt_player 
 	for e in enemies.duplicate():
 		if not e.display and e.def.ai != "npc" and e.position.distance_to(at) < r + 0.8:
 			e.hurt(dmg, e.position - at, 8.0)
-	if hurt_player and player.position.distance_to(at) < r + 0.8:
-		player.hurt(dmg, player.position - at)
+	for p in players if hurt_player else []:
+		if p.position.distance_to(at) < r + 0.8:
+			p.hurt(dmg, p.position - at)
 	if player.position.distance_to(at) < 40.0:
 		player.shake = maxf(player.shake, 1.0)
 

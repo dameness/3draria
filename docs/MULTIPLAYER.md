@@ -74,17 +74,8 @@ Feito (ver "Estado"). Falta só o **portão**: o dono abre `build/web/` no Chrom
 parado e andando. Abaixo de ~40 fps: parar e decidir (reduzir distância padrão no Web, ou cliente nativo com o mesmo servidor;
 as etapas M1–M6 não mudam).
 
-### M2 — Vários jogadores, ainda sem rede (refatoração pura)
-A etapa mais delicada: mexe em IA e spawn sem mudar o comportamento de um jogador. **Os 81 testes atuais passam sem editar.**
-- `entities.players: Array` (um jogador: `[player]`) + `entities.nearest_player(pos)`; cada inimigo guarda o seu alvo.
-  Trocar os usos de `entities.player` em `entities.gd`, `enemy.gd`, `projectile.gd`, `item_drop.gd`, `timber.gd`.
-- Spawn e despawn por jogador (teto por jogador; some quem está longe de **todos**); chefe mira o mais perto;
-  `victim()` passa a comparar com o jogador mais perto do inimigo.
-- `world`: carregar/descartar chunks por uma lista de centros (hoje é a câmera); malha continua só para a câmera local.
-- Definir o contrato do "jogador visto de fora" (o que `enemy.gd`, `projectile.gd`, `player_model.gd` leem: `position`,
-  `velocity`, `hurt()`, `defense()`, `inv` da mão/armadura, `cooldown`, `pitch`, flail) e criar `remote_player.gd` com só isso.
-- `hud.gd`, `minimap.gd`, `held_item.gd` continuam presos ao jogador local: não mexer.
-- Testes novos: dois alvos → inimigo persegue o mais perto e troca; spawn em volta dos dois; drop vai a quem está perto.
+### M2 — Vários jogadores, ainda sem rede
+Feita (ver "Estado").
 
 ### M3 — Rede base: entrar, ver o mundo, ver os outros, construir junto
 - `scripts/net.gd` (todos os RPCs), `server.tscn` + `scripts/server.gd`, argumento `--server` e porta; no menu, "Multijogador"
@@ -186,7 +177,7 @@ Extra por etapa, colado depois do prompt:
 - **M6:** `Não tenho como te dar acesso à VPS: entregue scripts que eu rodo e um DEPLOY.md de copiar e colar.`
 
 ## Estado
-- [x] M0 (falta o FPS do dono) · [x] M1 · [ ] M2 · [ ] M3 · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
+- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [ ] M3 · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
 - **M0 — decisões e armadilhas:**
   - `export_presets.cfg` agora é versionado (preset Web, threads ligadas). Export: `scripts/export-web.sh` (templates por Range
     do .tpz: ~20 MB em vez de 1,2 GB) → `build/web/` (63 MB: wasm 38 + pck 26; `build/` tem `.gdignore` e está no `.gitignore`).
@@ -223,3 +214,23 @@ Extra por etapa, colado depois do prompt:
   - **Baú colocado pelo jogador** em mundo assado sorteia pela altura (`Loot.layer_of`); antes, dentro do dungeon/mar, saía loot dessas tabelas.
   - Armadilha: `Baker` lê `Blocks`/`Loot` (precisam estar carregados) e classe nova pede `.tools/godot --headless --import`.
   - Sobrou: nada da M1. Mundo v2 existente **precisa assar uma vez** (o menu faz sozinho, ~2 min); sem isso ele joga como antes.
+- **M2 (feita):**
+  - `entities.player` continua sendo **o jogador local** (mensagens `say`, tremor, HUD, mundo de teste, painel F9). Os outros ficam em
+    `entities.remotes`; `entities.players` (propriedade) = `[player] + remotes`; `entities.nearest_player(pos)` (null sem ninguém).
+  - Inimigo: `enemy.chase` = jogador mais perto, revisto a cada quadro de física (sem `chase`, não pensa). Toda IA de chefe usa `chase`;
+    o dano por contato e o tiro inimigo (`projectile.gd`, hostile) ferem **qualquer** jogador que encostam; a vitrine olha para o mais perto.
+  - Entities: nascimento por jogador (`try_spawn` → `_spawn_near(who)`; teto = inimigos de quem ele é o mais perto), despawn longe de
+    **todos**, `victim()` compara com o mais perto, explosão fere todos, estrela cadente/moradia/Velho/chegada de habitante olham todos os
+    jogadores, Olho natural pede que **algum** tenha 200 de vida e 11 de defesa. `spawn_boss(n, near)` nasce em volta de quem invocou
+    (`player.gd` passa `self`); verme nasce virado para o mais perto.
+  - Item no chão vai para o jogador vivo mais perto (`item_drop._taker`); o remoto recolhe no próprio `inv`. `ponytail:` na M4a vira pedido ao servidor.
+  - `world.centers` (Vector3 dos remotos, posto por entities a cada quadro): chunks perto deles não saem da memória; malha só da câmera.
+    **Servidor (M3) não tem câmera**: hoje o descarte só roda em `_recenter` (câmera mudou de chunk); lá chamar o descarte sem câmera.
+  - **`scripts/remote_player.gd` = contrato do jogador visto de fora:** `position`, `velocity`, `pitch`, `cooldown`, `on_floor`, `swimming`,
+    `dead`, `ghost`, `hp`/`max_hp`, `hand` (`held()`), `inv` (equip → `defense()` e o boneco), `eye()`, `HALF`/`TALL`/`EYE`, `flail_state()` = "",
+    `flail_snap`, `hurt()` (anota em `hits`; M4a = RPC ao dono), `pickup()` (nada; M4a). Monta um `player_model.gd` no `_ready`.
+  - Ficou no jogador local de propósito (são coisas do mundo/da tela, resolver na M3/M4b): `toggle_door` do habitante (`entities.player.toggle_door`),
+    `say`, `shake`, `_npc_spot` (usa `player.spawn` = nascimento do mundo), meteorito (perto do local), corações/estrelas (`drop_pickups` olha a vida
+    do local), flail/bumerangue (projéteis do dono), timber (tremor). Com `player == null` (servidor) esses pontos quebram: a M3 precisa tratá-los.
+  - Teste novo `test_players` em `tests/run.gd`. Os 81 testes antigos passam sem edição.
+  - Armadilha: `test_debuffs` já era instável antes da M2 (~4%: um crítico do dardo mata o zumbi de 32 de vida); medido 7/200 antes e depois.

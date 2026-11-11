@@ -350,17 +350,18 @@ func _physics_process(delta: float) -> void:
 			queue_free()
 		return
 	var r: float = def.get("size", 0.2) * 0.35
-	if def.get("hostile", false):   # laser do chefe: fere o jogador
-		var p: Node3D = entities.player
-		if def.has("homing"):   # teleguiado: gira até `homing` rad/s para o jogador
+	if def.get("hostile", false):   # laser do chefe: fere qualquer jogador
+		var p: Node3D = entities.nearest_player(position)
+		if def.has("homing") and p:   # teleguiado: gira até `homing` rad/s para o jogador mais perto
 			var want: Vector3 = p.position + Vector3.UP - position
 			var turn := minf(velocity.angle_to(want), def.homing * delta)
 			if turn > 0.0001 and velocity.cross(want).length() > 0.0001:
 				velocity = velocity.rotated(velocity.cross(want).normalized(), turn)
-		if VoxelBody.touches(next - Vector3.UP * r, r, r * 2, p.position, p.HALF, p.TALL):
-			p.hurt(Combat.vary(damage, entities.rng), velocity)
-			queue_free()
-			return
+		for q in entities.players:
+			if VoxelBody.touches(next - Vector3.UP * r, r, r * 2, q.position, q.HALF, q.TALL):
+				q.hurt(Combat.vary(damage, entities.rng), velocity)
+				queue_free()
+				return
 		for n in entities.enemies:   # o tiro inimigo também fere o habitante que ele atravessa
 			if n.def.ai == "npc" and VoxelBody.touches(next - Vector3.UP * r, r, r * 2, n.position, n.half, n.tall):
 				n.hurt(Combat.vary(damage, entities.rng), velocity, knockback, false, true)

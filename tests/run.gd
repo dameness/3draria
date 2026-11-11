@@ -25,7 +25,7 @@ func _init() -> void:
 	Difficulty.load_pack()
 	Loot.load_pack()
 	# Erro de script aborta a função, que então retorna null em vez de true.
-	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_packed", "test_bake", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit"]:
+	for t in ["test_blocks", "test_atlas", "test_mesher", "test_gen", "test_raycast", "test_player", "test_items", "test_crafting", "test_mining", "test_day_night", "test_combat", "test_drops", "test_save", "test_packed", "test_bake", "test_wiki_sprites", "test_item_model", "test_voxel", "test_projectiles", "test_progression", "test_boss", "test_armor", "test_enemy_models", "test_bb_models", "test_lighting", "test_visuals", "test_liquids", "test_flow", "test_swim_out", "test_ui", "test_cursor", "test_gui_extras", "test_evil", "test_minimap", "test_tree", "test_binds", "test_attack", "test_damage", "test_wings", "test_consumables", "test_life_crystal", "test_loot", "test_mana", "test_npc", "test_npc_walk", "test_npc_life", "test_npc_defend", "test_worm", "test_brain", "test_forge", "test_king_meteor", "test_dungeon", "test_skeletron", "test_hardmode", "test_tools", "test_testworld", "test_coins_ammo", "test_fall_drown", "test_light_potions", "test_orb_items", "test_sky", "test_housing", "test_sounds", "test_smart_cursor", "test_hook", "test_island", "test_sync_gen", "test_armor_looks", "test_wiki_review", "test_missing_items", "test_seeds", "test_throw", "test_minecart", "test_living_tree", "test_rings", "test_debuffs", "test_misc_slots", "test_death", "test_sleep", "test_nights_edge", "test_alchemy", "test_platform", "test_wiki_audit", "test_players"]:
 		check(call(t) == true, t + " terminou sem erro de script")
 	# Integração: a cena principal monta todos os chunks no alcance usando as threads.
 	main = load("res://game.tscn").instantiate()
@@ -6260,3 +6260,81 @@ func test_nights_edge():
 		check(Crafting.recipes.any(func(x): return x.result == Items.ids[r]), "receita de " + r)
 	return true
 
+
+
+# M2 (docs/MULTIPLAYER.md): vários jogadores sem rede. Um remoto (remote_player.gd) em entities.remotes vira alvo como o local:
+# o inimigo persegue o mais perto e troca, fere quem encosta, some só longe de todos; o item vai a quem está perto; nasce gente em volta dos dois.
+func test_players():
+	var w := floor_world()
+	var p := make_player(w)
+	var ent: Node3D = p.entities
+	check(ent.players == [p] and ent.nearest_player(Vector3.ZERO) == p, "um jogador só: players = [player]")
+	var r: Node3D = load("res://scripts/remote_player.gd").new()
+	r.entities = ent
+	r.position = Vector3(40.5, 11, 24.5)
+	ent.remotes.append(r)
+	p.position = Vector3(8.5, 11, 24.5)
+	p.clock.time = 100.0
+	check(ent.players.size() == 2 and ent.nearest_player(Vector3(35, 11, 24)) == r and ent.nearest_player(Vector3(12, 11, 24)) == p, "nearest_player escolhe o mais perto")
+	var z: Node3D = ent.spawn_enemy(enemy_def("zombie"), Vector3(30.5, 11.0, 24.5))
+	run(z, 1.0)
+	check(z.chase == r and z.position.x > 30.5, "o zumbi persegue o remoto, que está mais perto (x %.1f)" % z.position.x)
+	r.position = Vector3(46.5, 11, 46.5)
+	z.position = Vector3(20.5, 11.0, 24.5)
+	run(z, 1.0)
+	check(z.chase == p and z.position.x < 20.5, "o remoto se afastou: troca de alvo para o local (x %.1f)" % z.position.x)
+	r.position = z.position
+	run(z, 0.1)
+	check(not r.hits.is_empty() and r.hits[0][0] > 0, "o zumbi fere o remoto que encosta (fica anotado para o dono)")
+	var merchant: Node3D = ent.spawn_enemy(enemy_def("merchant"), z.position + Vector3(0, 0, 3))
+	check(ent.victim(z) == null, "com o remoto colado, o alvo é ele, não o habitante")
+	ent.remove_enemy(merchant)
+	# despawn: longe do local mas perto do remoto, fica; longe de todos, some
+	r.position = Vector3(100.5, 11, 24.5)
+	p.position = Vector3(8.5, 11, 24.5)
+	z.position = Vector3(95.5, 11, 24.5)
+	ent._physics_process(1.0 / 60)
+	check(ent.enemies.has(z), "a 87 blocos do local e 5 do remoto o zumbi fica")
+	r.position = Vector3(200.5, 11, 24.5)
+	ent._physics_process(1.0 / 60)
+	check(not ent.enemies.has(z), "longe dos dois ele some")
+	check(w.centers == [Vector3(200.5, 11, 24.5)], "o mundo guarda os chunks em volta do remoto (centers)")
+	# item no chão: vai para quem está perto
+	r.position = Vector3(30.5, 11, 24.5)
+	var d: Node3D = ent.spawn_drop(Items.ids.wood, 3, r.position + Vector3(1, 0.5, 0))
+	d._ready()
+	d.delay = 0.0
+	run(d, 1.0)
+	check(r.inv.total(Items.ids.wood) == 3 and p.inv.total(Items.ids.wood) == 0, "a madeira vai para o remoto, que está perto")
+	# explosão fere os dois
+	r.hits.clear()
+	r.position = Vector3(24.5, 11, 24.5)
+	p.position = Vector3(25.5, 11, 24.5)
+	p.iframes = 0.0
+	var hp0: float = p.hp
+	ent.explode(Vector3(25, 11.5, 24.5), 3.0, 20, true)
+	check(p.hp < hp0 and r.hits.size() == 1, "a explosão fere o local e o remoto")
+	free_player(p)
+	r.free()
+	w.free()
+	# nascimento em volta de cada um, com teto por jogador
+	var gw := dungeon_world(1)
+	var gp := make_player(gw)
+	var gent: Node3D = gp.entities
+	var gr: Node3D = load("res://scripts/remote_player.gd").new()
+	gr.entities = gent
+	gent.remotes.append(gr)
+	var c := Vector2(WorldGen.CENTER)
+	gp.position = Vector3(c.x + 0.5, gw.surface_y(int(c.x), int(c.y), true) + 0.1, c.y + 0.5)
+	gr.position = Vector3(c.x + 150.5, gw.surface_y(int(c.x) + 150, int(c.y), true) + 0.1, c.y + 0.5)
+	gp.clock.time = gp.clock.DAY_SECONDS + 60.0
+	gent.rng.seed = 7
+	for i in 200:
+		gent.try_spawn()
+	var near_p: int = gent.enemies.filter(func(e): return gent.nearest_player(e.position) == gp).size()
+	var near_r: int = gent.enemies.filter(func(e): return gent.nearest_player(e.position) == gr).size()
+	check(near_p > 0 and near_r > 0 and gent.enemies.filter(func(e): return e.follow == null).size() > gent.MAX_NIGHT, "nascem inimigos em volta dos dois, além do teto de um (%d + %d)" % [near_p, near_r])
+	free_player(gp)
+	gr.free()
+	gw.free()
+	return true

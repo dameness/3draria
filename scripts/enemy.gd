@@ -21,6 +21,7 @@ const HOME_WAIT := 12.0       # à noite, tantos segundos sem chegar em casa e e
 var def: Dictionary
 var display := false   # vitrine do mundo de teste: parado, sem IA nem dano (ainda leva golpe e solta os drops)
 var entities: Node3D
+var chase: Node3D       # o jogador que ele persegue: o mais perto (entities.nearest_player), revisto a cada quadro
 var hp: int
 var damage: int
 var defense: int
@@ -111,7 +112,8 @@ func _process(delta: float) -> void:
 		var ahead := (follow.position - position) if follow else velocity   # a frente do segmento: para quem ele segue
 		if ahead.length() > 0.01:
 			model.basis = orient(model.basis, ahead.normalized(), delta)
-	EnemyModel.animate(model, self, entities.player.eye(), Time.get_ticks_msec() / 1000.0)
+	var look: Node3D = chase if chase else entities.nearest_player(position)   # a vitrine não pensa: olha para quem está perto
+	EnemyModel.animate(model, self, look.eye(), Time.get_ticks_msec() / 1000.0)
 
 
 func _physics_process(delta: float) -> void:
@@ -119,12 +121,15 @@ func _physics_process(delta: float) -> void:
 	if display:
 		return
 	immune -= delta
+	chase = entities.nearest_player(position)
+	if chase == null:
+		return
 	think(delta)
 	move(delta)
-	var p: Node3D = entities.player
 	if damage > 0 and def.ai != "npc":
-		if VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
-			p.hurt(Combat.vary(damage, rng), p.position - position)
+		for p in entities.players:
+			if VoxelBody.touches(position, half, tall, p.position, p.HALF, p.TALL):
+				p.hurt(Combat.vary(damage, rng), p.position - position)
 		for n in entities.enemies:   # o inimigo também fere o habitante que encosta nele
 			if n.def.ai == "npc" and n.immune <= 0.0 and VoxelBody.touches(position, half, tall, n.position, n.half, n.tall):
 				n.hurt(Combat.vary(damage, rng), n.position - position, 4.0, false, true)
@@ -156,7 +161,7 @@ func think(delta: float) -> void:
 	stun -= delta
 	if stun > 0:
 		return
-	var p: Node3D = entities.player
+	var p: Node3D = chase
 	var prey: Vector3 = p.position
 	if def.ai in ["hop", "walk", "fly"]:   # vai atrás do habitante que estiver mais perto que o jogador
 		var victim: Node3D = entities.victim(self)
@@ -318,7 +323,7 @@ func npc_attack(delta: float) -> void:
 func eye_of_cthulhu(delta: float, to: Vector3) -> void:
 	if not entities.clock.is_night():
 		velocity = Vector3.UP * 20
-		if position.distance_to(entities.player.position) > 60:
+		if position.distance_to(chase.position) > 60:
 			entities.remove_enemy(self)
 		return
 	var p2: Dictionary = def.phase2
@@ -332,7 +337,7 @@ func eye_of_cthulhu(delta: float, to: Vector3) -> void:
 	match mode:
 		"hover":
 			var t := Time.get_ticks_msec() / 1000.0
-			var target: Vector3 = entities.player.position + Vector3(cos(t) * 6, 8, sin(t) * 6)
+			var target: Vector3 = chase.position + Vector3(cos(t) * 6, 8, sin(t) * 6)
 			velocity = velocity.lerp((target - position).limit_length(def.speed * 1.5), delta * 2.0)
 			if phase == 1 and summoned < 3 and timer < 3.0 - summoned:
 				summoned += 1
@@ -368,7 +373,7 @@ func set_ghost(on: bool) -> void:
 # Brain of Cthulhu. Fase 1: translúcido e imune, teleporta em volta do jogador enquanto os Creepers atacam; quando o último
 # Creeper morre vira sólido (fase 2): some, reaparece perto do jogador e investe.
 func brain(delta: float, to: Vector3) -> void:
-	var p: Node3D = entities.player
+	var p: Node3D = chase
 	timer -= delta
 	if phase == 1 and entities.group_count(def.group) <= 1:
 		phase = 2
@@ -407,7 +412,7 @@ func brain(delta: float, to: Vector3) -> void:
 # King Slime: pulos grandes atrás do jogador (a cada 3º, um salto alto), teleporta perto dele de tempos em tempos ou se ficar
 # longe, e solta slimes menores.
 func king_slime(delta: float, to: Vector3, flat: Vector3) -> void:
-	var p: Node3D = entities.player
+	var p: Node3D = chase
 	summoned_timer -= delta
 	teleport_timer -= delta
 	if teleport_timer <= 0.0 or position.distance_to(p.position) > 30.0:
@@ -439,7 +444,7 @@ func king_slime(delta: float, to: Vector3, flat: Vector3) -> void:
 func skeletron(delta: float, to: Vector3) -> void:
 	if not entities.clock.is_night():
 		velocity = Vector3.UP * 20
-		if position.distance_to(entities.player.position) > 60:
+		if position.distance_to(chase.position) > 60:
 			for o in entities.enemies.duplicate():
 				if o.def.get("group") == def.group:
 					entities.remove_enemy(o)
@@ -470,7 +475,7 @@ func skeletron(delta: float, to: Vector3) -> void:
 			timer = 6.0
 		velocity *= 1.0 - delta * 0.7
 		return
-	var target: Vector3 = entities.player.position + Vector3(cos(t * 0.7) * 4.0, 5.0, sin(t * 0.7) * 4.0)
+	var target: Vector3 = chase.position + Vector3(cos(t * 0.7) * 4.0, 5.0, sin(t * 0.7) * 4.0)
 	velocity = velocity.lerp((target - position).limit_length(def.speed), delta * 2.5)
 	if timer <= 0:
 		mode = "dash"
@@ -481,7 +486,7 @@ func skeletron(delta: float, to: Vector3) -> void:
 # Wall of Flesh: coluna gigante que atravessa o submundo atrás do jogador (mais rápida quanto menos vida tem), com dois olhos que
 # atiram lasers e uma boca que solta The Hungry. Vai embora se o jogador se afasta demais.
 func wall(delta: float, flat: Vector3) -> void:
-	var p: Node3D = entities.player
+	var p: Node3D = chase
 	position.y = 0.0
 	velocity = flat * lerpf(6.0, def.speed, clampf(float(hp) / def.life, 0.0, 1.0))
 	timer -= delta
@@ -502,7 +507,7 @@ func wall(delta: float, flat: Vector3) -> void:
 # Queen Bee (wiki), três ataques em ciclo: nivela com o jogador e investe 3 vezes; paira em cima soltando 6 abelhas; paira e atira ferrões.
 # ponytail: sem o enfurecimento fora da selva nem o veneno.
 func queen_bee(delta: float, to: Vector3) -> void:
-	var p: Node3D = entities.player
+	var p: Node3D = chase
 	timer -= delta
 	var away := Vector3(-to.x, 0, -to.z).normalized() if Vector2(to.x, to.z).length() > 0.5 else Vector3.RIGHT
 	match mode:
@@ -554,7 +559,7 @@ func caster(delta: float) -> void:
 	velocity.x = 0.0
 	velocity.z = 0.0
 	timer -= delta
-	var p: Node3D = entities.player
+	var p: Node3D = chase
 	if timer <= 0.0:
 		timer = 10.83
 		shots = 0

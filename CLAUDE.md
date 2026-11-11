@@ -110,6 +110,7 @@ scripts/             setup-godot.sh e um .gd por sistema:
   fx.gd  block_crack.gd  trail.gd   partículas (poeira, lascas, faíscas, gotas, respingo), rachaduras do bloco minerado, arco do golpe
   entities.gd        inimigos, itens soltos e flechas; spawn por horário
   enemy.gd  item_drop.gd  projectile.gd   um nó por entidade (IA genérica: hop/walk/fly/eye_of_cthulhu)
+  remote_player.gd   outro jogador visto daqui (M2): o contrato que inimigos/itens/boneco leem; entities.remotes (entities.players = local + remotos)
   enemy_model.gd     modelos 3D dos inimigos (eye/slime/humanoid; senão sprite extrudado)
   day_night.gd       ciclo 15+9 min; clima por bioma (névoa e tom da luz: BIOME_AIR)
   test_world.gd      mundo de teste (menu → "Mundo de teste", flag `test` no .wld): arena plana no nascimento com um baú por categoria (a partir de Items),
