@@ -853,4 +853,6 @@ func spawn_projectile(name: String, from: Vector3, dir: Vector3, speed: float, d
 	a.entities = self
 	a.position = from
 	add_child(a)
+	if net:
+		net.shot_fired(a)
 	return a

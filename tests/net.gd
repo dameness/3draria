@@ -134,6 +134,16 @@ func _run() -> void:
 	pb.position = sn.drops.values().filter(func(d): return d.item == Items.ids.wood)[0].position
 	check(await until(func(): return sn.drops.size() < ndrops and pb.inv.total(Items.ids.wood) == wood0 + 3), "B encosta → pede e recolhe")
 
+	# Projéteis: o de A só voa em B (cópia); o do inimigo é simulado no servidor e fere A pelo hurt
+	var is_copy := func(n: Node, what: String): return n is Projectile and n.puppet and n.def.name == what
+	a.get_node("Entities").spawn_projectile("wooden_arrow", pa.eye(), Vector3.UP, 20.0, 5, 0.0)
+	check(await until(func(): return b.get_node("Entities").get_children().any(is_copy.bind("wooden_arrow"))), "flecha de A aparece em B (só o voo)")
+	var hp1: float = pa.hp
+	await create_timer(0.8).timeout   # fora dos quadros de invencibilidade
+	se.spawn_projectile("stinger", sn.peers[a_id].body.position + Vector3.UP * 4.0, Vector3.DOWN, 12.0, 30, 0.0)
+	check(await until(func(): return a.get_node("Entities").get_children().any(is_copy.bind("stinger"))), "ferrão do servidor aparece em A")
+	check(await until(func(): return pa.hp < hp1), "o ferrão (simulado no servidor) fere A")
+
 	# Relógio: o do servidor manda
 	srv.get_node("DayNight").time = 500.0
 	check(await until(func(): return absf(b.get_node("DayNight").time - 500.0) < 5.0), "B segue a hora do servidor")

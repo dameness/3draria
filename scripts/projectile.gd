@@ -22,6 +22,7 @@ var last_hit := {}       # flail: inimigo -> instante do último golpe do giro
 var chain: Array[Node3D] = []
 var npc := false         # disparado por habitante: não fere o jogador
 var stuck := false       # sinalizador: grudou num bloco e fica aceso até o fim da vida
+var puppet := false      # rede: cópia do tiro de outro (cliente ou servidor), só o voo; quem atirou é quem acerta
 
 
 func _ready() -> void:
@@ -350,6 +351,11 @@ func _physics_process(delta: float) -> void:
 			stuck = true
 		else:
 			queue_free()
+		return
+	if puppet:
+		position = next
+		if is_inside_tree() and not def.has("spin") and velocity.normalized().cross(Vector3.UP).length() > 0.01:
+			look_at(position + velocity)
 		return
 	var r: float = def.get("size", 0.2) * 0.35
 	if def.get("hostile", false):   # laser do chefe: fere qualquer jogador

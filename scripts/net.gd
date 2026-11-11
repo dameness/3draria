@@ -210,6 +210,20 @@ func _announce(id: int, d: Node3D) -> void:
 	drop_new.rpc_id(id, d.net_id, d.item, d.count, d.position, d.velocity, d.delay)
 
 
+# ---------- funil dos projéteis (entities.spawn_projectile) ----------
+# Quem atira simula e acerta (cliente: os dele; servidor: inimigos e habitantes); os outros recebem só o nascimento e veem o voo.
+# ponytail: flail, bumerangue, bomba e sinalizador não vão (seguem o dono / explodem e mexem no mundo); os outros veem o efeito (blocos, golpes).
+
+func shot_fired(a: Node3D) -> void:
+	if a.puppet or a.def.has("flail") or a.def.has("out") or a.def.has("fuse") or a.def.has("land"):
+		return
+	if mode == CLIENT:
+		shot.rpc_id(1, a.def.name, a.position, a.velocity)
+	elif mode == SERVER:
+		for id in _near(a.position, FOE_NEAR):
+			shot.rpc_id(id, a.def.name, a.position, a.velocity)
+
+
 # ---------- RPCs ----------
 
 @rpc("any_peer", "reliable")
@@ -504,6 +518,26 @@ func give(item: int, count: int) -> void:
 	Sfx.play(entities, "coin" if Inventory.coin_kind(item) != -1 else "pickup", player.position + Vector3.UP, -8.0)
 	if left > 0:   # não coube (o inventário mudou enquanto o pedido ia): volta ao chão
 		entities.spawn_drop(item, left, player.position + Vector3.UP)
+
+
+@rpc("any_peer", "reliable")
+func shot(what: String, pos: Vector3, vel: Vector3) -> void:
+	var from := multiplayer.get_remote_sender_id()
+	if not entities.projectiles.has(what):
+		return
+	if mode == SERVER:
+		if peers.has(from):
+			for id in _near(pos, FOE_NEAR):
+				if id != from:
+					shot.rpc_id(id, what, pos, vel)
+		return
+	var a: Node3D = entities.Projectile.new()
+	a.def = entities.projectiles[what]
+	a.velocity = vel
+	a.entities = entities
+	a.position = pos
+	a.puppet = true
+	entities.add_child(a)
 
 
 # ---------- servidor ----------
