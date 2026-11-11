@@ -14,7 +14,8 @@ const ItemDrop := preload("res://scripts/item_drop.gd")
 const Projectile := preload("res://scripts/projectile.gd")
 
 @export var world: Node3D
-@export var player: Node3D   # o jogador local: mensagens (say), tremor da tela, HUD, mundo de teste
+@export var player: Node3D   # o jogador local: mensagens (say), tremor da tela, HUD, mundo de teste (null no servidor)
+var net: Node = null         # net.gd em rede (SERVER/CLIENT; null em um jogador): inimigos, itens no chão e projéteis passam por ele
 var remotes: Array = []      # os outros jogadores (remote_player.gd; a rede da M3 põe e tira)
 var players: Array:          # todos os alvos: o local (se há) + os remotos. Um jogador só = [player]
 	get:
@@ -60,6 +61,12 @@ func icon(item: int) -> Texture2D:
 
 
 func _physics_process(delta: float) -> void:
+	if world.authority:   # cliente de rede: inimigos, meteorito, estrelas e habitantes são do servidor (aqui só os bonecos e o que é do jogador)
+		_world_tick(delta)
+	_cloud_tick(delta)
+
+
+func _world_tick(delta: float) -> void:
 	if world.meteor_due and meteor == null and clock.is_night() and clock.time >= clock.DAY_SECONDS + clock.NIGHT_SECONDS / 2.0:
 		start_meteor()   # depois do 1º chefe do mal, um meteorito cai na 1ª meia-noite (ou já, se ele caiu depois dela)
 	_old_man()
@@ -71,6 +78,21 @@ func _physics_process(delta: float) -> void:
 			meteor.queue_free()
 			meteor = null
 			crater(int(at.x), int(at.z))
+	spawn_timer -= delta
+	if spawn_timer <= 0:
+		spawn_timer = 1.0
+		try_spawn()
+		_stars()
+		_town()
+		_eye_watch()
+	world.centers = remotes.map(func(p): return p.position)   # os chunks em volta dos outros jogadores ficam na memória
+	for e in enemies.duplicate():
+		var p := nearest_player(e.position)
+		if not e.def.get("boss") and not e.display and (p == null or e.position.distance_to(p.position) > DESPAWN):
+			remove_enemy(e)   # some quem está longe de todos
+
+
+func _cloud_tick(delta: float) -> void:
 	if cloud:
 		cloud_left -= delta
 		cloud_next -= delta
@@ -88,18 +110,40 @@ func _physics_process(delta: float) -> void:
 				x = e.position.x - cloud.position.x + rng.randf_range(-0.1, 0.1)
 				z = e.position.z - cloud.position.z + rng.randf_range(-0.1, 0.1)
 			spawn_projectile("blood_drop", cloud.position + Vector3(x, -0.5, z), Vector3.DOWN, 6.0, cloud_damage, 0.0)
-	spawn_timer -= delta
-	if spawn_timer <= 0:
-		spawn_timer = 1.0
-		try_spawn()
-		_stars()
-		_town()
-		_eye_watch()
-	world.centers = remotes.map(func(p): return p.position)   # os chunks em volta dos outros jogadores ficam na memória
-	for e in enemies.duplicate():
-		var p := nearest_player(e.position)
-		if not e.def.get("boss") and not e.display and (p == null or e.position.distance_to(p.position) > DESPAWN):
-			remove_enemy(e)   # some quem está longe de todos
+
+
+# Mensagem na tela do jogador local; no servidor vai a todos (net.notice).
+func say(text: String) -> void:
+	if player:
+		player.say(text)
+	elif net:
+		net.announce(text)
+
+
+# Cliente de rede: o que mexe no mundo (chefe, orbe, larva, Velho) o servidor faz (net.ask). true = foi pedido.
+func _relay(what: String, args: Array) -> bool:
+	if net and net.mode == net.CLIENT:
+		net.ask.rpc_id(1, what, args)
+		return true
+	return false
+
+
+# Item invocador (o jogador já conferiu noite/chefe e gastou o item).
+func summon(n: String, who: Node3D) -> void:
+	if _relay("summon", [n]):
+		return
+	var b := spawn_boss(n, who)
+	say("%s despertou!" % Items.title(b.def.name))
+
+
+# Abre/fecha a porta em p (e as metades de cima/baixo): o jogador e os habitantes.
+func toggle_door(p: Vector3i) -> void:
+	var to: int = Blocks.door_open if world.get_block(p.x, p.y, p.z) == Blocks.door_closed else Blocks.door_closed
+	for dy in [0, 1, -1]:
+		var q := p + Vector3i(0, dy, 0)
+		if dy == 0 or world.get_block(q.x, q.y, q.z) in [Blocks.door_closed, Blocks.door_open]:
+			world.set_block(q.x, q.y, q.z, to)
+	Sfx.play(self, "place", Vector3(p) + Vector3.ONE * 0.5, -4.0, 0.8 if to == Blocks.door_open else 1.1)
 
 
 # O jogador mais perto de pos (null sem nenhum).
@@ -119,13 +163,13 @@ func _eye_watch() -> void:
 	last_time = t
 	if dusk and not world.eoc_down and not world.test_world and boss == null and players.any(func(p): return p.max_hp >= 200 and p.defense() >= 11) and world.npcs.size() >= 4 and rng.randf() < 1.0 / 3.0:
 		eye_watch = 81.0
-		player.say("você sente uma presença maligna te observando...")
+		say("você sente uma presença maligna te observando...")
 	elif eye_watch >= 0.0:
 		eye_watch -= 1.0
 		var up: Array = players.filter(func(p): return p.position.y >= world.surface_y(floori(p.position.x), floori(p.position.z), true) - 3.0)
 		if eye_watch < 0.0 and boss == null and clock.is_night() and not up.is_empty():
 			spawn_boss("eye_of_cthulhu", up[0])
-			player.say("Eye of Cthulhu despertou!")
+			say("Eye of Cthulhu despertou!")
 
 
 # Habitantes (wiki): o Guide já está no mundo; o Merchant chega com mais de 50 de prata, a Nurse com mais de 100 de vida máxima, o Demolitionist com um explosivo
@@ -153,9 +197,9 @@ func _town() -> void:
 			spawn_enemy(def_named(n), where)
 			world.town_wait.erase(n)
 			if dead:
-				player.say("%s voltou!" % Items.title(n))
+				say("%s voltou!" % Items.title(n))
 			elif n != "guide" and not world.test_world and not world.homes.has(n):
-				player.say("%s chegou!" % Items.title(n))
+				say("%s chegou!" % Items.title(n))
 
 
 # Guide Voodoo Doll queimada na lava (wiki): o Guide morre, esteja ele por perto ou não; false se já estava morto (a boneca se perde sem efeito).
@@ -174,7 +218,7 @@ func kill_guide() -> bool:
 # Um habitante morreu: some da vila por NPC_RETURN segundos.
 func npc_died(n: String) -> void:
 	world.town_wait[n] = NPC_RETURN
-	player.say("%s foi morto!" % Items.title(n))
+	say("%s foi morto!" % Items.title(n))
 
 
 # O habitante mais perto de `e` (até 12 blocos) e mais perto dele que o jogador mais perto: os inimigos vão atrás dele. null = o alvo é o jogador.
@@ -198,8 +242,9 @@ func _npc_spot(n: String, i: int) -> Vector3:
 	if world.homes.has(n):
 		var h: Vector3i = world.homes[n]
 		return Vector3(h.x + 0.5, h.y + 0.1, h.z + 0.5)
-	var x: float = player.spawn.x + 3.0 + i * 2.0
-	var z: float = player.spawn.z + 3.0
+	var at: Vector3 = player.spawn if player else net.spawn   # (servidor: o nascimento do mundo)
+	var x: float = at.x + 3.0 + i * 2.0
+	var z: float = at.z + 3.0
 	return Vector3(x, world.surface_y(int(x), int(z), true) + 0.1, z)
 
 
@@ -212,16 +257,16 @@ func _homes() -> void:
 		if world.homes.has(n):
 			var h: Vector3i = world.homes[n]
 			var p: Node3D = nearest_player(Vector3(h))
-			if Vector2(h.x + 0.5 - p.position.x, h.z + 0.5 - p.position.z).length() < Housing.SEARCH and not Housing.check(world, h).valid:
+			if p and Vector2(h.x + 0.5 - p.position.x, h.z + 0.5 - p.position.z).length() < Housing.SEARCH and not Housing.check(world, h).valid:
 				world.homes.erase(n)   # a casa foi desfeita: volta a ficar perto do nascimento
-				player.say("%s ficou sem casa" % Items.title(n))
+				say("%s ficou sem casa" % Items.title(n))
 		for p in players:
 			if world.homes.has(n):
 				break
 			var f := Housing.find(world, p.position, world.homes.values())
 			if not f.is_empty():
 				world.homes[n] = f.home
-				player.say("%s se mudou para a casa!" % Items.title(n))
+				say("%s se mudou para a casa!" % Items.title(n))
 		var spot := _npc_spot(n, TOWN.find(n))
 		for e in enemies:   # quem já está no mundo vai para a casa nova (ou de volta ao nascimento)
 			if e.def.name == n and e.home.distance_to(spot) > 0.5:
@@ -384,7 +429,7 @@ func boss_names() -> Array:
 # Chama o chefe n. O Eye vai embora de dia (vira noite); o Wall of Flesh só vive no submundo (leva o jogador para lá).
 func test_boss(n: String) -> void:
 	if boss:
-		player.say("já há um chefe (limpe os inimigos)")
+		say("já há um chefe (limpe os inimigos)")
 		return
 	var d := def_named(n)
 	if d.ai == "eye_of_cthulhu" and not clock.is_night():
@@ -392,7 +437,7 @@ func test_boss(n: String) -> void:
 	if d.ai == "wall":
 		goto("underworld")
 	spawn_boss(n)
-	player.say("%s despertou!" % Items.title(n))
+	say("%s despertou!" % Items.title(n))
 
 
 # Tira todos os inimigos que não são habitantes nem vitrine (chefes e servos incluídos).
@@ -444,29 +489,37 @@ func talk(e: Node3D) -> void:
 		player.get_parent().get_node("HUD").open_npc(e.def.talk)
 	elif e.def.talk == "skeletron":
 		if not clock.is_night():
-			player.say("O Velho: \"Volte à noite... se tiver coragem.\"")
-		elif boss == null:
-			var at: Vector3 = e.position
-			remove_enemy(e)
-			old_man = null
-			var b := spawn_boss("skeletron")
-			b.position = at + Vector3.UP * 3.0
-			for o in enemies:
-				if o.follow == b:
-					o.position = at + Vector3.UP * 3.0
-			player.say("O Velho: \"Você foi amaldiçoado!\"")
+			say("O Velho: \"Volte à noite... se tiver coragem.\"")
+		elif boss == null and not _relay("old_man", [e.net_id]):
+			curse_old_man(e)
+
+
+# O Velho amaldiçoado vira o Skeletron.
+func curse_old_man(e: Node3D) -> void:
+	var at: Vector3 = e.position
+	remove_enemy(e)
+	old_man = null
+	var b := spawn_boss("skeletron", nearest_player(at))
+	b.position = at + Vector3.UP * 3.0
+	for o in enemies:
+		if o.follow == b:
+			o.position = at + Vector3.UP * 3.0
+	say("O Velho: \"Você foi amaldiçoado!\"")
 
 
 # Corações e estrelas de quem morre (wiki Heart e Star): só inimigos que soltam moedas, e só se o jogador precisa. Estrela: 13/24 com a mana
 # incompleta. Coração: 1/12 (1/24 com a mana incompleta, as estrelas têm prioridade). "heart" no dado troca a chance (Creeper 50%, segmento do
 # Eater of Worlds 25%, The Hungry 100%). O chefe inteiro solta 5 a 9 corações (boss_hearts).
 func drop_pickups(d: Dictionary, at: Vector3) -> void:
-	var need_hp: bool = player.hp < player.max_hp
+	var p: Node3D = nearest_player(at)   # (em rede, o mais perto de quem morreu)
+	if p == null:
+		return
+	var need_hp: bool = p.hp < p.max_hp
 	if d.get("boss") and not d.has("heart"):
 		return
 	if not d.has("heart") and not d.drops.any(func(x): return x.item == "copper_coin"):
 		return
-	var need_mana: bool = player.mana < player.mana_cap()
+	var need_mana: bool = p.mana < p.mana_cap()
 	if need_mana and not d.has("heart") and rng.randf() < 13.0 / 24.0:
 		spawn_drop(Items.ids.star, 1, at)
 	if need_hp and rng.randf() < d.get("heart", 1.0 / 24.0 if need_mana else 1.0 / 12.0):
@@ -485,20 +538,23 @@ func boss_down(group: String) -> void:
 		world.meteor_due = true
 	elif group == "wall_of_flesh" and not world.hardmode:
 		world.start_hardmode()
-		player.say("o mundo foi abençoado: hardmode! (cobalto, paládio e o Hallow)")
+		say("o mundo foi abençoado: hardmode! (cobalto, paládio e o Hallow)")
 	elif group == "skeletron" and not world.skeletron_down:
 		world.skeletron_down = true
-		player.say("o dungeon está aberto!")
+		say("o dungeon está aberto!")
 
 
 # Escolhe um ponto de superfície seco, longe do nascimento e do bioma do mal, a 40-90 blocos do jogador, e solta a bola de fogo.
 func start_meteor() -> void:
+	if players.is_empty():
+		return
+	var who: Node3D = player if player else players[rng.randi() % players.size()]   # (servidor: perto de um dos jogadores)
 	var pos := Vector3i.ZERO
 	for attempt in 30:
 		var a := rng.randf() * TAU
 		var d := rng.randf_range(40.0, 90.0)
-		var x := floori(player.position.x + cos(a) * d)
-		var z := floori(player.position.z + sin(a) * d)
+		var x := floori(who.position.x + cos(a) * d)
+		var z := floori(who.position.z + sin(a) * d)
 		var y: int = world.surface_y(x, z, true) if world.in_world(Vector2i(floori(x / 16.0), floori(z / 16.0))) else 0
 		var lo := 16
 		var hi: int = WorldGen.SIZE_CHUNKS * WorldGen.CHUNK - 16
@@ -521,7 +577,7 @@ func start_meteor() -> void:
 	meteor.position = Vector3(pos.x + 0.5, pos.y + 90, pos.z + 0.5)
 	meteor.set_meta("ground", float(pos.y))
 	add_child(meteor)
-	player.say("um meteorito caiu do céu! (%d blocos a %s)" % [int(Vector2(pos.x, pos.z).distance_to(Vector2(player.position.x, player.position.z))), _compass(Vector2(pos.x - player.position.x, pos.z - player.position.z))])
+	say("um meteorito caiu do céu! (%d blocos a %s)" % [int(Vector2(pos.x, pos.z).distance_to(Vector2(who.position.x, who.position.z))), _compass(Vector2(pos.x - who.position.x, pos.z - who.position.z))])
 
 
 static func _compass(v: Vector2) -> String:
@@ -550,7 +606,7 @@ func crater(cx: int, cz: int) -> void:
 	var at := Vector3(cx + 0.5, y0, cz + 0.5)
 	Fx.puff(self, at, Color("#ff8a3a"), 40)
 	Fx.sparks(self, at, Color("#ffd060"), 30, Vector3.UP)
-	if player.position.distance_to(at) < 60.0:
+	if player and player.position.distance_to(at) < 60.0:
 		player.shake = maxf(player.shake, 1.0)
 
 
@@ -568,6 +624,8 @@ func spawn_enemy(d: Dictionary, pos: Vector3) -> Node3D:
 	e.home = pos
 	add_child(e)
 	enemies.append(e)
+	if net:
+		net.enemy_born(e)
 	return e
 
 
@@ -577,7 +635,7 @@ func def_named(n: String) -> Dictionary:
 
 # Nasce em volta de `near` (quem invocou; sem ele, o jogador local) e daí em diante mira o jogador mais perto.
 func spawn_boss(n: String, near: Node3D = null) -> Node3D:
-	var who: Node3D = near if near else player
+	var who: Node3D = near if near else player if player else players[0]   # (servidor: quem chama passa `near`)
 	var ang := rng.randf() * TAU
 	var d := def_named(n)
 	if d.has("hands"):
@@ -654,14 +712,18 @@ func boss_life() -> int:
 
 
 # A larva da colmeia quebrada chama a Queen Bee (wiki: qualquer larva, a qualquer hora, um chefe por vez).
-func larva_broken() -> void:
+func larva_broken(near: Node3D = null) -> void:
+	if _relay("larva", []):
+		return
 	if boss == null:
-		spawn_boss("queen_bee")
-		player.say("Queen Bee despertou!")
+		spawn_boss("queen_bee", near)
+		say("Queen Bee despertou!")
 
 
 # Um orbe quebrado (Shadow Orb / Crimson Heart): a cada 3º acorda o chefe do bioma.
 func orb_broken(id: int, at := Vector3.ZERO) -> void:
+	if _relay("orb", [id, at]):
+		return
 	world.orbs_broken += 1
 	var gun: String = "musket" if id == Blocks.ids.shadow_orb else "the_undertaker"   # wiki: a 1ª orbe sempre dá a arma + 100 balas; nas outras 20%
 	if world.orbs_broken == 1 or rng.randf() < 0.2:
@@ -676,18 +738,18 @@ func orb_broken(id: int, at := Vector3.ZERO) -> void:
 			if rng.randf() < 0.2:
 				spawn_drop(Items.ids[n], 1, at + Vector3(rng.randf_range(-0.4, 0.4), 0.3, rng.randf_range(-0.4, 0.4)))
 	if world.orbs_broken % 3 != 0:
-		player.say("você sente uma presença maligna (%d/3)" % (world.orbs_broken % 3))
+		say("você sente uma presença maligna (%d/3)" % (world.orbs_broken % 3))
 	elif boss == null:
 		var n := "eater_of_worlds" if id == Blocks.ids.shadow_orb else "brain_of_cthulhu"
 		if defs.any(func(d): return d.name == n):
-			spawn_boss(n)
-			player.say("%s despertou!" % Items.title(n))
+			spawn_boss(n, nearest_player(at))
+			say("%s despertou!" % Items.title(n))
 
 
 # Número de dano flutuante, como no Terraria: aparece com um salto, sobe e some. Laranja nos inimigos, vermelho no jogador; crítico (wiki:
 # número mais forte, que sobe mais e demora mais) sai maior e fica mais tempo no ar.
 func spawn_text(pos: Vector3, text: String, color: Color, crit := false) -> void:
-	if not is_inside_tree():
+	if not is_inside_tree() or player == null:   # (servidor: os textos são dos clientes, pelo evento foe_hurt)
 		return
 	var l := Label3D.new()
 	l.text = text
@@ -714,6 +776,8 @@ func spawn_text(pos: Vector3, text: String, color: Color, crit := false) -> void
 
 func remove_enemy(e: Node3D) -> void:
 	enemies.erase(e)
+	if net:
+		net.enemy_gone(e)
 	if e == boss:   # verme: outro segmento vira o "chefe" da barra de vida
 		boss = null
 		for o in enemies:
@@ -729,7 +793,12 @@ func spawn_drop(item: int, count: int, pos: Vector3) -> Node3D:
 	d.count = count
 	d.entities = self
 	d.position = pos
+	if net and net.mode == net.CLIENT:   # rede: o servidor faz nascer (net.drop); o nó só leva os dados (e a velocidade de quem chamou) até o fim do quadro
+		net.drops_out.append(d)
+		return d
 	add_child(d)
+	if net:
+		net.drop_born(d)
 	return d
 
 
@@ -791,7 +860,7 @@ func explode(at: Vector3, r: float, dmg: int, keep_blocks := false, hurt_player 
 	for p in players if hurt_player else []:
 		if p.position.distance_to(at) < r + 0.8:
 			p.hurt(dmg, p.position - at)
-	if player.position.distance_to(at) < 40.0:
+	if player and player.position.distance_to(at) < 40.0:
 		player.shake = maxf(player.shake, 1.0)
 
 
@@ -811,4 +880,6 @@ func spawn_projectile(name: String, from: Vector3, dir: Vector3, speed: float, d
 	a.entities = self
 	a.position = from
 	add_child(a)
+	if net:
+		net.shot_fired(a)
 	return a

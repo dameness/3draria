@@ -253,6 +253,8 @@ func _set_open(open: bool) -> void:
 	for i in slots.size():
 		slots[i].mouse_filter = Control.MOUSE_FILTER_STOP if open or i >= Inventory.HOTBAR else Control.MOUSE_FILTER_IGNORE
 	if not open:
+		if chest.has("pos") and world.net:   # rede: devolve o baú ao servidor (destranca)
+			world.net.chest_put.rpc_id(1, chest.pos, chest.item, chest.count)
 		chest = {}
 	_animate_open()
 

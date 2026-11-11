@@ -1,6 +1,6 @@
 extends Node3D
 # Servidor dedicado (M3): .tools/godot --headless -- --server [porta] [arquivo.wld]
-# World sem malha (não há câmera), DayNight e Net; sem jogador nem HUD. Mundo padrão: user://worlds/servidor.wld (criado e assado na primeira vez).
+# World sem malha (não há câmera), DayNight, Entities (inimigos, itens no chão; M4a) e Net; sem jogador nem HUD (Fx.muted: sem efeitos nem modelos). Mundo padrão: user://worlds/servidor.wld (criado e assado na primeira vez).
 # ponytail: M3 não salva o mundo (M5: a cada 5 min e ao encerrar) nem tira chunk da memória (só os que alguém editou/visitou ficam; teto = o mundo, 472 MB).
 
 
@@ -28,6 +28,10 @@ func start(path: String, port: int) -> void:
 		b.finish()
 	var net: Node = $Net
 	SaveGame.load_world($World, net, $DayNight, path)
+	if $World.test_world:   # o mundo de teste e o painel F9 são de um jogador só
+		push_error("mundo de teste não abre no servidor: " + path)
+		get_tree().quit(1)
+		return
 	if net.spawn == Vector3.ZERO:
 		var mid := WorldGen.SIZE_CHUNKS * WorldGen.CHUNK / 2
 		net.spawn = Vector3(mid + 0.5, $World.surface_y(mid, mid), mid + 0.5)

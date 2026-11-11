@@ -20,6 +20,11 @@ const HOME_WAIT := 12.0       # à noite, tantos segundos sem chegar em casa e e
 
 var def: Dictionary
 var display := false   # vitrine do mundo de teste: parado, sem IA nem dano (ainda leva golpe e solta os drops)
+var puppet := false    # cliente de rede (M4a): não pensa; segue o estado do servidor (net_pos/net_yaw) e o golpe vira pedido (net.hit)
+var net_id := 0        # id de rede (o servidor dá; 0 = local)
+var net_pos := Vector3.ZERO
+var net_yaw := 0.0
+var seen := 0          # boneco: ms do último estado recebido
 var entities: Node3D
 var chase: Node3D       # o jogador que ele persegue: o mais perto (entities.nearest_player), revisto a cada quadro
 var hp: int
@@ -77,9 +82,11 @@ func stats() -> void:
 
 func _ready() -> void:
 	stats()
+	angle = rng.randf() * TAU
+	if Fx.muted(self):   # servidor: só colisão e IA, sem modelo
+		return
 	model = EnemyModel.build(def)
 	model.rotation.y = PI  # modelos olham para -Z; o nó gira para o jogador por +Z
-	angle = rng.randf() * TAU
 	if def.ai == "brain":   # fase 1: translúcido e imune
 		set_ghost(true)
 	if def.ai == "worm":
@@ -94,6 +101,8 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if puppet:
+		_glide(delta)
 	if model == null:
 		return
 	flash = maxf(flash - delta, 0.0)
@@ -116,7 +125,19 @@ func _process(delta: float) -> void:
 	EnemyModel.animate(model, self, look.eye(), Time.get_ticks_msec() / 1000.0)
 
 
+# Boneco: desliza até o estado recebido (como os jogadores remotos); a velocidade sai do deslocamento (anima andar, pulo, verme).
+func _glide(delta: float) -> void:
+	var was := position
+	var k := 1.0 - exp(-12.0 * delta)
+	position = position.lerp(net_pos, k)
+	rotation.y = lerp_angle(rotation.y, net_yaw, k)
+	if delta > 0.0:
+		velocity = (position - was) / delta
+
+
 func _physics_process(delta: float) -> void:
+	if puppet:
+		return
 	tick_debuffs(delta)   # a vitrine do mundo de teste também sofre veneno e fogo
 	if display:
 		return
@@ -137,6 +158,9 @@ func _physics_process(delta: float) -> void:
 
 # Debuff do jogador no inimigo: renova o tempo (não soma). Vale só para quem ainda está vivo.
 func afflict(name: String, seconds: float) -> void:
+	if puppet:
+		entities.net.curse.rpc_id(1, net_id, name, seconds)
+		return
 	if hp > 0 and not def.get("invulnerable", false):
 		debuffs[name] = maxf(debuffs.get(name, 0.0), seconds)
 
@@ -239,7 +263,7 @@ func town_ai(delta: float, to: Vector3, flat: Vector3) -> Vector3:
 		return look
 	if door_at.y >= 0 and Vector2(door_at.x + 0.5 - position.x, door_at.z + 0.5 - position.z).length() > 1.2:
 		if entities.world.get_block(door_at.x, door_at.y, door_at.z) == Blocks.door_open:
-			entities.player.toggle_door(door_at)
+			entities.toggle_door(door_at)
 		door_at = Vector3i(-1, -1, -1)
 	var h := Vector3(home.x - position.x, 0.0, home.z - position.z)
 	if entities.clock.is_night():
@@ -282,7 +306,7 @@ func _walk(dir: Vector3, speed := NPC_SPEED) -> Vector3:
 		for dy in 2:
 			var c := Vector3i(floori(ahead.x), floori(position.y) + dy, floori(ahead.z))
 			if entities.world.get_block(c.x, c.y, c.z) == Blocks.door_closed:
-				entities.player.toggle_door(c)
+				entities.toggle_door(c)
 				door_at = c
 				return dir
 		velocity.y = JUMP
@@ -382,7 +406,7 @@ func brain(delta: float, to: Vector3) -> void:
 		entities.boss_max = entities.boss_life()   # a barra passa a contar só o cérebro
 		set_ghost(false)
 		Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.color), 30)
-		p.say("o Brain of Cthulhu está furioso!")
+		entities.say("o Brain of Cthulhu está furioso!")
 	if phase == 1:
 		velocity = velocity.lerp(to.normalized() * 2.5, delta * 1.5)
 		if timer <= 0:
@@ -457,7 +481,7 @@ func skeletron(delta: float, to: Vector3) -> void:
 		damage = roundi(def.damage * 1.3) if phase == 2 else def.damage
 		defense = maxi(def.defense - 10, 0) if phase == 2 else def.defense
 		if phase == 2:
-			entities.player.say("o Skeletron gira, furioso!")
+			entities.say("o Skeletron gira, furioso!")
 	if phase == 2:
 		velocity = velocity.lerp(to.normalized() * def.speed * 1.4, delta * 3.0)
 		return
@@ -669,7 +693,12 @@ static func orient(b: Basis, fwd: Vector3, delta: float) -> Basis:
 # Troca o papel do segmento (head, body, tail) pelo def do papel: dano/defesa da wiki e o modelo com a boca ou a ponta do rabo.
 func set_role(role: String) -> void:
 	var head_def: Dictionary = entities.def_named(def.group)   # a cabeça tem o nome do grupo e a tabela `worm`
-	def = head_def if role == "head" else entities.def_named(head_def.worm[role])
+	become(head_def if role == "head" else entities.def_named(head_def.worm[role]))
+
+
+# Troca o def (papel do verme; no boneco, quando o servidor trocou) e refaz o modelo.
+func become(d: Dictionary) -> void:
+	def = d
 	damage = def.damage
 	defense = def.defense
 	half = def.size[0] / 2.0
@@ -730,6 +759,9 @@ func move(delta: float) -> void:
 # foe: o golpe vem de um inimigo (só assim o habitante apanha: as armas do jogador passam por ele, como no Terraria).
 # dot: dano de veneno/fogo: ignora a defesa, sem recuo nem sangue (e vale até em quem não toma golpe de arma).
 func hurt(dmg: int, dir: Vector3, knockback: float, crit := false, foe := false, dot := false) -> int:
+	if puppet:   # o servidor aplica (defesa, recuo, morte, drops) e devolve o evento foe_hurt a todos
+		entities.net.hit.rpc_id(1, net_id, dmg, dir, knockback, crit)
+		return 0
 	if def.get("invulnerable", false) or (def.ai == "npc" and (not foe or immune > 0.0)):
 		return 0
 	if def.ai == "brain" and phase == 1:   # imune enquanto houver Creepers
@@ -740,19 +772,11 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false, foe := false,
 		timer = 4.17
 		shots = 0
 	hp -= taken
-	var blood := Color(def.get("blood", def.color))
-	if dot:
-		if hp <= 0:
-			Sfx.play(entities, "die", position)
-		entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#6adf4a") if debuffs.has("poisoned") else Color("#ff8a20"), false)
-	else:
-		flash = FLASH_TIME
+	if not dot:
 		immune = NPC_IMMUNE
-		Sfx.play(entities, "die" if hp <= 0 else "hit", position)
-		entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ff5a14") if crit else Color("#ffa050"), crit)
-		var away := Vector3(dir.x, 0.4, dir.z).normalized()
-		Fx.blood(entities, position + Vector3.UP * tall * 0.55, blood, 8, away)
-		Fx.sparks(entities, position + Vector3.UP * tall * 0.55, Color(1, 0.95, 0.75), 3, away)
+	show_hit(taken, crit, dot, dir)
+	if entities.net:
+		entities.net.enemy_hurt(self, taken, crit, dot, dir)
 	var kb: float = knockback * (Combat.CRIT_KNOCKBACK if crit else 1.0) * (1.0 - def.get("kb_resist", 0.0))
 	if kb > 0:
 		var flat := Vector3(dir.x, 0, dir.z).normalized()
@@ -761,7 +785,6 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false, foe := false,
 	if hp <= 0:
 		if def.ai == "npc":
 			entities.npc_died(def.name)
-		Fx.puff(entities, position + Vector3.UP * tall * 0.5, blood, 12 if not def.get("boss") else 40)
 		if def.ai == "worm":
 			split_worm()
 		if def.ai == "skeletron":   # matar a cabeça acaba a luta: as mãos somem
@@ -797,6 +820,26 @@ func hurt(dmg: int, dir: Vector3, knockback: float, crit := false, foe := false,
 				picked[d.pick] = true
 			if rng.randf() < d.chance:
 				entities.spawn_drop(entities.drop_id(d.item), rng.randi_range(d.min, d.max), position + Vector3.UP * 0.3)
-		EnemyModel.death(self)
+		show_death()
 		entities.remove_enemy(self)
 	return taken
+
+
+# O que se vê do golpe (local; em rede, cada cliente pelo evento foe_hurt): número, som, sangue, o vermelho piscando.
+func show_hit(taken: int, crit: bool, dot: bool, dir: Vector3) -> void:
+	if dot:
+		if hp <= 0:
+			Sfx.play(entities, "die", position)
+		entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#6adf4a") if debuffs.has("poisoned") else Color("#ff8a20"), false)
+		return
+	flash = FLASH_TIME
+	Sfx.play(entities, "die" if hp <= 0 else "hit", position)
+	entities.spawn_text(position + Vector3.UP * (tall + 0.3), str(taken), Color("#ff5a14") if crit else Color("#ffa050"), crit)
+	var away := Vector3(dir.x, 0.4, dir.z).normalized()
+	Fx.blood(entities, position + Vector3.UP * tall * 0.55, Color(def.get("blood", def.color)), 8, away)
+	Fx.sparks(entities, position + Vector3.UP * tall * 0.55, Color(1, 0.95, 0.75), 3, away)
+
+
+func show_death() -> void:
+	Fx.puff(entities, position + Vector3.UP * tall * 0.5, Color(def.get("blood", def.color)), 12 if not def.get("boss") else 40)
+	EnemyModel.death(self)

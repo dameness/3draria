@@ -81,23 +81,10 @@ Feita (ver "Estado").
 Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M4a — Inimigos, dano, itens no chão e projéteis
-- Servidor roda `Entities` com os jogadores remotos da M2. Cliente não chama `try_spawn`.
-- Inimigo: id de rede; nascer/sumir/morrer por evento; estado (posição, direção, modo de animação, vida) a 10 Hz para quem
-  está perto; no cliente `enemy.gd` em `puppet`. Servidor **não** monta modelo 3D (só colisão e IA).
-- Golpe do jogador: o cliente calcula como hoje contra os bonecos e manda `hit(id, dano, direção, recuo, crítico)`.
-  Dano no jogador: o servidor manda `hurt` ao dono; a vida é do cliente (ele avisa quando morre).
-- Projétil de jogador: o dono simula e acerta; os outros recebem só o evento de nascer (visual). Projétil de inimigo: servidor.
-- Itens no chão: nascem no servidor; `pickup(id)` → o primeiro leva; drops de inimigo e de bloco pelo mesmo caminho.
-- Textos de dano, partículas e som: locais, disparados pelos eventos.
-- Teste: 2 clientes, um inimigo; A bate → vida cai nos dois; morre → drop único; inimigo troca de alvo.
+Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M4b — Chefes, eventos e estado do mundo
-- Chefes (barra de vida para todos, alvo mais perto, invocação por RPC), Olho natural, meteorito, orbes, larva, hardmode.
-- Flags do mundo (`eoc_down`, `hardmode`, `npcs`, `homes`...) num dicionário replicado na entrada e a cada mudança.
-- Baús com trava; habitantes (conversa e loja locais; morte/volta no servidor); lápides; porta; carrinho (local, só a posição
-  vai aos outros); cama: ponto de nascimento por personagem e **a hora só acelera com todos dormindo**.
-- Árvore: quem corta roda `Timber.fell` (os outros veem os blocos sumirem; `ponytail:` sem a animação da queda para eles).
-- Mundo de teste e painel F9 só em `OFF`.
+Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M5 — Contas e persistência
 - Login: senha do servidor + nome + senha do personagem; criar personagem pelo menu contra o servidor.
@@ -165,7 +152,7 @@ Extra por etapa, colado depois do prompt:
 - **M6:** `Não tenho como te dar acesso à VPS: entregue scripts que eu rodo e um DEPLOY.md de copiar e colar.`
 
 ## Estado
-- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
+- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [x] M4a (falta o playtest) · [x] M4b (falta o playtest) · [ ] M5 · [ ] M6
 - **M0 — decisões e armadilhas:**
   - `export_presets.cfg` agora é versionado (preset Web, threads ligadas). Export: `scripts/export-web.sh` (templates por Range
     do .tpz: ~20 MB em vez de 1,2 GB) → `build/web/` (63 MB: wasm 38 + pck 26; `build/` tem `.gdignore` e está no `.gitignore`).
@@ -254,3 +241,58 @@ Extra por etapa, colado depois do prompt:
     memória (`ponytail:` em `server.gd`); cada cliente ainda roda os próprios inimigos, meteorito, habitantes e o Olho (M4a/M4b); sono não
     acelera a hora em rede (M4b); cama/`beds` do personagem em rede usam a chave de mundo `""` (M5). Não verificado: duas abas no browser de
     verdade (é o playtest).
+- **M4a (feita):**
+  - **Servidor roda `Entities`** (em `server.tscn`; `entities.player == null`, `entities.net` = o Net). Cada jogador vira um `remote_player.gd`
+    sem modelo (`peers[id].body`, em `entities.remotes`), atualizado pelo `state` (que agora leva também vida, vida máx., mana, mana máx. e
+    o bit 8 = fantasma) e pelo `equip` (defesa). **Cliente não roda `_world_tick`** (`world.authority` falso: nascimento, despawn, meteorito,
+    Velho, estrelas, habitantes, Olho natural); só a nuvem da Crimson Rod.
+  - **`Fx.muted(nó)`** = a cena é servidor de rede com peer de verdade (por cena, não `static`): partículas, sons, modelo do inimigo, ícone do
+    item, visual do projétil e boneco do jogador não são montados lá. `spawn_text` sai cedo sem `player`.
+  - **Funis e RPCs** (todos em `net.gd`):
+    - inimigo: `entities.spawn_enemy/remove_enemy` → `net.enemy_born/enemy_gone` (id de rede no servidor). `foe_states` 10 Hz não confiável
+      (`[id, nome do def, posição, yaw, vida, bits 1 investida/2 fase 2/4 veneno/8 fogo]`, raio 96) cria/atualiza o boneco (`enemy.puppet`:
+      não pensa, `_glide` interpola e tira a velocidade do deslocamento para animar; 1,5 s sem estado = sai). `foe_hurt` (raio 96) chama
+      `enemy.show_hit` (número, som, sangue, vermelho) e `foe_gone(id, morreu)` chama `show_death`. Boneco: `hurt()` → `hit(id, dano, dir,
+      recuo, crítico)`, `afflict()` → `curse(id, debuff, s)`. Segmento de verme que troca de papel: o nome do def muda → `enemy.become`.
+    - dano no jogador: `RemotePlayer.hurt` no servidor → `hurt` ao dono (no máximo 1 a cada 0,67 s, os quadros de invencibilidade).
+    - item no chão: `entities.spawn_drop` no cliente não cria nada no mundo: guarda o nó em `drops_out` e no fim do quadro manda `drop`
+      (já com a velocidade/espera que quem chamou pôs). Servidor cria, dá id e anuncia `drop_new` **a todos** (quem entra recebe os que
+      existem). Cópia no cliente cai igual; encostando, se `inv.fits(item)`, pede `grab(id)` uma vez; o servidor manda `give(item, n)` ao
+      primeiro e apaga o item (`item_drop._exit_tree` com `queue_free` → `drop_gone` a todos). Não coube (`give` chegou com o inventário
+      cheio): volta ao chão por `spawn_drop`. Lava e fim da vida: no servidor.
+    - projétil: `entities.spawn_projectile` → `net.shot_fired`. Quem atira simula e acerta (cliente: os dele, nos bonecos via `hit`;
+      servidor: inimigos e habitantes, nos alvos via `hurt`); os outros recebem `shot(nome, pos, vel)` e veem a cópia (`projectile.puppet`: só voa).
+  - Corações/estrelas (`drop_pickups`) olham o jogador mais perto de quem morreu (por isso a vida/mana no estado). `entities.say()` é o
+    funil das mensagens (`player.say` sem jogador = nada). Porta: `entities.toggle_door` (habitante no servidor; `player.toggle_door` chama).
+  - Teste: `tests/net.gd` ganhou zumbi do servidor ferindo A, bonecos em A e B, golpe de A → vida cai nos três, troca de alvo, morte some
+    nos três, drops iguais, dois `grab` juntos → um leva, B joga madeira → A vê → B recolhe, flecha de A em B, ferrão do servidor fere A.
+  - Armadilha: lambda no `until` que captura um inimigo que morre dá "Lambda capture was freed": testar pelo id (`sn.foes`).
+  - **Sobrou (`ponytail:`):** esfera de conjurador destruída pelo golpe some só para quem bateu; flail, bumerangue, bomba e sinalizador
+    não aparecem voando para os outros (o efeito sim: blocos, golpes); itens no chão vão a todos (sem raio de interesse).
+    (Mensagens, chefes, barra e habitantes: resolvidos na M4b.)
+- **M4b (feita):**
+  - **Pedidos ao servidor** (`entities._relay` → RPC `ask(o quê, args)`): `summon` (item invocador; o jogador confere noite/chefe e gasta o
+    item antes, o servidor recusa com "já há um chefe"), `orb`, `larva`, `old_man` (o Velho à noite). Funis em `entities.summon/orb_broken/
+    larva_broken/curse_old_man`; o chefe nasce em volta de quem pediu (o `body` dele) e mira o mais perto (já era assim).
+  - **Barra do chefe para todos:** bit 16 no `foe_states` = é o `entities.boss`; `boss_max` vai nas flags. `boss_life()` soma os bonecos do grupo.
+  - **Flags do mundo** (`net._flags()`: orbes, chefes caídos, `meteor_due`, `hardmode`, `npcs`, `homes`, `boss_max`) vão a todos quando mudam
+    (comparadas em `str` a 15 Hz) e de novo quando alguém entra. **Hardmode no cliente:** `world.start_hardmode()` refeito sobre os chunks que já
+    chegaram (o passe é determinístico; os RPCs confiáveis são ordenados, então chunk velho enviado antes da flag também é convertido).
+  - **Avisos:** `entities.say` no servidor → `notice` a todos (chefe despertou, habitante chegou/morreu, meteorito, Olho...).
+  - **Baú com trava** (decisão 7): `chest_ask` → o servidor tranca e manda `chest_ok` (o cliente abre o painel por `player.open_chest`); fechar o
+    inventário (`hud._set_open(false)`) manda `chest_put` e destranca; os outros recebem `chest_set` (o "não quebra baú cheio" deles fica certo).
+    Ocupado: `notice` "<nome> está com o baú aberto". Quem cai com o baú aberto: destranca, o conteúdo fica o de antes.
+  - **`world.set_block` apaga o conteúdo do baú/texto da lápide** quando o bloco sai (antes era o `player.break_target`): vale em todos os lados.
+  - **Lápide:** `tomb(pos, texto)` cliente → servidor → os outros; quem entra recebe `tombs` no welcome.
+  - **Habitantes:** nascem, mudam de casa, morrem e voltam no servidor; conversa e loja locais (o boneco tem o `def`). Para chegarem, o cliente
+    manda `bag(item, munição, moedas)` (no máximo 1/s, quando o inventário muda) e o servidor põe no `inv` do `body`.
+  - **Sono:** bit 16 no `state`; o servidor acelera a hora só com **todos** dormindo e sem chefe, e manda a hora na hora. O cliente não mexe
+    em `clock.speed` (`world.authority`).
+  - **Árvore, porta, carrinho:** já funcionavam pelos funis (blocos e drops); nada novo (a queda animada é só de quem cortou).
+  - **Mundo de teste/F9 só em OFF:** o servidor recusa abrir mundo de teste; o welcome não leva a flag `test`.
+  - **Pausa:** o botão Configurações não pausa a árvore em rede (`get_tree().paused` só sem `world.net`).
+  - Teste: `tests/net.gd` ganhou chefe invocado por A (servidor, barra e mensagem em B, segundo recusado), flags e hardmode nos dois, orbe,
+    lápide, Arms Dealer pela bala de A, baú com trava (B recusado, A guarda gel, B vê), sono (só A não acelera; os dois aceleram).
+  - **Sobrou (`ponytail:`):** a bola de fogo do meteorito não aparece para os clientes (só a cratera e o aviso); o Velho e o "Volte à noite"
+    não foram testados em rede (o caminho é o mesmo `ask`); cama/`beds` em rede continuam na chave de mundo `""` (M5).
+

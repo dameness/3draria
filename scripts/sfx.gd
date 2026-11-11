@@ -91,7 +91,7 @@ static func stream(name: String) -> AudioStreamWAV:
 
 static func play(parent: Node3D, name: String, pos: Vector3, volume_db := -6.0, pitch := 1.0) -> void:
 	last = name
-	if not enabled or Settings.volume <= 0.0 or parent == null or not parent.is_inside_tree() or active >= MAX_ACTIVE:
+	if not enabled or Settings.volume <= 0.0 or parent == null or not parent.is_inside_tree() or active >= MAX_ACTIVE or Fx.muted(parent):
 		return
 	var p := AudioStreamPlayer3D.new()
 	p.stream = stream(name)
