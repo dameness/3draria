@@ -78,19 +78,7 @@ as etapas M1–M6 não mudam).
 Feita (ver "Estado").
 
 ### M3 — Rede base: entrar, ver o mundo, ver os outros, construir junto
-- `scripts/net.gd` (todos os RPCs), `server.tscn` + `scripts/server.gd`, argumento `--server` e porta; no menu, "Multijogador"
-  (endereço, nome). Login mínimo sem senha (as contas são da M5).
-- Entrada: servidor manda versão, estado do mundo (`world_out` sem chunks) e os chunks do raio do cliente, comprimidos, do mais
-  perto ao mais longe, **com vazão limitada** (o buffer padrão do `WebSocketMultiplayerPeer` é de 64 KB: aumentar e mandar
-  N chunks por quadro). Novos chunks conforme o jogador anda.
-- `set_block` nos dois sentidos pelo funil; relógio do servidor (o cliente só interpola).
-- Jogadores: cada cliente manda posição/rotação/pose/item na mão/armadura a 15 Hz; os outros aparecem como `remote_player.gd`
-  com o `player_model.gd`, interpolados, com o nome em cima.
-- No servidor só rodam líquidos, mudas e espalhamento (`world.authority`); no cliente esses passos ficam desligados.
-- Teste `tests/net.gd`: servidor + 2 clientes **no mesmo processo** (um `SceneMultiplayer` por ramo:
-  `get_tree().set_multiplayer(api, caminho)`, WebSocket em 127.0.0.1): A quebra um bloco → B vê; B entra depois e recebe o
-  chunk editado; A anda → B vê o boneco. Cuidado com os `static` compartilhados (`SaveGame.world_path`, `TestWorld`).
-- Playtest do dono: `scripts/serve-web.py` + servidor local, duas abas.
+Feita (ver "Estado"). Falta o playtest do dono (duas abas).
 
 ### M4a — Inimigos, dano, itens no chão e projéteis
 - Servidor roda `Entities` com os jogadores remotos da M2. Cliente não chama `try_spawn`.
@@ -177,7 +165,7 @@ Extra por etapa, colado depois do prompt:
 - **M6:** `Não tenho como te dar acesso à VPS: entregue scripts que eu rodo e um DEPLOY.md de copiar e colar.`
 
 ## Estado
-- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [ ] M3 · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
+- [x] M0 (falta o FPS do dono) · [x] M1 · [x] M2 · [x] M3 (falta o playtest) · [ ] M4a · [ ] M4b · [ ] M5 · [ ] M6
 - **M0 — decisões e armadilhas:**
   - `export_presets.cfg` agora é versionado (preset Web, threads ligadas). Export: `scripts/export-web.sh` (templates por Range
     do .tpz: ~20 MB em vez de 1,2 GB) → `build/web/` (63 MB: wasm 38 + pck 26; `build/` tem `.gdignore` e está no `.gitignore`).
@@ -234,3 +222,35 @@ Extra por etapa, colado depois do prompt:
     do local), flail/bumerangue (projéteis do dono), timber (tremor). Com `player == null` (servidor) esses pontos quebram: a M3 precisa tratá-los.
   - Teste novo `test_players` em `tests/run.gd`. Os 81 testes antigos passam sem edição.
   - Armadilha: `test_debuffs` já era instável antes da M2 (~4%: um crítico do dardo mata o zumbi de 32 de vida); medido 7/200 antes e depois.
+- **M3 (feita):**
+  - **RPCs** (todos em `scripts/net.gd`, nó `Net`, primeiro filho da raiz de `game.tscn` e de `server.tscn`; cada cena prende o próprio
+    `SceneMultiplayer` na sua raiz com `get_tree().set_multiplayer(api, raiz)`): `hello`/`refuse`/`welcome` (entrada), `chunks` (lotes de 6 por
+    quadro, do mais perto ao mais longe, raio = distância de renderização do cliente + 1), `blocks` (os dois sentidos, lote por quadro),
+    `state` (15 Hz, não confiável, leva também a distância de renderização) / `states` (15 Hz, raio de 192 blocos), `joined`/`left`, `equip`
+    (só quando muda), `time_of_day` (1 Hz; não pode se chamar `clock`, que é a variável do relógio). Buffer do WebSocket = 4 MB por conexão.
+  - **Funil:** `world.set_block` chama `world.net.block_changed` (só em rede). Cliente aplica na hora e manda; servidor aplica e repassa a quem
+    **já tem aquele chunk** (os outros recebem o chunk já editado), menos ao autor. Conflito de dois editando o mesmo bloco no mesmo instante:
+    `ponytail:` o autor fica com a versão dele (sem eco); se incomodar, ecoar ao autor.
+  - **`world.authority`** (falso no cliente): `get_block` de chunk que não chegou = `BEDROCK` sem gerar nem guardar; `set_block` nele não faz nada;
+    a fila de carga só pega chunks em `packed`; líquidos, mudas e espalhamento (`world._tick`) só com authority. `world.receive(c, zstd)` põe o
+    chunk em `packed` e refaz as filas de malha.
+  - **Entrada do cliente:** jogador e `Entities` ficam `PROCESS_MODE_DISABLED` até o `welcome` (`world_out` sem `chunks` e sem `map`, aplicado com
+    `world_in`) e os 3x3 chunks em volta; então `player.home()` (antes disso a cama "sumiria": o chunk dela ainda é parede).
+  - **Servidor:** `.tools/godot --headless -- --server [porta] [arquivo.wld]` (o `menu.gd` desvia para `server.tscn`). Cria e assa
+    `user://worlds/servidor.wld` na primeira vez (Baker num laço). `Engine.max_fps = 60`. O nascimento é `net.spawn` (o `world_out/world_in`
+    leem `player.spawn`; o Net faz o papel). DayNight roda lá (sem sol nem câmera) e manda a hora.
+  - **Versão:** `scripts/update.sh` grava `version.json` (hash do git, fora do git; o export Web leva pelo filtro `*.json`); sem ele = "dev".
+    Versão diferente → `refuse` com "atualize a página". Nome repetido também é recusado.
+  - **Menu:** Selecionar Mundo → **Multijogador** → endereço (`ws://localhost:8070` padrão; sem `ws://` ele põe) → Entrar. O personagem é o
+    escolhido e fica no PC/browser (o `.plr` só vai ao servidor na M5); o nome dele é o que os outros veem.
+  - **Bonecos:** `remote_player.gd` filhos da raiz da cena, `Label3D` com o nome, interpolação exponencial (posição e yaw) em `net._process`;
+    somem após 1 s sem estado (fora do raio). **No cliente eles NÃO entram em `entities.remotes`** de propósito: os inimigos ainda são locais
+    (cada cliente tem os seus até a M4a) e um item no chão iria "para o boneco" e sumiria. A M4a decide como juntar.
+  - Armadilha resolvida: `World._ready` recarregava `Blocks`/`Items`... a cada instância e zerava os dicionários enquanto o mesher de outro
+    mundo os lia (servidor + clientes no mesmo processo). Agora carrega uma vez (`Blocks.ids.is_empty()`).
+  - Armadilhas: `SceneTree` de teste só aceita cena depois do primeiro quadro (`await process_frame` em `tests/net.gd`); fechar o peer
+    dentro do próprio RPC (`refuse`) dá erro no poll → `close.call_deferred()`.
+  - **Sobrou (das etapas seguintes, já anotado lá):** servidor não salva o mundo (M5: a cada 5 min e ao encerrar) nem tira chunk da
+    memória (`ponytail:` em `server.gd`); cada cliente ainda roda os próprios inimigos, meteorito, habitantes e o Olho (M4a/M4b); sono não
+    acelera a hora em rede (M4b); cama/`beds` do personagem em rede usam a chave de mundo `""` (M5). Não verificado: duas abas no browser de
+    verdade (é o playtest).
